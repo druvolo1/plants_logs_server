@@ -1,86 +1,161 @@
-# main.py - FastAPI application
-from fastapi import FastAPI, Depends, HTTPException, Request, Form
-from fastapi.responses import HTMLResponse, RedirectResponse
+# main.py - Full app with FastAPI-Users
+from fastapi import FastAPI, Depends, HTTPException
+from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
-from sqlalchemy.orm import Session
-from starlette.middleware.sessions import SessionMiddleware
-from database import get_db, engine
-import models
-import schemas
-import crud
-import auth
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy import Column, Integer, String, Boolean, DateTime
+from datetime import datetime
+from typing import List
+from pydantic import BaseModel
+from fastapi_users import FastAPIUsers, BaseUserManager, IntegerIDMixin
+from fastapi_users.authentication import CookieTransport, AuthenticationBackend, JWTStrategy
+from fastapi_users.db import SQLAlchemyUserDatabase
 from dotenv import load_dotenv
 import os
 
 load_dotenv()
+DATABASE_URL = os.getenv("DATABASE_URL")
+SECRET = os.getenv("SECRET_KEY") or "secret"  # From .env
+GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
+GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
+
+engine = create_engine(DATABASE_URL)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+Base = declarative_base()
+
+class User(Base):
+    __tablename__ = "users"
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String(255), unique=True, index=True)
+    hashed_password = Column(String(1024))
+    is_active = Column(Boolean, default=True)
+    is_superuser = Column(Boolean, default=False)  # For admin
+    is_verified = Column(Boolean, default=False)
+
+Base.metadata.create_all(bind=engine)
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+class UserRead(BaseModel):
+    id: int
+    email: str
+    is_active: bool
+    is_superuser: bool
+    is_verified: bool
+
+class UserCreate(BaseModel):
+    email: str
+    password: str
+    is_superuser: bool = False  # For admin creation
+
+class UserManager(IntegerIDMixin, BaseUserManager[User, int]):
+    reset_password_token_secret = SECRET
+    verification_token_secret = SECRET
+
+    async def on_after_register(self, user: User, request: None = None):
+        print(f"User {user.id} has registered.")
+
+async def get_user_manager(user_db=Depends(SQLAlchemyUserDatabase(User, SessionLocal, engine))):
+    yield UserManager(user_db)
+
+cookie_transport = CookieTransport(cookie_max_age=3600)
+
+def get_jwt_strategy() -> JWTStrategy:
+    return JWTStrategy(secret=SECRET, lifetime_seconds=3600)
+
+auth_backend = AuthenticationBackend(
+    name="jwt",
+    transport=cookie_transport,
+    get_strategy=get_jwt_strategy,
+)
+
+fastapi_users = FastAPIUsers[User, int](
+    get_user_manager,
+    [auth_backend],
+)
+
 app = FastAPI()
 
-app.mount("/static", StaticFiles(directory="static"), name="static")  # Create static/ if needed for CSS
-templates = Jinja2Templates(directory="templates")  # Create templates/ for HTML
+app.mount("/static", StaticFiles(directory="static"), name="static")
+templates = Jinja2Templates(directory="templates")
 
-models.Base.metadata.create_all(bind=engine)  # Create DB tables
+current_user = fastapi_users.current_user(active=True)
+current_admin = fastapi_users.current_user(active=True, superuser=True)
 
-app.add_middleware(SessionMiddleware, secret_key=os.getenv("SECRET_KEY"))
+# Routes for auth
+app.include_router(
+    fastapi_users.get_auth_router(auth_backend),
+    prefix="/auth/jwt",
+    tags=["auth"],
+)
 
-# Setup initial admin if not exists (run once or in migration)
-@app.on_event("startup")
-def create_admin():
-    db = next(get_db())
-    admin_email = os.getenv("ADMIN_USERNAME")
-    admin_pass = os.getenv("ADMIN_PASSWORD")
-    if not crud.get_user_by_email(db, admin_email):
-        crud.create_user(db, schemas.UserCreate(email=admin_email, password=admin_pass), is_admin=True)
+app.include_router(
+    fastapi_users.get_register_router(UserRead, UserCreate),
+    prefix="/auth",
+    tags=["auth"],
+)
 
-# Google OAuth login
-@app.get("/login/google")
-async def login_google(request: Request):
-    redirect_uri = os.getenv("GOOGLE_REDIRECT_URI")
-    return await auth.oauth.google.authorize_redirect(request, redirect_uri)
+app.include_router(
+    fastapi_users.get_reset_password_router(),
+    prefix="/auth",
+    tags=["auth"],
+)
 
-@app.get("/auth/google/callback")
-async def auth_google_callback(request: Request, db: Session = Depends(get_db)):
-    token = await auth.oauth.google.authorize_access_token(request)
-    user_info = await auth.oauth.google.parse_id_token(request, token)
-    email = user_info["email"]
-    user = crud.get_user_by_email(db, email)
-    if not user:
-        user = crud.create_user(db, schemas.UserCreate(email=email))
-    access_token = crud.create_access_token(data={"sub": user.email})
-    response = RedirectResponse(url="/users")  # Or your users page
-    response.set_cookie(key="access_token", value=access_token, httponly=True)
-    return response
+app.include_router(
+    fastapi_users.get_verify_router(UserRead),
+    prefix="/auth",
+    tags=["auth"],
+)
 
-# Admin login (local password)
-@app.post("/login/admin", response_model=schemas.Token)
-def login_admin(form_data: schemas.UserLogin = Depends(schemas.UserLogin), db: Session = Depends(get_db)):
-    user = crud.authenticate_user(db, form_data.username, form_data.password)
-    if not user or not user.is_admin:
-        raise HTTPException(status_code=401, detail="Invalid credentials or not admin")
-    access_token = crud.create_access_token(data={"sub": user.email})
-    return {"access_token": access_token, "token_type": "bearer"}
+# Google OAuth (add this router)
+from fastapi_users.authentication import OAuth2AuthorizationCodeBearer
+from httpx_oauth.clients.google import GoogleOAuth2
 
-# Users page (example HTML, protected)
+google_oauth = GoogleOAuth2(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET)
+
+app.include_router(
+    fastapi_users.get_oauth_router(
+        google_oauth,
+        auth_backend,
+        SECRET,
+        redirect_url="http://localhost:8000/auth/google/callback",  # Update to your .env value
+    ),
+    prefix="/auth/google",
+    tags=["auth"],
+)
+
+# Users page (protected)
 @app.get("/users", response_class=HTMLResponse)
-async def users_page(request: Request, db: Session = Depends(get_db), current_user: schemas.User = Depends(auth.get_current_user)):
-    users = crud.get_users(db)
-    return templates.TemplateResponse("users.html", {"request": request, "users": users})
+async def users_page(request: Request, user: User = Depends(current_user)):
+    # For now, just a simple page; add DB query if needed
+    return templates.TemplateResponse("users.html", {"request": request, "user": user})
 
-# Admin manage users
-@app.get("/admin/users", response_model=list[schemas.User])
-def list_users(db: Session = Depends(get_db), current_admin: schemas.User = Depends(auth.get_current_admin)):
-    return crud.get_users(db)
+# Admin: List users
+@app.get("/admin/users", response_model=List[UserRead])
+async def list_users(db: Session = Depends(get_db), admin: User = Depends(current_admin)):
+    return db.query(User).all()
 
-@app.post("/admin/users", response_model=schemas.User)
-def create_user_admin(user: schemas.UserCreate, db: Session = Depends(get_db), current_admin: schemas.User = Depends(auth.get_current_admin)):
-    return crud.create_user(db, user)
+# Admin: Create user
+@app.post("/admin/users", response_model=UserRead)
+async def create_user_admin(user_create: UserCreate, db: Session = Depends(get_db), admin: User = Depends(current_admin)):
+    manager = await get_user_manager(SQLAlchemyUserDatabase(User, db))
+    user = await manager.create(user_create)
+    return user
 
+# Admin: Delete user
 @app.delete("/admin/users/{user_id}")
-def delete_user_admin(user_id: int, db: Session = Depends(get_db), current_admin: schemas.User = Depends(auth.get_current_admin)):
-    if crud.delete_user(db, user_id):
+async def delete_user_admin(user_id: int, db: Session = Depends(get_db), admin: User = Depends(current_admin)):
+    user = db.query(User).filter(User.id == user_id).first()
+    if user:
+        db.delete(user)
+        db.commit()
         return {"status": "success"}
     raise HTTPException(404, "User not found")
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
