@@ -11,3 +11,5 @@ jinja2==3.1.4
 passlib[bcrypt]==1.7.4  # For password hashing (admin login)
 python-jose[cryptography]==3.3.0  # For JWT
 httpx==0.27.2
+fastapi-users[sqlalchemy]==13.0.0  # Latest as of now; includes SQLAlchemy support
+fastapi-users-db-sqlalchemy==6.0.1
