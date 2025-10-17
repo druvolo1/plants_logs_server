@@ -3,8 +3,10 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from sqlalchemy.orm import Session
-from .database import get_db
-from . import schemas, crud, models
+from database import get_db
+import schemas
+import crud
+import models
 from authlib.integrations.starlette_client import OAuth
 from starlette.config import Config
 from dotenv import load_dotenv
