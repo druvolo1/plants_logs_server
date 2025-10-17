@@ -21,6 +21,7 @@ DATABASE_URL = os.getenv("DATABASE_URL").replace("mariadb+mariadbconnector", "ma
 SECRET = os.getenv("SECRET_KEY") or "secret"
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
+GOOGLE_REDIRECT_URI = os.getenv("GOOGLE_REDIRECT_URI") or "http://localhost:8000/auth/google/callback"
 
 engine = create_async_engine(DATABASE_URL)
 async_session_maker = async_sessionmaker(engine, expire_on_commit=False)
@@ -121,7 +122,7 @@ app.include_router(
         google_oauth,
         auth_backend,
         SECRET,
-        redirect_url=os.getenv("GOOGLE_REDIRECT_URI"),
+        redirect_url=GOOGLE_REDIRECT_URI,
     ),
     prefix="/auth/google",
     tags=["auth"],
@@ -166,4 +167,4 @@ async def on_startup():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=9000, reload=True)
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
