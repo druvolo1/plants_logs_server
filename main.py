@@ -5,8 +5,9 @@ from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 from starlette.middleware.sessions import SessionMiddleware
-from .database import get_db, engine
-from . import models, schemas, crud, auth
+from database import get_db, engine
+from auth import get_current_user, get_current_admin  # If you have this; adjust based on your exact imports
+import models, schemas, crud, auth
 from dotenv import load_dotenv
 import os
 
