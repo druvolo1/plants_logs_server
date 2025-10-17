@@ -1,0 +1,23 @@
+<!-- templates/login.html - Simple login landing page -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Login</title>
+</head>
+<body>
+    <h1>Login Options</h1>
+    <a href="/login/google">Login with Google</a>
+    <br>
+    <form action="/login/admin" method="post">
+        <label for="username">Username (email):</label>
+        <input type="text" id="username" name="username">
+        <br>
+        <label for="password">Password:</label>
+        <input type="password" id="password" name="password">
+        <br>
+        <button type="submit">Login as Admin</button>
+    </form>
+    <p>Don't have an account? <a href="/auth/register">Register here</a>.</p>
+</body>
+</html>

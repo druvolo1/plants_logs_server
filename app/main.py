@@ -1,4 +1,4 @@
-# app/main.py - Full app with FastAPI-Users (async SQLAlchemy) and Socket.IO
+# app/main.py - Full app with FastAPI-Users (async SQLAlchemy)
 from fastapi import FastAPI, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
@@ -15,7 +15,6 @@ from fastapi.security import OAuth2AuthorizationCodeBearer
 from httpx_oauth.clients.google import GoogleOAuth2
 from dotenv import load_dotenv
 import os
-import socketio  # For Socket.IO
 
 load_dotenv()
 DATABASE_URL = os.getenv("DATABASE_URL").replace("mariadb+mariadbconnector", "mariadb+aiomysql")  # Use aiomysql for async MariaDB
@@ -86,11 +85,6 @@ app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
-# Socket.IO integration
-sio = socketio.AsyncServer(async_mode='asgi', cors_allowed_origins='*')
-socketio_app = socketio.ASGIApp(sio, app)
-# Note: To run, use socketio_app instead of app in uvicorn, but since we use -m uvicorn, see below
-
 current_user = fastapi_users.current_user(active=True)
 current_admin = fastapi_users.current_user(active=True, superuser=True)
 
@@ -133,6 +127,11 @@ app.include_router(
     tags=["auth"],
 )
 
+# New login landing page
+@app.get("/login", response_class=HTMLResponse)
+async def login_page(request: Request):
+    return templates.TemplateResponse("login.html", {"request": request})
+
 # Users page
 @app.get("/users", response_class=HTMLResponse)
 async def users_page(request: Request, user: User = Depends(current_user)):
@@ -165,20 +164,6 @@ async def delete_user_admin(user_id: int, session: AsyncSession = Depends(async_
 async def on_startup():
     await create_db_and_tables()
 
-# Socket.IO events (add your logic here)
-@sio.event
-async def connect(sid, environ):
-    print(f"Client connected: {sid}")
-
-@sio.event
-async def disconnect(sid):
-    print(f"Client disconnected: {sid}")
-
-# Example for /status namespace if needed
-@sio.event(namespace='/status')
-async def connect(sid, environ):
-    print(f"Status client connected: {sid}")
-
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:socketio_app", host="0.0.0.0", port=9000, reload=True)
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
