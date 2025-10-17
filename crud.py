@@ -1,7 +1,8 @@
 # crud.py - DB operations
 from sqlalchemy.orm import Session
 from passlib.context import CryptContext
-from . import models, schemas
+import models
+import schemas
 from datetime import datetime, timedelta, timezone
 from jose import jwt
 import os
@@ -55,5 +56,5 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     else:
         expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-    return encoded_jwt
+    to_encode = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return to_encode
