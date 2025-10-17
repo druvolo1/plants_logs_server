@@ -1,16 +1,18 @@
-# main.py - Full app with FastAPI-Users (async SQLAlchemy)
+# app/main.py - Full app with FastAPI-Users (async SQLAlchemy)
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, Integer, String, Boolean
+from sqlalchemy import Column, Integer, String, Boolean, select
 from pydantic import BaseModel
 from typing import List, Annotated
 from fastapi_users import FastAPIUsers, BaseUserManager, IntegerIDMixin
 from fastapi_users.authentication import CookieTransport, AuthenticationBackend, JWTStrategy
 from fastapi_users.db import SQLAlchemyUserDatabase
+from fastapi.security import OAuth2AuthorizationCodeBearer
+from httpx_oauth.clients.google import GoogleOAuth2
 from dotenv import load_dotenv
 import os
 
@@ -112,9 +114,6 @@ app.include_router(
 )
 
 # Google OAuth
-from fastapi_users.authentication import OAuth2AuthorizationCodeBearer
-from httpx_oauth.clients.google import GoogleOAuth2
-
 google_oauth = GoogleOAuth2(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET)
 
 app.include_router(
@@ -136,8 +135,8 @@ async def users_page(request: Request, user: User = Depends(current_user)):
 # Admin: List users
 @app.get("/admin/users", response_model=List[UserRead])
 async def list_users(session: AsyncSession = Depends(async_session_maker), admin: User = Depends(current_admin)):
-    users = await session.execute(select(User))
-    return users.scalars().all()
+    result = await session.execute(select(User))
+    return result.scalars().all()
 
 # Admin: Create user
 @app.post("/admin/users", response_model=UserRead)
