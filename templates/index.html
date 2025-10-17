@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Plant Logs</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <h1>Plants</h1>
+    <ul>
+        {% for plant in plants %}
+        <li>
+            {{ plant.name }}
+            <button onclick="loadHistory({{ plant.id }})">View History</button>
+            <a href="/plants/{{ plant.id }}/report">Download PDF</a>
+        </li>
+        {% endfor %}
+    </ul>
+    
+    <canvas id="phChart" width="400" height="200"></canvas>
+    
+    <script>
+    function loadHistory(plantId) {
+        fetch(`/plants/${plantId}/history?log_type=ph`)
+            .then(response => response.json())
+            .then(data => {
+                const labels = data.ph.map(entry => entry.timestamp);
+                const values = data.ph.map(entry => entry.value);
+                const ctx = document.getElementById('phChart').getContext('2d');
+                new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{ label: 'pH Over Time', data: values, borderColor: 'blue' }]
+                    },
+                    options: { scales: { x: { type: 'time' } } }
+                });
+            });
+    }
+    </script>
+</body>
+</html>
