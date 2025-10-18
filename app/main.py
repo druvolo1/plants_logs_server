@@ -151,6 +151,9 @@ async def admin_login(username: str = Form(...), password: str = Form(...), user
 async def logout():
     response = RedirectResponse(url="/login")
     response.delete_cookie(cookie_transport.cookie_name)
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
     return response
 
 # Google OAuth
@@ -177,12 +180,20 @@ async def login_page(request: Request):
 async def users_page(request: Request, admin: User = Depends(current_admin), session: AsyncSession = Depends(get_db)):
     result = await session.execute(select(User))
     users = result.scalars().all()
-    return templates.TemplateResponse("users.html", {"request": request, "user": admin, "users": users})
+    response = templates.TemplateResponse("users.html", {"request": request, "user": admin, "users": users})
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
 
 # Dashboard page (for non-admins)
 @app.get("/dashboard", response_class=HTMLResponse)
 async def dashboard_page(request: Request, user: User = Depends(current_user)):
-    return templates.TemplateResponse("dashboard.html", {"request": request, "user": user})
+    response = templates.TemplateResponse("dashboard.html", {"request": request, "user": user})
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
 
 # Admin: List users
 @app.get("/admin/users", response_model=List[UserRead])
