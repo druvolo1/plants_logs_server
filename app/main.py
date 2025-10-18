@@ -21,7 +21,7 @@ DATABASE_URL = os.getenv("DATABASE_URL").replace("mariadb+mariadbconnector", "ma
 SECRET = os.getenv("SECRET_KEY") or "secret"
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
-GOOGLE_REDIRECT_URI = os.getenv("GOOGLE_REDIRECT_URI") or "http://garden1.local:9000/auth/google/callback"
+GOOGLE_REDIRECT_URI = os.getenv("GOOGLE_REDIRECT_URI") or "http://garden.ruvolo.loseyourip.com/auth/google/callback"
 
 engine = create_async_engine(DATABASE_URL)
 async_session_maker = async_sessionmaker(engine, expire_on_commit=False)
@@ -111,7 +111,7 @@ app.include_router(
 # Custom admin login route to accept form data
 @app.post("/auth/jwt/login")
 async def admin_login(username: str = Form(...), password: str = Form(...), user_manager: UserManager = Depends(get_user_manager)):
-    credentials = {"email": username, "password": password}
+    credentials = {"username": username, "password": password}
     user = await user_manager.authenticate(credentials)
     if not user:
         raise HTTPException(status_code=401, detail="Invalid credentials")
