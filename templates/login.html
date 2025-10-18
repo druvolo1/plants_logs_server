@@ -1,4 +1,4 @@
-<!-- templates/login.html - Simple login landing page -->
+<!-- templates/login.html - Simple login landing page with JS for Google redirect -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -7,7 +7,7 @@
 </head>
 <body>
     <h1>Login Options</h1>
-    <a href="/auth/google/authorize">Login with Google</a>
+    <button id="google-login-btn">Login with Google</button>
     <br>
     <form action="/auth/jwt/login" method="post">
         <label for="username">Username (email):</label>
@@ -18,8 +18,7 @@
         <br>
         <button type="submit">Login as Admin</button>
     </form>
-    <p>Don't have an account? Register via POST to /auth/register (use API tool like Postman for now, or add a form below if needed).</p>
-    <!-- Optional register form; adjust if you add GET /auth/register -->
+    <p>Don't have an account? Register via form below.</p>
     <form action="/auth/register" method="post">
         <label for="email">Email:</label>
         <input type="text" id="email" name="email">
@@ -29,5 +28,22 @@
         <br>
         <button type="submit">Register</button>
     </form>
+
+    <script>
+        document.getElementById('google-login-btn').addEventListener('click', async () => {
+            try {
+                const response = await fetch('/auth/google/authorize');
+                const data = await response.json();
+                if (data.authorization_url) {
+                    window.location.href = data.authorization_url;
+                } else {
+                    alert('Error initiating Google login');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Failed to initiate Google login');
+            }
+        });
+    </script>
 </body>
 </html>
