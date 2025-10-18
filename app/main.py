@@ -1,6 +1,6 @@
 # app/main.py - Full app with FastAPI-Users (async SQLAlchemy)
 from fastapi import FastAPI, Depends, HTTPException, Request, Form
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
@@ -73,7 +73,7 @@ async def get_user_db(db: AsyncSession = Depends(get_db)):
 async def get_user_manager(user_db: SQLAlchemyUserDatabase = Depends(get_user_db)):
     yield UserManager(user_db)
 
-cookie_transport = CookieTransport(cookie_max_age=3600)
+cookie_transport = CookieTransport(cookie_max_age=3600, cookie_secure=False)
 
 def get_jwt_strategy() -> JWTStrategy:
     return JWTStrategy(secret=SECRET, lifetime_seconds=3600)
@@ -126,9 +126,9 @@ async def admin_login(username: str = Form(...), password: str = Form(...), user
         print("Authentication failed")
         raise HTTPException(status_code=401, detail="Invalid credentials")
     print("Authentication successful")
-    response = HTMLResponse(content="Logged in successfully! Go to <a href='/users'>Users Page</a>", status_code=200)
     strategy = get_jwt_strategy()
     token = await strategy.write_token(user)
+    response = RedirectResponse(url="/users")
     response.set_cookie(
         key=cookie_transport.cookie_name,
         value=token,
