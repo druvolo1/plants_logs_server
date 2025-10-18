@@ -131,7 +131,10 @@ async def admin_login(username: str = Form(...), password: str = Form(...), user
     print("Authentication successful")
     strategy = get_jwt_strategy()
     token = await strategy.write_token(user)
-    response = RedirectResponse(url="/users", status_code=303)
+    if user.is_superuser:
+        response = RedirectResponse(url="/users", status_code=303)
+    else:
+        response = RedirectResponse(url="/dashboard", status_code=303)
     response.set_cookie(
         key=cookie_transport.cookie_name,
         value=token,
@@ -162,12 +165,17 @@ app.include_router(
 async def login_page(request: Request):
     return templates.TemplateResponse("login.html", {"request": request})
 
-# Users page
+# Users page (admin only)
 @app.get("/users", response_class=HTMLResponse)
 async def users_page(request: Request, admin: User = Depends(current_admin), session: AsyncSession = Depends(get_db)):
     result = await session.execute(select(User))
     users = result.scalars().all()
     return templates.TemplateResponse("users.html", {"request": request, "user": admin, "users": users})
+
+# Dashboard page (for non-admins)
+@app.get("/dashboard", response_class=HTMLResponse)
+async def dashboard_page(request: Request, user: User = Depends(current_user)):
+    return templates.TemplateResponse("dashboard.html", {"request": request, "user": user})
 
 # Admin: List users
 @app.get("/admin/users", response_model=List[UserRead])
