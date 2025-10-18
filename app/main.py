@@ -13,6 +13,7 @@ from fastapi_users.db import SQLAlchemyUserDatabase
 from fastapi.security import OAuth2AuthorizationCodeBearer
 from httpx_oauth.clients.google import GoogleOAuth2
 from fastapi_users import schemas
+from pydantic import BaseModel
 from dotenv import load_dotenv
 import os
 
@@ -47,6 +48,10 @@ class UserCreate(schemas.BaseUserCreate):
     is_active: Optional[bool] = True
     is_superuser: Optional[bool] = False
     is_verified: Optional[bool] = False
+
+class UserLogin(BaseModel):
+    username: str
+    password: str
 
 class UserManager(IntegerIDMixin, BaseUserManager[User, int]):
     reset_password_token_secret = SECRET
@@ -111,7 +116,7 @@ app.include_router(
 # Custom admin login route to accept form data
 @app.post("/auth/jwt/login")
 async def admin_login(username: str = Form(...), password: str = Form(...), user_manager: UserManager = Depends(get_user_manager)):
-    credentials = {"username": username, "password": password}
+    credentials = UserLogin(username=username, password=password)
     user = await user_manager.authenticate(credentials)
     if not user:
         raise HTTPException(status_code=401, detail="Invalid credentials")
