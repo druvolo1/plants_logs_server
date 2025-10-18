@@ -129,15 +129,7 @@ async def admin_login(username: str = Form(...), password: str = Form(...), user
     response = HTMLResponse(content="Logged in successfully! Go to <a href='/users'>Users Page</a>", status_code=200)
     strategy = get_jwt_strategy()
     token = await strategy.write_token(user)
-    response.set_cookie(
-        key=cookie_transport.cookie_name,
-        value=token,
-        max_age=cookie_transport.cookie_max_age,
-        httponly=True,
-        secure=cookie_transport.cookie_secure,
-        samesite=cookie_transport.cookie_samesite,
-        domain=cookie_transport.cookie_domain,
-    )
+    await cookie_transport.set_login_token(response, token)
     return response
 
 # Google OAuth
