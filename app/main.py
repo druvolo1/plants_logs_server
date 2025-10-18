@@ -128,7 +128,7 @@ async def admin_login(username: str = Form(...), password: str = Form(...), user
     print("Authentication successful")
     strategy = get_jwt_strategy()
     token = await strategy.write_token(user)
-    response = RedirectResponse(url="/users")
+    response = RedirectResponse(url="/users", status_code=303)
     response.set_cookie(
         key=cookie_transport.cookie_name,
         value=token,
