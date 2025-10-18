@@ -1,5 +1,5 @@
 # app/main.py - Full app with FastAPI-Users (async SQLAlchemy)
-from fastapi import FastAPI, Depends, HTTPException, Request
+from fastapi import FastAPI, Depends, HTTPException, Request, Form
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
@@ -89,13 +89,7 @@ templates = Jinja2Templates(directory="templates")
 current_user = fastapi_users.current_user(active=True)
 current_admin = fastapi_users.current_user(active=True, superuser=True)
 
-# Routes for auth
-app.include_router(
-    fastapi_users.get_auth_router(auth_backend),
-    prefix="/auth/jwt",
-    tags=["auth"],
-)
-
+# Routes for auth (excluding the default login to override it)
 app.include_router(
     fastapi_users.get_register_router(UserRead, UserCreate),
     prefix="/auth",
@@ -113,6 +107,16 @@ app.include_router(
     prefix="/auth",
     tags=["auth"],
 )
+
+# Custom admin login route to accept form data
+@app.post("/auth/jwt/login")
+async def admin_login(username: str = Form(...), password: str = Form(...), user_manager = Depends(get_user_manager)):
+    user = await user_manager.authenticate({"email": username, "password": password})
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    response = HTMLResponse(content="Logged in successfully!", status_code=200)
+    token = await auth_backend.login(response, user)
+    return response
 
 # Google OAuth
 google_oauth = GoogleOAuth2(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET)
