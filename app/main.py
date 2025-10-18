@@ -127,7 +127,7 @@ async def admin_login(username: str = Form(...), password: str = Form(...), user
         raise HTTPException(status_code=401, detail="Invalid credentials")
     print("Authentication successful")
     response = HTMLResponse(content="Logged in successfully! Go to <a href='/users'>Users Page</a>", status_code=200)
-    await auth_backend.login(response, user)
+    await auth_backend.login(user, response)
     return response
 
 # Google OAuth
