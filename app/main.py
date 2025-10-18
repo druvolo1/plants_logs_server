@@ -75,12 +75,13 @@ async def get_user_manager(user_db: SQLAlchemyUserDatabase = Depends(get_user_db
 
 cookie_transport = CookieTransport(cookie_max_age=3600)
 
-jwt_strategy = JWTStrategy(secret=SECRET, lifetime_seconds=3600)
+def get_jwt_strategy() -> JWTStrategy:
+    return JWTStrategy(secret=SECRET, lifetime_seconds=3600)
 
 auth_backend = AuthenticationBackend(
     name="jwt",
     transport=cookie_transport,
-    get_strategy=lambda: jwt_strategy,
+    get_strategy=get_jwt_strategy,
 )
 
 fastapi_users = FastAPIUsers[User, int](
@@ -126,7 +127,8 @@ async def admin_login(username: str = Form(...), password: str = Form(...), user
         raise HTTPException(status_code=401, detail="Invalid credentials")
     print("Authentication successful")
     response = HTMLResponse(content="Logged in successfully! Go to <a href='/users'>Users Page</a>", status_code=200)
-    await auth_backend.login(user, response)
+    # Correct the login call to use the transport's set_login_cookie method
+    await cookie_transport.set_login_cookie(response, user)
     return response
 
 # Google OAuth
