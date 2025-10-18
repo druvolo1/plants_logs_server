@@ -33,7 +33,7 @@
             {% for user in users %}
                 <tr>
                     <td>{{ user.email }}</td>
-                    <td>{{ user.is_admin }}</td>
+                    <td>{{ user.is_superuser }}</td>
                     <td>
                         <button onclick="deleteUser('{{ user.id }}')">Delete</button>
                         <button onclick="resetPassword('{{ user.id }}')">Reset Password</button>
@@ -85,7 +85,6 @@
         async function resetPassword(userId) {
             const newPassword = prompt('Enter new password:');
             if (newPassword) {
-                // Assuming a backend endpoint /admin/users/{user_id}/reset-password exists
                 const response = await fetch('/admin/users/' + userId + '/reset-password', {
                     method: 'POST',
                     headers: {

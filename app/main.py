@@ -56,6 +56,9 @@ class UserLogin(BaseModel):
     username: str
     password: str
 
+class PasswordReset(BaseModel):
+    password: str
+
 class UserManager(IntegerIDMixin, BaseUserManager[User, int]):
     reset_password_token_secret = SECRET
     verification_token_secret = SECRET
@@ -161,8 +164,10 @@ async def login_page(request: Request):
 
 # Users page
 @app.get("/users", response_class=HTMLResponse)
-async def users_page(request: Request, user: User = Depends(current_user)):
-    return templates.TemplateResponse("users.html", {"request": request, "user": user})
+async def users_page(request: Request, admin: User = Depends(current_admin), session: AsyncSession = Depends(get_db)):
+    result = await session.execute(select(User))
+    users = result.scalars().all()
+    return templates.TemplateResponse("users.html", {"request": request, "user": admin, "users": users})
 
 # Admin: List users
 @app.get("/admin/users", response_model=List[UserRead])
@@ -175,6 +180,15 @@ async def list_users(session: AsyncSession = Depends(get_db), admin: User = Depe
 async def create_user_admin(user_create: UserCreate, admin: User = Depends(current_admin), manager: UserManager = Depends(get_user_manager)):
     user = await manager.create(user_create)
     return user
+
+# Admin: Reset user password
+@app.post("/admin/users/{user_id}/reset-password")
+async def reset_user_password(user_id: int, password_reset: PasswordReset, admin: User = Depends(current_admin), manager: UserManager = Depends(get_user_manager)):
+    user = await manager.user_db.get(user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    await manager.update_password(user, password_reset.password)
+    return {"status": "success"}
 
 # Admin: Delete user
 @app.delete("/admin/users/{user_id}")
