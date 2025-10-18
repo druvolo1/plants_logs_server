@@ -116,10 +116,13 @@ app.include_router(
 # Custom admin login route to accept form data
 @app.post("/auth/jwt/login")
 async def admin_login(username: str = Form(...), password: str = Form(...), user_manager: UserManager = Depends(get_user_manager)):
+    print(f"Attempted login with username: {username} and password: {password}")
     credentials = UserLogin(username=username, password=password)
     user = await user_manager.authenticate(credentials)
     if not user:
+        print("Authentication failed")
         raise HTTPException(status_code=401, detail="Invalid credentials")
+    print("Authentication successful")
     response = HTMLResponse(content="Logged in successfully! Go to <a href='/users'>Users Page</a>", status_code=200)
     await auth_backend.login(response, user)
     return response
@@ -178,7 +181,7 @@ async def on_startup():
         result = await session.execute(select(User).where(User.email == os.getenv("ADMIN_USERNAME")))
         admin = result.scalars().first()
         if not admin:
-            print("No admin found, creating one.")
+            print("No admin found, creating one with password: " + os.getenv("ADMIN_PASSWORD"))
             admin_create = UserCreate(
                 email=os.getenv("ADMIN_USERNAME"),
                 password=os.getenv("ADMIN_PASSWORD"),
