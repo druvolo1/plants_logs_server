@@ -173,10 +173,12 @@ async def delete_user_admin(user_id: int, session: AsyncSession = Depends(get_db
 @app.on_event("startup")
 async def on_startup():
     await create_db_and_tables()
+    print("Tables created or already exist.")
     async with async_session_maker() as session:
         result = await session.execute(select(User).where(User.email == os.getenv("ADMIN_USERNAME")))
         admin = result.scalars().first()
         if not admin:
+            print("No admin found, creating one.")
             admin_create = UserCreate(
                 email=os.getenv("ADMIN_USERNAME"),
                 password=os.getenv("ADMIN_PASSWORD"),
@@ -188,6 +190,9 @@ async def on_startup():
             manager = UserManager(user_db)
             await manager.create(admin_create)
             await session.commit()
+            print("Admin created.")
+        else:
+            print("Admin already exists.")
 
 if __name__ == "__main__":
     import uvicorn
