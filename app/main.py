@@ -110,12 +110,13 @@ app.include_router(
 
 # Custom admin login route to accept form data
 @app.post("/auth/jwt/login")
-async def admin_login(username: str = Form(...), password: str = Form(...), user_manager = Depends(get_user_manager)):
-    user = await user_manager.authenticate({"email": username, "password": password})
+async def admin_login(username: str = Form(...), password: str = Form(...), user_manager: UserManager = Depends(get_user_manager)):
+    credentials = {"email": username, "password": password}
+    user = await user_manager.authenticate(credentials)
     if not user:
         raise HTTPException(status_code=401, detail="Invalid credentials")
-    response = HTMLResponse(content="Logged in successfully!", status_code=200)
-    token = await auth_backend.login(response, user)
+    response = HTMLResponse(content="Logged in successfully! Go to <a href='/users'>Users Page</a>", status_code=200)
+    await auth_backend.login(response, user)
     return response
 
 # Google OAuth
