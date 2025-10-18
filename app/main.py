@@ -18,7 +18,10 @@ from dotenv import load_dotenv
 import os
 
 load_dotenv()
-DATABASE_URL = os.getenv("DATABASE_URL").replace("mariadb+mariadbconnector", "mariadb+aiomysql")  # Use aiomysql for async MariaDB
+DATABASE_URL = os.getenv("DATABASE_URL")
+print("Loaded DATABASE_URL from .env:", DATABASE_URL)  # Debug print
+DATABASE_URL = DATABASE_URL.replace("mariadb+mariadbconnector", "mariadb+aiomysql") if DATABASE_URL else None
+print("Modified DATABASE_URL for async:", DATABASE_URL)  # Debug print
 SECRET = os.getenv("SECRET_KEY") or "secret"
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
