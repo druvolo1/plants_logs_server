@@ -6,13 +6,13 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Column, Integer, String, Boolean, select
-from pydantic import BaseModel
-from typing import List, Annotated
+from typing import List, Optional, Generator
 from fastapi_users import FastAPIUsers, BaseUserManager, IntegerIDMixin
 from fastapi_users.authentication import CookieTransport, AuthenticationBackend, JWTStrategy
 from fastapi_users.db import SQLAlchemyUserDatabase
 from fastapi.security import OAuth2AuthorizationCodeBearer
 from httpx_oauth.clients.google import GoogleOAuth2
+from fastapi_users import schemas
 from dotenv import load_dotenv
 import os
 
@@ -40,17 +40,13 @@ async def create_db_and_tables():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
-class UserRead(BaseModel):
-    id: int
-    email: str
-    is_active: bool
-    is_superuser: bool
-    is_verified: bool
+class UserRead(schemas.BaseUser[int]):
+    pass
 
-class UserCreate(BaseModel):
-    email: str
-    password: str
-    is_superuser: bool = False
+class UserCreate(schemas.BaseUserCreate):
+    is_active: Optional[bool] = True
+    is_superuser: Optional[bool] = False
+    is_verified: Optional[bool] = False
 
 class UserManager(IntegerIDMixin, BaseUserManager[User, int]):
     reset_password_token_secret = SECRET
@@ -59,10 +55,14 @@ class UserManager(IntegerIDMixin, BaseUserManager[User, int]):
     async def on_after_register(self, user: User, request: None = None):
         print(f"User {user.id} has registered.")
 
-async def get_user_db(session: AsyncSession = Depends(async_session_maker)):
-    yield SQLAlchemyUserDatabase(session, User)
+async def get_db() -> Generator[AsyncSession, None, None]:
+    async with async_session_maker() as session:
+        yield session
 
-async def get_user_manager(user_db = Depends(get_user_db)):
+async def get_user_db(db: AsyncSession = Depends(get_db)):
+    yield SQLAlchemyUserDatabase(db, User)
+
+async def get_user_manager(user_db: SQLAlchemyUserDatabase = Depends(get_user_db)):
     yield UserManager(user_db)
 
 cookie_transport = CookieTransport(cookie_max_age=3600)
@@ -145,20 +145,19 @@ async def users_page(request: Request, user: User = Depends(current_user)):
 
 # Admin: List users
 @app.get("/admin/users", response_model=List[UserRead])
-async def list_users(session: AsyncSession = Depends(async_session_maker), admin: User = Depends(current_admin)):
+async def list_users(session: AsyncSession = Depends(get_db), admin: User = Depends(current_admin)):
     result = await session.execute(select(User))
     return result.scalars().all()
 
 # Admin: Create user
 @app.post("/admin/users", response_model=UserRead)
-async def create_user_admin(user_create: UserCreate, session: AsyncSession = Depends(async_session_maker), admin: User = Depends(current_admin)):
-    manager = await get_user_manager(SQLAlchemyUserDatabase(session, User))
+async def create_user_admin(user_create: UserCreate, admin: User = Depends(current_admin), manager: UserManager = Depends(get_user_manager)):
     user = await manager.create(user_create)
     return user
 
 # Admin: Delete user
 @app.delete("/admin/users/{user_id}")
-async def delete_user_admin(user_id: int, session: AsyncSession = Depends(async_session_maker), admin: User = Depends(current_admin)):
+async def delete_user_admin(user_id: int, session: AsyncSession = Depends(get_db), admin: User = Depends(current_admin)):
     user = await session.get(User, user_id)
     if user:
         await session.delete(user)
