@@ -187,7 +187,8 @@ async def reset_user_password(user_id: int, password_reset: PasswordReset, admin
     user = await manager.user_db.get(user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    await manager.update_password(user, password_reset.password)
+    user.hashed_password = manager.hash_password(password_reset.password)
+    await manager.user_db.update(user)
     return {"status": "success"}
 
 # Admin: Delete user
