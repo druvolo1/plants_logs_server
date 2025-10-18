@@ -97,39 +97,12 @@ templates = Jinja2Templates(directory="templates")
 current_user = fastapi_users.current_user(active=True)
 current_admin = fastapi_users.current_user(active=True, superuser=True)
 
-# Routes for auth (excluding the default login to override it)
+# Include the default login router from fastapi_users instead of custom implementation
 app.include_router(
-    fastapi_users.get_register_router(UserRead, UserCreate),
-    prefix="/auth",
+    fastapi_users.get_auth_router(auth_backend),
+    prefix="/auth/jwt",
     tags=["auth"],
 )
-
-app.include_router(
-    fastapi_users.get_reset_password_router(),
-    prefix="/auth",
-    tags=["auth"],
-)
-
-app.include_router(
-    fastapi_users.get_verify_router(UserRead),
-    prefix="/auth",
-    tags=["auth"],
-)
-
-# Custom admin login route to accept form data
-@app.post("/auth/jwt/login")
-async def admin_login(username: str = Form(...), password: str = Form(...), user_manager: UserManager = Depends(get_user_manager)):
-    print(f"Attempted login with username: {username} and password: {password}")
-    credentials = UserLogin(username=username, password=password)
-    user = await user_manager.authenticate(credentials)
-    if not user:
-        print("Authentication failed")
-        raise HTTPException(status_code=401, detail="Invalid credentials")
-    print("Authentication successful")
-    response = HTMLResponse(content="Logged in successfully! Go to <a href='/users'>Users Page</a>", status_code=200)
-    # Correct the login call to use the transport's set_login_cookie method
-    await cookie_transport.set_login_cookie(response, user)
-    return response
 
 # Google OAuth
 google_oauth = GoogleOAuth2(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET)
@@ -145,10 +118,10 @@ app.include_router(
     tags=["auth"],
 )
 
-# New login landing page
+# New login landing page (redirect to default login endpoint)
 @app.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request):
-    return templates.TemplateResponse("login.html", {"request": request})
+    return templates.TemplateResponse("login.html", {"request": request, "login_url": "/auth/jwt/login"})
 
 # Users page
 @app.get("/users", response_class=HTMLResponse)
