@@ -179,7 +179,7 @@ async def get_db() -> Generator[AsyncSession, None, None]:
 async def get_user_db(db: AsyncSession = Depends(get_db)):
     yield CustomSQLAlchemyUserDatabase(db, User, oauth_account_table=OAuthAccount)
 
-async def get_user_manager(user_db: CustomSQLAlchemyUserDatabase = Depends(get_db)):
+async def get_user_manager(user_db: CustomSQLAlchemyUserDatabase = Depends(get_user_db)):
     yield CustomUserManager(user_db)
 
 cookie_transport = CookieTransport(cookie_max_age=3600, cookie_secure=False)
