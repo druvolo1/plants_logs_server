@@ -5,7 +5,8 @@ from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, Integer, String, Boolean, select
+from sqlalchemy import Column, Integer, String, Boolean, select, ForeignKey
+from sqlalchemy.orm import relationship
 from typing import List, Optional, Generator
 from fastapi_users import FastAPIUsers, BaseUserManager, IntegerIDMixin
 from fastapi_users.authentication import CookieTransport, AuthenticationBackend, JWTStrategy
@@ -32,6 +33,18 @@ engine = create_async_engine(DATABASE_URL)
 async_session_maker = async_sessionmaker(engine, expire_on_commit=False)
 Base = declarative_base()
 
+class OAuthAccount(Base):
+    __tablename__ = "oauth_accounts"
+    id = Column(Integer, primary_key=True)
+    oauth_name = Column(String(255), nullable=False)
+    access_token = Column(String(1024), nullable=False)
+    expires_at = Column(Integer, nullable=True)
+    refresh_token = Column(String(1024), nullable=True)
+    account_id = Column(String(255), nullable=False, index=True)
+    account_email = Column(String(255), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    user = relationship("User", back_populates="oauth_accounts")
+
 class User(Base):
     __tablename__ = "users"
     id = Column(Integer, primary_key=True, index=True)
@@ -40,6 +53,7 @@ class User(Base):
     is_active = Column(Boolean, default=True)
     is_superuser = Column(Boolean, default=False)  # For admin
     is_verified = Column(Boolean, default=False)
+    oauth_accounts = relationship("OAuthAccount", back_populates="user")
 
 async def create_db_and_tables():
     async with engine.begin() as conn:
@@ -72,7 +86,7 @@ async def get_db() -> Generator[AsyncSession, None, None]:
         yield session
 
 async def get_user_db(db: AsyncSession = Depends(get_db)):
-    yield SQLAlchemyUserDatabase(db, User)
+    yield SQLAlchemyUserDatabase(db, User, OAuthAccount)
 
 async def get_user_manager(user_db: SQLAlchemyUserDatabase = Depends(get_user_db)):
     yield UserManager(user_db)
@@ -251,7 +265,7 @@ async def on_startup():
                 is_active=True,
                 is_verified=True
             )
-            user_db = SQLAlchemyUserDatabase(session, User)
+            user_db = SQLAlchemyUserDatabase(session, User, OAuthAccount)
             manager = UserManager(user_db)
             await manager.create(admin_create)
             await session.commit()
