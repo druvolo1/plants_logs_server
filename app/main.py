@@ -6,8 +6,8 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Column, Integer, String, Boolean, select, ForeignKey
-from sqlalchemy.orm import relationship, Session
-from typing import List, Optional, Generator
+from sqlalchemy.orm import relationship, selectinload, Session
+from typing import List, Optional, Generator, Any, Dict
 from fastapi_users import FastAPIUsers, BaseUserManager, IntegerIDMixin
 from fastapi_users.authentication import CookieTransport, AuthenticationBackend, JWTStrategy
 from fastapi_users.authentication.strategy.db import AccessTokenDatabase, DatabaseStrategy
@@ -86,14 +86,38 @@ class UserManager(IntegerIDMixin, BaseUserManager[User, int]):
     async def on_after_register(self, user: User, request: None = None):
         print(f"User {user.id} has registered.")
 
+class CustomSQLAlchemyUserDatabase(SQLAlchemyUserDatabase[User, int]):
+    async def add_oauth_account(
+        self, user: User, create_dict: Dict[str, Any]
+    ) -> User:
+        # Preload oauth_accounts to avoid lazy loading
+        stmt = (
+            select(self.user_table)
+            .options(selectinload(self.user_table.oauth_accounts))
+            .where(self.user_table.id == user.id)
+        )
+        result = await self.session.execute(stmt)
+        user = result.scalars().one_or_none()
+        if user is None:
+            raise ValueError("User not found")
+
+        if self.oauth_account_table is None:
+            raise ValueError("No OAuth account table configured.")
+
+        oauth_account = self.oauth_account_table(**create_dict)
+        self.session.add(oauth_account)
+        user.oauth_accounts.append(oauth_account)
+        await self.session.commit()
+        return user
+
 async def get_db() -> Generator[AsyncSession, None, None]:
     async with async_session_maker() as session:
         yield session
 
 async def get_user_db(db: AsyncSession = Depends(get_db)):
-    yield SQLAlchemyUserDatabase(db, User, OAuthAccount)
+    yield CustomSQLAlchemyUserDatabase(db, User, oauth_account_table=OAuthAccount)
 
-async def get_user_manager(user_db: SQLAlchemyUserDatabase = Depends(get_user_db)):
+async def get_user_manager(user_db: CustomSQLAlchemyUserDatabase = Depends(get_user_db)):
     yield UserManager(user_db)
 
 cookie_transport = CookieTransport(cookie_max_age=3600, cookie_secure=False)
@@ -271,7 +295,7 @@ async def on_startup():
                 is_active=True,
                 is_verified=True
             )
-            user_db = SQLAlchemyUserDatabase(session, User, OAuthAccount)
+            user_db = CustomSQLAlchemyUserDatabase(session, User, oauth_account_table=OAuthAccount)
             manager = UserManager(user_db)
             await manager.create(admin_create)
             await session.commit()
