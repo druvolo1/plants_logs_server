@@ -121,6 +121,7 @@ class CustomUserManager(IntegerIDMixin, BaseUserManager[User, int]):
         request: Optional[Request] = None,
         *,
         associate_by_email: bool = False,
+        is_verified_by_default: bool = False,
     ) -> User:
         oauth_account_dict = {
             "oauth_name": oauth_name,
@@ -157,7 +158,7 @@ class CustomUserManager(IntegerIDMixin, BaseUserManager[User, int]):
                     pass
 
             if not user:
-                user_create = schemas.CreateUser(email=account_email, is_verified=True)
+                user_create = schemas.CreateUser(email=account_email, is_verified=is_verified_by_default)
                 user = await self.create(user_create)
                 user = await self.user_db.add_oauth_account(user, oauth_account_dict)
 
