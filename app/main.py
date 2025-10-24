@@ -185,6 +185,7 @@ app.include_router(
         auth_backend,
         SECRET,
         redirect_url=GOOGLE_REDIRECT_URI,
+        associate_by_email=True,
     ),
     prefix="/auth/google",
     tags=["auth"],
