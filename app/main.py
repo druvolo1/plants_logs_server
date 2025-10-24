@@ -15,7 +15,7 @@ from fastapi_users.db import SQLAlchemyUserDatabase
 from fastapi.security import OAuth2AuthorizationCodeBearer
 from httpx_oauth.clients.google import GoogleOAuth2
 from fastapi_users import schemas, exceptions
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 from dotenv import load_dotenv
 import os
 
@@ -68,6 +68,8 @@ class UserRead(schemas.BaseUser[int]):
     pass
 
 class UserCreate(schemas.BaseUserCreate):
+    email: EmailStr
+    password: Optional[str] = None
     is_active: Optional[bool] = True
     is_superuser: Optional[bool] = False
     is_verified: Optional[bool] = False
@@ -109,6 +111,28 @@ class CustomUserManager(IntegerIDMixin, BaseUserManager[User, int]):
 
     async def on_after_register(self, user: User, request: None = None):
         print(f"User {user.id} has registered.")
+
+    async def create(
+        self, user_create: schemas.UC, safe: bool = False, is_verified: bool = False
+    ) -> User:
+        if user_create.password is None:
+            existing_user = await self.get_by_email(user_create.email)
+            if existing_user is not None:
+                raise exceptions.UserAlreadyExists()
+
+            user_dict = (
+                user_create.create_update_dict()
+                if safe
+                else user_create.create_update_dict_superuser()
+            )
+            if is_verified:
+                user_dict["is_verified"] = True
+            user_dict["hashed_password"] = None
+            created_user = await self.user_db.create(user_dict)
+            await self.on_after_register(created_user, None)
+            return created_user
+        else:
+            return await super().create(user_create, safe, is_verified)
 
     async def oauth_callback(
         self,
@@ -158,7 +182,7 @@ class CustomUserManager(IntegerIDMixin, BaseUserManager[User, int]):
                     pass
 
             if not user:
-                user_create = schemas.CreateUser(email=account_email, is_verified=is_verified_by_default)
+                user_create = UserCreate(email=account_email, is_verified=is_verified_by_default)
                 user = await self.create(user_create)
                 user = await self.user_db.add_oauth_account(user, oauth_account_dict)
 
@@ -227,13 +251,13 @@ app.include_router(
 
 # Custom admin login route to accept form data
 @app.post("/auth/jwt/login")
-async def admin_login(username: str = Form(...), password: str = Form(...), user_manager: CustomUserManager = Depends(get_user_manager)):
+async def admin_login(username: str = Form(...), password: str = Form(...), user_manager: CustomUserManager = Depends(get_user_manager), request: Request = Request):
     print(f"Attempted login with username: {username} and password: {password}")
     credentials = UserLogin(username=username, password=password)
     user = await user_manager.authenticate(credentials)
     if not user:
         print("Authentication failed")
-        return templates.TemplateResponse("login.html", {"request": Request, "error": "Invalid credentials"})
+        return templates.TemplateResponse("login.html", {"request": request, "error": "Invalid credentials"})
     print("Authentication successful")
     strategy = get_jwt_strategy()
     token = await strategy.write_token(user)
