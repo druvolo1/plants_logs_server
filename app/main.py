@@ -1,5 +1,5 @@
 # app/main.py - Full app with FastAPI-Users (async SQLAlchemy)
-from fastapi import FastAPI, Depends, HTTPException, Request, Form
+from fastapi import FastAPI, Depends, HTTPException, Request, Form, Response
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
@@ -73,7 +73,7 @@ class UserCreate(schemas.BaseUserCreate):
     is_verified: Optional[bool] = False
 
 class UserLogin(BaseModel):
-    email: str
+    username: str
     password: str
 
 class PasswordReset(BaseModel):
@@ -164,6 +164,14 @@ class CustomUserManager(IntegerIDMixin, BaseUserManager[User, int]):
 
         return user
 
+    async def on_after_login(self, user: User, request: Optional[Request] = None, response: Optional[Response] = None) -> None:
+        if response is not None:
+            if user.is_superuser:
+                response.headers["Location"] = "/users"
+            else:
+                response.headers["Location"] = "/dashboard"
+            response.status_code = 303
+
 async def get_db() -> Generator[AsyncSession, None, None]:
     async with async_session_maker() as session:
         yield session
@@ -219,13 +227,13 @@ app.include_router(
 
 # Custom admin login route to accept form data
 @app.post("/auth/jwt/login")
-async def admin_login(email: str = Form(...), password: str = Form(...), user_manager: CustomUserManager = Depends(get_user_manager), request: Request = None):
-    print(f"Attempted login with email: {email} and password: {password}")
-    credentials = UserLogin(email=email, password=password)
+async def admin_login(username: str = Form(...), password: str = Form(...), user_manager: CustomUserManager = Depends(get_user_manager)):
+    print(f"Attempted login with username: {username} and password: {password}")
+    credentials = UserLogin(username=username, password=password)
     user = await user_manager.authenticate(credentials)
     if not user:
         print("Authentication failed")
-        return templates.TemplateResponse("login.html", {"request": request, "error": "Invalid credentials"})
+        return templates.TemplateResponse("login.html", {"request": Request, "error": "Invalid credentials"})
     print("Authentication successful")
     strategy = get_jwt_strategy()
     token = await strategy.write_token(user)
@@ -262,7 +270,7 @@ app.include_router(
         google_oauth,
         auth_backend,
         SECRET,
-        redirect_url=GOOGLE_REDIRECT_URI,
+        redirect_url=None,
     ),
     prefix="/auth/google",
     tags=["auth"],
