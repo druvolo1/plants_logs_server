@@ -1,5 +1,5 @@
 # app/main.py - Full app with FastAPI-Users (async SQLAlchemy)
-from fastapi import FastAPI, Depends, HTTPException, Request, Form
+from fastapi import FastAPI, Depends, HTTPException, Request, Form, Response
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
@@ -164,6 +164,14 @@ class CustomUserManager(IntegerIDMixin, BaseUserManager[User, int]):
 
         return user
 
+    async def on_after_login(self, user: User, request: Optional[Request] = None, response: Optional[Response] = None) -> None:
+        if response is not None:
+            if user.is_superuser:
+                response.headers["Location"] = "/users"
+            else:
+                response.headers["Location"] = "/dashboard"
+            response.status_code = 303
+
 async def get_db() -> Generator[AsyncSession, None, None]:
     async with async_session_maker() as session:
         yield session
@@ -262,8 +270,7 @@ app.include_router(
         google_oauth,
         auth_backend,
         SECRET,
-        redirect_url=GOOGLE_REDIRECT_URI,
-        associate_by_email=True,
+        redirect_url=None,
     ),
     prefix="/auth/google",
     tags=["auth"],
