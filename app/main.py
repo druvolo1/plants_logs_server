@@ -54,7 +54,7 @@ class User(Base):
     __tablename__ = "users"
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String(255), unique=True, index=True)
-    hashed_password = Column(String(1024))
+    hashed_password = Column(String(1024), nullable=True)
     is_active = Column(Boolean, default=True)
     is_superuser = Column(Boolean, default=False)  # For admin
     is_verified = Column(Boolean, default=False)
@@ -68,6 +68,7 @@ class UserRead(schemas.BaseUser[int]):
     pass
 
 class UserCreate(schemas.BaseUserCreate):
+    password: Optional[str] = None
     is_active: Optional[bool] = True
     is_superuser: Optional[bool] = False
     is_verified: Optional[bool] = False
@@ -158,11 +159,43 @@ class CustomUserManager(IntegerIDMixin, BaseUserManager[User, int]):
                     pass
 
             if not user:
-                user_create = schemas.BaseUserCreate(email=account_email, is_verified=is_verified_by_default)
+                user_create = UserCreate(email=account_email, is_verified=is_verified_by_default)
                 user = await self.create(user_create)
                 user = await self.user_db.add_oauth_account(user, oauth_account_dict)
 
         return user
+
+    async def create(
+        self,
+        user_create: schemas.BaseUserCreate,
+        safe: bool = False,
+        is_verified: bool = False,
+    ) -> User:
+        await self.validate_password(user_create.password, user_create)
+
+        existing_user = await self.user_db.get_by_email(user_create.email)
+        if existing_user is not None:
+            raise exceptions.UserAlreadyExists()
+
+        user_dict = (
+            user_create.create_update_dict()
+            if safe
+            else user_create.create_update_dict_superuser()
+        )
+        if user_create.password is None:
+            user_dict["hashed_password"] = None
+        else:
+            password = user_create.password
+            del user_dict["password"]
+            user_dict["hashed_password"] = self.password_helper.hash(password)
+        if is_verified:
+            user_dict["is_verified"] = True
+
+        created_user = await self.user_db.create(user_dict)
+
+        await self.on_after_register(created_user, None)
+
+        return created_user
 
     async def on_after_login(self, user: User, request: Optional[Request] = None, response: Optional[Response] = None) -> None:
         if response is not None:
