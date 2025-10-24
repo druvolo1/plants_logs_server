@@ -1,6 +1,6 @@
 # app/main.py - Full app with FastAPI-Users (async SQLAlchemy)
 from fastapi import FastAPI, Depends, HTTPException, Request, Form
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
@@ -9,6 +9,7 @@ from sqlalchemy import Column, Integer, String, Boolean, select
 from typing import List, Optional, Generator
 from fastapi_users import FastAPIUsers, BaseUserManager, IntegerIDMixin
 from fastapi_users.authentication import CookieTransport, AuthenticationBackend, JWTStrategy
+from fastapi_users.authentication.strategy.db import AccessTokenDatabase, DatabaseStrategy
 from fastapi_users.db import SQLAlchemyUserDatabase
 from fastapi.security import OAuth2AuthorizationCodeBearer
 from httpx_oauth.clients.google import GoogleOAuth2
@@ -25,7 +26,7 @@ print("Modified DATABASE_URL for async:", DATABASE_URL)  # Debug print
 SECRET = os.getenv("SECRET_KEY") or "secret"
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
-GOOGLE_REDIRECT_URI = os.getenv("GOOGLE_REDIRECT_URI") or "http://garden.ruvolo.loseyourip.com/auth/google/callback"
+GOOGLE_REDIRECT_URI = os.getenv("GOOGLE_REDIRECT_URI") or "http://garden1.local:9000/auth/google/callback"
 
 engine = create_async_engine(DATABASE_URL)
 async_session_maker = async_sessionmaker(engine, expire_on_commit=False)
@@ -127,7 +128,7 @@ async def admin_login(username: str = Form(...), password: str = Form(...), user
     user = await user_manager.authenticate(credentials)
     if not user:
         print("Authentication failed")
-        raise HTTPException(status_code=401, detail="Invalid credentials")
+        return templates.TemplateResponse("login.html", {"request": Request, "error": "Invalid credentials"})
     print("Authentication successful")
     strategy = get_jwt_strategy()
     token = await strategy.write_token(user)
@@ -146,8 +147,18 @@ async def admin_login(username: str = Form(...), password: str = Form(...), user
     )
     return response
 
+# Logout endpoint
+@app.get("/auth/logout")
+async def logout():
+    response = RedirectResponse(url="/login")
+    response.delete_cookie(cookie_transport.cookie_name)
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
+
 # Google OAuth
-google_oauth = GoogleOAuth2(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET)
+google_oauth = GoogleOAuth2(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, scope=["openid", "https://www.googleapis.com/auth/userinfo.email", "https://www.googleapis.com/auth/userinfo.profile"])
 
 app.include_router(
     fastapi_users.get_oauth_router(
@@ -162,20 +173,28 @@ app.include_router(
 
 # New login landing page
 @app.get("/login", response_class=HTMLResponse)
-async def login_page(request: Request):
-    return templates.TemplateResponse("login.html", {"request": request})
+async def login_page(request: Request, error: str = None):
+    return templates.TemplateResponse("login.html", {"request": request, "error": error})
 
-# Users page (admin only)
+# Users page
 @app.get("/users", response_class=HTMLResponse)
 async def users_page(request: Request, admin: User = Depends(current_admin), session: AsyncSession = Depends(get_db)):
     result = await session.execute(select(User))
     users = result.scalars().all()
-    return templates.TemplateResponse("users.html", {"request": request, "user": admin, "users": users})
+    response = templates.TemplateResponse("users.html", {"request": request, "user": admin, "users": users})
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
 
 # Dashboard page (for non-admins)
 @app.get("/dashboard", response_class=HTMLResponse)
 async def dashboard_page(request: Request, user: User = Depends(current_user)):
-    return templates.TemplateResponse("dashboard.html", {"request": request, "user": user})
+    response = templates.TemplateResponse("dashboard.html", {"request": request, "user": user})
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
 
 # Admin: List users
 @app.get("/admin/users", response_model=List[UserRead])
@@ -209,6 +228,12 @@ async def delete_user_admin(user_id: int, session: AsyncSession = Depends(get_db
         await session.commit()
         return {"status": "success"}
     raise HTTPException(404, "User not found")
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    if exc.status_code = 401:
+        return templates.TemplateResponse("unauthorized.html", {"request": request}, status_code=401)
+    return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
 
 @app.on_event("startup")
 async def on_startup():
