@@ -127,7 +127,7 @@ async def admin_login(username: str = Form(...), password: str = Form(...), user
     user = await user_manager.authenticate(credentials)
     if not user:
         print("Authentication failed")
-        return templates.TemplateResponse("login.html", {"request": Request, "error": "Invalid credentials"})
+        raise HTTPException(status_code=401, detail="Invalid credentials")
     print("Authentication successful")
     strategy = get_jwt_strategy()
     token = await strategy.write_token(user)
@@ -151,9 +151,6 @@ async def admin_login(username: str = Form(...), password: str = Form(...), user
 async def logout():
     response = RedirectResponse(url="/login")
     response.delete_cookie(cookie_transport.cookie_name)
-    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
-    response.headers["Pragma"] = "no-cache"
-    response.headers["Expires"] = "0"
     return response
 
 # Google OAuth
@@ -172,28 +169,20 @@ app.include_router(
 
 # New login landing page
 @app.get("/login", response_class=HTMLResponse)
-async def login_page(request: Request, error: str = None):
-    return templates.TemplateResponse("login.html", {"request": request, "error": error})
+async def login_page(request: Request):
+    return templates.TemplateResponse("login.html", {"request": request})
 
 # Users page
 @app.get("/users", response_class=HTMLResponse)
 async def users_page(request: Request, admin: User = Depends(current_admin), session: AsyncSession = Depends(get_db)):
     result = await session.execute(select(User))
     users = result.scalars().all()
-    response = templates.TemplateResponse("users.html", {"request": request, "user": admin, "users": users})
-    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
-    response.headers["Pragma"] = "no-cache"
-    response.headers["Expires"] = "0"
-    return response
+    return templates.TemplateResponse("users.html", {"request": request, "user": admin, "users": users})
 
 # Dashboard page (for non-admins)
 @app.get("/dashboard", response_class=HTMLResponse)
 async def dashboard_page(request: Request, user: User = Depends(current_user)):
-    response = templates.TemplateResponse("dashboard.html", {"request": request, "user": user})
-    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
-    response.headers["Pragma"] = "no-cache"
-    response.headers["Expires"] = "0"
-    return response
+    return templates.TemplateResponse("dashboard.html", {"request": request, "user": user})
 
 # Admin: List users
 @app.get("/admin/users", response_model=List[UserRead])
