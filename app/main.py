@@ -127,7 +127,7 @@ async def admin_login(username: str = Form(...), password: str = Form(...), user
     user = await user_manager.authenticate(credentials)
     if not user:
         print("Authentication failed")
-        raise HTTPException(status_code=401, detail="Invalid credentials")
+        return templates.TemplateResponse("login.html", {"request": Request, "error": "Invalid credentials"})
     print("Authentication successful")
     strategy = get_jwt_strategy()
     token = await strategy.write_token(user)
@@ -172,8 +172,8 @@ app.include_router(
 
 # New login landing page
 @app.get("/login", response_class=HTMLResponse)
-async def login_page(request: Request):
-    return templates.TemplateResponse("login.html", {"request": request})
+async def login_page(request: Request, error: str = None):
+    return templates.TemplateResponse("login.html", {"request": request, "error": error})
 
 # Users page
 @app.get("/users", response_class=HTMLResponse)

@@ -4,9 +4,13 @@
 <head>
     <meta charset="UTF-8">
     <title>Login</title>
+    <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
     <h1>Login Options</h1>
+    {% if error %}
+        <p style="color: red;">{{ error }}</p>
+    {% endif %}
     <button id="google-login-btn">Login with Google</button>
     <br>
     <form action="/auth/jwt/login" method="post">

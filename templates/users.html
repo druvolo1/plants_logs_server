@@ -7,6 +7,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>Users</title>
+    <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
     <h1>Users</h1>
@@ -103,6 +104,12 @@
                 }
             }
         }
+
+        window.onpageshow = function(evt) {
+            if (evt.persisted) {
+                window.location.reload();
+            }
+        };
     </script>
 </body>
 </html>

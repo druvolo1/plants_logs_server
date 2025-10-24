@@ -7,10 +7,18 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>Dashboard</title>
+    <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
     <h1>Welcome, {{ user.email }}</h1>
     <p>Your DWC system data will be shown here soon.</p>
     <a href="/auth/logout">Logout</a>
+    <script>
+        window.onpageshow = function(evt) {
+            if (evt.persisted) {
+                window.location.reload();
+            }
+        };
+    </script>
 </body>
 </html>
