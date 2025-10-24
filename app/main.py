@@ -146,13 +146,6 @@ async def admin_login(username: str = Form(...), password: str = Form(...), user
     )
     return response
 
-# Logout endpoint
-@app.get("/auth/logout")
-async def logout():
-    response = RedirectResponse(url="/login")
-    response.delete_cookie(cookie_transport.cookie_name)
-    return response
-
 # Google OAuth
 google_oauth = GoogleOAuth2(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET)
 
@@ -172,7 +165,7 @@ app.include_router(
 async def login_page(request: Request):
     return templates.TemplateResponse("login.html", {"request": request})
 
-# Users page
+# Users page (admin only)
 @app.get("/users", response_class=HTMLResponse)
 async def users_page(request: Request, admin: User = Depends(current_admin), session: AsyncSession = Depends(get_db)):
     result = await session.execute(select(User))
