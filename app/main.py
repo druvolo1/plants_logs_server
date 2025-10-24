@@ -26,7 +26,7 @@ print("Modified DATABASE_URL for async:", DATABASE_URL)  # Debug print
 SECRET = os.getenv("SECRET_KEY") or "secret"
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
-GOOGLE_REDIRECT_URI = os.getenv("GOOGLE_REDIRECT_URI") or "http://garden1.local:9000/auth/google/callback"
+GOOGLE_REDIRECT_URI = os.getenv("GOOGLE_REDIRECT_URI") or "http://garden.ruvolo.loseyourip.com/auth/google/callback"
 
 engine = create_async_engine(DATABASE_URL)
 async_session_maker = async_sessionmaker(engine, expire_on_commit=False)
@@ -158,7 +158,7 @@ async def logout():
     return response
 
 # Google OAuth
-google_oauth = GoogleOAuth2(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, scope=["openid", "https://www.googleapis.com/auth/userinfo.email", "https://www.googleapis.com/auth/userinfo.profile"])
+google_oauth = GoogleOAuth2(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET)
 
 app.include_router(
     fastapi_users.get_oauth_router(
@@ -231,7 +231,7 @@ async def delete_user_admin(user_id: int, session: AsyncSession = Depends(get_db
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
-    if exc.status_code = 401:
+    if exc.status_code == 401:
         return templates.TemplateResponse("unauthorized.html", {"request": request}, status_code=401)
     return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
 
