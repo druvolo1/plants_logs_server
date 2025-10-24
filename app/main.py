@@ -1,5 +1,5 @@
 # app/main.py - Full app with FastAPI-Users (async SQLAlchemy)
-from fastapi import FastAPI, Depends, HTTPException, Request, Form, Response
+from fastapi import FastAPI, Depends, HTTPException, Request, Form
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
@@ -58,7 +58,7 @@ class User(Base):
     is_active = Column(Boolean, default=True)
     is_superuser = Column(Boolean, default=False)  # For admin
     is_verified = Column(Boolean, default=False)
-    oauth_accounts = relationship("OAuthAccount", back_populates="user")
+    oauth_accounts = relationship("OAuthAccount", back_populates="user", cascade="all, delete-orphan")
 
 async def create_db_and_tables():
     async with engine.begin() as conn:
@@ -79,108 +79,22 @@ class UserLogin(BaseModel):
 class PasswordReset(BaseModel):
     password: str
 
-class CustomSQLAlchemyUserDatabase(SQLAlchemyUserDatabase[User, int]):
-    async def add_oauth_account(
-        self, user: User, create_dict: Dict[str, Any]
-    ) -> User:
-        # Preload oauth_accounts to avoid lazy loading
-        stmt = (
-            select(self.user_table)
-            .options(selectinload(self.user_table.oauth_accounts))
-            .where(self.user_table.id == user.id)
-        )
-        result = await self.session.execute(stmt)
-        user = result.scalars().one_or_none()
-        if user is None:
-            raise ValueError("User not found")
-
-        if self.oauth_account_table is None:
-            raise ValueError("No OAuth account table configured.")
-
-        oauth_account = self.oauth_account_table(**create_dict)
-        self.session.add(oauth_account)
-        user.oauth_accounts.append(oauth_account)
-        await self.session.commit()
-        return user
-
-class CustomUserManager(IntegerIDMixin, BaseUserManager[User, int]):
+class UserManager(IntegerIDMixin, BaseUserManager[User, int]):
     reset_password_token_secret = SECRET
     verification_token_secret = SECRET
 
     async def on_after_register(self, user: User, request: None = None):
         print(f"User {user.id} has registered.")
 
-    async def oauth_callback(
-        self,
-        oauth_name: str,
-        access_token: str,
-        account_id: str,
-        account_email: str,
-        expires_at: Optional[int] = None,
-        refresh_token: Optional[str] = None,
-        request: Optional[Request] = None,
-        *,
-        associate_by_email: bool = False,
-        is_verified_by_default: bool = False,
-    ) -> User:
-        oauth_account_dict = {
-            "oauth_name": oauth_name,
-            "access_token": access_token,
-            "account_id": account_id,
-            "account_email": account_email,
-            "expires_at": expires_at,
-            "refresh_token": refresh_token,
-        }
-
-        try:
-            user = await self.get_by_oauth_account(oauth_name, account_id)
-        except exceptions.UserNotExists:
-            user = None
-            if associate_by_email:
-                try:
-                    user = await self.get_by_email(account_email)
-                    if user:
-                        # Eagerly load oauth_accounts to avoid lazy load in the check
-                        stmt = (
-                            select(User)
-                            .options(selectinload(User.oauth_accounts))
-                            .where(User.email == account_email)
-                        )
-                        result = await self.user_db.session.execute(stmt)
-                        user = result.scalars().one_or_none()
-
-                        for existing_oauth_account in user.oauth_accounts:
-                            if existing_oauth_account.oauth_name == oauth_name:
-                                raise exceptions.UserAlreadyHasAccount()
-
-                        user = await self.user_db.add_oauth_account(user, oauth_account_dict)
-                except exceptions.UserNotExists:
-                    pass
-
-            if not user:
-                user_create = schemas.CreateUser(email=account_email, is_verified=is_verified_by_default)
-                user = await self.create(user_create)
-                user = await self.user_db.add_oauth_account(user, oauth_account_dict)
-
-        return user
-
-    async def on_after_login(self, user: User, request: Optional[Request] = None, response: Optional[Response] = None) -> None:
-        if response is not None:
-            if user.is_superuser:
-                response.headers["Location"] = "/users"
-            else:
-                response.headers["Location"] = "/dashboard"
-            response.status_code = 303
-
 async def get_db() -> Generator[AsyncSession, None, None]:
     async with async_session_maker() as session:
         yield session
 
 async def get_user_db(db: AsyncSession = Depends(get_db)):
-    yield CustomSQLAlchemyUserDatabase(db, User, oauth_account_table=OAuthAccount)
+    yield SQLAlchemyUserDatabase(db, User, OAuthAccount)
 
-async def get_user_manager(user_db: CustomSQLAlchemyUserDatabase = Depends(get_user_db)):
-    yield CustomUserManager(user_db)
+async def get_user_manager(user_db: SQLAlchemyUserDatabase = Depends(get_user_db)):
+    yield UserManager(user_db)
 
 cookie_transport = CookieTransport(cookie_max_age=3600, cookie_secure=False)
 
@@ -227,7 +141,7 @@ app.include_router(
 
 # Custom admin login route to accept form data
 @app.post("/auth/jwt/login")
-async def admin_login(username: str = Form(...), password: str = Form(...), user_manager: CustomUserManager = Depends(get_user_manager)):
+async def admin_login(username: str = Form(...), password: str = Form(...), user_manager: UserManager = Depends(get_user_manager)):
     print(f"Attempted login with username: {username} and password: {password}")
     credentials = UserLogin(username=username, password=password)
     user = await user_manager.authenticate(credentials)
@@ -270,7 +184,7 @@ app.include_router(
         google_oauth,
         auth_backend,
         SECRET,
-        redirect_url=None,
+        redirect_url=GOOGLE_REDIRECT_URI,
     ),
     prefix="/auth/google",
     tags=["auth"],
@@ -309,13 +223,13 @@ async def list_users(session: AsyncSession = Depends(get_db), admin: User = Depe
 
 # Admin: Create user
 @app.post("/admin/users", response_model=UserRead)
-async def create_user_admin(user_create: UserCreate, admin: User = Depends(current_admin), manager: CustomUserManager = Depends(get_user_manager)):
+async def create_user_admin(user_create: UserCreate, admin: User = Depends(current_admin), manager: UserManager = Depends(get_user_manager)):
     user = await manager.create(user_create)
     return user
 
 # Admin: Reset user password
 @app.post("/admin/users/{user_id}/reset-password")
-async def reset_user_password(user_id: int, password_reset: PasswordReset, admin: User = Depends(current_admin), manager: CustomUserManager = Depends(get_user_manager)):
+async def reset_user_password(user_id: int, password_reset: PasswordReset, admin: User = Depends(current_admin), manager: UserManager = Depends(get_user_manager)):
     user = await manager.user_db.get(user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -356,8 +270,8 @@ async def on_startup():
                 is_active=True,
                 is_verified=True
             )
-            user_db = CustomSQLAlchemyUserDatabase(session, User, oauth_account_table=OAuthAccount)
-            manager = CustomUserManager(user_db)
+            user_db = SQLAlchemyUserDatabase(session, User, OAuthAccount)
+            manager = UserManager(user_db)
             await manager.create(admin_create)
             await session.commit()
             print("Admin created.")
