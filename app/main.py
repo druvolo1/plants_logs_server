@@ -228,6 +228,12 @@ async def delete_user_admin(user_id: int, session: AsyncSession = Depends(get_db
         return {"status": "success"}
     raise HTTPException(404, "User not found")
 
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    if exc.status_code == 401:
+        return templates.TemplateResponse("unauthorized.html", {"request": request}, status_code=401)
+    return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
+
 @app.on_event("startup")
 async def on_startup():
     await create_db_and_tables()
