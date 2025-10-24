@@ -9,6 +9,7 @@ from sqlalchemy import Column, Integer, String, Boolean, select
 from typing import List, Optional, Generator
 from fastapi_users import FastAPIUsers, BaseUserManager, IntegerIDMixin
 from fastapi_users.authentication import CookieTransport, AuthenticationBackend, JWTStrategy
+from fastapi_users.authentication.strategy.db import AccessTokenDatabase, DatabaseStrategy
 from fastapi_users.db import SQLAlchemyUserDatabase
 from fastapi.security import OAuth2AuthorizationCodeBearer
 from httpx_oauth.clients.google import GoogleOAuth2
@@ -165,6 +166,7 @@ app.include_router(
         auth_backend,
         SECRET,
         redirect_url=GOOGLE_REDIRECT_URI,
+        associate_by_email=True
     ),
     prefix="/auth/google",
     tags=["auth"],
