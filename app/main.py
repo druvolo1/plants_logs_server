@@ -162,7 +162,6 @@ class CustomUserManager(IntegerIDMixin, BaseUserManager[User, int]):
                 user = await self.create(user_create)
                 user = await self.user_db.add_oauth_account(user, oauth_account_dict)
 
-        await self.on_after_oauth_callback(user, request)
         return user
 
 async def get_db() -> Generator[AsyncSession, None, None]:
