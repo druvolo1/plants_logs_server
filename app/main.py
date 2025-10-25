@@ -407,7 +407,7 @@ async def on_startup():
     await create_db_and_tables()
     print("Tables created or already exist.")
     async with async_session_maker() as session:
-        result = await session.execute(select(User).where(User.email = os.getenv("ADMIN_USERNAME")))
+        result = await session.execute(select(User).where(User.email == os.getenv("ADMIN_USERNAME")))
         admin = result.scalars().first()
         if not admin:
             print("No admin found, creating one with password: " + os.getenv("ADMIN_PASSWORD"))
