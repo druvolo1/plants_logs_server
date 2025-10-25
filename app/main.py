@@ -163,10 +163,35 @@ class CustomUserManager(IntegerIDMixin, BaseUserManager[User, int]):
                 user = await self.create(user_create)
                 user = await self.user_db.add_oauth_account(user, oauth_account_dict)
 
-        if not user.is_active:
-            return RedirectResponse(url="/unauthorized", status_code=303)
-
         return user
+
+    async def create(
+        self, user_create: schemas.BaseUserCreate, safe: bool = False, is_verified: bool = False
+    ) -> User:
+        if user_create.password is not None:
+            await self.validate_password(user_create.password, user_create)
+
+        existing_user = await self.user_db.get_by_email(user_create.email)
+        if existing_user is not None:
+            raise exceptions.UserAlreadyExists()
+
+        user_dict = (
+            user_create.create_update_dict()
+            if safe
+            else user_create.create_update_dict_superuser()
+        )
+        hashed_password = None
+        if user_create.password is not None:
+            hashed_password = self.password_helper.hash(user_create.password)
+        user_dict["hashed_password"] = hashed_password
+        if is_verified:
+            user_dict["is_verified"] = True
+
+        created_user = await self.user_db.create(user_dict)
+
+        await self.on_after_register(created_user, None)
+
+        return created_user
 
     async def on_after_login(self, user: User, request: Optional[Request] = None, response: Optional[Response] = None) -> None:
         if response is not None:
@@ -175,10 +200,9 @@ class CustomUserManager(IntegerIDMixin, BaseUserManager[User, int]):
                     response.headers["Location"] = "/users"
                 else:
                     response.headers["Location"] = "/dashboard"
-                response.status_code = 303
             else:
-                response.headers["Location"] = "/unauthorized"
-                response.status_code = 303
+                response.headers["Location"] = "/suspended"
+            response.status_code = 303
 
 async def get_db() -> Generator[AsyncSession, None, None]:
     async with async_session_maker() as session:
@@ -244,7 +268,7 @@ async def admin_login(username: str = Form(...), password: str = Form(...), user
         return templates.TemplateResponse("login.html", {"request": request, "error": "Invalid credentials"})
     print("Authentication successful")
     if not user.is_active:
-        return templates.TemplateResponse("unauthorized.html", {"request": request})
+        return templates.TemplateResponse("suspended.html", {"request": request})
     strategy = get_jwt_strategy()
     token = await strategy.write_token(user)
     if user.is_superuser:
@@ -291,10 +315,10 @@ app.include_router(
 async def login_page(request: Request, error: str = None):
     return templates.TemplateResponse("login.html", {"request": request, "error": error})
 
-# Unauthorized page
-@app.get("/unauthorized", response_class=HTMLResponse)
-async def unauthorized_page(request: Request):
-    return templates.TemplateResponse("unauthorized.html", {"request": request})
+# Suspended page
+@app.get("/suspended", response_class=HTMLResponse)
+async def suspended_page(request: Request):
+    return templates.TemplateResponse("suspended.html", {"request": request})
 
 # Users page
 @app.get("/users", response_class=HTMLResponse)
