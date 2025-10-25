@@ -68,6 +68,7 @@ class UserRead(schemas.BaseUser[int]):
     pass
 
 class UserCreate(schemas.BaseUserCreate):
+    password: Optional[str] = None
     is_active: Optional[bool] = True
     is_superuser: Optional[bool] = False
     is_verified: Optional[bool] = False
@@ -158,17 +159,14 @@ class CustomUserManager(IntegerIDMixin, BaseUserManager[User, int]):
                     pass
 
             if not user:
-                user_create = schemas.BaseUserCreate(email=account_email, is_verified=is_verified_by_default)
+                user_create = UserCreate(email=account_email, is_verified=is_verified_by_default)
                 user = await self.create(user_create)
                 user = await self.user_db.add_oauth_account(user, oauth_account_dict)
 
         return user
 
     async def create(
-        self,
-        user_create: schemas.BaseUserCreate,
-        safe: bool = False,
-        is_verified: bool = False,
+        self, user_create: schemas.BaseUserCreate, safe: bool = False, is_verified: bool = False
     ) -> User:
         if user_create.password is not None:
             await self.validate_password(user_create.password, user_create)
@@ -182,11 +180,10 @@ class CustomUserManager(IntegerIDMixin, BaseUserManager[User, int]):
             if safe
             else user_create.create_update_dict_superuser()
         )
-        if "password" in user_dict:
-            password = user_dict.pop("password")
-            user_dict["hashed_password"] = self.password_helper.hash(password)
-        else:
-            user_dict["hashed_password"] = None
+        hashed_password = None
+        if user_create.password is not None:
+            hashed_password = self.password_helper.hash(user_create.password)
+        user_dict["hashed_password"] = hashed_password
         if is_verified:
             user_dict["is_verified"] = True
 
@@ -203,9 +200,10 @@ class CustomUserManager(IntegerIDMixin, BaseUserManager[User, int]):
                     response.headers["Location"] = "/users"
                 else:
                     response.headers["Location"] = "/dashboard"
+                response.status_code = 303
             else:
                 response.headers["Location"] = "/suspended"
-            response.status_code = 303
+                response.status_code = 303
 
 async def get_db() -> Generator[AsyncSession, None, None]:
     async with async_session_maker() as session:
