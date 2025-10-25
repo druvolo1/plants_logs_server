@@ -1,5 +1,5 @@
 # app/main.py - Full app with FastAPI-Users (async SQLAlchemy)
-from fastapi import FastAPI, Depends, HTTPException, Request, Form, Response, status
+from fastapi import FastAPI, Depends, HTTPException, Request, Form, Response
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
@@ -164,7 +164,7 @@ class CustomUserManager(IntegerIDMixin, BaseUserManager[User, int]):
                 user = await self.user_db.add_oauth_account(user, oauth_account_dict)
 
         if not user.is_active:
-            raise HTTPException(status_code=400, detail="LOGIN_BAD_CREDENTIALS")
+            raise exceptions.UserInactive()
 
         return user
 
@@ -383,7 +383,7 @@ async def unsuspend_user(user_id: int, admin: User = Depends(current_admin), man
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     update_dict = {"is_active": True}
-    user = await manager.user_db.update(user, update_dict)
+    user = await self.user_db.update(user, update_dict)
     return {"status": "success"}
 
 # Admin: Delete user
@@ -400,8 +400,6 @@ async def delete_user_admin(user_id: int, session: AsyncSession = Depends(get_db
 async def http_exception_handler(request: Request, exc: HTTPException):
     if exc.status_code == 401:
         return templates.TemplateResponse("unauthorized.html", {"request": request}, status_code=401)
-    if exc.status_code == 400 and exc.detail == "LOGIN_BAD_CREDENTIALS":
-        return templates.TemplateResponse("suspended.html", {"request": request}, status_code=400)
     return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
 
 @app.on_event("startup")
@@ -409,7 +407,7 @@ async def on_startup():
     await create_db_and_tables()
     print("Tables created or already exist.")
     async with async_session_maker() as session:
-        result = await session.execute(select(User).where(User.email == os.getenv("ADMIN_USERNAME")))
+        result = await session.execute(select(User).where(User.email = os.getenv("ADMIN_USERNAME")))
         admin = result.scalars().first()
         if not admin:
             print("No admin found, creating one with password: " + os.getenv("ADMIN_PASSWORD"))
