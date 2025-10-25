@@ -83,12 +83,14 @@
                     document.getElementById(`ph-${device_id}`).innerHTML = statusData.current_ph || 'N/A';
                     document.getElementById(`ec-${device_id}`).innerHTML = statusData.current_ec || 'N/A';
                     const water = statusData.water_level || {};
-                    document.getElementById(`sensor1-${device_id}`).innerHTML = water.sensor1?.status || 'N/A';
-                    document.getElementById(`sensor2-${device_id}`).innerHTML = water.sensor2?.status || 'N/A';
-                    document.getElementById(`sensor3-${device_id}`).innerHTML = water.sensor3?.status || 'N/A';
+                    document.getElementById(`sensor1-${device_id}`).innerHTML = water.sensor1?.triggered ? 'Triggered' : 'Not Triggered';
+                    document.getElementById(`sensor2-${device_id}`).innerHTML = water.sensor2?.triggered ? 'Triggered' : 'Not Triggered';
+                    document.getElementById(`sensor3-${device_id}`).innerHTML = water.sensor3?.triggered ? 'Triggered' : 'Not Triggered';
                     const valves = statusData.valve_info?.valve_relays || {};
-                    document.getElementById(`fill-valve-${device_id}`).innerHTML = valves['Fill Valve']?.status || 'N/A';
-                    document.getElementById(`drain-valve-${device_id}`).innerHTML = valves['Drain Valve']?.status || 'N/A';
+                    const fillLabel = statusData.valve_info?.fill_valve_label || 'Fill Valve';
+                    const drainLabel = statusData.valve_info?.drain_valve_label || 'Drain Valve';
+                    document.getElementById(`fill-valve-${device_id}`).innerHTML = valves[fillLabel]?.status || 'N/A';
+                    document.getElementById(`drain-valve-${device_id}`).innerHTML = valves[drainLabel]?.status || 'N/A';
                 }
             };
             ws.onclose = () => {
