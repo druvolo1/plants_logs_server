@@ -459,24 +459,31 @@ user_connections: Dict[str, List[WebSocket]] = defaultdict(list)
 @app.websocket("/ws/devices/{device_id}")
 async def device_websocket(websocket: WebSocket, device_id: str, api_key: str = Query(...), session: AsyncSession = Depends(get_db)):
     await websocket.accept()
+    print(f"Device connected: {device_id} with api_key {api_key}")  # Log connection accept
     result = await session.execute(select(Device).where(Device.device_id == device_id, Device.api_key == api_key))
     if not result.scalars().first():
+        print(f"Invalid device/auth for {device_id}")  # Log invalid auth
         await websocket.close()
         return
     await session.execute(update(Device).where(Device.device_id == device_id).values(is_online=True))
     await session.commit()
+    print(f"Set {device_id} online in DB")  # Log DB update
     device_connections[device_id] = websocket
     try:
         while True:
             data = await websocket.receive_json()
+            print(f"Received from device {device_id}: {json.dumps(data)}")  # Log incoming data
             # Relay to connected users
             for user_ws in user_connections[device_id]:
                 await user_ws.send_json(data)
+                print(f"Relayed to user for {device_id}: {json.dumps(data)}")  # Log relay
     except WebSocketDisconnect:
+        print(f"Device disconnected: {device_id}")  # Log disconnect
         if device_id in device_connections:
             del device_connections[device_id]
         await session.execute(update(Device).where(Device.device_id == device_id).values(is_online=False))
         await session.commit()
+        print(f"Set {device_id} offline in DB")  # Log DB update
 
 # Added: User WS endpoint (for dashboard)
 @app.websocket("/ws/user/devices/{device_id}")
