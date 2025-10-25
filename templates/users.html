@@ -31,6 +31,7 @@
             <tr>
                 <th>Email</th>
                 <th>Admin</th>
+                <th>Active</th>
                 <th>Actions</th>
             </tr>
         </thead>
@@ -39,9 +40,13 @@
                 <tr>
                     <td>{{ user.email }}</td>
                     <td>{{ user.is_superuser }}</td>
+                    <td>{{ user.is_active }}</td>
                     <td>
                         <button onclick="deleteUser('{{ user.id }}')">Delete</button>
                         <button onclick="resetPassword('{{ user.id }}')">Reset Password</button>
+                        {% if user.is_active %}
+                            <button onclick="suspendUser('{{ user.id }}')">Suspend</button>
+                        {% endif %}
                     </td>
                 </tr>
             {% endfor %}
@@ -101,6 +106,20 @@
                     alert('Password reset successfully');
                 } else {
                     alert('Failed to reset password');
+                }
+            }
+        }
+
+        async function suspendUser(userId) {
+            if (confirm('Are you sure you want to suspend this user?')) {
+                const response = await fetch('/admin/users/' + userId + '/suspend', {
+                    method: 'POST',
+                });
+                if (response.ok) {
+                    alert('User suspended successfully');
+                    location.reload();
+                } else {
+                    alert('Failed to suspend user');
                 }
             }
         }
