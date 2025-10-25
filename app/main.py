@@ -1,5 +1,5 @@
 # app/main.py - Full app with FastAPI-Users (async SQLAlchemy)
-from fastapi import FastAPI, Depends, HTTPException, Request, Form, Response
+from fastapi import FastAPI, Depends, HTTPException, Request, Form, Response, status
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
@@ -164,7 +164,7 @@ class CustomUserManager(IntegerIDMixin, BaseUserManager[User, int]):
                 user = await self.user_db.add_oauth_account(user, oauth_account_dict)
 
         if not user.is_active:
-            raise exceptions.InvalidCredentialsException
+            raise HTTPException(status_code=400, detail="LOGIN_BAD_CREDENTIALS")
 
         return user
 
