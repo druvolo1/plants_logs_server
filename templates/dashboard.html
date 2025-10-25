@@ -13,7 +13,116 @@
     <h1>Welcome, {{ user.email }}</h1>
     <p>Your DWC system data will be shown here soon.</p>
     <a href="/auth/logout">Logout</a>
+
+    <!-- Added: Add Device form -->
+    <h2>Add Device</h2>
+    <form id="add-device-form">
+        <label for="device_id">Device ID (from Pi):</label>
+        <input type="text" id="device_id" required>
+        <br>
+        <label for="name">Device Name (optional):</label>
+        <input type="text" id="name">
+        <br>
+        <button type="submit">Add Device</button>
+    </form>
+    <div id="add-result"></div>
+
+    <!-- Added: Devices list -->
+    <h2>My Devices</h2>
+    <div id="devices-list"></div>
+
     <script>
+        // Fetch and display devices list
+        async function fetchDevices() {
+            const response = await fetch('/user/devices');
+            if (response.ok) {
+                const devices = await response.json();
+                const listDiv = document.getElementById('devices-list');
+                listDiv.innerHTML = '';
+                devices.forEach(device => {
+                    const deviceDiv = document.createElement('div');
+                    deviceDiv.innerHTML = `
+                        <p>${device.name || device.device_id} - Online: ${device.is_online ? 'Yes' : 'No'}</p>
+                        <button onclick="connectToDevice('${device.device_id}')">Connect</button>
+                        <div id="control-${device.device_id}" style="display:none;">
+                            <h3>Controls</h3>
+                            <p>pH: <span id="ph-${device.device_id}">Loading...</span></p>
+                            <button onclick="sendDose('${device.device_id}', 'up', 10)">Dose pH Up (10ml)</button>
+                            <button onclick="sendDose('${device.device_id}', 'down', 10)">Dose pH Down (10ml)</button>
+                            <!-- Add more index controls here, e.g., <button onclick="sendCommand('${device.device_id}', 'toggle_pump')">Toggle Pump</button> -->
+                        </div>
+                    `;
+                    listDiv.appendChild(deviceDiv);
+                });
+            }
+        }
+
+        // Connect to WS for a device
+        let wsMap = {};  // Store WS per device_id
+        function connectToDevice(device_id) {
+            if (wsMap[device_id]) return;  // Already connected
+            const ws = new WebSocket(`ws://${window.location.host}/ws/user/devices/${device_id}`);
+            ws.onopen = () => {
+                console.log(`Connected to ${device_id}`);
+                document.getElementById(`control-${device_id}`).style.display = 'block';
+            };
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                if (data.type === 'ph_update') {
+                    document.getElementById(`ph-${device_id}`).innerHTML = data.ph;
+                }
+                // Add handlers for other updates, e.g., status_update
+            };
+            ws.onclose = () => {
+                console.log(`Disconnected from ${device_id}`);
+                delete wsMap[device_id];
+            };
+            wsMap[device_id] = ws;
+        }
+
+        // Send dose command
+        function sendDose(device_id, dispense_type, amount) {
+            const ws = wsMap[device_id];
+            if (ws) {
+                ws.send(JSON.stringify({
+                    command: 'manual_dose',
+                    params: { dispense_type: dispense_type, amount: amount }
+                }));
+            }
+        }
+
+        // Send other commands (example)
+        function sendCommand(device_id, command) {
+            const ws = wsMap[device_id];
+            if (ws) {
+                ws.send(JSON.stringify({ command: command }));
+            }
+        }
+
+        // Add form submit
+        document.getElementById('add-device-form').addEventListener('submit', async function(event) {
+            event.preventDefault();
+            const device_id = document.getElementById('device_id').value;
+            const name = document.getElementById('name').value;
+            const response = await fetch('/user/devices', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ device_id: device_id, name: name })
+            });
+            const resultDiv = document.getElementById('add-result');
+            if (response.ok) {
+                const data = await response.json();
+                resultDiv.innerHTML = `Device added! API Key: ${data.api_key} (copy to Pi settings.json as "api_key")`;
+                fetchDevices();  // Reload list
+            } else {
+                const error = await response.json();
+                resultDiv.innerHTML = `Error: ${error.detail}`;
+            }
+        });
+
+        // Load devices on page load
+        window.onload = fetchDevices;
+
         window.onpageshow = function(evt) {
             if (evt.persisted) {
                 window.location.reload();

@@ -18,6 +18,13 @@ from fastapi_users import schemas, exceptions
 from pydantic import BaseModel
 from dotenv import load_dotenv
 import os
+import secrets  # Added for API key
+
+# Added for WS
+from fastapi import WebSocket, Query
+from collections import defaultdict
+import json
+from sqlalchemy import update
 
 load_dotenv()
 DATABASE_URL = os.getenv("DATABASE_URL")
@@ -59,6 +66,18 @@ class User(Base):
     is_superuser = Column(Boolean, default=False)  # For admin
     is_verified = Column(Boolean, default=False)
     oauth_accounts = relationship("OAuthAccount", back_populates="user", cascade="all, delete-orphan")
+    devices = relationship("Device", back_populates="user", cascade="all, delete-orphan")  # Added backref
+
+# Added Device model
+class Device(Base):
+    __tablename__ = "devices"
+    id = Column(Integer, primary_key=True, index=True)
+    device_id = Column(String(36), unique=True, index=True)
+    api_key = Column(String(64))
+    name = Column(String(255), nullable=True)
+    is_online = Column(Boolean, default=False)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    user = relationship("User", back_populates="devices")
 
 async def create_db_and_tables():
     async with engine.begin() as conn:
@@ -395,6 +414,89 @@ async def delete_user_admin(user_id: int, session: AsyncSession = Depends(get_db
         await session.commit()
         return {"status": "success"}
     raise HTTPException(404, "User not found")
+
+# Added: Device create/add
+class DeviceCreate(BaseModel):
+    device_id: str
+    name: Optional[str] = None
+
+class DeviceRead(BaseModel):
+    device_id: str
+    name: Optional[str]
+    is_online: bool
+
+@app.post("/user/devices", response_model=Dict[str, str])
+async def add_device(device: DeviceCreate, user: User = Depends(current_user), session: AsyncSession = Depends(get_db)):
+    existing = await session.execute(select(Device).where(Device.device_id == device.device_id))
+    if existing.scalars().first():
+        raise HTTPException(400, "Device ID already linked")
+    
+    api_key = secrets.token_hex(32)
+    
+    new_device = Device(
+        device_id=device.device_id,
+        api_key=api_key,
+        name=device.name,
+        user_id=user.id
+    )
+    session.add(new_device)
+    await session.commit()
+    await session.refresh(new_device)
+    
+    return {"api_key": api_key, "message": "Device added. Copy API key to Pi settings."}
+
+# Added: List user devices
+@app.get("/user/devices", response_model=List[DeviceRead])
+async def list_devices(user: User = Depends(current_user), session: AsyncSession = Depends(get_db)):
+    result = await session.execute(select(Device).where(Device.user_id == user.id))
+    return result.scalars().all()
+
+# Added: Global connections for WS relay
+device_connections: Dict[str, WebSocket] = {}
+user_connections: Dict[str, List[WebSocket]] = defaultdict(list)
+
+# Added: Device WS endpoint (for Pi)
+@app.websocket("/ws/devices/{device_id}")
+async def device_websocket(websocket: WebSocket, device_id: str, api_key: str = Query(...), session: AsyncSession = Depends(get_db)):
+    await websocket.accept()
+    result = await session.execute(select(Device).where(Device.device_id == device_id, Device.api_key == api_key))
+    if not result.scalars().first():
+        await websocket.close()
+        return
+    await session.execute(update(Device).where(Device.device_id == device_id).values(is_online=True))
+    await session.commit()
+    device_connections[device_id] = websocket
+    try:
+        while True:
+            data = await websocket.receive_json()
+            # Relay to connected users
+            for user_ws in user_connections[device_id]:
+                await user_ws.send_json(data)
+    except WebSocketDisconnect:
+        if device_id in device_connections:
+            del device_connections[device_id]
+        await session.execute(update(Device).where(Device.device_id == device_id).values(is_online=False))
+        await session.commit()
+
+# Added: User WS endpoint (for dashboard)
+@app.websocket("/ws/user/devices/{device_id}")
+async def user_websocket(websocket: WebSocket, device_id: str, user: User = Depends(current_user), session: AsyncSession = Depends(get_db)):
+    result = await session.execute(select(Device).where(Device.device_id == device_id, Device.user_id == user.id))
+    if not result.scalars().first():
+        await websocket.close()
+        return
+    await websocket.accept()
+    user_connections[device_id].append(websocket)
+    try:
+        while True:
+            data = await websocket.receive_json()
+            # Relay command to device
+            if device_id in device_connections:
+                await device_connections[device_id].send_json(data)
+            else:
+                await websocket.send_json({"error": "Device offline"})
+    except WebSocketDisconnect:
+        user_connections[device_id].remove(websocket)
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
