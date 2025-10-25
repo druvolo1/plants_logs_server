@@ -54,7 +54,7 @@ class User(Base):
     __tablename__ = "users"
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String(255), unique=True, index=True)
-    hashed_password = Column(String(1024))
+    hashed_password = Column(String(1024), nullable=True)
     is_active = Column(Boolean, default=True)
     is_superuser = Column(Boolean, default=False)  # For admin
     is_verified = Column(Boolean, default=False)
@@ -68,6 +68,7 @@ class UserRead(schemas.BaseUser[int]):
     pass
 
 class UserCreate(schemas.BaseUserCreate):
+    password: Optional[str] = None
     is_active: Optional[bool] = True
     is_superuser: Optional[bool] = False
     is_verified: Optional[bool] = False
@@ -158,23 +159,52 @@ class CustomUserManager(IntegerIDMixin, BaseUserManager[User, int]):
                     pass
 
             if not user:
-                user_create = schemas.BaseUserCreate(email=account_email, is_verified=is_verified_by_default)
+                user_create = UserCreate(email=account_email, is_verified=is_verified_by_default)
                 user = await self.create(user_create)
                 user = await self.user_db.add_oauth_account(user, oauth_account_dict)
 
         return user
 
+    async def create(
+        self,
+        user_create: schemas.BaseUserCreate,
+        safe: bool = False,
+        is_verified: bool = False,
+    ) -> User:
+        if user_create.password is not None:
+            await self.validate_password(user_create.password, user_create)
+            password = user_create.password
+            hashed_password = self.password_helper.hash(password)
+        else:
+            hashed_password = None
+
+        existing_user = await self.user_db.get_by_email(user_create.email)
+        if existing_user is not None:
+            raise exceptions.UserAlreadyExists()
+
+        user_dict = (
+            user_create.create_update_dict()
+            if safe
+            else user_create.create_update_dict_superuser()
+        )
+        del user_dict["password"]
+        user_dict["hashed_password"] = hashed_password
+        if is_verified:
+            user_dict["is_verified"] = True
+
+        created_user = await self.user_db.create(user_dict)
+
+        await self.on_after_register(created_user, None)
+
+        return created_user
+
     async def on_after_login(self, user: User, request: Optional[Request] = None, response: Optional[Response] = None) -> None:
         if response is not None:
-            if user.is_active:
-                if user.is_superuser:
-                    response.headers["Location"] = "/users"
-                else:
-                    response.headers["Location"] = "/dashboard"
-                response.status_code = 303
+            if user.is_superuser:
+                response.headers["Location"] = "/users"
             else:
-                response.headers["Location"] = "/suspended"
-                response.status_code = 303
+                response.headers["Location"] = "/dashboard"
+            response.status_code = 303
 
 async def get_db() -> Generator[AsyncSession, None, None]:
     async with async_session_maker() as session:
@@ -231,16 +261,14 @@ app.include_router(
 
 # Custom admin login route to accept form data
 @app.post("/auth/jwt/login")
-async def admin_login(username: str = Form(...), password: str = Form(...), user_manager: CustomUserManager = Depends(get_user_manager), request: Request = Request):
+async def admin_login(username: str = Form(...), password: str = Form(...), user_manager: CustomUserManager = Depends(get_user_manager)):
     print(f"Attempted login with username: {username} and password: {password}")
     credentials = UserLogin(username=username, password=password)
     user = await user_manager.authenticate(credentials)
     if not user:
         print("Authentication failed")
-        return templates.TemplateResponse("login.html", {"request": request, "error": "Invalid credentials"})
+        return templates.TemplateResponse("login.html", {"request": Request, "error": "Invalid credentials"})
     print("Authentication successful")
-    if not user.is_active:
-        return templates.TemplateResponse("suspended.html", {"request": request})
     strategy = get_jwt_strategy()
     token = await strategy.write_token(user)
     if user.is_superuser:
@@ -287,11 +315,6 @@ app.include_router(
 async def login_page(request: Request, error: str = None):
     return templates.TemplateResponse("login.html", {"request": request, "error": error})
 
-# Suspended page
-@app.get("/suspended", response_class=HTMLResponse)
-async def suspended_page(request: Request):
-    return templates.TemplateResponse("suspended.html", {"request": request})
-
 # Users page
 @app.get("/users", response_class=HTMLResponse)
 async def users_page(request: Request, admin: User = Depends(current_admin), session: AsyncSession = Depends(get_db)):
@@ -332,16 +355,6 @@ async def reset_user_password(user_id: int, password_reset: PasswordReset, admin
         raise HTTPException(status_code=404, detail="User not found")
     hashed_password = manager.password_helper.hash(password_reset.password)
     update_dict = {"hashed_password": hashed_password}
-    user = await manager.user_db.update(user, update_dict)
-    return {"status": "success"}
-
-# Admin: Suspend user
-@app.post("/admin/users/{user_id}/suspend")
-async def suspend_user(user_id: int, admin: User = Depends(current_admin), manager: CustomUserManager = Depends(get_user_manager)):
-    user = await manager.user_db.get(user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    update_dict = {"is_active": False}
     user = await manager.user_db.update(user, update_dict)
     return {"status": "success"}
 

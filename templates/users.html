@@ -46,6 +46,8 @@
                         <button onclick="resetPassword('{{ user.id }}')">Reset Password</button>
                         {% if user.is_active %}
                             <button onclick="suspendUser('{{ user.id }}')">Suspend</button>
+                        {% else %}
+                            <button onclick="unsuspendUser('{{ user.id }}')">Unsuspend</button>
                         {% endif %}
                     </td>
                 </tr>
@@ -120,6 +122,20 @@
                     location.reload();
                 } else {
                     alert('Failed to suspend user');
+                }
+            }
+        }
+
+        async function unsuspendUser(userId) {
+            if (confirm('Are you sure you want to unsuspend this user?')) {
+                const response = await fetch('/admin/users/' + userId + '/unsuspend', {
+                    method: 'POST',
+                });
+                if (response.ok) {
+                    alert('User unsuspended successfully');
+                    location.reload();
+                } else {
+                    alert('Failed to unsuspend user');
                 }
             }
         }
