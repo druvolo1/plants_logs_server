@@ -363,6 +363,14 @@ async def dashboard_page(request: Request, user: User = Depends(current_user)):
     response.headers["Expires"] = "0"
     return response
 
+@app.get("/devices", response_class=HTMLResponse)
+async def devices_page(request: Request, user: User = Depends(current_user)):
+    response = templates.TemplateResponse("devices.html", {"request": request, "user": user})
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
+
 # Admin: List users
 @app.get("/admin/users", response_model=List[UserRead])
 async def list_users(session: AsyncSession = Depends(get_db), admin: User = Depends(current_admin)):
