@@ -83,6 +83,9 @@
             const ws = new WebSocket(`wss://${window.location.host}/ws/user/devices/${device_id}`);
             ws.onopen = () => {
                 console.log(`Connected to ${device_id}`);
+                // Added: Request refresh immediately on connect (for dashboard load)
+                ws.send(JSON.stringify({ type: 'request_refresh' }));
+                console.log(`[Auto-Refresh] Sent initial refresh request for ${device_id}`);
             };
             ws.onmessage = (event) => {
                 const data = JSON.parse(event.data);
