@@ -258,7 +258,7 @@ async def get_current_user_ws(
     if token is None:
         raise WebSocketDisconnect(code=1008)
     
-    user = await auth_backend.strategy.read_token(token, user_manager)
+    user = await auth_backend.get_strategy().read_token(token, user_manager)
     if user is None:
         raise WebSocketDisconnect(code=1008)
     
