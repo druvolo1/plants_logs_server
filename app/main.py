@@ -163,6 +163,9 @@ class CustomUserManager(IntegerIDMixin, BaseUserManager[User, int]):
                 user = await self.create(user_create)
                 user = await self.user_db.add_oauth_account(user, oauth_account_dict)
 
+        if not user.is_active:
+            raise exceptions.InvalidCredentialsException
+
         return user
 
     async def create(
@@ -397,6 +400,8 @@ async def delete_user_admin(user_id: int, session: AsyncSession = Depends(get_db
 async def http_exception_handler(request: Request, exc: HTTPException):
     if exc.status_code == 401:
         return templates.TemplateResponse("unauthorized.html", {"request": request}, status_code=401)
+    if exc.status_code == 400 and exc.detail == "LOGIN_BAD_CREDENTIALS":
+        return templates.TemplateResponse("suspended.html", {"request": request}, status_code=400)
     return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
 
 @app.on_event("startup")
