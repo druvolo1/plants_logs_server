@@ -248,6 +248,25 @@ auth_backend = AuthenticationBackend(
     get_strategy=get_jwt_strategy,
 )
 
+def get_token_ws(websocket: WebSocket) -> Optional[str]:
+    return websocket.cookies.get('fastapiusersauth')  # This is the default cookie name from CookieTransport
+
+async def get_current_user_ws(
+    token: Optional[str] = Depends(get_token_ws),
+    user_manager: CustomUserManager = Depends(get_user_manager),
+) -> User:
+    if token is None:
+        raise WebSocketDisconnect(code=1008)
+    
+    user = await auth_backend.strategy.read_token(token, user_manager)
+    if user is None:
+        raise WebSocketDisconnect(code=1008)
+    
+    if not user.is_active:
+        raise WebSocketDisconnect(code=1008)
+    
+    return user
+
 fastapi_users = FastAPIUsers[User, int](
     get_user_manager,
     [auth_backend],
@@ -504,9 +523,8 @@ async def device_websocket(websocket: WebSocket, device_id: str, api_key: str = 
         await session.commit()
         print(f"Set {device_id} offline in DB")  # Log DB update
 
-# Added: User WS endpoint (for dashboard)
 @app.websocket("/ws/user/devices/{device_id}")
-async def user_websocket(websocket: WebSocket, device_id: str, user: User = Depends(current_user), session: AsyncSession = Depends(get_db)):
+async def user_websocket(websocket: WebSocket, device_id: str, user: User = Depends(get_current_user_ws), session: AsyncSession = Depends(get_db)):
     result = await session.execute(select(Device).where(Device.device_id == device_id, Device.user_id == user.id))
     if not result.scalars().first():
         await websocket.close()
