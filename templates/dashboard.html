@@ -56,8 +56,20 @@
                         <div class="data-row"><span>Drain Valve:</span> <span id="drain-valve-${device.device_id}">Loading...</span></div>
                         <button onclick="sendDose('${device.device_id}', 'up', 10)">Dose pH Up (10ml)</button>
                         <button onclick="sendDose('${device.device_id}', 'down', 10)">Dose pH Down (10ml)</button>
+                        <button id="refresh-${device.device_id}">Refresh</button> <!-- NEW: Refresh button per device -->
                     `;
                     statusDiv.appendChild(deviceSection);
+
+                    // Wire up the refresh button click
+                    document.getElementById(`refresh-${device.device_id}`).addEventListener('click', () => {
+                        const ws = wsMap[device.device_id];
+                        if (ws) {
+                            console.log(`[Refresh] Requesting refresh for ${device.device_id}`);
+                            ws.send(JSON.stringify({ type: 'request_refresh' }));
+                        } else {
+                            console.warn(`[Refresh] No WS connection for ${device.device_id}`);
+                        }
+                    });
 
                     // Auto-connect WS
                     connectToDevice(device.device_id);
