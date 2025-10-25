@@ -1,5 +1,5 @@
 # app/main.py - Full app with FastAPI-Users (async SQLAlchemy)
-from fastapi import FastAPI, Depends, HTTPException, Request, Form, Response
+from fastapi import FastAPI, Depends, HTTPException, Request, Form, Response, status
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
@@ -163,35 +163,10 @@ class CustomUserManager(IntegerIDMixin, BaseUserManager[User, int]):
                 user = await self.create(user_create)
                 user = await self.user_db.add_oauth_account(user, oauth_account_dict)
 
+        if not user.is_active:
+            raise HTTPException(status_code=status.HTTP_303_SEE_OTHER, headers={"Location": "/suspended"})
+
         return user
-
-    async def create(
-        self, user_create: schemas.BaseUserCreate, safe: bool = False, is_verified: bool = False
-    ) -> User:
-        if user_create.password is not None:
-            await self.validate_password(user_create.password, user_create)
-
-        existing_user = await self.user_db.get_by_email(user_create.email)
-        if existing_user is not None:
-            raise exceptions.UserAlreadyExists()
-
-        user_dict = (
-            user_create.create_update_dict()
-            if safe
-            else user_create.create_update_dict_superuser()
-        )
-        hashed_password = None
-        if user_create.password is not None:
-            hashed_password = self.password_helper.hash(user_create.password)
-        user_dict["hashed_password"] = hashed_password
-        if is_verified:
-            user_dict["is_verified"] = True
-
-        created_user = await self.user_db.create(user_dict)
-
-        await self.on_after_register(created_user, None)
-
-        return created_user
 
     async def on_after_login(self, user: User, request: Optional[Request] = None, response: Optional[Response] = None) -> None:
         if response is not None:
