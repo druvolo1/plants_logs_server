@@ -8,6 +8,15 @@
     <meta http-equiv="Expires" content="0">
     <title>Dashboard</title>
     <link rel="stylesheet" href="/static/style.css">
+    <style>
+        /* Basic styling for data display */
+        .data-item {
+            margin-bottom: 10px;
+        }
+        .data-label {
+            font-weight: bold;
+        }
+    </style>
 </head>
 <body>
     <h1>Welcome, {{ user.email }}</h1>
@@ -46,7 +55,14 @@
                         <button onclick="connectToDevice('${device.device_id}')">Connect</button>
                         <div id="control-${device.device_id}" style="display:none;">
                             <h3>Controls</h3>
-                            <p>pH: <span id="ph-${device.device_id}">Loading...</span></p>
+                            <div class="data-item"><span class="data-label">System Name:</span> <span id="system-name-${device.device_id}">Loading...</span></div>
+                            <div class="data-item"><span class="data-label">pH:</span> <span id="ph-${device.device_id}">Loading...</span></div>
+                            <div class="data-item"><span class="data-label">EC:</span> <span id="ec-${device.device_id}">Loading...</span></div>
+                            <div class="data-item"><span class="data-label">Sensor 1:</span> <span id="sensor1-${device.device_id}">Loading...</span></div>
+                            <div class="data-item"><span class="data-label">Sensor 2:</span> <span id="sensor2-${device.device_id}">Loading...</span></div>
+                            <div class="data-item"><span class="data-label">Sensor 3:</span> <span id="sensor3-${device.device_id}">Loading...</span></div>
+                            <div class="data-item"><span class="data-label">Fill Valve:</span> <span id="fill-valve-${device.device_id}">Loading...</span></div>
+                            <div class="data-item"><span class="data-label">Drain Valve:</span> <span id="drain-valve-${device.device_id}">Loading...</span></div>
                             <button onclick="sendDose('${device.device_id}', 'up', 10)">Dose pH Up (10ml)</button>
                             <button onclick="sendDose('${device.device_id}', 'down', 10)">Dose pH Down (10ml)</button>
                             <!-- Add more index controls here, e.g., <button onclick="sendCommand('${device.device_id}', 'toggle_pump')">Toggle Pump</button> -->
@@ -61,17 +77,33 @@
         let wsMap = {};  // Store WS per device_id
         function connectToDevice(device_id) {
             if (wsMap[device_id]) return;  // Already connected
-            const ws = new WebSocket(`ws://${window.location.host}/ws/user/devices/${device_id}`);
+            const ws = new WebSocket(`wss://${window.location.host}/ws/user/devices/${device_id}`);
             ws.onopen = () => {
                 console.log(`Connected to ${device_id}`);
-                document.getElementById(`control-${device_id}`).style.display = 'block';
+                document.getElementById(`control-${device.device_id}`).style.display = 'block';
             };
             ws.onmessage = (event) => {
                 const data = JSON.parse(event.data);
+                console.log(`Received from server for ${device_id}:`, data);  // Log to browser console
                 if (data.type === 'ph_update') {
-                    document.getElementById(`ph-${device_id}`).innerHTML = data.ph;
+                    document.getElementById(`ph-${device.device_id}`).innerHTML = data.ph;
+                } else if (data.type === 'status_update' && data.data) {
+                    // Handle full status data
+                    const statusData = data.data;
+                    document.getElementById(`system-name-${device.device_id}`).innerHTML = statusData.settings.system_name || 'N/A';
+                    document.getElementById(`ph-${device.device_id}`).innerHTML = statusData.current_ph || 'N/A';
+                    document.getElementById(`ec-${device.device_id}`).innerHTML = statusData.current_ec || 'N/A';
+                    // Sensors (assuming water_level has sensor1, sensor2, sensor3 with status like "on/off")
+                    const water = statusData.water_level || {};
+                    document.getElementById(`sensor1-${device.device_id}`).innerHTML = water.sensor1?.status || 'N/A';
+                    document.getElementById(`sensor2-${device.device_id}`).innerHTML = water.sensor2?.status || 'N/A';
+                    document.getElementById(`sensor3-${device.device_id}`).innerHTML = water.sensor3?.status || 'N/A';
+                    // Valves (fill and drain statuses)
+                    const valves = statusData.valve_info?.valve_relays || {};
+                    document.getElementById(`fill-valve-${device.device_id}`).innerHTML = valves['Fill Valve']?.status || 'N/A';  // Adjust label if different
+                    document.getElementById(`drain-valve-${device.device_id}`).innerHTML = valves['Drain Valve']?.status || 'N/A';  // Adjust label if different
                 }
-                // Add handlers for other updates, e.g., status_update
+                // Add handlers for other updates
             };
             ws.onclose = () => {
                 console.log(`Disconnected from ${device_id}`);
