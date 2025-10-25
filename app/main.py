@@ -22,6 +22,7 @@ import secrets  # Added for API key
 
 # Added for WS
 from fastapi import WebSocket, Query
+from starlette.websockets import WebSocketDisconnect
 from collections import defaultdict
 import json
 from sqlalchemy import update
