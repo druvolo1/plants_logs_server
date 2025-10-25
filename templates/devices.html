@@ -32,7 +32,7 @@
     <div id="devices-list"></div>
 
     <script>
-        // Fetch and display devices list with Connect buttons
+        // Fetch and display devices list with Connect and Delete buttons
         async function fetchDevices() {
             const response = await fetch('/user/devices');
             if (response.ok) {
@@ -44,6 +44,7 @@
                     deviceDiv.innerHTML = `
                         <p>${device.name || device.device_id} - Online: ${device.is_online ? 'Yes' : 'No'}</p>
                         <button onclick="connectToDevice('${device.device_id}')">Connect</button>
+                        <button onclick="deleteDevice('${device.device_id}')">Delete</button>
                         <div id="control-${device.device_id}" style="display:none;">
                             <h3>Controls (Test)</h3>
                             <p>pH: <span id="ph-${device.device_id}">Loading...</span></p>
@@ -53,6 +54,19 @@
                     `;
                     listDiv.appendChild(deviceDiv);
                 });
+            }
+        }
+
+        // Delete device function
+        async function deleteDevice(device_id) {
+            if (confirm(`Are you sure you want to delete device ${device_id}?`)) {
+                const response = await fetch(`/user/devices/${device_id}`, { method: 'DELETE' });
+                if (response.ok) {
+                    alert('Device deleted successfully');
+                    fetchDevices();  // Reload list
+                } else {
+                    alert('Failed to delete device');
+                }
             }
         }
 

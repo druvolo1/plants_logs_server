@@ -371,6 +371,16 @@ async def devices_page(request: Request, user: User = Depends(current_user)):
     response.headers["Expires"] = "0"
     return response
 
+@app.delete("/user/devices/{device_id}")
+async def delete_device(device_id: str, user: User = Depends(current_user), session: AsyncSession = Depends(get_db)):
+    result = await session.execute(select(Device).where(Device.device_id == device_id, Device.user_id == user.id))
+    device = result.scalars().first()
+    if not device:
+        raise HTTPException(404, "Device not found or not owned by you")
+    await session.delete(device)
+    await session.commit()
+    return {"status": "success", "message": "Device deleted"}
+
 # Admin: List users
 @app.get("/admin/users", response_model=List[UserRead])
 async def list_users(session: AsyncSession = Depends(get_db), admin: User = Depends(current_admin)):
