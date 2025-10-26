@@ -19,6 +19,7 @@ from pydantic import BaseModel, EmailStr
 from dotenv import load_dotenv
 import os
 import secrets  # Added for API key
+import jwt  # Added for WebSocket JWT decoding
 
 # Added for WS
 from fastapi import WebSocket, Query
@@ -642,6 +643,7 @@ async def user_websocket(websocket: WebSocket, device_id: str):
     cookie = websocket.cookies.get("auth_cookie")
     
     if not cookie:
+        print(f"WebSocket auth failed: No cookie for device {device_id}")
         await websocket.close(code=1008, reason="No authentication cookie")
         return
     
@@ -649,12 +651,41 @@ async def user_websocket(websocket: WebSocket, device_id: str):
     try:
         async with async_session_maker() as session:
             strategy = get_jwt_strategy()
-            user_token = await strategy.read_token(cookie, None)
-            user_db = CustomSQLAlchemyUserDatabase(session, User, oauth_account_table=OAuthAccount)
-            user_manager = CustomUserManager(user_db)
-            user = await user_manager.get(user_token)
+            
+            # Decode the JWT token directly
+            try:
+                import jwt
+                payload = jwt.decode(cookie, SECRET, algorithms=["HS256"])
+                user_id = payload.get("sub")
+                
+                if not user_id:
+                    print(f"WebSocket auth failed: No user_id in token for device {device_id}")
+                    await websocket.close(code=1008, reason="Invalid token")
+                    return
+                
+                # Parse user_id to int
+                try:
+                    user_id = int(user_id)
+                except (ValueError, TypeError):
+                    print(f"WebSocket auth failed: Invalid user_id format for device {device_id}")
+                    await websocket.close(code=1008, reason="Invalid user ID")
+                    return
+                
+            except jwt.ExpiredSignatureError:
+                print(f"WebSocket auth failed: Expired token for device {device_id}")
+                await websocket.close(code=1008, reason="Token expired")
+                return
+            except jwt.InvalidTokenError as e:
+                print(f"WebSocket auth failed: Invalid token for device {device_id}: {e}")
+                await websocket.close(code=1008, reason="Invalid token")
+                return
+            
+            # Get user from database
+            result = await session.execute(select(User).where(User.id == user_id))
+            user = result.scalars().first()
             
             if not user or not user.is_active:
+                print(f"WebSocket auth failed: User not found or inactive for device {device_id}")
                 await websocket.close(code=1008, reason="User not active")
                 return
             
@@ -663,8 +694,11 @@ async def user_websocket(websocket: WebSocket, device_id: str):
             device = result.scalars().first()
             
             if not device:
+                print(f"WebSocket auth failed: Device {device_id} not found or not owned by user {user_id}")
                 await websocket.close(code=1008, reason="Device not found or not owned by user")
                 return
+            
+            print(f"WebSocket authenticated successfully for user {user_id} connecting to device {device_id}")
             
             # Accept the WebSocket connection
             await websocket.accept()
@@ -688,9 +722,12 @@ async def user_websocket(websocket: WebSocket, device_id: str):
                         await websocket.send_json({"error": "Device offline"})
             except WebSocketDisconnect:
                 user_connections[device_id].remove(websocket)
+                print(f"User disconnected from device {device_id}")
                 
     except Exception as e:
-        print(f"WebSocket authentication error: {e}")
+        print(f"WebSocket authentication error for device {device_id}: {e}")
+        import traceback
+        traceback.print_exc()
         await websocket.close(code=1008, reason=str(e))
         return
 
