@@ -654,3 +654,436 @@ a:hover {
         padding: 0.5rem;
     }
 }
+/* ========================================
+   MODERNIZED DASHBOARD DEVICE STYLING
+   ======================================== */
+
+/* Dashboard Device Section - Modernized Styling */
+.device-section {
+    margin-bottom: 1.5rem !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 16px !important;
+    background: linear-gradient(135deg, rgba(51, 65, 85, 0.4) 0%, rgba(30, 41, 59, 0.6) 100%) !important;
+    backdrop-filter: blur(10px);
+    overflow: hidden !important;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2) !important;
+}
+
+.device-section:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.4), 0 10px 10px -5px rgba(0, 0, 0, 0.3) !important;
+    border-color: var(--primary) !important;
+}
+
+/* Dashboard Device Header - Modernized */
+.device-section .device-header {
+    padding: 1.25rem 1.5rem !important;
+    background: linear-gradient(135deg, rgba(30, 41, 59, 0.8) 0%, rgba(15, 23, 42, 0.9) 100%) !important;
+    cursor: pointer !important;
+    user-select: none !important;
+    transition: all 0.3s ease !important;
+    border-bottom: 1px solid var(--border) !important;
+}
+
+.device-section .device-header:hover {
+    background: linear-gradient(135deg, rgba(51, 65, 85, 0.8) 0%, rgba(30, 41, 59, 0.9) 100%) !important;
+}
+
+.device-header-left {
+    display: flex !important;
+    align-items: center !important;
+    gap: 1.25rem !important;
+    flex: 1 !important;
+}
+
+.device-section .device-name {
+    font-size: 1.35rem !important;
+    font-weight: 700 !important;
+    background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%) !important;
+    -webkit-background-clip: text !important;
+    -webkit-text-fill-color: transparent !important;
+    background-clip: text !important;
+    letter-spacing: -0.02em !important;
+}
+
+.device-section .status-badge {
+    padding: 0.4rem 1rem !important;
+    border-radius: 20px !important;
+    font-size: 0.8rem !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+    transition: all 0.3s ease !important;
+}
+
+.device-section .status-online {
+    background: linear-gradient(135deg, var(--success) 0%, #059669 100%) !important;
+    color: white !important;
+}
+
+.device-section .status-offline {
+    background: linear-gradient(135deg, var(--danger) 0%, #dc2626 100%) !important;
+    color: white !important;
+}
+
+.device-section .header-info {
+    display: flex !important;
+    gap: 1.5rem !important;
+    align-items: center !important;
+}
+
+.device-section .info-item {
+    display: flex !important;
+    align-items: baseline !important;
+    gap: 0.5rem !important;
+    font-size: 0.95rem !important;
+    padding: 0.4rem 0.8rem !important;
+    background: rgba(51, 65, 85, 0.5) !important;
+    border-radius: 8px !important;
+    transition: all 0.3s ease !important;
+}
+
+.device-section .info-item:hover {
+    background: rgba(51, 65, 85, 0.8) !important;
+    transform: scale(1.05) !important;
+}
+
+.device-section .info-item label {
+    color: var(--text-muted) !important;
+    font-size: 0.85rem !important;
+}
+
+.device-section .info-item span {
+    color: var(--primary) !important;
+    font-weight: 700 !important;
+}
+
+.device-section .expand-icon {
+    font-size: 1.3rem !important;
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    color: var(--primary) !important;
+    filter: drop-shadow(0 2px 4px rgba(16, 185, 129, 0.3)) !important;
+}
+
+.device-section .expand-icon.expanded {
+    transform: rotate(180deg) !important;
+}
+
+/* Device Content Area */
+.device-content {
+    max-height: 0 !important;
+    overflow: hidden !important;
+    transition: max-height 0.5s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.device-content.expanded {
+    max-height: 3000px !important;
+}
+
+.device-content-inner {
+    padding: 1.5rem !important;
+    background: linear-gradient(135deg, rgba(15, 23, 42, 0.3) 0%, rgba(30, 41, 59, 0.3) 100%) !important;
+}
+
+/* Cards Grid */
+.cards-grid {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)) !important;
+    gap: 1.25rem !important;
+    margin-bottom: 1.25rem !important;
+}
+
+/* Individual Card Styling - Modernized */
+.device-section .card {
+    background: linear-gradient(135deg, rgba(51, 65, 85, 0.6) 0%, rgba(30, 41, 59, 0.8) 100%) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 16px !important;
+    padding: 1.5rem !important;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2) !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    backdrop-filter: blur(8px);
+}
+
+.device-section .card:hover {
+    transform: translateY(-4px) !important;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.2) !important;
+    border-color: var(--primary) !important;
+    background: linear-gradient(135deg, rgba(51, 65, 85, 0.8) 0%, rgba(30, 41, 59, 0.9) 100%) !important;
+}
+
+.device-section .card-title {
+    font-size: 0.95rem !important;
+    font-weight: 700 !important;
+    margin-bottom: 1.25rem !important;
+    color: var(--primary) !important;
+    border-bottom: 2px solid rgba(16, 185, 129, 0.3) !important;
+    padding-bottom: 0.75rem !important;
+    letter-spacing: 0.05em !important;
+    text-transform: uppercase !important;
+}
+
+/* Water Bucket Visualization - Modernized */
+.bucket-container {
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    padding: 1.5rem !important;
+}
+
+.water-bucket {
+    width: 100px !important;
+    height: 140px !important;
+    border: 3px solid var(--border-light) !important;
+    border-top: none !important;
+    border-radius: 0 0 12px 12px !important;
+    position: relative !important;
+    background: linear-gradient(to top, rgba(15, 23, 42, 0.8) 0%, rgba(30, 41, 59, 0.6) 100%) !important;
+    box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+}
+
+.water-level {
+    position: absolute !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    background: linear-gradient(to top, 
+        rgba(59, 130, 246, 0.9) 0%, 
+        rgba(16, 185, 129, 0.7) 50%,
+        rgba(16, 185, 129, 0.5) 100%) !important;
+    transition: height 0.5s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    border-radius: 0 0 9px 9px !important;
+    box-shadow: 0 -2px 10px rgba(16, 185, 129, 0.5) !important;
+    animation: shimmer 3s ease-in-out infinite !important;
+}
+
+@keyframes shimmer {
+    0%, 100% { opacity: 0.9; }
+    50% { opacity: 1; }
+}
+
+.sensor-marker {
+    position: absolute !important;
+    left: -20px !important;
+    right: -20px !important;
+    height: 2px !important;
+    background: var(--warning) !important;
+    box-shadow: 0 0 8px rgba(245, 158, 11, 0.6) !important;
+    z-index: 10 !important;
+}
+
+.sensor-label {
+    position: absolute !important;
+    right: -90px !important;
+    font-size: 0.75rem !important;
+    white-space: nowrap !important;
+    color: var(--text-secondary) !important;
+    font-weight: 600 !important;
+    background: rgba(30, 41, 59, 0.8) !important;
+    padding: 0.25rem 0.5rem !important;
+    border-radius: 4px !important;
+}
+
+/* Valve Controls - Modernized */
+.valve-group {
+    margin-bottom: 1.25rem !important;
+}
+
+.valve-group:last-child {
+    margin-bottom: 0 !important;
+}
+
+.valve-label {
+    font-size: 1rem !important;
+    margin-bottom: 0.75rem !important;
+    display: block !important;
+    color: var(--text-secondary) !important;
+    font-weight: 600 !important;
+}
+
+.valve-buttons {
+    display: flex !important;
+    gap: 0.75rem !important;
+}
+
+.valve-buttons button {
+    flex: 1 !important;
+    padding: 0.875rem 1rem !important;
+    border: 2px solid var(--border) !important;
+    border-radius: 10px !important;
+    cursor: pointer !important;
+    background: linear-gradient(135deg, rgba(51, 65, 85, 0.6) 0%, rgba(30, 41, 59, 0.8) 100%) !important;
+    color: var(--text-primary) !important;
+    font-weight: 700 !important;
+    font-size: 0.95rem !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important;
+}
+
+.valve-buttons button:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3) !important;
+}
+
+.valve-buttons button.btn-on-active {
+    background: linear-gradient(135deg, var(--success) 0%, #059669 100%) !important;
+    border-color: var(--success) !important;
+    color: white !important;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4) !important;
+}
+
+.valve-buttons button.btn-off-active {
+    background: linear-gradient(135deg, var(--danger) 0%, #dc2626 100%) !important;
+    border-color: var(--danger) !important;
+    color: white !important;
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4) !important;
+}
+
+.valve-buttons button.btn-inactive {
+    opacity: 0.6 !important;
+}
+
+.valve-buttons button.btn-inactive:hover {
+    opacity: 0.8 !important;
+}
+
+/* pH Dosing Controls - Modernized */
+.ph-header {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    margin-bottom: 1.5rem !important;
+    padding: 1rem !important;
+    background: rgba(51, 65, 85, 0.4) !important;
+    border-radius: 10px !important;
+    border: 1px solid var(--border) !important;
+}
+
+.ph-header span {
+    color: var(--text-secondary) !important;
+    font-size: 0.95rem !important;
+}
+
+.ph-header strong {
+    color: var(--primary) !important;
+    font-size: 1.1rem !important;
+    margin-left: 0.5rem !important;
+}
+
+.dose-sections {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)) !important;
+    gap: 1.25rem !important;
+}
+
+.dose-section {
+    background: rgba(30, 41, 59, 0.5) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 12px !important;
+    padding: 1.25rem !important;
+}
+
+.dose-section h4 {
+    font-size: 1rem !important;
+    font-weight: 700 !important;
+    margin-bottom: 1rem !important;
+    color: var(--primary) !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important;
+}
+
+.dose-info {
+    color: var(--text-secondary) !important;
+    margin-bottom: 1rem !important;
+    font-size: 0.95rem !important;
+    padding: 0.75rem !important;
+    background: rgba(51, 65, 85, 0.3) !important;
+    border-radius: 8px !important;
+    border-left: 3px solid var(--primary) !important;
+}
+
+.dose-button {
+    width: 100% !important;
+    padding: 0.875rem !important;
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%) !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 10px !important;
+    cursor: pointer !important;
+    font-weight: 700 !important;
+    font-size: 0.95rem !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3) !important;
+}
+
+.dose-button:hover:not(:disabled) {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 8px 20px rgba(16, 185, 129, 0.4) !important;
+}
+
+.dose-button:disabled {
+    opacity: 0.4 !important;
+    cursor: not-allowed !important;
+    background: linear-gradient(135deg, rgba(148, 163, 184, 0.3) 0%, rgba(100, 116, 139, 0.3) 100%) !important;
+    box-shadow: none !important;
+}
+
+.manual-section {
+    margin-top: 1.25rem !important;
+    padding-top: 1.25rem !important;
+    border-top: 1px solid var(--border) !important;
+}
+
+.manual-section label {
+    display: block !important;
+    margin-bottom: 0.75rem !important;
+    color: var(--text-muted) !important;
+    font-size: 0.85rem !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important;
+}
+
+.manual-input {
+    display: flex !important;
+    gap: 0.75rem !important;
+}
+
+.manual-input input {
+    flex: 1 !important;
+    padding: 0.75rem !important;
+    background: rgba(15, 23, 42, 0.6) !important;
+    border: 2px solid var(--border) !important;
+    border-radius: 8px !important;
+    color: var(--text-primary) !important;
+    font-size: 1rem !important;
+    transition: all 0.3s ease !important;
+}
+
+.manual-input input:focus {
+    outline: none !important;
+    border-color: var(--primary) !important;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1) !important;
+}
+
+.manual-input button {
+    padding: 0.75rem 1.5rem !important;
+    background: linear-gradient(135deg, var(--secondary) 0%, var(--secondary-dark) 100%) !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 8px !important;
+    cursor: pointer !important;
+    font-weight: 700 !important;
+    transition: all 0.3s ease !important;
+    text-transform: uppercase !important;
+    font-size: 0.85rem !important;
+    letter-spacing: 0.05em !important;
+}
+
+.manual-input button:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4) !important;
+}
