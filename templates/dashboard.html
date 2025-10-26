@@ -21,6 +21,40 @@
             justify-content: space-between;
             margin-bottom: 5px;
         }
+        .valve-controls {
+            display: flex;
+            gap: 15px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+        .valve-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        .valve-buttons {
+            display: flex;
+            gap: 5px;
+        }
+        .valve-buttons button {
+            padding: 8px 16px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            cursor: pointer;
+            background: #333;
+            color: #fff;
+        }
+        .btn-on-active {
+            background: #28a745 !important;
+            border-color: #28a745 !important;
+        }
+        .btn-off-active {
+            background: #dc3545 !important;
+            border-color: #dc3545 !important;
+        }
+        .btn-inactive {
+            opacity: 0.5;
+        }
     </style>
 </head>
 <body>
@@ -52,11 +86,8 @@
                         <div class="data-row"><span>Sensor 1:</span> <span id="sensor1-${device.device_id}">Loading...</span></div>
                         <div class="data-row"><span>Sensor 2:</span> <span id="sensor2-${device.device_id}">Loading...</span></div>
                         <div class="data-row"><span>Sensor 3:</span> <span id="sensor3-${device.device_id}">Loading...</span></div>
-                        <div class="data-row"><span>Fill Valve:</span> <span id="fill-valve-${device.device_id}">Loading...</span></div>
-                        <div class="data-row"><span>Drain Valve:</span> <span id="drain-valve-${device.device_id}">Loading...</span></div>
-                        <button onclick="sendDose('${device.device_id}', 'up', 10)">Dose pH Up (10ml)</button>
-                        <button onclick="sendDose('${device.device_id}', 'down', 10)">Dose pH Down (10ml)</button>
-                        <button id="refresh-${device.device_id}">Refresh</button> <!-- NEW: Refresh button per device -->
+                        <div class="valve-controls" id="valve-controls-${device.device_id}"></div>
+                        <button id="refresh-${device.device_id}">Refresh</button>
                     `;
                     statusDiv.appendChild(deviceSection);
 
@@ -83,7 +114,7 @@
             const ws = new WebSocket(`wss://${window.location.host}/ws/user/devices/${device_id}`);
             ws.onopen = () => {
                 console.log(`Connected to ${device_id}`);
-                // Added: Request refresh immediately on connect (for dashboard load)
+                // Request refresh immediately on connect
                 ws.send(JSON.stringify({ type: 'request_refresh' }));
                 console.log(`[Auto-Refresh] Sent initial refresh request for ${device_id}`);
             };
@@ -97,15 +128,15 @@
                     document.getElementById(`system-name-${device_id}`).innerHTML = statusData.settings?.system_name || 'N/A';
                     document.getElementById(`ph-${device_id}`).innerHTML = statusData.current_ph || 'N/A';
                     document.getElementById(`ec-${device_id}`).innerHTML = statusData.current_ec || 'N/A';
+                    
+                    // Update water sensors
                     const water = statusData.water_level || {};
                     document.getElementById(`sensor1-${device_id}`).innerHTML = water.sensor1?.triggered ? 'Triggered' : 'Not Triggered';
                     document.getElementById(`sensor2-${device_id}`).innerHTML = water.sensor2?.triggered ? 'Triggered' : 'Not Triggered';
                     document.getElementById(`sensor3-${device_id}`).innerHTML = water.sensor3?.triggered ? 'Triggered' : 'Not Triggered';
-                    const valves = statusData.valve_info?.valve_relays || {};
-                    const fillLabel = statusData.valve_info?.fill_valve_label || 'Fill Valve';
-                    const drainLabel = statusData.valve_info?.drain_valve_label || 'Drain Valve';
-                    document.getElementById(`fill-valve-${device_id}`).innerHTML = valves[fillLabel]?.status || 'N/A';
-                    document.getElementById(`drain-valve-${device_id}`).innerHTML = valves[drainLabel]?.status || 'N/A';
+                    
+                    // Update valve controls
+                    updateValveControls(device_id, statusData);
                 }
             };
             ws.onclose = () => {
@@ -115,14 +146,66 @@
             wsMap[device_id] = ws;
         }
 
-        // Send dose command
-        function sendDose(device_id, dispense_type, amount) {
+        // Update valve controls based on status data
+        function updateValveControls(device_id, statusData) {
+            const valveControlsDiv = document.getElementById(`valve-controls-${device_id}`);
+            const fillLabel = statusData.settings?.fill_valve_label;
+            const drainLabel = statusData.settings?.drain_valve_label;
+            const valveRelays = statusData.valve_info?.valve_relays || {};
+
+            // Clear existing controls
+            valveControlsDiv.innerHTML = '';
+
+            // Add fill valve controls if configured
+            if (fillLabel) {
+                const fillStatus = valveRelays[fillLabel]?.status || 'off';
+                const fillGroup = document.createElement('div');
+                fillGroup.classList.add('valve-group');
+                fillGroup.innerHTML = `
+                    <label>${fillLabel}: <span id="fill-status-${device_id}">${fillStatus === 'on' ? 'On' : 'Off'}</span></label>
+                    <div class="valve-buttons">
+                        <button id="fill-on-${device_id}" class="${fillStatus === 'on' ? 'btn-on-active' : 'btn-inactive'}">On</button>
+                        <button id="fill-off-${device_id}" class="${fillStatus === 'off' ? 'btn-off-active' : 'btn-inactive'}">Off</button>
+                    </div>
+                `;
+                valveControlsDiv.appendChild(fillGroup);
+
+                // Wire up fill valve buttons
+                document.getElementById(`fill-on-${device_id}`).onclick = () => sendValveCommand(device_id, fillLabel, 'on');
+                document.getElementById(`fill-off-${device_id}`).onclick = () => sendValveCommand(device_id, fillLabel, 'off');
+            }
+
+            // Add drain valve controls if configured
+            if (drainLabel) {
+                const drainStatus = valveRelays[drainLabel]?.status || 'off';
+                const drainGroup = document.createElement('div');
+                drainGroup.classList.add('valve-group');
+                drainGroup.innerHTML = `
+                    <label>${drainLabel}: <span id="drain-status-${device_id}">${drainStatus === 'on' ? 'On' : 'Off'}</span></label>
+                    <div class="valve-buttons">
+                        <button id="drain-on-${device_id}" class="${drainStatus === 'on' ? 'btn-on-active' : 'btn-inactive'}">On</button>
+                        <button id="drain-off-${device_id}" class="${drainStatus === 'off' ? 'btn-off-active' : 'btn-inactive'}">Off</button>
+                    </div>
+                `;
+                valveControlsDiv.appendChild(drainGroup);
+
+                // Wire up drain valve buttons
+                document.getElementById(`drain-on-${device_id}`).onclick = () => sendValveCommand(device_id, drainLabel, 'on');
+                document.getElementById(`drain-off-${device_id}`).onclick = () => sendValveCommand(device_id, drainLabel, 'off');
+            }
+        }
+
+        // Send valve command via WebSocket
+        function sendValveCommand(device_id, valve_label, action) {
             const ws = wsMap[device_id];
             if (ws) {
+                console.log(`[Valve] Sending command to ${device_id}: ${valve_label} ${action}`);
                 ws.send(JSON.stringify({
-                    command: 'manual_dose',
-                    params: { dispense_type: dispense_type, amount: amount }
+                    command: 'valve_control',
+                    params: { valve_label: valve_label, action: action }
                 }));
+            } else {
+                console.warn(`[Valve] No WS connection for ${device_id}`);
             }
         }
 
