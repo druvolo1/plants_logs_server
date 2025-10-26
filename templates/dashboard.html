@@ -122,7 +122,7 @@
                     document.getElementById(`refresh-${device.device_id}`).addEventListener('click', () => {
                         const ws = wsMap[device.device_id];
                         if (ws) {
-                            console.log(`[Refresh] Requesting refresh for ${device_id}`);
+                            console.log(`[Refresh] Requesting refresh for ${device_id}`);  // <-- WRONG
                             ws.send(JSON.stringify({ type: 'request_refresh' }));
                         } else {
                             console.warn(`[Refresh] No WS connection for ${device.device_id}`);
