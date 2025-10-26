@@ -546,6 +546,15 @@ async def user_websocket(websocket: WebSocket, device_id: str, user: User = Depe
         return
     await websocket.accept()
     user_connections[device_id].append(websocket)
+    
+    # Request full sync from device when user connects
+    if device_id in device_connections:
+        try:
+            await device_connections[device_id].send_json({"type": "request_refresh"})
+            print(f"Sent refresh request to device {device_id} for new user connection")
+        except:
+            pass
+    
     try:
         while True:
             data = await websocket.receive_json()

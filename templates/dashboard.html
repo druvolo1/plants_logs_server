@@ -463,22 +463,65 @@
             };
             ws.onmessage = (event) => {
                 const data = JSON.parse(event.data);
+                
+                // Handle device status messages
                 if (data.error === 'Device offline') {
-                    // Device is offline
                     updateOnlineStatus(device_id, false);
                 } else if (data.type === 'device_status') {
-                    // Backend notifying us of device online/offline status
                     updateOnlineStatus(device_id, data.online);
-                } else if (data.type === 'ph_update') {
-                    // If we're getting data, device must be online
+                }
+                // Handle full sync (on connect or refresh)
+                else if (data.type === 'full_sync' && data.data) {
+                    updateOnlineStatus(device_id, true);
+                    updateDeviceStatus(device_id, data.data);
+                }
+                // Handle granular pH update
+                else if (data.type === 'ph_update') {
                     updateOnlineStatus(device_id, true);
                     const phItem = document.getElementById(`ph-item-${device_id}`);
-                    if (data.ph) {
+                    if (data.value !== null && data.value !== undefined) {
                         phItem.style.display = 'flex';
-                        document.getElementById(`ph-${device_id}`).innerHTML = data.ph || '-';
+                        document.getElementById(`ph-${device_id}`).innerHTML = data.value;
                     }
-                } else if (data.type === 'status_update' && data.data) {
-                    // If we're getting data, device must be online
+                }
+                // Handle granular EC update
+                else if (data.type === 'ec_update') {
+                    updateOnlineStatus(device_id, true);
+                    const ecItem = document.getElementById(`ec-item-${device_id}`);
+                    if (data.value !== null && data.value !== undefined) {
+                        ecItem.style.display = 'flex';
+                        document.getElementById(`ec-${device_id}`).innerHTML = data.value;
+                    }
+                }
+                // Handle granular water level update
+                else if (data.type === 'water_level_update') {
+                    updateOnlineStatus(device_id, true);
+                    updateWaterBucketGranular(device_id, data);
+                }
+                // Handle granular valve update
+                else if (data.type === 'valve_update') {
+                    updateOnlineStatus(device_id, true);
+                    updateSingleValve(device_id, data.label, data.status);
+                }
+                // Handle granular settings update
+                else if (data.type === 'settings_update') {
+                    updateOnlineStatus(device_id, true);
+                    if (data.system_name) {
+                        document.getElementById(`system-name-${device_id}`).innerHTML = data.system_name;
+                    }
+                }
+                // Handle granular plant info update
+                else if (data.type === 'plant_info_update') {
+                    updateOnlineStatus(device_id, true);
+                    updatePlantInfo(device_id, data);
+                }
+                // Handle granular dosage update
+                else if (data.type === 'dosage_update') {
+                    updateOnlineStatus(device_id, true);
+                    updateDosingControlsGranular(device_id, data);
+                }
+                // Legacy: Handle old status_update format for backwards compatibility
+                else if (data.type === 'status_update' && data.data) {
                     updateOnlineStatus(device_id, true);
                     updateDeviceStatus(device_id, data.data);
                 }
@@ -593,6 +636,121 @@
             else if (sensor3) waterHeight = 10;
             
             document.getElementById(`water-level-${device_id}`).style.height = `${waterHeight}%`;
+        }
+
+        function updateWaterBucketGranular(device_id, data) {
+            // Granular water level update
+            const sensor1 = data.sensor1?.triggered || false;
+            const sensor2 = data.sensor2?.triggered || false;
+            const sensor3 = data.sensor3?.triggered || false;
+            
+            document.getElementById(`sensor1-label-${device_id}`).textContent = `${data.sensor1?.label || 'Full'} ${sensor1 ? '✓' : '✗'}`;
+            document.getElementById(`sensor2-label-${device_id}`).textContent = `${data.sensor2?.label || 'Low'} ${sensor2 ? '✓' : '✗'}`;
+            document.getElementById(`sensor3-label-${device_id}`).textContent = `${data.sensor3?.label || 'Empty'} ${sensor3 ? '✓' : '✗'}`;
+            
+            let waterHeight = 0;
+            if (sensor1) waterHeight = 90;
+            else if (sensor2) waterHeight = 33;
+            else if (sensor3) waterHeight = 10;
+            
+            document.getElementById(`water-level-${device_id}`).style.height = `${waterHeight}%`;
+        }
+
+        function updateSingleValve(device_id, label, status) {
+            // Update a single valve status
+            const fillStatusEl = document.getElementById(`fill-status-${device_id}`);
+            const drainStatusEl = document.getElementById(`drain-status-${device_id}`);
+            
+            // Update the appropriate valve
+            const settings = {}; // We don't have full settings here, so we check by element existence
+            
+            if (fillStatusEl) {
+                const fillOnBtn = document.getElementById(`fill-on-${device_id}`);
+                const fillOffBtn = document.getElementById(`fill-off-${device_id}`);
+                if (fillOnBtn && fillOnBtn.parentElement.parentElement.querySelector('.valve-label').textContent.includes(label)) {
+                    fillStatusEl.textContent = status === 'on' ? 'On' : 'Off';
+                    fillOnBtn.className = status === 'on' ? 'btn-on-active' : 'btn-inactive';
+                    fillOffBtn.className = status === 'off' ? 'btn-off-active' : 'btn-inactive';
+                }
+            }
+            
+            if (drainStatusEl) {
+                const drainOnBtn = document.getElementById(`drain-on-${device_id}`);
+                const drainOffBtn = document.getElementById(`drain-off-${device_id}`);
+                if (drainOnBtn && drainOnBtn.parentElement.parentElement.querySelector('.valve-label').textContent.includes(label)) {
+                    drainStatusEl.textContent = status === 'on' ? 'On' : 'Off';
+                    drainOnBtn.className = status === 'on' ? 'btn-on-active' : 'btn-inactive';
+                    drainOffBtn.className = status === 'off' ? 'btn-off-active' : 'btn-inactive';
+                }
+            }
+        }
+
+        function updatePlantInfo(device_id, data) {
+            // Update plant info granularly
+            const plantItem = document.getElementById(`plant-item-${device_id}`);
+            const startDateItem = document.getElementById(`start-date-item-${device_id}`);
+            const weeksItem = document.getElementById(`weeks-item-${device_id}`);
+            
+            if (data.name) {
+                plantItem.style.display = 'flex';
+                document.getElementById(`plant-name-${device_id}`).innerHTML = data.name;
+            }
+            
+            if (data.start_date) {
+                startDateItem.style.display = 'flex';
+                document.getElementById(`start-date-${device_id}`).innerHTML = data.start_date;
+                
+                // Calculate weeks
+                try {
+                    const start = new Date(data.start_date);
+                    if (!isNaN(start.getTime())) {
+                        const now = new Date();
+                        const diffMs = now - start;
+                        const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+                        const weeks = Math.floor(diffDays / 7);
+                        weeksItem.style.display = 'flex';
+                        document.getElementById(`weeks-${device_id}`).innerHTML = weeks;
+                    }
+                } catch (e) {
+                    console.error('Error calculating weeks:', e);
+                }
+            }
+        }
+
+        function updateDosingControlsGranular(device_id, data) {
+            // Update dosing controls with granular data
+            const dosingCard = document.getElementById(`dosing-card-${device_id}`);
+            if (!data || (data.ph_up_amount === 0 && data.ph_down_amount === 0)) {
+                return; // Don't update if no dosing info
+            }
+            
+            dosingCard.style.display = 'block';
+            
+            const phUpAmount = data.ph_up_amount || 0;
+            const phDownAmount = data.ph_down_amount || 0;
+            const phTarget = data.ph_target || '-';
+            const currentPh = data.current_ph || '-';
+            
+            // Update the dosing controls (simplified - just update the values)
+            const dosingControlsDiv = document.getElementById(`dosing-controls-${device_id}`);
+            if (dosingControlsDiv && dosingControlsDiv.querySelector('.ph-header')) {
+                dosingControlsDiv.querySelector('.ph-header').innerHTML = `
+                    <span>Current pH: <strong>${currentPh}</strong></span>
+                    <span>Target: <strong>${phTarget}</strong></span>
+                `;
+                
+                // Update calculated amounts
+                const upInfo = dosingControlsDiv.querySelector('.dose-section:first-child .dose-info');
+                const downInfo = dosingControlsDiv.querySelector('.dose-section:last-child .dose-info');
+                if (upInfo) upInfo.textContent = `Calculated: ${phUpAmount.toFixed(2)} ml`;
+                if (downInfo) downInfo.textContent = `Calculated: ${phDownAmount.toFixed(2)} ml`;
+                
+                // Update button states
+                const upCalcBtn = document.getElementById(`dose-up-calc-${device_id}`);
+                const downCalcBtn = document.getElementById(`dose-down-calc-${device_id}`);
+                if (upCalcBtn) upCalcBtn.disabled = phUpAmount === 0;
+                if (downCalcBtn) downCalcBtn.disabled = phDownAmount === 0;
+            }
         }
 
         function updateValveControls(device_id, statusData) {
