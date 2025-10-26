@@ -36,13 +36,25 @@
             display: flex;
             gap: 5px;
         }
-        .valve-buttons button {
+        .valve-buttons button, .dose-button {
             padding: 8px 16px;
             border: 1px solid #ccc;
             border-radius: 4px;
             cursor: pointer;
             background: #333;
             color: #fff;
+        }
+        .dose-button {
+            background: #007bff;
+            border-color: #007bff;
+            margin-top: 5px;
+        }
+        .dose-button:hover {
+            background: #0056b3;
+        }
+        .dose-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
         }
         .btn-on-active {
             background: #28a745 !important;
@@ -54,6 +66,20 @@
         }
         .btn-inactive {
             opacity: 0.5;
+        }
+        .dosing-controls {
+            display: flex;
+            gap: 15px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+        .dose-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            padding: 10px;
+            background: #2a2a2a;
+            border-radius: 5px;
         }
     </style>
 </head>
@@ -87,6 +113,7 @@
                         <div class="data-row"><span>Sensor 2:</span> <span id="sensor2-${device.device_id}">Loading...</span></div>
                         <div class="data-row"><span>Sensor 3:</span> <span id="sensor3-${device.device_id}">Loading...</span></div>
                         <div class="valve-controls" id="valve-controls-${device.device_id}"></div>
+                        <div class="dosing-controls" id="dosing-controls-${device.device_id}"></div>
                         <button id="refresh-${device.device_id}">Refresh</button>
                     `;
                     statusDiv.appendChild(deviceSection);
@@ -95,7 +122,7 @@
                     document.getElementById(`refresh-${device.device_id}`).addEventListener('click', () => {
                         const ws = wsMap[device.device_id];
                         if (ws) {
-                            console.log(`[Refresh] Requesting refresh for ${device.device_id}`);
+                            console.log(`[Refresh] Requesting refresh for ${device_id}`);
                             ws.send(JSON.stringify({ type: 'request_refresh' }));
                         } else {
                             console.warn(`[Refresh] No WS connection for ${device.device_id}`);
@@ -137,6 +164,9 @@
                     
                     // Update valve controls
                     updateValveControls(device_id, statusData);
+                    
+                    // Update dosing controls
+                    updateDosingControls(device_id, statusData);
                 }
             };
             ws.onclose = () => {
@@ -195,6 +225,58 @@
             }
         }
 
+        // Update dosing controls based on status data
+        function updateDosingControls(device_id, statusData) {
+            const dosingControlsDiv = document.getElementById(`dosing-controls-${device_id}`);
+            const dosageInfo = statusData.dosage_info;
+
+            // Clear existing controls
+            dosingControlsDiv.innerHTML = '';
+
+            if (!dosageInfo) return;
+
+            const phUpAmount = dosageInfo.ph_up_amount || 0;
+            const phDownAmount = dosageInfo.ph_down_amount || 0;
+            const phTarget = dosageInfo.ph_target || 'N/A';
+
+            // pH Up dosing group
+            if (phUpAmount > 0) {
+                const phUpGroup = document.createElement('div');
+                phUpGroup.classList.add('dose-group');
+                phUpGroup.innerHTML = `
+                    <label><strong>pH Up</strong></label>
+                    <span>Target: ${phTarget}</span>
+                    <span>Calculated: ${phUpAmount.toFixed(2)} ml</span>
+                    <button id="dose-up-${device_id}" class="dose-button">Dose pH Up</button>
+                `;
+                dosingControlsDiv.appendChild(phUpGroup);
+
+                // Wire up pH Up button
+                document.getElementById(`dose-up-${device_id}`).onclick = () => sendDoseCommand(device_id, 'up', phUpAmount);
+            }
+
+            // pH Down dosing group
+            if (phDownAmount > 0) {
+                const phDownGroup = document.createElement('div');
+                phDownGroup.classList.add('dose-group');
+                phDownGroup.innerHTML = `
+                    <label><strong>pH Down</strong></label>
+                    <span>Target: ${phTarget}</span>
+                    <span>Calculated: ${phDownAmount.toFixed(2)} ml</span>
+                    <button id="dose-down-${device_id}" class="dose-button">Dose pH Down</button>
+                `;
+                dosingControlsDiv.appendChild(phDownGroup);
+
+                // Wire up pH Down button
+                document.getElementById(`dose-down-${device_id}`).onclick = () => sendDoseCommand(device_id, 'down', phDownAmount);
+            }
+
+            // If neither is needed, show status
+            if (phUpAmount === 0 && phDownAmount === 0) {
+                dosingControlsDiv.innerHTML = '<div class="dose-group"><span>pH within target range - no dosing needed</span></div>';
+            }
+        }
+
         // Send valve command via WebSocket
         function sendValveCommand(device_id, valve_label, action) {
             const ws = wsMap[device_id];
@@ -206,6 +288,21 @@
                 }));
             } else {
                 console.warn(`[Valve] No WS connection for ${device_id}`);
+            }
+        }
+
+        // Send dose command via WebSocket
+        function sendDoseCommand(device_id, dispense_type, amount) {
+            const ws = wsMap[device_id];
+            if (ws) {
+                console.log(`[Dose] Sending command to ${device_id}: pH ${dispense_type} ${amount}ml`);
+                ws.send(JSON.stringify({
+                    command: 'manual_dose',
+                    params: { dispense_type: dispense_type, amount: amount }
+                }));
+                alert(`Dosing ${amount.toFixed(2)}ml of pH ${dispense_type.toUpperCase()} on ${device_id}`);
+            } else {
+                console.warn(`[Dose] No WS connection for ${device_id}`);
             }
         }
 
