@@ -344,8 +344,8 @@
                     deviceSection.innerHTML = `
                         <div class="device-header" onclick="toggleDevice('${device.device_id}')">
                             <div class="device-header-left">
-                                <div class="status-badge status-offline" id="status-badge-${device.device_id}">
-                                    ● Offline
+                                <div class="status-badge ${device.is_online ? 'status-online' : 'status-offline'}" id="status-badge-${device.device_id}">
+                                    ● ${device.is_online ? 'Online' : 'Offline'}
                                 </div>
                                 <div class="header-info">
                                     <div class="info-item">
