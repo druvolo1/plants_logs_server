@@ -353,6 +353,18 @@
                                         <label>System:</label>
                                         <span id="system-name-${device.device_id}">Loading...</span>
                                     </div>
+                                    <div class="info-item" id="plant-item-${device.device_id}" style="display:none;">
+                                        <label>Plant:</label>
+                                        <span id="plant-name-${device.device_id}">-</span>
+                                    </div>
+                                    <div class="info-item" id="start-date-item-${device.device_id}" style="display:none;">
+                                        <label>Started:</label>
+                                        <span id="start-date-${device.device_id}">-</span>
+                                    </div>
+                                    <div class="info-item" id="weeks-item-${device.device_id}" style="display:none;">
+                                        <label>Week:</label>
+                                        <span id="weeks-${device.device_id}">-</span>
+                                    </div>
                                     <div class="info-item" id="ph-item-${device.device_id}" style="display:none;">
                                         <label>pH:</label>
                                         <span id="ph-${device.device_id}">-</span>
@@ -460,6 +472,40 @@
 
         function updateDeviceStatus(device_id, statusData) {
             document.getElementById(`system-name-${device_id}`).innerHTML = statusData.settings?.system_name || 'N/A';
+            
+            // Plant info
+            const plantInfo = statusData.settings?.plant_info || {};
+            const plantName = plantInfo.name;
+            const startDate = plantInfo.start_date;
+            
+            const plantItem = document.getElementById(`plant-item-${device_id}`);
+            const startDateItem = document.getElementById(`start-date-item-${device_id}`);
+            const weeksItem = document.getElementById(`weeks-item-${device_id}`);
+            
+            if (plantName) {
+                plantItem.style.display = 'flex';
+                document.getElementById(`plant-name-${device_id}`).innerHTML = plantName;
+            }
+            
+            if (startDate) {
+                startDateItem.style.display = 'flex';
+                document.getElementById(`start-date-${device_id}`).innerHTML = startDate;
+                
+                // Calculate weeks
+                try {
+                    const start = new Date(startDate);
+                    if (!isNaN(start.getTime())) {
+                        const now = new Date();
+                        const diffMs = now - start;
+                        const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+                        const weeks = Math.floor(diffDays / 7);
+                        weeksItem.style.display = 'flex';
+                        document.getElementById(`weeks-${device_id}`).innerHTML = weeks;
+                    }
+                } catch (e) {
+                    console.error('Error calculating weeks:', e);
+                }
+            }
             
             // pH/EC
             const phProbe = statusData.settings?.usb_roles?.ph_probe;
