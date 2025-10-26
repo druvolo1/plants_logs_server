@@ -73,14 +73,27 @@
             margin-top: 10px;
             flex-wrap: wrap;
         }
-        .dose-group {
+        .dose-container {
+            display: flex;
+            gap: 15px;
+            padding: 15px;
+            background: #2a2a2a;
+            border-radius: 5px;
+            flex-wrap: wrap;
+        }
+        .dose-section {
             display: flex;
             flex-direction: column;
             gap: 5px;
-            padding: 10px;
-            background: #2a2a2a;
-            border-radius: 5px;
             min-width: 200px;
+        }
+        .dose-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #444;
         }
         .manual-input {
             display: flex;
@@ -99,6 +112,48 @@
         .manual-input button {
             padding: 4px 12px;
             font-size: 0.9em;
+        }
+        /* Water bucket visualization */
+        .water-bucket {
+            width: 80px;
+            height: 120px;
+            border: 3px solid #666;
+            border-top: none;
+            border-radius: 0 0 10px 10px;
+            position: relative;
+            background: linear-gradient(to top, #1a1a1a 0%, #2a2a2a 100%);
+            display: inline-block;
+            margin: 10px 20px;
+        }
+        .water-level {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(to top, #1e90ff 0%, #4da6ff 100%);
+            transition: height 0.3s ease;
+            border-radius: 0 0 7px 7px;
+        }
+        .sensor-marker {
+            position: absolute;
+            left: -15px;
+            right: -15px;
+            height: 2px;
+            background: #fff;
+        }
+        .sensor-label {
+            position: absolute;
+            right: -60px;
+            font-size: 0.75em;
+            white-space: nowrap;
+        }
+        .sensor-full { top: 10%; }
+        .sensor-low { top: 50%; }
+        .sensor-empty { bottom: 5%; }
+        .bucket-container {
+            display: inline-flex;
+            flex-direction: column;
+            align-items: center;
         }
     </style>
 </head>
@@ -128,9 +183,20 @@
                         <div class="data-row"><span>System Name:</span> <span id="system-name-${device.device_id}">Loading...</span></div>
                         <div class="data-row"><span>pH:</span> <span id="ph-${device.device_id}">Loading...</span></div>
                         <div class="data-row"><span>EC:</span> <span id="ec-${device.device_id}">Loading...</span></div>
-                        <div class="data-row"><span>Sensor 1:</span> <span id="sensor1-${device.device_id}">Loading...</span></div>
-                        <div class="data-row"><span>Sensor 2:</span> <span id="sensor2-${device.device_id}">Loading...</span></div>
-                        <div class="data-row"><span>Sensor 3:</span> <span id="sensor3-${device.device_id}">Loading...</span></div>
+                        <div class="bucket-container">
+                            <div class="water-bucket" id="bucket-${device.device_id}">
+                                <div class="water-level" id="water-level-${device.device_id}"></div>
+                                <div class="sensor-marker sensor-full">
+                                    <span class="sensor-label" id="sensor1-label-${device.device_id}">Full</span>
+                                </div>
+                                <div class="sensor-marker sensor-low">
+                                    <span class="sensor-label" id="sensor2-label-${device.device_id}">Low</span>
+                                </div>
+                                <div class="sensor-marker sensor-empty">
+                                    <span class="sensor-label" id="sensor3-label-${device.device_id}">Empty</span>
+                                </div>
+                            </div>
+                        </div>
                         <div class="valve-controls" id="valve-controls-${device.device_id}"></div>
                         <div class="dosing-controls" id="dosing-controls-${device.device_id}"></div>
                         <button id="refresh-${device.device_id}">Refresh</button>
@@ -175,11 +241,8 @@
                     document.getElementById(`ph-${device_id}`).innerHTML = statusData.current_ph || 'N/A';
                     document.getElementById(`ec-${device_id}`).innerHTML = statusData.current_ec || 'N/A';
                     
-                    // Update water sensors
-                    const water = statusData.water_level || {};
-                    document.getElementById(`sensor1-${device_id}`).innerHTML = water.sensor1?.triggered ? 'Triggered' : 'Not Triggered';
-                    document.getElementById(`sensor2-${device_id}`).innerHTML = water.sensor2?.triggered ? 'Triggered' : 'Not Triggered';
-                    document.getElementById(`sensor3-${device_id}`).innerHTML = water.sensor3?.triggered ? 'Triggered' : 'Not Triggered';
+                    // Update water bucket visualization
+                    updateWaterBucket(device_id, statusData);
                     
                     // Update valve controls
                     updateValveControls(device_id, statusData);
@@ -193,6 +256,38 @@
                 delete wsMap[device_id];
             };
             wsMap[device_id] = ws;
+        }
+
+        // Update water bucket visualization
+        function updateWaterBucket(device_id, statusData) {
+            const water = statusData.water_level || {};
+            const sensor1 = water.sensor1?.triggered || false;  // Full
+            const sensor2 = water.sensor2?.triggered || false;  // Low
+            const sensor3 = water.sensor3?.triggered || false;  // Empty
+            
+            // Update labels with sensor names
+            const sensor1Label = water.sensor1?.label || 'Full';
+            const sensor2Label = water.sensor2?.label || 'Low';
+            const sensor3Label = water.sensor3?.label || 'Empty';
+            
+            document.getElementById(`sensor1-label-${device_id}`).textContent = `${sensor1Label} ${sensor1 ? '✓' : '✗'}`;
+            document.getElementById(`sensor2-label-${device_id}`).textContent = `${sensor2Label} ${sensor2 ? '✓' : '✗'}`;
+            document.getElementById(`sensor3-label-${device_id}`).textContent = `${sensor3Label} ${sensor3 ? '✓' : '✗'}`;
+            
+            // Calculate water level height based on sensors
+            let waterHeight = 0;
+            if (sensor1) {
+                waterHeight = 90;  // Full (90% of bucket)
+            } else if (sensor2) {
+                waterHeight = 50;  // Low (50% of bucket)
+            } else if (sensor3) {
+                waterHeight = 5;   // Empty (5% of bucket)
+            } else {
+                waterHeight = 30;  // Unknown state (30% as default)
+            }
+            
+            const waterLevelDiv = document.getElementById(`water-level-${device_id}`);
+            waterLevelDiv.style.height = `${waterHeight}%`;
         }
 
         // Update valve controls based on status data
@@ -259,22 +354,40 @@
             const phTarget = dosageInfo.ph_target || 'N/A';
             const currentPh = dosageInfo.current_ph || 'N/A';
 
-            // Always show pH Up dosing group
-            const phUpGroup = document.createElement('div');
-            phUpGroup.classList.add('dose-group');
-            phUpGroup.innerHTML = `
-                <label><strong>pH Up</strong></label>
-                <span>Current: ${currentPh} | Target: ${phTarget}</span>
-                <span>Calculated: ${phUpAmount.toFixed(2)} ml</span>
-                <button id="dose-up-calc-${device_id}" class="dose-button" ${phUpAmount === 0 ? 'disabled' : ''}>Dose Calculated</button>
-                <hr style="border: 0; border-top: 1px solid #444; margin: 8px 0;">
-                <label style="font-size: 0.9em;">Manual Amount:</label>
-                <div class="manual-input">
-                    <input type="number" id="manual-up-${device_id}" placeholder="ml" step="0.1" min="0" value="5">
-                    <button id="dose-up-manual-${device_id}" class="dose-button">Dose</button>
+            // Create single container for both pH Up and Down
+            const doseContainer = document.createElement('div');
+            doseContainer.classList.add('dose-container');
+            doseContainer.innerHTML = `
+                <div style="width: 100%;">
+                    <div class="dose-header">
+                        <span><strong>pH Dosing</strong></span>
+                        <span>Current: ${currentPh} | Target: ${phTarget}</span>
+                    </div>
+                </div>
+                <div class="dose-section">
+                    <label><strong>pH Up</strong></label>
+                    <span>Calculated: ${phUpAmount.toFixed(2)} ml</span>
+                    <button id="dose-up-calc-${device_id}" class="dose-button" ${phUpAmount === 0 ? 'disabled' : ''}>Dose Calculated</button>
+                    <hr style="border: 0; border-top: 1px solid #444; margin: 8px 0;">
+                    <label style="font-size: 0.9em;">Manual Amount:</label>
+                    <div class="manual-input">
+                        <input type="number" id="manual-up-${device_id}" placeholder="ml" step="0.1" min="0" value="5">
+                        <button id="dose-up-manual-${device_id}" class="dose-button">Dose</button>
+                    </div>
+                </div>
+                <div class="dose-section">
+                    <label><strong>pH Down</strong></label>
+                    <span>Calculated: ${phDownAmount.toFixed(2)} ml</span>
+                    <button id="dose-down-calc-${device_id}" class="dose-button" ${phDownAmount === 0 ? 'disabled' : ''}>Dose Calculated</button>
+                    <hr style="border: 0; border-top: 1px solid #444; margin: 8px 0;">
+                    <label style="font-size: 0.9em;">Manual Amount:</label>
+                    <div class="manual-input">
+                        <input type="number" id="manual-down-${device_id}" placeholder="ml" step="0.1" min="0" value="5">
+                        <button id="dose-down-manual-${device_id}" class="dose-button">Dose</button>
+                    </div>
                 </div>
             `;
-            dosingControlsDiv.appendChild(phUpGroup);
+            dosingControlsDiv.appendChild(doseContainer);
 
             // Wire up pH Up buttons
             document.getElementById(`dose-up-calc-${device_id}`).onclick = () => {
@@ -285,23 +398,6 @@
                 if (amount > 0) sendDoseCommand(device_id, 'up', amount);
                 else alert('Please enter a valid amount greater than 0');
             };
-
-            // Always show pH Down dosing group
-            const phDownGroup = document.createElement('div');
-            phDownGroup.classList.add('dose-group');
-            phDownGroup.innerHTML = `
-                <label><strong>pH Down</strong></label>
-                <span>Current: ${currentPh} | Target: ${phTarget}</span>
-                <span>Calculated: ${phDownAmount.toFixed(2)} ml</span>
-                <button id="dose-down-calc-${device_id}" class="dose-button" ${phDownAmount === 0 ? 'disabled' : ''}>Dose Calculated</button>
-                <hr style="border: 0; border-top: 1px solid #444; margin: 8px 0;">
-                <label style="font-size: 0.9em;">Manual Amount:</label>
-                <div class="manual-input">
-                    <input type="number" id="manual-down-${device_id}" placeholder="ml" step="0.1" min="0" value="5">
-                    <button id="dose-down-manual-${device_id}" class="dose-button">Dose</button>
-                </div>
-            `;
-            dosingControlsDiv.appendChild(phDownGroup);
 
             // Wire up pH Down buttons
             document.getElementById(`dose-down-calc-${device_id}`).onclick = () => {
