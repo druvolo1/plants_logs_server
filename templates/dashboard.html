@@ -151,8 +151,8 @@
         }
         
         /* Make pH dosing card wider to fit side-by-side sections */
-        .card:has(.ph-header) {
-            min-width: 400px;
+        .card:has(.dose-sections) {
+            min-width: 480px;
         }
         
         .card:hover {
@@ -170,6 +170,31 @@
             padding-bottom: 0.5rem;
             text-transform: uppercase;
             letter-spacing: 0.05em;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .card-title-text {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .card-title-values {
+            display: flex;
+            gap: 1rem;
+            font-size: 0.7rem;
+            text-transform: none;
+        }
+        
+        .card-title-values span {
+            color: var(--text-secondary);
+        }
+        
+        .card-title-values strong {
+            color: var(--primary);
+            margin-left: 0.25rem;
         }
         
         /* Compact water bucket */
@@ -293,30 +318,12 @@
             opacity: 0.6;
         }
         
-        /* Compact pH dosing */
-        .ph-header {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 0.5rem;
-            padding: 0.4rem 0.6rem;
-            background: rgba(51, 65, 85, 0.4);
-            border-radius: 6px;
-            border: 1px solid var(--border);
-            font-size: 0.7rem;
-        }
-        
-        .ph-header span {
-            color: var(--text-secondary);
-        }
-        
-        .ph-header strong {
-            color: var(--primary);
-            margin-left: 0.25rem;
-        }
+        /* Compact pH dosing - removed ph-header since it's in card title now */
         
         .dose-sections {
             display: flex;
             gap: 0.75rem;
+            flex-direction: row;
         }
         
         .dose-section {
@@ -534,7 +541,13 @@
                             
                             <!-- pH Dosing Card -->
                             <div class="card" id="dosing-card-${device.device_id}" style="display: none;">
-                                <div class="card-title">⚗️ pH Dosing</div>
+                                <div class="card-title">
+                                    <span class="card-title-text">⚗️ pH Dosing</span>
+                                    <span class="card-title-values" id="ph-values-${device.device_id}">
+                                        <span>Current pH: <strong id="current-ph-${device.device_id}">-</strong></span>
+                                        <span>Target: <strong id="target-ph-${device.device_id}">-</strong></span>
+                                    </span>
+                                </div>
                                 <div id="dosing-controls-${device.device_id}"></div>
                             </div>
                         </div>
@@ -741,13 +754,14 @@
             const phTarget = data.ph_target || '-';
             const currentPh = data.current_ph || '-';
             
+            // Update pH values in card title
+            const currentPhEl = document.getElementById(`current-ph-${device_id}`);
+            const targetPhEl = document.getElementById(`target-ph-${device_id}`);
+            if (currentPhEl) currentPhEl.textContent = currentPh;
+            if (targetPhEl) targetPhEl.textContent = phTarget;
+            
             const dosingControlsDiv = document.getElementById(`dosing-controls-${device_id}`);
-            if (dosingControlsDiv && dosingControlsDiv.querySelector('.ph-header')) {
-                dosingControlsDiv.querySelector('.ph-header').innerHTML = `
-                    <span>Current pH: <strong>${currentPh}</strong></span>
-                    <span>Target: <strong>${phTarget}</strong></span>
-                `;
-                
+            if (dosingControlsDiv) {
                 const upInfo = dosingControlsDiv.querySelector('.dose-section:first-child .dose-info');
                 const downInfo = dosingControlsDiv.querySelector('.dose-section:last-child .dose-info');
                 if (upInfo) upInfo.textContent = `Calculated: ${phUpAmount.toFixed(2)} ml`;
@@ -825,12 +839,12 @@
             const phDownAmount = dosageInfo.ph_down_amount || 0;
             const phTarget = dosageInfo.ph_target || '-';
             const currentPh = dosageInfo.current_ph || '-';
+            
+            // Update pH values in card title
+            document.getElementById(`current-ph-${device_id}`).textContent = currentPh;
+            document.getElementById(`target-ph-${device_id}`).textContent = phTarget;
 
             dosingControlsDiv.innerHTML = `
-                <div class="ph-header">
-                    <span>Current pH: <strong>${currentPh}</strong></span>
-                    <span>Target: <strong>${phTarget}</strong></span>
-                </div>
                 <div class="dose-sections">
                     <div class="dose-section">
                         <h4>pH Up</h4>
