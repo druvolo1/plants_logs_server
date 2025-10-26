@@ -650,12 +650,15 @@ async def user_websocket(websocket: WebSocket, device_id: str):
     # Get user from cookie
     try:
         async with async_session_maker() as session:
-            strategy = get_jwt_strategy()
-            
-            # Decode the JWT token directly
+            # Decode the JWT token directly - ignore audience claim
             try:
-                import jwt
-                payload = jwt.decode(cookie, SECRET, algorithms=["HS256"])
+                # Don't verify audience for WebSocket connections
+                payload = jwt.decode(
+                    cookie, 
+                    SECRET, 
+                    algorithms=["HS256"],
+                    options={"verify_aud": False}  # Disable audience verification
+                )
                 user_id = payload.get("sub")
                 
                 if not user_id:
