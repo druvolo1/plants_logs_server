@@ -15,7 +15,7 @@ from fastapi_users.db import SQLAlchemyUserDatabase
 from fastapi.security import OAuth2AuthorizationCodeBearer
 from httpx_oauth.clients.google import GoogleOAuth2
 from fastapi_users import schemas, exceptions
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 from dotenv import load_dotenv
 import os
 import secrets  # Added for API key
@@ -63,7 +63,9 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String(255), unique=True, index=True)
     hashed_password = Column(String(1024), nullable=True)
-    is_active = Column(Boolean, default=True)
+    first_name = Column(String(255), nullable=True)  # Added
+    last_name = Column(String(255), nullable=True)   # Added
+    is_active = Column(Boolean, default=False)  # Changed default to False for pending approval
     is_superuser = Column(Boolean, default=False)  # For admin
     is_verified = Column(Boolean, default=False)
     oauth_accounts = relationship("OAuthAccount", back_populates="user", cascade="all, delete-orphan")
@@ -85,13 +87,23 @@ async def create_db_and_tables():
         await conn.run_sync(Base.metadata.create_all)
 
 class UserRead(schemas.BaseUser[int]):
-    pass
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
 
 class UserCreate(schemas.BaseUserCreate):
     password: Optional[str] = None
-    is_active: Optional[bool] = True
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    is_active: Optional[bool] = False  # Default to pending approval
     is_superuser: Optional[bool] = False
     is_verified: Optional[bool] = False
+
+class UserUpdate(BaseModel):
+    email: Optional[EmailStr] = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    is_active: Optional[bool] = None
+    is_superuser: Optional[bool] = None
 
 class UserLogin(BaseModel):
     username: str
@@ -129,7 +141,37 @@ class CustomUserManager(IntegerIDMixin, BaseUserManager[User, int]):
     verification_token_secret = SECRET
 
     async def on_after_register(self, user: User, request: None = None):
-        print(f"User {user.id} has registered.")
+        print(f"User {user.id} has registered and is pending approval.")
+
+    async def authenticate(self, credentials: OAuth2PasswordRequestForm) -> Optional[User]:
+        """
+        Override authenticate to check if user is active (not pending)
+        """
+        try:
+            user = await self.get_by_email(credentials.username)
+        except exceptions.UserNotExists:
+            # Run the hasher to mitigate timing attack
+            self.password_helper.hash(credentials.password)
+            return None
+
+        verified, updated_password_hash = self.password_helper.verify_and_update(
+            credentials.password, user.hashed_password
+        )
+        if not verified:
+            return None
+        
+        # Check if user is pending approval
+        if not user.is_active:
+            raise HTTPException(
+                status_code=403, 
+                detail="PENDING_APPROVAL"
+            )
+        
+        # Update password hash to a more robust one if needed
+        if updated_password_hash is not None:
+            await self.user_db.update(user, {"hashed_password": updated_password_hash})
+
+        return user
 
     async def oauth_callback(
         self,
@@ -179,65 +221,27 @@ class CustomUserManager(IntegerIDMixin, BaseUserManager[User, int]):
                     pass
 
             if not user:
-                user_create = UserCreate(email=account_email, is_verified=is_verified_by_default)
+                # Google OAuth users are auto-approved
+                user_create = UserCreate(
+                    email=account_email, 
+                    is_verified=is_verified_by_default,
+                    is_active=True  # Auto-approve Google users
+                )
                 user = await self.create(user_create)
                 user = await self.user_db.add_oauth_account(user, oauth_account_dict)
-
-        if not user.is_active:
-            raise HTTPException(status_code=400, detail="LOGIN_BAD_CREDENTIALS")
-
         return user
 
-    async def create(
-        self, user_create: schemas.BaseUserCreate, safe: bool = False, is_verified: bool = False
-    ) -> User:
-        if user_create.password is not None:
-            await self.validate_password(user_create.password, user_create)
-
-        existing_user = await self.user_db.get_by_email(user_create.email)
-        if existing_user is not None:
-            raise exceptions.UserAlreadyExists()
-
-        user_dict = (
-            user_create.create_update_dict()
-            if safe
-            else user_create.create_update_dict_superuser()
-        )
-        hashed_password = None
-        if user_create.password is not None:
-            hashed_password = self.password_helper.hash(user_create.password)
-        user_dict["hashed_password"] = hashed_password
-        if is_verified:
-            user_dict["is_verified"] = True
-
-        created_user = await self.user_db.create(user_dict)
-
-        await self.on_after_register(created_user, None)
-
-        return created_user
-
-    async def on_after_login(self, user: User, request: Optional[Request] = None, response: Optional[Response] = None) -> None:
-        if response is not None:
-            if user.is_active:
-                if user.is_superuser:
-                    response.headers["Location"] = "/users"
-                else:
-                    response.headers["Location"] = "/dashboard"
-            else:
-                response.headers["Location"] = "/suspended"
-            response.status_code = 303
-
-async def get_db() -> Generator[AsyncSession, None, None]:
+async def get_db():
     async with async_session_maker() as session:
         yield session
 
-async def get_user_db(db: AsyncSession = Depends(get_db)):
-    yield CustomSQLAlchemyUserDatabase(db, User, oauth_account_table=OAuthAccount)
+async def get_user_db(session: AsyncSession = Depends(get_db)):
+    yield CustomSQLAlchemyUserDatabase(session, User, oauth_account_table=OAuthAccount)
 
 async def get_user_manager(user_db: CustomSQLAlchemyUserDatabase = Depends(get_user_db)):
     yield CustomUserManager(user_db)
 
-cookie_transport = CookieTransport(cookie_max_age=3600, cookie_secure=False)
+cookie_transport = CookieTransport(cookie_name="auth_cookie", cookie_max_age=3600)
 
 def get_jwt_strategy() -> JWTStrategy:
     return JWTStrategy(secret=SECRET, lifetime_seconds=3600)
@@ -248,39 +252,46 @@ auth_backend = AuthenticationBackend(
     get_strategy=get_jwt_strategy,
 )
 
-def get_token_ws(websocket: WebSocket) -> Optional[str]:
-    return websocket.cookies.get('fastapiusersauth')  # This is the default cookie name from CookieTransport
-
-async def get_current_user_ws(
-    token: Optional[str] = Depends(get_token_ws),
-    user_manager: CustomUserManager = Depends(get_user_manager),
-) -> User:
-    if token is None:
-        raise WebSocketDisconnect(code=1008)
-    
-    user = await auth_backend.get_strategy().read_token(token, user_manager)
-    if user is None:
-        raise WebSocketDisconnect(code=1008)
-    
-    if not user.is_active:
-        raise WebSocketDisconnect(code=1008)
-    
-    return user
+google_oauth_client = GoogleOAuth2(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET)
 
 fastapi_users = FastAPIUsers[User, int](
     get_user_manager,
     [auth_backend],
 )
 
-app = FastAPI()
-
-app.mount("/static", StaticFiles(directory="static"), name="static")
-templates = Jinja2Templates(directory="templates")
-
 current_user = fastapi_users.current_user(active=True)
 current_admin = fastapi_users.current_user(active=True, superuser=True)
 
-# Routes for auth (excluding the default login to override it)
+# Modified for WS auth
+async def get_current_user_ws(websocket: WebSocket, session: AsyncSession = Depends(get_db)):
+    cookie = websocket.cookies.get("auth_cookie")
+    if not cookie:
+        await websocket.close(code=1008)
+        raise HTTPException(401, "Unauthorized")
+    try:
+        strategy = get_jwt_strategy()
+        user_token = await strategy.read_token(cookie, None)
+        user_manager = CustomUserManager(CustomSQLAlchemyUserDatabase(session, User, oauth_account_table=OAuthAccount))
+        user = await user_manager.get(user_token)
+        if not user or not user.is_active:
+            await websocket.close(code=1008)
+            raise HTTPException(401, "Unauthorized")
+        return user
+    except Exception:
+        await websocket.close(code=1008)
+        raise HTTPException(401, "Unauthorized")
+
+app = FastAPI()
+app.mount("/static", StaticFiles(directory="static"), name="static")
+templates = Jinja2Templates(directory="templates")
+
+# Auth routes
+app.include_router(
+    fastapi_users.get_auth_router(auth_backend),
+    prefix="/auth/jwt",
+    tags=["auth"]
+)
+
 app.include_router(
     fastapi_users.get_register_router(UserRead, UserCreate),
     prefix="/auth",
@@ -288,133 +299,179 @@ app.include_router(
 )
 
 app.include_router(
-    fastapi_users.get_reset_password_router(),
-    prefix="/auth",
-    tags=["auth"],
-)
-
-app.include_router(
-    fastapi_users.get_verify_router(UserRead),
-    prefix="/auth",
-    tags=["auth"],
-)
-
-# Custom admin login route to accept form data
-@app.post("/auth/jwt/login")
-async def admin_login(username: str = Form(...), password: str = Form(...), user_manager: CustomUserManager = Depends(get_user_manager), request: Request = Request):
-    print(f"Attempted login with username: {username} and password: {password}")
-    credentials = UserLogin(username=username, password=password)
-    user = await user_manager.authenticate(credentials)
-    if not user:
-        print("Authentication failed")
-        return templates.TemplateResponse("login.html", {"request": request, "error": "Invalid credentials"})
-    print("Authentication successful")
-    if not user.is_active:
-        return templates.TemplateResponse("suspended.html", {"request": request})
-    strategy = get_jwt_strategy()
-    token = await strategy.write_token(user)
-    if user.is_superuser:
-        response = RedirectResponse(url="/users", status_code=303)
-    else:
-        response = RedirectResponse(url="/dashboard", status_code=303)
-    response.set_cookie(
-        key=cookie_transport.cookie_name,
-        value=token,
-        max_age=cookie_transport.cookie_max_age,
-        httponly=True,
-        secure=cookie_transport.cookie_secure,
-        samesite=cookie_transport.cookie_samesite,
-        domain=cookie_transport.cookie_domain,
-    )
-    return response
-
-# Logout endpoint
-@app.get("/auth/logout")
-async def logout():
-    response = RedirectResponse(url="/login")
-    response.delete_cookie(cookie_transport.cookie_name)
-    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
-    response.headers["Pragma"] = "no-cache"
-    response.headers["Expires"] = "0"
-    return response
-
-# Google OAuth
-google_oauth = GoogleOAuth2(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET)
-
-app.include_router(
-    fastapi_users.get_oauth_router(
-        google_oauth,
-        auth_backend,
-        SECRET,
-        redirect_url=None,
-    ),
+    fastapi_users.get_oauth_router(google_oauth_client, auth_backend, SECRET, associate_by_email=True),
     prefix="/auth/google",
     tags=["auth"],
 )
 
-# New login landing page
+@app.get("/auth/google/authorize", response_model=dict)
+async def google_authorize(request: Request):
+    redirect_uri = request.url_for("auth:google.callback")
+    return await google_oauth_client.get_authorization_url(
+        str(redirect_uri),
+        state=None,
+        scope=["openid", "email", "profile"]
+    )
+
+# Landing page
+@app.get("/", response_class=HTMLResponse)
+async def root(request: Request):
+    return RedirectResponse("/login")
+
+# Login page
 @app.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request, error: str = None):
     return templates.TemplateResponse("login.html", {"request": request, "error": error})
 
-# Suspended page
-@app.get("/suspended", response_class=HTMLResponse)
-async def suspended_page(request: Request):
-    return templates.TemplateResponse("suspended.html", {"request": request})
+# Registration page
+@app.get("/register", response_class=HTMLResponse)
+async def register_page(request: Request):
+    return templates.TemplateResponse("register.html", {"request": request})
 
-# Users page
-@app.get("/users", response_class=HTMLResponse)
-async def users_page(request: Request, admin: User = Depends(current_admin), session: AsyncSession = Depends(get_db)):
-    result = await session.execute(select(User))
-    users = result.scalars().all()
-    response = templates.TemplateResponse("users.html", {"request": request, "user": admin, "users": users})
-    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
-    response.headers["Pragma"] = "no-cache"
-    response.headers["Expires"] = "0"
+# Registration form handler
+@app.post("/auth/register")
+async def register_user(
+    request: Request,
+    email: str = Form(...),
+    password: str = Form(...),
+    first_name: str = Form(...),
+    last_name: str = Form(...),
+    manager: CustomUserManager = Depends(get_user_manager)
+):
+    try:
+        user_create = UserCreate(
+            email=email,
+            password=password,
+            first_name=first_name,
+            last_name=last_name,
+            is_active=False,  # Pending approval
+            is_verified=False
+        )
+        await manager.create(user_create)
+        return templates.TemplateResponse("registration_pending.html", {"request": request})
+    except exceptions.UserAlreadyExists:
+        return templates.TemplateResponse("register.html", {
+            "request": request, 
+            "error": "A user with this email already exists"
+        })
+    except Exception as e:
+        return templates.TemplateResponse("register.html", {
+            "request": request, 
+            "error": "Registration failed. Please try again."
+        })
+
+# JWT login form handler (for admin password login)
+@app.post("/auth/jwt/login")
+async def login(
+    request: Request,
+    username: str = Form(...),
+    password: str = Form(...),
+    manager: CustomUserManager = Depends(get_user_manager),
+    strategy: JWTStrategy = Depends(get_jwt_strategy)
+):
+    from fastapi.security import OAuth2PasswordRequestForm
+    
+    # Create credentials object
+    credentials = OAuth2PasswordRequestForm(username=username, password=password, scope="")
+    
+    try:
+        user = await manager.authenticate(credentials)
+        
+        if user is None:
+            return RedirectResponse("/login?error=invalid_credentials", status_code=303)
+        
+        # Create token
+        token = await strategy.write_token(user)
+        
+        # Set cookie and redirect
+        response = RedirectResponse("/dashboard", status_code=303)
+        response.set_cookie(
+            key="auth_cookie",
+            value=token,
+            httponly=True,
+            max_age=3600,
+            samesite="lax"
+        )
+        return response
+        
+    except HTTPException as e:
+        if e.detail == "PENDING_APPROVAL":
+            return templates.TemplateResponse("pending_approval.html", {"request": request})
+        return RedirectResponse("/login?error=invalid_credentials", status_code=303)
+    except Exception as e:
+        print(f"Login error: {e}")
+        return RedirectResponse("/login?error=server_error", status_code=303)
+
+# Logout
+@app.get("/auth/logout")
+async def logout():
+    response = RedirectResponse("/login", status_code=303)
+    response.delete_cookie("auth_cookie")
     return response
 
-# Dashboard page (for non-admins)
+# Dashboard
 @app.get("/dashboard", response_class=HTMLResponse)
-async def dashboard_page(request: Request, user: User = Depends(current_user)):
-    response = templates.TemplateResponse("dashboard.html", {"request": request, "user": user})
-    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
-    response.headers["Pragma"] = "no-cache"
-    response.headers["Expires"] = "0"
-    return response
+async def dashboard(request: Request, user: User = Depends(current_user)):
+    return templates.TemplateResponse("dashboard.html", {"request": request, "user": user})
 
+# Devices page
 @app.get("/devices", response_class=HTMLResponse)
 async def devices_page(request: Request, user: User = Depends(current_user)):
-    response = templates.TemplateResponse("devices.html", {"request": request, "user": user})
-    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
-    response.headers["Pragma"] = "no-cache"
-    response.headers["Expires"] = "0"
-    return response
+    return templates.TemplateResponse("devices.html", {"request": request, "user": user})
 
-@app.delete("/user/devices/{device_id}")
-async def delete_device(device_id: str, user: User = Depends(current_user), session: AsyncSession = Depends(get_db)):
-    result = await session.execute(select(Device).where(Device.device_id == device_id, Device.user_id == user.id))
-    device = result.scalars().first()
-    if not device:
-        raise HTTPException(404, "Device not found or not owned by you")
-    await session.delete(device)
-    await session.commit()
-    return {"status": "success", "message": "Device deleted"}
+# Admin: Users page
+@app.get("/admin/users", response_class=HTMLResponse)
+async def users_page(request: Request, admin: User = Depends(current_admin), session: AsyncSession = Depends(get_db)):
+    result = await session.execute(
+        select(User).options(selectinload(User.oauth_accounts))
+    )
+    users = result.scalars().all()
+    return templates.TemplateResponse("users.html", {"request": request, "users": users})
 
-# Admin: List users
-@app.get("/admin/users", response_model=List[UserRead])
-async def list_users(session: AsyncSession = Depends(get_db), admin: User = Depends(current_admin)):
-    result = await session.execute(select(User))
-    return result.scalars().all()
+# Admin: Add user
+@app.post("/admin/users")
+async def add_user(
+    user_data: UserCreate,
+    admin: User = Depends(current_admin),
+    manager: CustomUserManager = Depends(get_user_manager)
+):
+    try:
+        user = await manager.create(user_data)
+        return {"status": "success", "user_id": user.id}
+    except exceptions.UserAlreadyExists:
+        raise HTTPException(400, "User already exists")
 
-# Admin: Create user
-@app.post("/admin/users", response_model=UserRead)
-async def create_user_admin(user_create: UserCreate, admin: User = Depends(current_admin), manager: CustomUserManager = Depends(get_user_manager)):
-    user = await manager.create(user_create)
-    return user
+# Admin: Update user
+@app.patch("/admin/users/{user_id}")
+async def update_user(
+    user_id: int,
+    user_data: UserUpdate,
+    admin: User = Depends(current_admin),
+    manager: CustomUserManager = Depends(get_user_manager),
+    session: AsyncSession = Depends(get_db)
+):
+    user = await manager.user_db.get(user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    update_dict = {}
+    if user_data.email is not None:
+        update_dict["email"] = user_data.email
+    if user_data.first_name is not None:
+        update_dict["first_name"] = user_data.first_name
+    if user_data.last_name is not None:
+        update_dict["last_name"] = user_data.last_name
+    if user_data.is_active is not None:
+        update_dict["is_active"] = user_data.is_active
+    if user_data.is_superuser is not None:
+        update_dict["is_superuser"] = user_data.is_superuser
+    
+    user = await manager.user_db.update(user, update_dict)
+    return {"status": "success"}
 
-# Admin: Reset user password
+# Admin: Reset password
 @app.post("/admin/users/{user_id}/reset-password")
-async def reset_user_password(user_id: int, password_reset: PasswordReset, admin: User = Depends(current_admin), manager: CustomUserManager = Depends(get_user_manager)):
+async def reset_password(user_id: int, password_reset: PasswordReset, admin: User = Depends(current_admin), manager: CustomUserManager = Depends(get_user_manager)):
     user = await manager.user_db.get(user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -488,6 +545,17 @@ async def add_device(device: DeviceCreate, user: User = Depends(current_user), s
 async def list_devices(user: User = Depends(current_user), session: AsyncSession = Depends(get_db)):
     result = await session.execute(select(Device).where(Device.user_id == user.id))
     return result.scalars().all()
+
+# Added: Delete device
+@app.delete("/user/devices/{device_id}")
+async def delete_device(device_id: str, user: User = Depends(current_user), session: AsyncSession = Depends(get_db)):
+    result = await session.execute(select(Device).where(Device.device_id == device_id, Device.user_id == user.id))
+    device = result.scalars().first()
+    if not device:
+        raise HTTPException(404, "Device not found")
+    await session.delete(device)
+    await session.commit()
+    return {"status": "success"}
 
 # Added: Global connections for WS relay
 device_connections: Dict[str, WebSocket] = {}

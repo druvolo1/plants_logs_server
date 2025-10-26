@@ -8,59 +8,163 @@
     <meta http-equiv="Expires" content="0">
     <title>Users</title>
     <link rel="stylesheet" href="/static/style.css">
+    <style>
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.4);
+        }
+        .modal-content {
+            background-color: #2a2a2a;
+            margin: 10% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            border-radius: 8px;
+            width: 50%;
+            max-width: 500px;
+        }
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .close:hover {
+            color: #fff;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #444;
+        }
+        th {
+            background-color: #333;
+            color: #4da6ff;
+        }
+        tr:hover {
+            background-color: #333;
+        }
+        button {
+            margin-right: 5px;
+            margin-bottom: 5px;
+        }
+    </style>
 </head>
 <body>
-    <h1>Users</h1>
+    <h1>User Management</h1>
+    <a href="/dashboard">Back to Dashboard</a>
     <a href="/auth/logout">Logout</a>
+    
     <h2>Add New User</h2>
     <form id="add-user-form">
+        <label for="first_name">First Name:</label>
+        <input type="text" id="first_name" required>
+        <br>
+        <label for="last_name">Last Name:</label>
+        <input type="text" id="last_name" required>
+        <br>
         <label for="email">Email:</label>
         <input type="email" id="email" required>
         <br>
         <label for="password">Password:</label>
-        <input type="password" id="password" required>
+        <input type="password" id="password" required minlength="8">
         <br>
         <label for="is_admin">Is Admin:</label>
         <input type="checkbox" id="is_admin">
         <br>
+        <label for="is_active">Is Active (Approved):</label>
+        <input type="checkbox" id="is_active" checked>
+        <br>
         <button type="submit">Add User</button>
     </form>
+    
     <h2>All Users</h2>
     <table>
         <thead>
             <tr>
+                <th>Name</th>
                 <th>Email</th>
                 <th>Admin</th>
                 <th>Active</th>
+                <th>OAuth User</th>
                 <th>Actions</th>
             </tr>
         </thead>
         <tbody>
             {% for user in users %}
                 <tr>
+                    <td>{{ user.first_name or '' }} {{ user.last_name or '' }}</td>
                     <td>{{ user.email }}</td>
-                    <td>{{ user.is_superuser }}</td>
-                    <td>{{ user.is_active }}</td>
+                    <td>{{ 'Yes' if user.is_superuser else 'No' }}</td>
+                    <td>{{ 'Yes' if user.is_active else 'Pending' }}</td>
+                    <td>{{ 'Yes' if user.oauth_accounts else 'No' }}</td>
                     <td>
-                        <button onclick="deleteUser('{{ user.id }}')">Delete</button>
-                        <button onclick="resetPassword('{{ user.id }}')">Reset Password</button>
+                        <button onclick="editUser('{{ user.id }}', '{{ user.email }}', '{{ user.first_name or '' }}', '{{ user.last_name or '' }}', {{ 'true' if user.is_superuser else 'false' }}, {{ 'true' if user.is_active else 'false' }})">Edit</button>
+                        {% if not user.oauth_accounts %}
+                            <button onclick="resetPassword('{{ user.id }}')">Reset Password</button>
+                        {% endif %}
                         {% if user.is_active %}
                             <button onclick="suspendUser('{{ user.id }}')">Suspend</button>
                         {% else %}
-                            <button onclick="unsuspendUser('{{ user.id }}')">Unsuspend</button>
+                            <button onclick="approveUser('{{ user.id }}')">Approve</button>
                         {% endif %}
+                        <button onclick="deleteUser('{{ user.id }}')">Delete</button>
                     </td>
                 </tr>
             {% endfor %}
         </tbody>
     </table>
 
+    <!-- Edit User Modal -->
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeEditModal()">&times;</span>
+            <h2>Edit User</h2>
+            <form id="edit-user-form">
+                <input type="hidden" id="edit_user_id">
+                <label for="edit_first_name">First Name:</label>
+                <input type="text" id="edit_first_name" required>
+                <br>
+                <label for="edit_last_name">Last Name:</label>
+                <input type="text" id="edit_last_name" required>
+                <br>
+                <label for="edit_email">Email:</label>
+                <input type="email" id="edit_email" required>
+                <br>
+                <label for="edit_is_admin">Is Admin:</label>
+                <input type="checkbox" id="edit_is_admin">
+                <br>
+                <label for="edit_is_active">Is Active:</label>
+                <input type="checkbox" id="edit_is_active">
+                <br>
+                <button type="submit">Save Changes</button>
+                <button type="button" onclick="closeEditModal()">Cancel</button>
+            </form>
+        </div>
+    </div>
+
     <script>
+        // Add user form
         document.getElementById('add-user-form').addEventListener('submit', async function(event) {
             event.preventDefault();
+            const firstName = document.getElementById('first_name').value;
+            const lastName = document.getElementById('last_name').value;
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
-            const is_admin = document.getElementById('is_admin').checked;
+            const isAdmin = document.getElementById('is_admin').checked;
+            const isActive = document.getElementById('is_active').checked;
+            
             const response = await fetch('/admin/users', {
                 method: 'POST',
                 headers: {
@@ -69,14 +173,67 @@
                 body: JSON.stringify({
                     email: email,
                     password: password,
-                    is_superuser: is_admin
+                    first_name: firstName,
+                    last_name: lastName,
+                    is_superuser: isAdmin,
+                    is_active: isActive
                 }),
             });
+            
             if (response.ok) {
                 alert('User added successfully');
-                location.reload();  // Reload to update the list
+                location.reload();
             } else {
-                alert('Failed to add user');
+                const error = await response.json();
+                alert('Failed to add user: ' + (error.detail || 'Unknown error'));
+            }
+        });
+
+        // Edit user modal functions
+        function editUser(userId, email, firstName, lastName, isAdmin, isActive) {
+            document.getElementById('edit_user_id').value = userId;
+            document.getElementById('edit_email').value = email;
+            document.getElementById('edit_first_name').value = firstName;
+            document.getElementById('edit_last_name').value = lastName;
+            document.getElementById('edit_is_admin').checked = isAdmin;
+            document.getElementById('edit_is_active').checked = isActive;
+            document.getElementById('editModal').style.display = 'block';
+        }
+
+        function closeEditModal() {
+            document.getElementById('editModal').style.display = 'none';
+        }
+
+        // Edit user form submit
+        document.getElementById('edit-user-form').addEventListener('submit', async function(event) {
+            event.preventDefault();
+            const userId = document.getElementById('edit_user_id').value;
+            const email = document.getElementById('edit_email').value;
+            const firstName = document.getElementById('edit_first_name').value;
+            const lastName = document.getElementById('edit_last_name').value;
+            const isAdmin = document.getElementById('edit_is_admin').checked;
+            const isActive = document.getElementById('edit_is_active').checked;
+            
+            const response = await fetch('/admin/users/' + userId, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    email: email,
+                    first_name: firstName,
+                    last_name: lastName,
+                    is_superuser: isAdmin,
+                    is_active: isActive
+                }),
+            });
+            
+            if (response.ok) {
+                alert('User updated successfully');
+                location.reload();
+            } else {
+                const error = await response.json();
+                alert('Failed to update user: ' + (error.detail || 'Unknown error'));
             }
         });
 
@@ -95,8 +252,8 @@
         }
 
         async function resetPassword(userId) {
-            const newPassword = prompt('Enter new password:');
-            if (newPassword) {
+            const newPassword = prompt('Enter new password (minimum 8 characters):');
+            if (newPassword && newPassword.length >= 8) {
                 const response = await fetch('/admin/users/' + userId + '/reset-password', {
                     method: 'POST',
                     headers: {
@@ -109,6 +266,8 @@
                 } else {
                     alert('Failed to reset password');
                 }
+            } else if (newPassword !== null) {
+                alert('Password must be at least 8 characters long');
             }
         }
 
@@ -126,17 +285,25 @@
             }
         }
 
-        async function unsuspendUser(userId) {
-            if (confirm('Are you sure you want to unsuspend this user?')) {
+        async function approveUser(userId) {
+            if (confirm('Are you sure you want to approve this user?')) {
                 const response = await fetch('/admin/users/' + userId + '/unsuspend', {
                     method: 'POST',
                 });
                 if (response.ok) {
-                    alert('User unsuspended successfully');
+                    alert('User approved successfully');
                     location.reload();
                 } else {
-                    alert('Failed to unsuspend user');
+                    alert('Failed to approve user');
                 }
+            }
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('editModal');
+            if (event.target == modal) {
+                closeEditModal();
             }
         }
 

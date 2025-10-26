@@ -1,0 +1,56 @@
+<!-- templates/register.html - User registration page -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>Create Account</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <h1>Create Account</h1>
+    {% if error %}
+        <p style="color: red;">{{ error }}</p>
+    {% endif %}
+    
+    <form action="/auth/register" method="post">
+        <label for="first_name">First Name: *</label>
+        <input type="text" id="first_name" name="first_name" required>
+        <br>
+        
+        <label for="last_name">Last Name: *</label>
+        <input type="text" id="last_name" name="last_name" required>
+        <br>
+        
+        <label for="email">Email: *</label>
+        <input type="email" id="email" name="email" required>
+        <br>
+        
+        <label for="password">Password: *</label>
+        <input type="password" id="password" name="password" required minlength="8">
+        <br>
+        
+        <label for="confirm_password">Confirm Password: *</label>
+        <input type="password" id="confirm_password" name="confirm_password" required minlength="8">
+        <br>
+        
+        <button type="submit">Create Account</button>
+    </form>
+    
+    <p>Already have an account? <a href="/login">Login</a></p>
+
+    <script>
+        document.querySelector('form').addEventListener('submit', function(e) {
+            const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirm_password').value;
+            
+            if (password !== confirmPassword) {
+                e.preventDefault();
+                alert('Passwords do not match. Please try again.');
+            }
+        });
+    </script>
+</body>
+</html>

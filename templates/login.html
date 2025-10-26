@@ -10,31 +10,32 @@
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-    <h1>Login Options</h1>
+    <h1>Login</h1>
     {% if error %}
-        <p style="color: red;">{{ error }}</p>
+        {% if error == 'invalid_credentials' %}
+            <p style="color: red;">Invalid email or password. Please try again.</p>
+        {% elif error == 'server_error' %}
+            <p style="color: red;">An error occurred. Please try again later.</p>
+        {% else %}
+            <p style="color: red;">Login failed. Please try again.</p>
+        {% endif %}
     {% endif %}
+    
     <button id="google-login-btn">Login with Google</button>
-    <br>
+    
+    <br><br>
+    
     <form action="/auth/jwt/login" method="post">
-        <label for="username">Username (email):</label>
-        <input type="text" id="username" name="username">
+        <label for="username">Email:</label>
+        <input type="email" id="username" name="username" required>
         <br>
         <label for="password">Password:</label>
-        <input type="password" id="password" name="password">
+        <input type="password" id="password" name="password" required>
         <br>
-        <button type="submit">Login as Admin</button>
+        <button type="submit">Login</button>
     </form>
-    <p>Don't have an account? Register via form below.</p>
-    <form action="/auth/register" method="post">
-        <label for="email">Email:</label>
-        <input type="text" id="email" name="email">
-        <br>
-        <label for="password">Password:</label>
-        <input type="password" id="password" name="password">
-        <br>
-        <button type="submit">Register</button>
-    </form>
+    
+    <p>Don't have an account? <a href="/register">Create Account</a></p>
 
     <script>
         document.getElementById('google-login-btn').addEventListener('click', async () => {
