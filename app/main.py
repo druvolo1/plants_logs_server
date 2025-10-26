@@ -12,7 +12,7 @@ from fastapi_users import FastAPIUsers, BaseUserManager, IntegerIDMixin
 from fastapi_users.authentication import CookieTransport, AuthenticationBackend, JWTStrategy
 from fastapi_users.authentication.strategy.db import AccessTokenDatabase, DatabaseStrategy
 from fastapi_users.db import SQLAlchemyUserDatabase
-from fastapi.security import OAuth2AuthorizationCodeBearer
+from fastapi.security import OAuth2AuthorizationCodeBearer, OAuth2PasswordRequestForm
 from httpx_oauth.clients.google import GoogleOAuth2
 from fastapi_users import schemas, exceptions
 from pydantic import BaseModel, EmailStr
@@ -644,6 +644,10 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 
 @app.on_event("startup")
 async def on_startup():
+    # Initialize database schema (add missing columns if needed)
+    from .init_database import init_database
+    await init_database()
+    
     await create_db_and_tables()
     print("Tables created or already exist.")
     async with async_session_maker() as session:
