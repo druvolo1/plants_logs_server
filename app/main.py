@@ -262,25 +262,6 @@ fastapi_users = FastAPIUsers[User, int](
 current_user = fastapi_users.current_user(active=True)
 current_admin = fastapi_users.current_user(active=True, superuser=True)
 
-# Modified for WS auth
-async def get_current_user_ws(websocket: WebSocket, session: AsyncSession = Depends(get_db)):
-    cookie = websocket.cookies.get("auth_cookie")
-    if not cookie:
-        await websocket.close(code=1008)
-        raise HTTPException(401, "Unauthorized")
-    try:
-        strategy = get_jwt_strategy()
-        user_token = await strategy.read_token(cookie, None)
-        user_manager = CustomUserManager(CustomSQLAlchemyUserDatabase(session, User, oauth_account_table=OAuthAccount))
-        user = await user_manager.get(user_token)
-        if not user or not user.is_active:
-            await websocket.close(code=1008)
-            raise HTTPException(401, "Unauthorized")
-        return user
-    except Exception:
-        await websocket.close(code=1008)
-        raise HTTPException(401, "Unauthorized")
-
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
@@ -656,32 +637,62 @@ async def device_websocket(websocket: WebSocket, device_id: str, api_key: str = 
                 pass  # User might have already disconnected
 
 @app.websocket("/ws/user/devices/{device_id}")
-async def user_websocket(websocket: WebSocket, device_id: str, user: User = Depends(get_current_user_ws), session: AsyncSession = Depends(get_db)):
-    result = await session.execute(select(Device).where(Device.device_id == device_id, Device.user_id == user.id))
-    if not result.scalars().first():
-        await websocket.close()
+async def user_websocket(websocket: WebSocket, device_id: str):
+    # Manual authentication for WebSocket
+    cookie = websocket.cookies.get("auth_cookie")
+    
+    if not cookie:
+        await websocket.close(code=1008, reason="No authentication cookie")
         return
-    await websocket.accept()
-    user_connections[device_id].append(websocket)
     
-    # Request full sync from device when user connects
-    if device_id in device_connections:
-        try:
-            await device_connections[device_id].send_json({"type": "request_refresh"})
-            print(f"Sent refresh request to device {device_id} for new user connection")
-        except:
-            pass
-    
+    # Get user from cookie
     try:
-        while True:
-            data = await websocket.receive_json()
-            # Relay command to device
+        async with async_session_maker() as session:
+            strategy = get_jwt_strategy()
+            user_token = await strategy.read_token(cookie, None)
+            user_db = CustomSQLAlchemyUserDatabase(session, User, oauth_account_table=OAuthAccount)
+            user_manager = CustomUserManager(user_db)
+            user = await user_manager.get(user_token)
+            
+            if not user or not user.is_active:
+                await websocket.close(code=1008, reason="User not active")
+                return
+            
+            # Check if user owns this device
+            result = await session.execute(select(Device).where(Device.device_id == device_id, Device.user_id == user.id))
+            device = result.scalars().first()
+            
+            if not device:
+                await websocket.close(code=1008, reason="Device not found or not owned by user")
+                return
+            
+            # Accept the WebSocket connection
+            await websocket.accept()
+            user_connections[device_id].append(websocket)
+            
+            # Request full sync from device when user connects
             if device_id in device_connections:
-                await device_connections[device_id].send_json(data)
-            else:
-                await websocket.send_json({"error": "Device offline"})
-    except WebSocketDisconnect:
-        user_connections[device_id].remove(websocket)
+                try:
+                    await device_connections[device_id].send_json({"type": "request_refresh"})
+                    print(f"Sent refresh request to device {device_id} for new user connection")
+                except:
+                    pass
+            
+            try:
+                while True:
+                    data = await websocket.receive_json()
+                    # Relay command to device
+                    if device_id in device_connections:
+                        await device_connections[device_id].send_json(data)
+                    else:
+                        await websocket.send_json({"error": "Device offline"})
+            except WebSocketDisconnect:
+                user_connections[device_id].remove(websocket)
+                
+    except Exception as e:
+        print(f"WebSocket authentication error: {e}")
+        await websocket.close(code=1008, reason=str(e))
+        return
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
