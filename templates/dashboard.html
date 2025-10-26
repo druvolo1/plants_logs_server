@@ -80,6 +80,25 @@
             padding: 10px;
             background: #2a2a2a;
             border-radius: 5px;
+            min-width: 200px;
+        }
+        .manual-input {
+            display: flex;
+            gap: 5px;
+            align-items: center;
+            margin-top: 5px;
+        }
+        .manual-input input {
+            width: 80px;
+            padding: 4px 8px;
+            border: 1px solid #555;
+            border-radius: 4px;
+            background: #1a1a1a;
+            color: #fff;
+        }
+        .manual-input button {
+            padding: 4px 12px;
+            font-size: 0.9em;
         }
     </style>
 </head>
@@ -122,7 +141,7 @@
                     document.getElementById(`refresh-${device.device_id}`).addEventListener('click', () => {
                         const ws = wsMap[device.device_id];
                         if (ws) {
-                            console.log(`[Refresh] Requesting refresh for ${device_id}`);  // <-- WRONG
+                            console.log(`[Refresh] Requesting refresh for ${device.device_id}`);
                             ws.send(JSON.stringify({ type: 'request_refresh' }));
                         } else {
                             console.warn(`[Refresh] No WS connection for ${device.device_id}`);
@@ -238,43 +257,61 @@
             const phUpAmount = dosageInfo.ph_up_amount || 0;
             const phDownAmount = dosageInfo.ph_down_amount || 0;
             const phTarget = dosageInfo.ph_target || 'N/A';
+            const currentPh = dosageInfo.current_ph || 'N/A';
 
-            // pH Up dosing group
-            if (phUpAmount > 0) {
-                const phUpGroup = document.createElement('div');
-                phUpGroup.classList.add('dose-group');
-                phUpGroup.innerHTML = `
-                    <label><strong>pH Up</strong></label>
-                    <span>Target: ${phTarget}</span>
-                    <span>Calculated: ${phUpAmount.toFixed(2)} ml</span>
-                    <button id="dose-up-${device_id}" class="dose-button">Dose pH Up</button>
-                `;
-                dosingControlsDiv.appendChild(phUpGroup);
+            // Always show pH Up dosing group
+            const phUpGroup = document.createElement('div');
+            phUpGroup.classList.add('dose-group');
+            phUpGroup.innerHTML = `
+                <label><strong>pH Up</strong></label>
+                <span>Current: ${currentPh} | Target: ${phTarget}</span>
+                <span>Calculated: ${phUpAmount.toFixed(2)} ml</span>
+                <button id="dose-up-calc-${device_id}" class="dose-button" ${phUpAmount === 0 ? 'disabled' : ''}>Dose Calculated</button>
+                <hr style="border: 0; border-top: 1px solid #444; margin: 8px 0;">
+                <label style="font-size: 0.9em;">Manual Amount:</label>
+                <div class="manual-input">
+                    <input type="number" id="manual-up-${device_id}" placeholder="ml" step="0.1" min="0" value="5">
+                    <button id="dose-up-manual-${device_id}" class="dose-button">Dose</button>
+                </div>
+            `;
+            dosingControlsDiv.appendChild(phUpGroup);
 
-                // Wire up pH Up button
-                document.getElementById(`dose-up-${device_id}`).onclick = () => sendDoseCommand(device_id, 'up', phUpAmount);
-            }
+            // Wire up pH Up buttons
+            document.getElementById(`dose-up-calc-${device_id}`).onclick = () => {
+                if (phUpAmount > 0) sendDoseCommand(device_id, 'up', phUpAmount);
+            };
+            document.getElementById(`dose-up-manual-${device_id}`).onclick = () => {
+                const amount = parseFloat(document.getElementById(`manual-up-${device_id}`).value) || 0;
+                if (amount > 0) sendDoseCommand(device_id, 'up', amount);
+                else alert('Please enter a valid amount greater than 0');
+            };
 
-            // pH Down dosing group
-            if (phDownAmount > 0) {
-                const phDownGroup = document.createElement('div');
-                phDownGroup.classList.add('dose-group');
-                phDownGroup.innerHTML = `
-                    <label><strong>pH Down</strong></label>
-                    <span>Target: ${phTarget}</span>
-                    <span>Calculated: ${phDownAmount.toFixed(2)} ml</span>
-                    <button id="dose-down-${device_id}" class="dose-button">Dose pH Down</button>
-                `;
-                dosingControlsDiv.appendChild(phDownGroup);
+            // Always show pH Down dosing group
+            const phDownGroup = document.createElement('div');
+            phDownGroup.classList.add('dose-group');
+            phDownGroup.innerHTML = `
+                <label><strong>pH Down</strong></label>
+                <span>Current: ${currentPh} | Target: ${phTarget}</span>
+                <span>Calculated: ${phDownAmount.toFixed(2)} ml</span>
+                <button id="dose-down-calc-${device_id}" class="dose-button" ${phDownAmount === 0 ? 'disabled' : ''}>Dose Calculated</button>
+                <hr style="border: 0; border-top: 1px solid #444; margin: 8px 0;">
+                <label style="font-size: 0.9em;">Manual Amount:</label>
+                <div class="manual-input">
+                    <input type="number" id="manual-down-${device_id}" placeholder="ml" step="0.1" min="0" value="5">
+                    <button id="dose-down-manual-${device_id}" class="dose-button">Dose</button>
+                </div>
+            `;
+            dosingControlsDiv.appendChild(phDownGroup);
 
-                // Wire up pH Down button
-                document.getElementById(`dose-down-${device_id}`).onclick = () => sendDoseCommand(device_id, 'down', phDownAmount);
-            }
-
-            // If neither is needed, show status
-            if (phUpAmount === 0 && phDownAmount === 0) {
-                dosingControlsDiv.innerHTML = '<div class="dose-group"><span>pH within target range - no dosing needed</span></div>';
-            }
+            // Wire up pH Down buttons
+            document.getElementById(`dose-down-calc-${device_id}`).onclick = () => {
+                if (phDownAmount > 0) sendDoseCommand(device_id, 'down', phDownAmount);
+            };
+            document.getElementById(`dose-down-manual-${device_id}`).onclick = () => {
+                const amount = parseFloat(document.getElementById(`manual-down-${device_id}`).value) || 0;
+                if (amount > 0) sendDoseCommand(device_id, 'down', amount);
+                else alert('Please enter a valid amount greater than 0');
+            };
         }
 
         // Send valve command via WebSocket
