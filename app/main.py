@@ -307,10 +307,10 @@ async def oauth_redirect_middleware(request: Request, call_next):
         <body>
             <h1>Login Successful!</h1>
             <div class="spinner"></div>
-            <p>Redirecting to dashboard...</p>
+            <p>Redirecting...</p>
             <script>
                 setTimeout(function() {
-                    window.location.href = '/dashboard';
+                    window.location.href = '/';
                 }, 500);
             </script>
         </body>
@@ -344,9 +344,42 @@ async def google_authorize(request: Request):
         scope=["openid", "email", "profile"]
     )
 
-# Landing page
+# Landing page - redirects based on authentication status and user type
 @app.get("/", response_class=HTMLResponse)
 async def root(request: Request):
+    # Try to get current user
+    cookie = request.cookies.get("auth_cookie")
+    
+    if not cookie:
+        # Not logged in, go to login page
+        return RedirectResponse("/login")
+    
+    # Try to decode token and get user
+    try:
+        async with async_session_maker() as session:
+            payload = jwt.decode(
+                cookie, 
+                SECRET, 
+                algorithms=["HS256"],
+                options={"verify_aud": False}
+            )
+            user_id = payload.get("sub")
+            
+            if user_id:
+                user_id = int(user_id)
+                result = await session.execute(select(User).where(User.id == user_id))
+                user = result.scalars().first()
+                
+                if user and user.is_active:
+                    # Redirect based on user type
+                    if user.is_superuser:
+                        return RedirectResponse("/admin/users")
+                    else:
+                        return RedirectResponse("/dashboard")
+    except:
+        pass
+    
+    # If anything fails, go to login
     return RedirectResponse("/login")
 
 # Login page
@@ -414,8 +447,9 @@ async def login(
         # Create token
         token = await strategy.write_token(user)
         
-        # Set cookie and redirect
-        response = RedirectResponse("/dashboard", status_code=303)
+        # Redirect based on user type - admins go to users page, regular users go to dashboard
+        redirect_url = "/admin/users" if user.is_superuser else "/dashboard"
+        response = RedirectResponse(redirect_url, status_code=303)
         response.set_cookie(
             key="auth_cookie",
             value=token,
