@@ -342,7 +342,7 @@
                     const deviceSection = document.createElement('div');
                     deviceSection.classList.add('device-section');
                     deviceSection.innerHTML = `
-                        <div class="device-header" onclick="toggleDevice('${device.device_id}')">
+                        <div class="device-header" onclick="toggleDevice('${device.device_id}')" style="cursor: ${device.is_online ? 'pointer' : 'not-allowed'}; opacity: ${device.is_online ? '1' : '0.6'};">
                             <div class="device-header-left">
                                 <div class="status-badge ${device.is_online ? 'status-online' : 'status-offline'}" id="status-badge-${device.device_id}">
                                     ● ${device.is_online ? 'Online' : 'Offline'}
@@ -432,6 +432,15 @@
         }
 
         function toggleDevice(device_id) {
+            // Check if device is online
+            const statusBadge = document.getElementById(`status-badge-${device_id}`);
+            const isOnline = statusBadge && statusBadge.classList.contains('status-online');
+            
+            if (!isOnline) {
+                // Don't allow expanding offline devices
+                return;
+            }
+            
             const content = document.getElementById(`device-content-${device_id}`);
             const icon = document.getElementById(`expand-icon-${device_id}`);
             
@@ -449,18 +458,25 @@
             const ws = new WebSocket(`wss://${window.location.host}/ws/user/devices/${device_id}`);
             ws.onopen = () => {
                 console.log(`Connected to ${device_id}`);
-                updateOnlineStatus(device_id, true);
+                // Don't automatically set online - wait for actual device status
                 ws.send(JSON.stringify({ type: 'request_refresh' }));
             };
             ws.onmessage = (event) => {
                 const data = JSON.parse(event.data);
-                if (data.type === 'ph_update') {
+                if (data.error === 'Device offline') {
+                    // Device is offline
+                    updateOnlineStatus(device_id, false);
+                } else if (data.type === 'ph_update') {
+                    // If we're getting data, device must be online
+                    updateOnlineStatus(device_id, true);
                     const phItem = document.getElementById(`ph-item-${device_id}`);
                     if (data.ph) {
                         phItem.style.display = 'flex';
                         document.getElementById(`ph-${device_id}`).innerHTML = data.ph || '-';
                     }
                 } else if (data.type === 'status_update' && data.data) {
+                    // If we're getting data, device must be online
+                    updateOnlineStatus(device_id, true);
                     updateDeviceStatus(device_id, data.data);
                 }
             };
@@ -481,6 +497,23 @@
             if (statusBadge) {
                 statusBadge.className = `status-badge ${isOnline ? 'status-online' : 'status-offline'}`;
                 statusBadge.textContent = isOnline ? '● Online' : '● Offline';
+            }
+            
+            // If going offline, collapse the device section
+            if (!isOnline) {
+                const content = document.getElementById(`device-content-${device_id}`);
+                const icon = document.getElementById(`expand-icon-${device_id}`);
+                if (content && content.classList.contains('expanded')) {
+                    content.classList.remove('expanded');
+                    icon.classList.remove('expanded');
+                }
+            }
+            
+            // Update header clickability visual indication
+            const header = document.querySelector(`[onclick="toggleDevice('${device_id}')"]`);
+            if (header) {
+                header.style.cursor = isOnline ? 'pointer' : 'not-allowed';
+                header.style.opacity = isOnline ? '1' : '0.6';
             }
         }
 
