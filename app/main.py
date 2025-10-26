@@ -285,24 +285,30 @@ app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
-# Auth routes
-app.include_router(
-    fastapi_users.get_auth_router(auth_backend),
-    prefix="/auth/jwt",
-    tags=["auth"]
-)
+# Auth routes - We have custom registration, so don't include the register router
+# app.include_router(
+#     fastapi_users.get_register_router(UserRead, UserCreate),
+#     prefix="/auth",
+#     tags=["auth"],
+# )
 
-app.include_router(
-    fastapi_users.get_register_router(UserRead, UserCreate),
-    prefix="/auth",
-    tags=["auth"],
-)
-
+# OAuth router
 app.include_router(
     fastapi_users.get_oauth_router(google_oauth_client, auth_backend, SECRET, associate_by_email=True),
     prefix="/auth/google",
     tags=["auth"],
 )
+
+# Middleware to intercept OAuth callback and redirect
+@app.middleware("http")
+async def oauth_redirect_middleware(request: Request, call_next):
+    response = await call_next(request)
+    
+    # If this is the OAuth callback and it returns 204, redirect to dashboard instead
+    if request.url.path == "/auth/google/callback" and response.status_code == 204:
+        return RedirectResponse("/dashboard", status_code=303)
+    
+    return response
 
 @app.get("/auth/google/authorize", response_model=dict)
 async def google_authorize(request: Request):

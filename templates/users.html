@@ -110,16 +110,22 @@
                     <td>{{ 'Yes' if user.is_active else 'Pending' }}</td>
                     <td>{{ 'Yes' if user.oauth_accounts else 'No' }}</td>
                     <td>
-                        <button onclick="editUser('{{ user.id }}', '{{ user.email }}', '{{ user.first_name or '' }}', '{{ user.last_name or '' }}', {{ 'true' if user.is_superuser else 'false' }}, {{ 'true' if user.is_active else 'false' }})">Edit</button>
+                        <button class="edit-btn" 
+                                data-user-id="{{ user.id }}" 
+                                data-email="{{ user.email }}" 
+                                data-firstname="{{ user.first_name or '' }}" 
+                                data-lastname="{{ user.last_name or '' }}" 
+                                data-admin="{{ user.is_superuser }}" 
+                                data-active="{{ user.is_active }}">Edit</button>
                         {% if not user.oauth_accounts %}
-                            <button onclick="resetPassword('{{ user.id }}')">Reset Password</button>
+                            <button class="reset-password-btn" data-user-id="{{ user.id }}">Reset Password</button>
                         {% endif %}
                         {% if user.is_active %}
-                            <button onclick="suspendUser('{{ user.id }}')">Suspend</button>
+                            <button class="suspend-btn" data-user-id="{{ user.id }}">Suspend</button>
                         {% else %}
-                            <button onclick="approveUser('{{ user.id }}')">Approve</button>
+                            <button class="approve-btn" data-user-id="{{ user.id }}">Approve</button>
                         {% endif %}
-                        <button onclick="deleteUser('{{ user.id }}')">Delete</button>
+                        <button class="delete-btn" data-user-id="{{ user.id }}">Delete</button>
                     </td>
                 </tr>
             {% endfor %}
@@ -203,6 +209,44 @@
         function closeEditModal() {
             document.getElementById('editModal').style.display = 'none';
         }
+
+        // Event delegation for all button clicks
+        document.addEventListener('click', function(e) {
+            // Edit button
+            if (e.target.classList.contains('edit-btn')) {
+                const userId = e.target.dataset.userId;
+                const email = e.target.dataset.email;
+                const firstName = e.target.dataset.firstname;
+                const lastName = e.target.dataset.lastname;
+                const isAdmin = e.target.dataset.admin === 'True';
+                const isActive = e.target.dataset.active === 'True';
+                editUser(userId, email, firstName, lastName, isAdmin, isActive);
+            }
+            
+            // Delete button
+            if (e.target.classList.contains('delete-btn')) {
+                const userId = e.target.dataset.userId;
+                deleteUser(userId);
+            }
+            
+            // Reset password button
+            if (e.target.classList.contains('reset-password-btn')) {
+                const userId = e.target.dataset.userId;
+                resetPassword(userId);
+            }
+            
+            // Suspend button
+            if (e.target.classList.contains('suspend-btn')) {
+                const userId = e.target.dataset.userId;
+                suspendUser(userId);
+            }
+            
+            // Approve button
+            if (e.target.classList.contains('approve-btn')) {
+                const userId = e.target.dataset.userId;
+                approveUser(userId);
+            }
+        });
 
         // Edit user form submit
         document.getElementById('edit-user-form').addEventListener('submit', async function(event) {

@@ -38,11 +38,17 @@
     <p>Don't have an account? <a href="/register">Create Account</a></p>
 
     <script>
+        // Check if this is a redirect from OAuth (has auth cookie set)
+        if (document.cookie.includes('auth_cookie') && window.location.search.includes('from=oauth')) {
+            window.location.href = '/dashboard';
+        }
+        
         document.getElementById('google-login-btn').addEventListener('click', async () => {
             try {
                 const response = await fetch('/auth/google/authorize');
                 const data = await response.json();
                 if (data.authorization_url) {
+                    // Open OAuth in same window
                     window.location.href = data.authorization_url;
                 } else {
                     alert('Error initiating Google login');
