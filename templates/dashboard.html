@@ -466,6 +466,9 @@
                 if (data.error === 'Device offline') {
                     // Device is offline
                     updateOnlineStatus(device_id, false);
+                } else if (data.type === 'device_status') {
+                    // Backend notifying us of device online/offline status
+                    updateOnlineStatus(device_id, data.online);
                 } else if (data.type === 'ph_update') {
                     // If we're getting data, device must be online
                     updateOnlineStatus(device_id, true);

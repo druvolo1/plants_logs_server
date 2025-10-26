@@ -507,6 +507,14 @@ async def device_websocket(websocket: WebSocket, device_id: str, api_key: str = 
     await session.commit()
     print(f"Set {device_id} online in DB")  # Log DB update
     device_connections[device_id] = websocket
+    
+    # Notify all connected users that the device is online
+    for user_ws in user_connections[device_id]:
+        try:
+            await user_ws.send_json({"type": "device_status", "online": True})
+        except:
+            pass  # User might have disconnected
+    
     try:
         while True:
             data = await websocket.receive_json()
@@ -522,6 +530,13 @@ async def device_websocket(websocket: WebSocket, device_id: str, api_key: str = 
         await session.execute(update(Device).where(Device.device_id == device_id).values(is_online=False))
         await session.commit()
         print(f"Set {device_id} offline in DB")  # Log DB update
+        
+        # Notify all connected users that the device went offline
+        for user_ws in user_connections[device_id]:
+            try:
+                await user_ws.send_json({"error": "Device offline"})
+            except:
+                pass  # User might have already disconnected
 
 @app.websocket("/ws/user/devices/{device_id}")
 async def user_websocket(websocket: WebSocket, device_id: str, user: User = Depends(get_current_user_ws), session: AsyncSession = Depends(get_db)):
