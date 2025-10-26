@@ -18,8 +18,16 @@
         }
         .data-row {
             display: flex;
-            justify-content: space-between;
+            gap: 10px;
             margin-bottom: 5px;
+            align-items: baseline;
+        }
+        .data-row label {
+            font-weight: normal;
+            margin: 0;
+        }
+        .data-row span {
+            margin: 0;
         }
         .valve-controls {
             display: flex;
@@ -67,18 +75,39 @@
         .btn-inactive {
             opacity: 0.5;
         }
-        .dosing-controls {
-            display: flex;
-            gap: 15px;
+        .expandable-section {
             margin-top: 10px;
-            flex-wrap: wrap;
+            border: 1px solid #444;
+            border-radius: 5px;
+            background: #2a2a2a;
+        }
+        .expandable-header {
+            padding: 10px 15px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            user-select: none;
+        }
+        .expandable-header:hover {
+            background: #333;
+        }
+        .expandable-content {
+            padding: 15px;
+            display: none;
+        }
+        .expandable-content.expanded {
+            display: block;
+        }
+        .expand-icon {
+            transition: transform 0.3s;
+        }
+        .expand-icon.expanded {
+            transform: rotate(180deg);
         }
         .dose-container {
             display: flex;
             gap: 15px;
-            padding: 15px;
-            background: #2a2a2a;
-            border-radius: 5px;
             flex-wrap: wrap;
         }
         .dose-section {
@@ -86,6 +115,7 @@
             flex-direction: column;
             gap: 5px;
             min-width: 200px;
+            flex: 1;
         }
         .dose-header {
             display: flex;
@@ -143,7 +173,7 @@
         }
         .sensor-label {
             position: absolute;
-            right: -60px;
+            right: -80px;
             font-size: 0.75em;
             white-space: nowrap;
         }
@@ -180,26 +210,57 @@
                     deviceSection.classList.add('device-section');
                     deviceSection.innerHTML = `
                         <h3>${device.name || device.device_id} - Online: ${device.is_online ? 'Yes' : 'No'}</h3>
-                        <div class="data-row"><span>System Name:</span> <span id="system-name-${device.device_id}">Loading...</span></div>
-                        <div class="data-row"><span>pH:</span> <span id="ph-${device.device_id}">Loading...</span></div>
-                        <div class="data-row"><span>EC:</span> <span id="ec-${device.device_id}">Loading...</span></div>
-                        <div class="bucket-container">
-                            <div class="water-bucket" id="bucket-${device.device_id}">
-                                <div class="water-level" id="water-level-${device.device_id}"></div>
-                                <div class="sensor-marker sensor-full">
-                                    <span class="sensor-label" id="sensor1-label-${device.device_id}">Full</span>
-                                </div>
-                                <div class="sensor-marker sensor-low">
-                                    <span class="sensor-label" id="sensor2-label-${device.device_id}">Low</span>
-                                </div>
-                                <div class="sensor-marker sensor-empty">
-                                    <span class="sensor-label" id="sensor3-label-${device.device_id}">Empty</span>
+                        <div class="data-row">
+                            <label>System Name:</label>
+                            <span id="system-name-${device.device_id}">Loading...</span>
+                        </div>
+                        <div class="data-row" id="ph-row-${device.device_id}" style="display:none;">
+                            <label>pH:</label>
+                            <span id="ph-${device.device_id}">Loading...</span>
+                        </div>
+                        <div class="data-row" id="ec-row-${device.device_id}" style="display:none;">
+                            <label>EC (mS/cm):</label>
+                            <span id="ec-${device.device_id}">N/A</span>
+                        </div>
+                        
+                        <!-- Water Level Expandable -->
+                        <div class="expandable-section">
+                            <div class="expandable-header" onclick="toggleExpand('water-${device.device_id}')">
+                                <span><strong>Water Level</strong></span>
+                                <span class="expand-icon" id="water-icon-${device.device_id}">▼</span>
+                            </div>
+                            <div class="expandable-content" id="water-content-${device.device_id}">
+                                <div class="bucket-container">
+                                    <div class="water-bucket" id="bucket-${device.device_id}">
+                                        <div class="water-level" id="water-level-${device.device_id}"></div>
+                                        <div class="sensor-marker sensor-full">
+                                            <span class="sensor-label" id="sensor1-label-${device.device_id}">Full</span>
+                                        </div>
+                                        <div class="sensor-marker sensor-low">
+                                            <span class="sensor-label" id="sensor2-label-${device.device_id}">Low</span>
+                                        </div>
+                                        <div class="sensor-marker sensor-empty">
+                                            <span class="sensor-label" id="sensor3-label-${device.device_id}">Empty</span>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
+                        
                         <div class="valve-controls" id="valve-controls-${device.device_id}"></div>
-                        <div class="dosing-controls" id="dosing-controls-${device.device_id}"></div>
-                        <button id="refresh-${device.device_id}">Refresh</button>
+                        
+                        <!-- pH Dosing Expandable -->
+                        <div class="expandable-section">
+                            <div class="expandable-header" onclick="toggleExpand('dosing-${device.device_id}')">
+                                <span><strong>pH Dosing</strong></span>
+                                <span class="expand-icon" id="dosing-icon-${device.device_id}">▼</span>
+                            </div>
+                            <div class="expandable-content" id="dosing-content-${device.device_id}">
+                                <div id="dosing-controls-${device.device_id}"></div>
+                            </div>
+                        </div>
+                        
+                        <button id="refresh-${device.device_id}" style="margin-top: 10px;">Refresh</button>
                     `;
                     statusDiv.appendChild(deviceSection);
 
@@ -220,6 +281,20 @@
             }
         }
 
+        // Toggle expand/collapse
+        function toggleExpand(sectionId) {
+            const content = document.getElementById(`${sectionId}-content`);
+            const icon = document.getElementById(`${sectionId}-icon`);
+            
+            if (content.classList.contains('expanded')) {
+                content.classList.remove('expanded');
+                icon.classList.remove('expanded');
+            } else {
+                content.classList.add('expanded');
+                icon.classList.add('expanded');
+            }
+        }
+
         // Connect to WS for a device
         function connectToDevice(device_id) {
             if (wsMap[device_id]) return;
@@ -234,12 +309,34 @@
                 const data = JSON.parse(event.data);
                 console.log(`Received from server for ${device_id}:`, data);
                 if (data.type === 'ph_update') {
-                    document.getElementById(`ph-${device_id}`).innerHTML = data.ph || 'N/A';
+                    const phRow = document.getElementById(`ph-row-${device_id}`);
+                    if (data.ph) {
+                        phRow.style.display = 'flex';
+                        document.getElementById(`ph-${device_id}`).innerHTML = data.ph || 'N/A';
+                    }
                 } else if (data.type === 'status_update' && data.data) {
                     const statusData = data.data;
                     document.getElementById(`system-name-${device_id}`).innerHTML = statusData.settings?.system_name || 'N/A';
-                    document.getElementById(`ph-${device_id}`).innerHTML = statusData.current_ph || 'N/A';
-                    document.getElementById(`ec-${device_id}`).innerHTML = statusData.current_ec || 'N/A';
+                    
+                    // Show/hide pH row based on probe assignment
+                    const phProbe = statusData.settings?.usb_roles?.ph_probe;
+                    const phRow = document.getElementById(`ph-row-${device_id}`);
+                    if (phProbe) {
+                        phRow.style.display = 'flex';
+                        document.getElementById(`ph-${device_id}`).innerHTML = statusData.current_ph || 'N/A';
+                    } else {
+                        phRow.style.display = 'none';
+                    }
+                    
+                    // Show/hide EC row based on meter assignment
+                    const ecMeter = statusData.settings?.usb_roles?.ec_meter;
+                    const ecRow = document.getElementById(`ec-row-${device_id}`);
+                    if (ecMeter) {
+                        ecRow.style.display = 'flex';
+                        document.getElementById(`ec-${device_id}`).innerHTML = statusData.current_ec || 'N/A';
+                    } else {
+                        ecRow.style.display = 'none';
+                    }
                     
                     // Update water bucket visualization
                     updateWaterBucket(device_id, statusData);
@@ -272,18 +369,20 @@
             
             document.getElementById(`sensor1-label-${device_id}`).textContent = `${sensor1Label} ${sensor1 ? '✓' : '✗'}`;
             document.getElementById(`sensor2-label-${device_id}`).textContent = `${sensor2Label} ${sensor2 ? '✓' : '✗'}`;
-            document.getElementById(`sensor3-label-${device_id}`).textContent = `${sensor3Label} ${sensor3 ? '✓' : '✗'}`;
+            document.getElementById(`sensor3-label-${device_id}`).textContent = `${sensor3Label} ${sensor3 ? '✗' : '✓'}`;
             
             // Calculate water level height based on sensors
+            // Empty sensor FALSE means no water detected (empty)
+            // Empty sensor TRUE means water detected at bottom
             let waterHeight = 0;
             if (sensor1) {
                 waterHeight = 90;  // Full (90% of bucket)
             } else if (sensor2) {
-                waterHeight = 50;  // Low (50% of bucket)
+                waterHeight = 33;  // Low (1/3 of bucket)
             } else if (sensor3) {
-                waterHeight = 5;   // Empty (5% of bucket)
+                waterHeight = 10;  // Empty sensor triggered - little water at bottom
             } else {
-                waterHeight = 30;  // Unknown state (30% as default)
+                waterHeight = 0;   // Empty sensor not triggered - completely empty
             }
             
             const waterLevelDiv = document.getElementById(`water-level-${device_id}`);
@@ -356,34 +455,35 @@
 
             // Create single container for both pH Up and Down
             const doseContainer = document.createElement('div');
-            doseContainer.classList.add('dose-container');
             doseContainer.innerHTML = `
-                <div style="width: 100%;">
-                    <div class="dose-header">
-                        <span><strong>pH Dosing</strong></span>
-                        <span>Current: ${currentPh} | Target: ${phTarget}</span>
+                <div style="width: 100%; margin-bottom: 15px;">
+                    <div style="display: flex; justify-content: space-between; padding-bottom: 10px; border-bottom: 1px solid #444;">
+                        <span>Current pH: ${currentPh}</span>
+                        <span>Target: ${phTarget}</span>
                     </div>
                 </div>
-                <div class="dose-section">
-                    <label><strong>pH Up</strong></label>
-                    <span>Calculated: ${phUpAmount.toFixed(2)} ml</span>
-                    <button id="dose-up-calc-${device_id}" class="dose-button" ${phUpAmount === 0 ? 'disabled' : ''}>Dose Calculated</button>
-                    <hr style="border: 0; border-top: 1px solid #444; margin: 8px 0;">
-                    <label style="font-size: 0.9em;">Manual Amount:</label>
-                    <div class="manual-input">
-                        <input type="number" id="manual-up-${device_id}" placeholder="ml" step="0.1" min="0" value="5">
-                        <button id="dose-up-manual-${device_id}" class="dose-button">Dose</button>
+                <div class="dose-container">
+                    <div class="dose-section">
+                        <label><strong>pH Up</strong></label>
+                        <span>Calculated: ${phUpAmount.toFixed(2)} ml</span>
+                        <button id="dose-up-calc-${device_id}" class="dose-button" ${phUpAmount === 0 ? 'disabled' : ''}>Dose Calculated</button>
+                        <hr style="border: 0; border-top: 1px solid #444; margin: 8px 0;">
+                        <label style="font-size: 0.9em;">Manual Amount:</label>
+                        <div class="manual-input">
+                            <input type="number" id="manual-up-${device_id}" placeholder="ml" step="0.1" min="0" value="5">
+                            <button id="dose-up-manual-${device_id}" class="dose-button">Dose</button>
+                        </div>
                     </div>
-                </div>
-                <div class="dose-section">
-                    <label><strong>pH Down</strong></label>
-                    <span>Calculated: ${phDownAmount.toFixed(2)} ml</span>
-                    <button id="dose-down-calc-${device_id}" class="dose-button" ${phDownAmount === 0 ? 'disabled' : ''}>Dose Calculated</button>
-                    <hr style="border: 0; border-top: 1px solid #444; margin: 8px 0;">
-                    <label style="font-size: 0.9em;">Manual Amount:</label>
-                    <div class="manual-input">
-                        <input type="number" id="manual-down-${device_id}" placeholder="ml" step="0.1" min="0" value="5">
-                        <button id="dose-down-manual-${device_id}" class="dose-button">Dose</button>
+                    <div class="dose-section">
+                        <label><strong>pH Down</strong></label>
+                        <span>Calculated: ${phDownAmount.toFixed(2)} ml</span>
+                        <button id="dose-down-calc-${device_id}" class="dose-button" ${phDownAmount === 0 ? 'disabled' : ''}>Dose Calculated</button>
+                        <hr style="border: 0; border-top: 1px solid #444; margin: 8px 0;">
+                        <label style="font-size: 0.9em;">Manual Amount:</label>
+                        <div class="manual-input">
+                            <input type="number" id="manual-down-${device_id}" placeholder="ml" step="0.1" min="0" value="5">
+                            <button id="dose-down-manual-${device_id}" class="dose-button">Dose</button>
+                        </div>
                     </div>
                 </div>
             `;
