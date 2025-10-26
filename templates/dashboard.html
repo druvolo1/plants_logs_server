@@ -344,9 +344,8 @@
                     deviceSection.innerHTML = `
                         <div class="device-header" onclick="toggleDevice('${device.device_id}')">
                             <div class="device-header-left">
-                                <div class="device-name">${device.name || device.device_id}</div>
-                                <div class="status-badge ${device.is_online ? 'status-online' : 'status-offline'}">
-                                    ${device.is_online ? '● Online' : '● Offline'}
+                                <div class="status-badge status-offline" id="status-badge-${device.device_id}">
+                                    ● Offline
                                 </div>
                                 <div class="header-info">
                                     <div class="info-item">
@@ -450,6 +449,7 @@
             const ws = new WebSocket(`wss://${window.location.host}/ws/user/devices/${device_id}`);
             ws.onopen = () => {
                 console.log(`Connected to ${device_id}`);
+                updateOnlineStatus(device_id, true);
                 ws.send(JSON.stringify({ type: 'request_refresh' }));
             };
             ws.onmessage = (event) => {
@@ -465,9 +465,23 @@
                 }
             };
             ws.onclose = () => {
+                console.log(`Disconnected from ${device_id}`);
+                updateOnlineStatus(device_id, false);
                 delete wsMap[device_id];
             };
+            ws.onerror = (error) => {
+                console.error(`WebSocket error for ${device_id}:`, error);
+                updateOnlineStatus(device_id, false);
+            };
             wsMap[device_id] = ws;
+        }
+
+        function updateOnlineStatus(device_id, isOnline) {
+            const statusBadge = document.getElementById(`status-badge-${device_id}`);
+            if (statusBadge) {
+                statusBadge.className = `status-badge ${isOnline ? 'status-online' : 'status-offline'}`;
+                statusBadge.textContent = isOnline ? '● Online' : '● Offline';
+            }
         }
 
         function updateDeviceStatus(device_id, statusData) {
