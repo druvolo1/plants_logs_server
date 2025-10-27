@@ -430,9 +430,9 @@
             }
             .info-item {
                 display: flex !important;
-                flex-direction: row !important;
-                align-items: center !important;
-                gap: 4px !important;
+                flex-direction: column !important;
+                align-items: flex-start !important;
+                gap: 2px !important;
                 background: rgba(51, 65, 85, 0.5) !important;
                 border: 1px solid rgba(148, 163, 184, 0.2) !important;
                 padding: 6px 10px !important;
@@ -453,16 +453,17 @@
                 white-space: nowrap !important;
             }
             .info-item label::after {
-                content: ':';
+                content: '';
             }
             .info-item span {
-                display: inline !important;
+                display: block !important;
                 font-size: 1em !important;
                 font-weight: 500 !important;
                 color: #10b981 !important;
                 white-space: nowrap !important;
-                flex: 1 !important;
-                overflow: visible !important;
+                width: 100% !important;
+                overflow: hidden !important;
+                text-overflow: ellipsis !important;
             }
 
             /* Force positioning in grid */
