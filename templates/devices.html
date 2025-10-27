@@ -177,38 +177,69 @@
             }
         }
 
-        // Connect to WS for a device (for testing on this page)
-        let wsMap = {};  // Store WS per device_id
+        // Connect to WS for status updates
         function connectToDevice(device_id) {
             if (wsMap[device_id]) return;
             const ws = new WebSocket(`wss://${window.location.host}/ws/user/devices/${device_id}`);
             ws.onopen = () => {
                 console.log(`Connected to ${device_id}`);
-                document.getElementById(`control-${device_id}`).style.display = 'block';
             };
             ws.onmessage = (event) => {
                 const data = JSON.parse(event.data);
                 console.log(`Received from server for ${device_id}:`, data);
-                if (data.type === 'ph_update') {
-                    document.getElementById(`ph-${device_id}`).innerHTML = data.ph;
+
+                // Update system name from settings
+                if (data.type === 'settings_update' && data.system_name) {
+                    document.getElementById(`name-${device_id}`).textContent = data.system_name;
+                }
+
+                // Update version from full_sync or settings_update
+                if (data.type === 'full_sync' && data.data && data.data.settings && data.data.settings.current_version) {
+                    document.getElementById(`version-${device_id}`).textContent = data.data.settings.current_version;
+                    document.getElementById(`name-${device_id}`).textContent = data.data.settings.system_name || 'Unknown';
                 }
             };
             ws.onclose = () => {
                 console.log(`Disconnected from ${device_id}`);
+                document.getElementById(`online-${device_id}`).textContent = 'No';
                 delete wsMap[device_id];
             };
             wsMap[device_id] = ws;
         }
 
-        // Send dose command
-        function sendDose(device_id, dispense_type, amount) {
+        // Update device software
+        function updateDevice(device_id) {
             const ws = wsMap[device_id];
-            if (ws) {
-                ws.send(JSON.stringify({
-                    command: 'manual_dose',
-                    params: { dispense_type: dispense_type, amount: amount }
-                }));
+            if (!ws) {
+                alert('Device is not connected');
+                return;
             }
+
+            if (!confirm('This will update the software on the device. Continue?')) {
+                return;
+            }
+
+            const statusDiv = document.getElementById(`update-status-${device_id}`);
+            const updateBtn = document.getElementById(`update-btn-${device_id}`);
+
+            statusDiv.textContent = 'Sending update command...';
+            updateBtn.disabled = true;
+
+            // Send update command via WebSocket
+            ws.send(JSON.stringify({
+                command: 'update_software'
+            }));
+
+            // Show progress message
+            setTimeout(() => {
+                statusDiv.textContent = 'Update in progress... The device will restart when complete.';
+            }, 1000);
+
+            // Re-enable button after 30 seconds
+            setTimeout(() => {
+                updateBtn.disabled = false;
+                statusDiv.textContent = 'Update command sent. Please wait for the device to restart.';
+            }, 30000);
         }
 
         // Add form submit
