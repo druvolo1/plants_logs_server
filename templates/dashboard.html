@@ -500,7 +500,10 @@
                                     </div>
                                 </div>
                             </div>
-                            <div class="expand-icon" id="expand-icon-${device.device_id}">▼</div>
+                            <div style="display: flex; align-items: center; gap: 1rem;">
+                                <div class="refresh-icon" id="refresh-icon-${device.device_id}" style="cursor: pointer; font-size: 1.5rem; color: #4da6ff; transition: transform 0.3s;" title="Refresh">🔄</div>
+                                <div class="expand-icon" id="expand-icon-${device.device_id}">▼</div>
+                            </div>
                         </div>
                         
                         <div class="device-content" id="device-content-${device.device_id}">
@@ -540,15 +543,16 @@
                                         <div id="dosing-controls-${device.device_id}"></div>
                                     </div>
                                 </div>
-
-                                <button class="refresh-btn" id="refresh-${device.device_id}">🔄 Refresh</button>
                             </div>
                         </div>
                     `;
                     statusDiv.appendChild(deviceSection);
 
-                    document.getElementById(`refresh-${device.device_id}`).addEventListener('click', (e) => {
+                    document.getElementById(`refresh-icon-${device.device_id}`).addEventListener('click', (e) => {
                         e.stopPropagation();
+                        const icon = e.target;
+                        icon.style.transform = 'rotate(360deg)';
+                        setTimeout(() => { icon.style.transform = 'rotate(0deg)'; }, 300);
                         const ws = wsMap[device.device_id];
                         if (ws) {
                             ws.send(JSON.stringify({ type: 'request_refresh' }));

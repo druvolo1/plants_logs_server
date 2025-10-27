@@ -876,14 +876,14 @@ a:hover {
 .sensor-label {
     position: absolute !important;
     left: 120px !important;
-    top: -12px !important;
+    top: -16px !important;
     font-size: 1.5rem !important;
     white-space: nowrap !important;
     color: var(--text-secondary) !important;
     font-weight: 600 !important;
-    background: rgba(30, 41, 59, 0.8) !important;
-    padding: 0.35rem 0.65rem !important;
-    border-radius: 6px !important;
+    background: transparent !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
     display: flex !important;
     align-items: center !important;
     gap: 0.5rem !important;
@@ -928,6 +928,7 @@ a:hover {
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
     text-transform: uppercase !important;
     letter-spacing: 0.05em !important;
+    text-align: center !important;
 }
 
 .valve-buttons button:hover {
