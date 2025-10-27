@@ -513,10 +513,6 @@
                                 <label>PH:</label>
                                 <span id="ph-${device.device_id}">-</span>
                             </div>
-                            <div class="info-item" style="display: none;" id="ec-item-${device.device_id}">
-                                <label>EC:</label>
-                                <span id="ec-${device.device_id}">-</span>
-                            </div>
                         </div>
                     </div>
                     <span class="expand-icon" id="expand-icon-${device.device_id}">▼</span>
@@ -603,23 +599,10 @@
                 // Handle granular pH update
                 else if (data.type === 'ph_update') {
                     updateOnlineStatus(device_id, true);
-                    // Only show pH if pH probe is assigned
-                    const hasPhProbe = window.deviceHasPhProbe?.[device_id];
-                    if (hasPhProbe && data.value !== null && data.value !== undefined) {
-                        const phItem = document.getElementById(`ph-item-${device_id}`);
+                    const phItem = document.getElementById(`ph-item-${device_id}`);
+                    if (data.value !== null && data.value !== undefined) {
                         phItem.style.display = 'flex';
                         document.getElementById(`ph-${device_id}`).innerHTML = data.value;
-                    }
-                }
-                // Handle granular EC update
-                else if (data.type === 'ec_update') {
-                    updateOnlineStatus(device_id, true);
-                    // Only show EC if EC probe is assigned
-                    const hasEcProbe = window.deviceHasEcProbe?.[device_id];
-                    if (hasEcProbe && data.value !== null && data.value !== undefined) {
-                        const ecItem = document.getElementById(`ec-item-${device_id}`);
-                        ecItem.style.display = 'flex';
-                        document.getElementById(`ec-${device_id}`).innerHTML = data.value;
                     }
                 }
                 // Handle granular water level update
@@ -659,14 +642,6 @@
         }
 
         function updateDeviceStatus(device_id, data) {
-            console.log('updateDeviceStatus called for', device_id, data);
-            
-            // Store whether this device has pH and EC probes for granular updates
-            if (!window.deviceHasPhProbe) window.deviceHasPhProbe = {};
-            if (!window.deviceHasEcProbe) window.deviceHasEcProbe = {};
-            window.deviceHasPhProbe[device_id] = !!data.settings?.ph_probe_usb_device;
-            window.deviceHasEcProbe[device_id] = !!data.settings?.ec_probe_usb_device;
-            
             // Update device name
             const deviceName = document.querySelector(`#device-${device_id} .device-name`);
             if (deviceName && data.settings?.system_name) {
@@ -674,57 +649,37 @@
             }
             
             // Update plant name
-            const plantEl = document.getElementById(`plant-${device_id}`);
-            if (plantEl && data.settings?.plant_name) {
-                plantEl.textContent = data.settings.plant_name;
+            if (data.settings?.plant_name) {
+                document.getElementById(`plant-${device_id}`).textContent = data.settings.plant_name;
             }
             
             // Update start date and week
             if (data.settings?.start_date) {
                 const startedItem = document.getElementById(`started-item-${device_id}`);
-                const startedEl = document.getElementById(`started-${device_id}`);
-                if (startedItem && startedEl) {
-                    startedItem.style.display = 'flex';
-                    startedEl.textContent = data.settings.start_date;
-                }
+                startedItem.style.display = 'flex';
+                document.getElementById(`started-${device_id}`).textContent = data.settings.start_date;
                 
                 try {
                     const weeksItem = document.getElementById(`weeks-item-${device_id}`);
-                    const weeksEl = document.getElementById(`weeks-${device_id}`);
-                    if (weeksItem && weeksEl) {
-                        const startDate = new Date(data.settings.start_date);
-                        const now = new Date();
-                        const diffTime = Math.abs(now - startDate);
-                        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                        if (diffDays > 0) {
-                            const weeks = Math.floor(diffDays / 7);
-                            weeksItem.style.display = 'flex';
-                            weeksEl.innerHTML = weeks;
-                        }
+                    const startDate = new Date(data.settings.start_date);
+                    const now = new Date();
+                    const diffTime = Math.abs(now - startDate);
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                    if (diffDays > 0) {
+                        const weeks = Math.floor(diffDays / 7);
+                        weeksItem.style.display = 'flex';
+                        document.getElementById(`weeks-${device_id}`).innerHTML = weeks;
                     }
                 } catch (e) {
                     console.error('Error calculating weeks:', e);
                 }
             }
             
-            // Update pH - only show if pH probe is assigned
-            if (data.settings?.ph_probe_usb_device && data.dosage_info?.current_ph) {
+            // Update pH
+            if (data.dosage_info?.current_ph) {
                 const phItem = document.getElementById(`ph-item-${device_id}`);
-                const phEl = document.getElementById(`ph-${device_id}`);
-                if (phItem && phEl) {
-                    phItem.style.display = 'flex';
-                    phEl.textContent = data.dosage_info.current_ph;
-                }
-            }
-            
-            // Update EC - only show if EC probe is assigned
-            if (data.settings?.ec_probe_usb_device && data.ec_info?.current_ec) {
-                const ecItem = document.getElementById(`ec-item-${device_id}`);
-                const ecEl = document.getElementById(`ec-${device_id}`);
-                if (ecItem && ecEl) {
-                    ecItem.style.display = 'flex';
-                    ecEl.textContent = data.ec_info.current_ec;
-                }
+                phItem.style.display = 'flex';
+                document.getElementById(`ph-${device_id}`).textContent = data.dosage_info.current_ph;
             }
             
             // Update water level
@@ -754,49 +709,24 @@
         }
 
         function updateValveStatusGranular(device_id, data) {
-            console.log('updateValveStatusGranular called', device_id, data);
-            if (!data.valve_label || !data.status) return;
-            
-            // Get the stored valve labels for this device
-            const labels = window.deviceValveLabels?.[device_id];
-            if (!labels) {
-                console.error('No valve labels stored for', device_id);
-                return;
-            }
-            
-            let valveType = null;
-            
-            // Determine if this is the fill or drain valve
-            if (labels.fillLabel === data.valve_label) {
-                valveType = 'fill';
-            } else if (labels.drainLabel === data.valve_label) {
-                valveType = 'drain';
-            }
-            
-            if (!valveType) {
-                console.error('Valve label not matched:', data.valve_label, 'against', labels);
-                return;
-            }
-            
-            console.log('Updating valve', valveType, 'to', data.status);
-            
-            // Update status text
-            const statusSpan = document.getElementById(`${valveType}-status-${device_id}`);
-            if (statusSpan) {
-                statusSpan.textContent = data.status === 'on' ? 'On' : 'Off';
-            }
-            
-            // Update button states
-            const onBtn = document.getElementById(`${valveType}-on-${device_id}`);
-            const offBtn = document.getElementById(`${valveType}-off-${device_id}`);
-            
-            if (onBtn && offBtn) {
-                if (data.status === 'on') {
-                    onBtn.className = 'btn-on-active';
-                    offBtn.className = 'btn-inactive';
-                } else {
-                    onBtn.className = 'btn-inactive';
-                    offBtn.className = 'btn-off-active';
+            if (data.valve_label && data.status) {
+                const statusSpan = document.getElementById(`${data.valve_label.toLowerCase().replace(' ', '-')}-status-${device_id}`);
+                if (statusSpan) {
+                    statusSpan.textContent = data.status === 'on' ? 'On' : 'Off';
+                }
+                
+                // Update button states
+                const onBtn = document.getElementById(`${data.valve_label.toLowerCase().replace(' ', '-')}-on-${device_id}`);
+                const offBtn = document.getElementById(`${data.valve_label.toLowerCase().replace(' ', '-')}-off-${device_id}`);
+                
+                if (onBtn && offBtn) {
+                    if (data.status === 'on') {
+                        onBtn.className = 'btn-on-active';
+                        offBtn.className = 'btn-inactive';
+                    } else {
+                        onBtn.className = 'btn-inactive';
+                        offBtn.className = 'btn-off-active';
+                    }
                 }
             }
         }
@@ -805,11 +735,6 @@
             if (!waterInfo) return;
             
             const waterLevelDiv = document.getElementById(`water-level-${device_id}`);
-            if (!waterLevelDiv) {
-                console.error('Water level div not found for', device_id);
-                return;
-            }
-            
             const full = waterInfo.full_sensor || false;
             const low = waterInfo.low_sensor || false;
             const empty = waterInfo.empty_sensor || false;
@@ -819,17 +744,12 @@
             else if (low) heightPercent = 50;
             else if (empty) heightPercent = 10;
             
-            console.log('Setting water level for', device_id, 'to', heightPercent + '%');
             waterLevelDiv.style.height = `${heightPercent}%`;
         }
 
         function updateDosingControlsGranular(device_id, data) {
             const dosingCard = document.getElementById(`dosing-card-${device_id}`);
-            
-            // Check if pH probe is assigned (store this during full_sync)
-            const hasPhProbe = window.deviceHasPhProbe?.[device_id];
-            
-            if (!hasPhProbe || !data || (data.ph_up_amount === 0 && data.ph_down_amount === 0)) {
+            if (!data || (data.ph_up_amount === 0 && data.ph_down_amount === 0)) {
                 return;
             }
             
@@ -866,10 +786,6 @@
             const fillLabel = statusData.settings?.fill_valve_label;
             const drainLabel = statusData.settings?.drain_valve_label;
             const valveRelays = statusData.valve_info?.valve_relays || {};
-
-            // Store the labels for later use in granular updates
-            if (!window.deviceValveLabels) window.deviceValveLabels = {};
-            window.deviceValveLabels[device_id] = { fillLabel, drainLabel };
 
             valveControlsDiv.innerHTML = '';
             
@@ -917,10 +833,8 @@
             const dosingControlsDiv = document.getElementById(`dosing-controls-${device_id}`);
             const dosingCard = document.getElementById(`dosing-card-${device_id}`);
             const dosageInfo = statusData.dosage_info;
-            const hasPhProbe = statusData.settings?.ph_probe_usb_device;
 
-            // Hide dosing card if no pH probe assigned or no dosage info
-            if (!hasPhProbe || !dosageInfo) {
+            if (!dosageInfo) {
                 dosingCard.style.display = 'none';
                 return;
             }
