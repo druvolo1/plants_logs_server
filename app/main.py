@@ -120,6 +120,7 @@ class UserCreate(schemas.BaseUserCreate):
     is_active: Optional[bool] = False  # Default to pending approval
     is_superuser: Optional[bool] = False
     is_verified: Optional[bool] = False
+    is_suspended: Optional[bool] = False  # Default to not suspended
 
 class UserUpdate(BaseModel):
     email: Optional[EmailStr] = None
@@ -127,6 +128,7 @@ class UserUpdate(BaseModel):
     last_name: Optional[str] = None
     is_active: Optional[bool] = None
     is_superuser: Optional[bool] = None
+    is_suspended: Optional[bool] = None
 
 class UserLogin(BaseModel):
     username: str
@@ -183,8 +185,9 @@ class CustomUserManager(IntegerIDMixin, BaseUserManager[User, int]):
         if not verified:
             return None
 
-        # Check if user is suspended (with fallback if column doesn't exist yet)
-        if getattr(user, 'is_suspended', False):
+        # Check if user is suspended (handle None as False)
+        is_suspended = getattr(user, 'is_suspended', False)
+        if is_suspended is True:  # Explicitly check for True, not just truthy
             raise HTTPException(
                 status_code=403,
                 detail="SUSPENDED"
@@ -258,7 +261,8 @@ class CustomUserManager(IntegerIDMixin, BaseUserManager[User, int]):
                     email=account_email,
                     password=random_password,  # Random password for OAuth users (not used)
                     is_verified=is_verified_by_default,
-                    is_active=False  # Require approval for OAuth users
+                    is_active=False,  # Require approval for OAuth users
+                    is_suspended=False  # Explicitly set not suspended
                 )
                 user = await self.create(user_create)
                 user = await self.user_db.add_oauth_account(user, oauth_account_dict)
@@ -302,8 +306,9 @@ _base_current_admin = fastapi_users.current_user(active=False, superuser=True)  
 # Custom dependency to check for suspended and pending users
 async def current_user(user: User = Depends(_base_current_user)) -> User:
     """Check if user is suspended or pending before allowing access"""
-    # Check if user is suspended
-    if getattr(user, 'is_suspended', False):
+    # Check if user is suspended (handle None as False)
+    is_suspended = getattr(user, 'is_suspended', False)
+    if is_suspended is True:  # Explicitly check for True, not just truthy
         raise HTTPException(
             status_code=403,
             detail="SUSPENDED"
@@ -318,8 +323,9 @@ async def current_user(user: User = Depends(_base_current_user)) -> User:
 
 async def current_admin(user: User = Depends(_base_current_admin)) -> User:
     """Check if admin is suspended or pending before allowing access"""
-    # Check if user is suspended
-    if getattr(user, 'is_suspended', False):
+    # Check if user is suspended (handle None as False)
+    is_suspended = getattr(user, 'is_suspended', False)
+    if is_suspended is True:  # Explicitly check for True, not just truthy
         raise HTTPException(
             status_code=403,
             detail="SUSPENDED"
@@ -465,8 +471,9 @@ async def root(request: Request):
                 user = result.scalars().first()
 
                 if user:
-                    # Check if user is suspended
-                    if getattr(user, 'is_suspended', False):
+                    # Check if user is suspended (handle None as False)
+                    is_suspended = getattr(user, 'is_suspended', False)
+                    if is_suspended is True:  # Explicitly check for True, not just truthy
                         response = templates.TemplateResponse("suspended.html", {"request": request}, status_code=403)
                         response.delete_cookie("auth_cookie")
                         return response
@@ -515,7 +522,8 @@ async def register_user(
             first_name=first_name,
             last_name=last_name,
             is_active=False,  # Pending approval
-            is_verified=False
+            is_verified=False,
+            is_suspended=False  # Explicitly set not suspended
         )
         await manager.create(user_create)
         return templates.TemplateResponse("registration_pending.html", {"request": request})
