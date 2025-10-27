@@ -183,7 +183,7 @@
             const ws = new WebSocket(`wss://${window.location.host}/ws/user/devices/${device_id}`);
             ws.onopen = () => {
                 console.log(`Connected to ${device_id}`);
-                // Request version info immediately after connecting
+                // Request version info (in case device was already connected before page opened)
                 ws.send(JSON.stringify({
                     command: 'request_version'
                 }));
