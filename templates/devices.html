@@ -183,20 +183,34 @@
             const ws = new WebSocket(`wss://${window.location.host}/ws/user/devices/${device_id}`);
             ws.onopen = () => {
                 console.log(`Connected to ${device_id}`);
+                // Request version info immediately after connecting
+                ws.send(JSON.stringify({
+                    command: 'request_version'
+                }));
             };
             ws.onmessage = (event) => {
                 const data = JSON.parse(event.data);
                 console.log(`Received from server for ${device_id}:`, data);
+
+                // Update version info
+                if (data.type === 'version_info') {
+                    document.getElementById(`version-${device_id}`).textContent = data.version || 'Unknown';
+                    document.getElementById(`name-${device_id}`).textContent = data.system_name || 'Unknown';
+                }
 
                 // Update system name from settings
                 if (data.type === 'settings_update' && data.system_name) {
                     document.getElementById(`name-${device_id}`).textContent = data.system_name;
                 }
 
-                // Update version from full_sync or settings_update
-                if (data.type === 'full_sync' && data.data && data.data.settings && data.data.settings.current_version) {
-                    document.getElementById(`version-${device_id}`).textContent = data.data.settings.current_version;
-                    document.getElementById(`name-${device_id}`).textContent = data.data.settings.system_name || 'Unknown';
+                // Update version from full_sync
+                if (data.type === 'full_sync' && data.data && data.data.settings) {
+                    if (data.data.settings.current_version) {
+                        document.getElementById(`version-${device_id}`).textContent = data.data.settings.current_version;
+                    }
+                    if (data.data.settings.system_name) {
+                        document.getElementById(`name-${device_id}`).textContent = data.data.settings.system_name;
+                    }
                 }
             };
             ws.onclose = () => {
