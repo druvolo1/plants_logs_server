@@ -197,37 +197,11 @@
             const ws = new WebSocket(`wss://${window.location.host}/ws/user/devices/${device_id}`);
             ws.onopen = () => {
                 console.log(`Connected to ${device_id}`);
-                // Request version info (in case device was already connected before page opened)
-                ws.send(JSON.stringify({
-                    command: 'request_version'
-                }));
+                // Version info is automatically included in full_sync from device
             };
             ws.onmessage = (event) => {
                 const data = JSON.parse(event.data);
                 console.log(`Received from server for ${device_id}:`, data);
-
-                // Update version info
-                if (data.type === 'version_info') {
-                    document.getElementById(`version-${device_id}`).textContent = data.version || 'Unknown';
-                    document.getElementById(`name-${device_id}`).textContent = data.system_name || 'Unknown';
-
-                    // Check if this device was updating and clear the status message
-                    if (localStorage.getItem(`updating_${device_id}`) === 'true') {
-                        const statusDiv = document.getElementById(`update-status-${device_id}`);
-                        const updateBtn = document.getElementById(`update-btn-${device_id}`);
-                        if (statusDiv) {
-                            statusDiv.textContent = 'Update completed successfully!';
-                            statusDiv.style.color = '#10b981';
-                            setTimeout(() => {
-                                statusDiv.textContent = '';
-                            }, 5000);
-                        }
-                        if (updateBtn) {
-                            updateBtn.disabled = false;
-                        }
-                        localStorage.removeItem(`updating_${device_id}`);
-                    }
-                }
 
                 // Update system name from settings
                 if (data.type === 'settings_update' && data.system_name) {
@@ -238,6 +212,23 @@
                 if (data.type === 'full_sync' && data.data && data.data.settings) {
                     if (data.data.settings.current_version) {
                         document.getElementById(`version-${device_id}`).textContent = data.data.settings.current_version;
+
+                        // Check if this device was updating and clear the status message
+                        if (localStorage.getItem(`updating_${device_id}`) === 'true') {
+                            const statusDiv = document.getElementById(`update-status-${device_id}`);
+                            const updateBtn = document.getElementById(`update-btn-${device_id}`);
+                            if (statusDiv) {
+                                statusDiv.textContent = 'Update completed successfully!';
+                                statusDiv.style.color = '#10b981';
+                                setTimeout(() => {
+                                    statusDiv.textContent = '';
+                                }, 5000);
+                            }
+                            if (updateBtn) {
+                                updateBtn.disabled = false;
+                            }
+                            localStorage.removeItem(`updating_${device_id}`);
+                        }
                     }
                     if (data.data.settings.system_name) {
                         document.getElementById(`name-${device_id}`).textContent = data.data.settings.system_name;
@@ -249,13 +240,6 @@
                     const onlineElem = document.getElementById(`online-${device_id}`);
                     if (onlineElem) {
                         onlineElem.textContent = data.online ? 'Yes' : 'No';
-                    }
-
-                    // If device came back online after updating, request version again
-                    if (data.online && localStorage.getItem(`updating_${device_id}`) === 'true') {
-                        ws.send(JSON.stringify({
-                            command: 'request_version'
-                        }));
                     }
                 }
             };

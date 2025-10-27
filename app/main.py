@@ -641,21 +641,6 @@ async def device_websocket(websocket: WebSocket, device_id: str, api_key: str = 
     print(f"Set {device_id} online in DB")  # Log DB update
     device_connections[device_id] = websocket
 
-    # Send startup commands to device to collect initial info
-    startup_commands = [
-        {"command": "request_version"},
-        # Add more commands here as needed in the future
-        # {"command": "request_status"},
-        # {"command": "request_config"},
-    ]
-
-    for cmd in startup_commands:
-        try:
-            await websocket.send_json(cmd)
-            print(f"Sent startup command to {device_id}: {json.dumps(cmd)}")
-        except Exception as e:
-            print(f"Failed to send startup command to {device_id}: {e}")
-
     # Notify all connected users that the device is online
     for user_ws in user_connections[device_id]:
         try:
