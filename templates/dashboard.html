@@ -402,12 +402,19 @@
                 font-size: 1em;
             }
             .header-info {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 8px;
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 8px 12px;
+                width: 100%;
             }
             .info-item {
                 font-size: 0.85em;
+                display: flex;
+                flex-direction: column;
+                gap: 2px;
+            }
+            .info-item label {
+                font-size: 0.75em;
             }
 
             /* Cards grid mobile */
@@ -484,6 +491,51 @@
             .device-section {
                 margin-bottom: 15px;
             }
+
+            /* All valves table mobile */
+            [id^="all-valves-controls-"] table {
+                font-size: 0.75rem !important;
+                table-layout: fixed;
+                width: 100%;
+            }
+
+            [id^="all-valves-controls-"] table th:nth-child(1),
+            [id^="all-valves-controls-"] table td:nth-child(1) {
+                width: 10%;
+            }
+
+            [id^="all-valves-controls-"] table th:nth-child(2),
+            [id^="all-valves-controls-"] table td:nth-child(2) {
+                width: 35%;
+            }
+
+            [id^="all-valves-controls-"] table th:nth-child(3),
+            [id^="all-valves-controls-"] table td:nth-child(3) {
+                width: 20%;
+            }
+
+            [id^="all-valves-controls-"] table th:nth-child(4),
+            [id^="all-valves-controls-"] table td:nth-child(4) {
+                width: 35%;
+            }
+
+            [id^="all-valves-controls-"] table th,
+            [id^="all-valves-controls-"] table td {
+                padding: 0.35rem 0.25rem !important;
+            }
+
+            [id^="all-valves-controls-"] .valve-buttons {
+                gap: 0.25rem !important;
+                flex-wrap: nowrap;
+            }
+
+            [id^="all-valves-controls-"] .valve-buttons button {
+                width: 38px !important;
+                min-width: 38px !important;
+                max-width: 38px !important;
+                padding: 0.3rem 0.1rem !important;
+                font-size: 0.7rem !important;
+            }
         }
 
         /* Extra small devices */
@@ -503,6 +555,19 @@
             button {
                 padding: 0.6rem 0.8rem !important;
                 font-size: 0.85rem !important;
+            }
+
+            /* Even smaller valve buttons on phones */
+            [id^="all-valves-controls-"] .valve-buttons button {
+                width: 35px !important;
+                min-width: 35px !important;
+                max-width: 35px !important;
+                padding: 0.25rem 0.1rem !important;
+                font-size: 0.65rem !important;
+            }
+
+            [id^="all-valves-controls-"] table {
+                font-size: 0.7rem !important;
             }
         }
 
