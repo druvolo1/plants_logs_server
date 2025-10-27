@@ -409,29 +409,30 @@
             .header-info {
                 display: grid;
                 grid-template-columns: repeat(3, 1fr);
-                gap: 6px 8px;
+                gap: 8px;
                 width: 100%;
                 font-size: 0.75em;
             }
             .info-item {
                 display: flex;
-                flex-direction: row;
-                align-items: baseline;
-                gap: 4px;
-                white-space: nowrap;
-                overflow: hidden;
-                text-overflow: ellipsis;
+                flex-direction: column;
+                gap: 2px;
+                min-width: 0;
             }
             .info-item label {
-                font-size: 0.85em;
+                font-size: 0.75em;
                 color: #888;
-                flex-shrink: 0;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                font-weight: 600;
             }
             .info-item span {
-                font-size: 0.95em;
+                font-size: 0.9em;
                 font-weight: 500;
+                color: #fff;
                 overflow: hidden;
                 text-overflow: ellipsis;
+                white-space: nowrap;
             }
 
             /* Cards grid mobile */
@@ -569,16 +570,17 @@
             }
             .header-info {
                 font-size: 0.7em;
-                gap: 4px 6px;
+                gap: 6px;
             }
             .info-item {
-                gap: 3px;
+                gap: 2px;
             }
             .info-item label {
-                font-size: 0.9em;
+                font-size: 0.7em;
+                letter-spacing: 0.3px;
             }
             .info-item span {
-                font-size: 0.95em;
+                font-size: 0.85em;
             }
             .card-title {
                 font-size: 0.85em;
