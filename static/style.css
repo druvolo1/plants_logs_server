@@ -892,10 +892,11 @@ a:hover {
 }
 
 .sensor-label span {
-    line-height: 0.5 !important;
-    display: inline-flex !important;
-    align-items: center !important;
+    line-height: 0 !important;
+    display: inline-block !important;
     vertical-align: middle !important;
+    position: relative !important;
+    top: -0.15em !important;
 }
 
 /* Valve Controls - Modernized */
