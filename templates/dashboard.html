@@ -429,7 +429,6 @@
                 font-size: 0.7em;
             }
             .info-item {
-                display: flex;
                 flex-direction: row;
                 align-items: center;
                 gap: 4px;
@@ -455,23 +454,27 @@
                 font-size: 1em;
                 font-weight: 500;
                 color: #10b981;
-                overflow: hidden;
-                text-overflow: ellipsis;
-                white-space: nowrap;
+                white-space: normal;
+                word-break: break-word;
             }
 
             /* Force system to first column, plant to second column */
             .info-item[id^="system-item"] {
+                display: flex !important;
                 grid-column: 1;
+                grid-row: 1;
             }
             .info-item[id^="plant-item"] {
                 grid-column: 2;
+                grid-row: 1;
             }
             .info-item[id^="start-date-item"] {
                 grid-column: 1;
+                grid-row: 2;
             }
             .info-item[id^="weeks-item"] {
                 grid-column: 2;
+                grid-row: 2;
             }
 
             /* Reposition wrapper to top-right corner and make it span full height */
