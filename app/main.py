@@ -70,6 +70,7 @@ class User(Base):
     is_active = Column(Boolean, default=False)  # Changed default to False for pending approval
     is_superuser = Column(Boolean, default=False)  # For admin
     is_verified = Column(Boolean, default=False)
+    is_suspended = Column(Boolean, default=False)  # Added for suspended users
     oauth_accounts = relationship("OAuthAccount", back_populates="user", cascade="all, delete-orphan")
     devices = relationship("Device", back_populates="user", cascade="all, delete-orphan")  # Added backref
 
@@ -184,11 +185,18 @@ class CustomUserManager(IntegerIDMixin, BaseUserManager[User, int]):
         )
         if not verified:
             return None
-        
+
+        # Check if user is suspended
+        if user.is_suspended:
+            raise HTTPException(
+                status_code=403,
+                detail="SUSPENDED"
+            )
+
         # Check if user is pending approval
         if not user.is_active:
             raise HTTPException(
-                status_code=403, 
+                status_code=403,
                 detail="PENDING_APPROVAL"
             )
         
@@ -258,7 +266,14 @@ class CustomUserManager(IntegerIDMixin, BaseUserManager[User, int]):
                 user = await self.create(user_create)
                 user = await self.user_db.add_oauth_account(user, oauth_account_dict)
 
-        # Check if user is pending approval or suspended (both have is_active=False)
+        # Check if user is suspended
+        if user.is_suspended:
+            raise HTTPException(
+                status_code=403,
+                detail="SUSPENDED"
+            )
+
+        # Check if user is pending approval
         if not user.is_active:
             raise HTTPException(
                 status_code=403,
@@ -511,6 +526,8 @@ async def login(
     except HTTPException as e:
         if e.detail == "PENDING_APPROVAL":
             return templates.TemplateResponse("pending_approval.html", {"request": request})
+        elif e.detail == "SUSPENDED":
+            return templates.TemplateResponse("suspended.html", {"request": request})
         return RedirectResponse("/login?error=invalid_credentials", status_code=303)
     except Exception as e:
         print(f"Login error: {e}")
@@ -600,13 +617,23 @@ async def suspend_user(user_id: int, admin: User = Depends(current_admin), manag
     user = await manager.user_db.get(user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    update_dict = {"is_active": False}
+    update_dict = {"is_suspended": True}
     user = await manager.user_db.update(user, update_dict)
     return {"status": "success"}
 
 # Admin: Unsuspend user
 @app.post("/admin/users/{user_id}/unsuspend")
 async def unsuspend_user(user_id: int, admin: User = Depends(current_admin), manager: CustomUserManager = Depends(get_user_manager)):
+    user = await manager.user_db.get(user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    update_dict = {"is_suspended": False}
+    user = await manager.user_db.update(user, update_dict)
+    return {"status": "success"}
+
+# Admin: Approve user (activate pending user)
+@app.post("/admin/users/{user_id}/approve")
+async def approve_user(user_id: int, admin: User = Depends(current_admin), manager: CustomUserManager = Depends(get_user_manager)):
     user = await manager.user_db.get(user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")

@@ -293,20 +293,31 @@
                     <td>{{ user.first_name or '' }} {{ user.last_name or '' }}</td>
                     <td>{{ user.email }}</td>
                     <td>{{ 'Yes' if user.is_superuser else 'No' }}</td>
-                    <td>{{ 'Yes' if user.is_active else 'Pending' }}</td>
+                    <td>
+                        {% if user.is_suspended %}
+                            Suspended
+                        {% elif user.is_active %}
+                            Active
+                        {% else %}
+                            Pending
+                        {% endif %}
+                    </td>
                     <td>{{ 'Yes' if user.oauth_accounts else 'No' }}</td>
                     <td>
-                        <button class="edit-btn" 
-                                data-user-id="{{ user.id }}" 
-                                data-email="{{ user.email }}" 
-                                data-firstname="{{ user.first_name or '' }}" 
-                                data-lastname="{{ user.last_name or '' }}" 
-                                data-admin="{{ user.is_superuser }}" 
-                                data-active="{{ user.is_active }}">Edit</button>
+                        <button class="edit-btn"
+                                data-user-id="{{ user.id }}"
+                                data-email="{{ user.email }}"
+                                data-firstname="{{ user.first_name or '' }}"
+                                data-lastname="{{ user.last_name or '' }}"
+                                data-admin="{{ user.is_superuser }}"
+                                data-active="{{ user.is_active }}"
+                                data-suspended="{{ user.is_suspended }}">Edit</button>
                         {% if not user.oauth_accounts %}
                             <button class="reset-password-btn" data-user-id="{{ user.id }}">Reset Password</button>
                         {% endif %}
-                        {% if user.is_active %}
+                        {% if user.is_suspended %}
+                            <button class="unsuspend-btn" data-user-id="{{ user.id }}">Unsuspend</button>
+                        {% elif user.is_active %}
                             <button class="suspend-btn" data-user-id="{{ user.id }}">Suspend</button>
                         {% else %}
                             <button class="approve-btn" data-user-id="{{ user.id }}">Approve</button>
@@ -426,7 +437,13 @@
                 const userId = e.target.dataset.userId;
                 suspendUser(userId);
             }
-            
+
+            // Unsuspend button
+            if (e.target.classList.contains('unsuspend-btn')) {
+                const userId = e.target.dataset.userId;
+                unsuspendUser(userId);
+            }
+
             // Approve button
             if (e.target.classList.contains('approve-btn')) {
                 const userId = e.target.dataset.userId;
@@ -502,7 +519,7 @@
         }
 
         async function suspendUser(userId) {
-            if (confirm('Are you sure you want to suspend this user?')) {
+            if (confirm('Are you sure you want to suspend this user? They will not be able to log in.')) {
                 const response = await fetch('/admin/users/' + userId + '/suspend', {
                     method: 'POST',
                 });
@@ -515,9 +532,23 @@
             }
         }
 
+        async function unsuspendUser(userId) {
+            if (confirm('Are you sure you want to unsuspend this user? They will be able to log in again.')) {
+                const response = await fetch('/admin/users/' + userId + '/unsuspend', {
+                    method: 'POST',
+                });
+                if (response.ok) {
+                    alert('User unsuspended successfully');
+                    location.reload();
+                } else {
+                    alert('Failed to unsuspend user');
+                }
+            }
+        }
+
         async function approveUser(userId) {
             if (confirm('Are you sure you want to approve this user?')) {
-                const response = await fetch('/admin/users/' + userId + '/unsuspend', {
+                const response = await fetch('/admin/users/' + userId + '/approve', {
                     method: 'POST',
                 });
                 if (response.ok) {

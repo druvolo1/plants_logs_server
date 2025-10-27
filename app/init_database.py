@@ -143,12 +143,20 @@ async def init_database():
             
             # Add last_name column if it doesn't exist
             await check_and_add_column(
-                conn, 
-                'users', 
-                'last_name', 
+                conn,
+                'users',
+                'last_name',
                 "last_name VARCHAR(255) NULL AFTER first_name"
             )
-            
+
+            # Add is_suspended column if it doesn't exist
+            await check_and_add_column(
+                conn,
+                'users',
+                'is_suspended',
+                "is_suspended BOOLEAN NOT NULL DEFAULT FALSE AFTER is_verified"
+            )
+
             # Update is_active default to FALSE for new users (pending approval)
             # Note: This won't affect existing users, only new ones
             await check_and_modify_column_default(
