@@ -968,11 +968,13 @@
                 </div>
                 <div class="dose-sections">
                     <div class="dose-section">
-                        <h4>pH Up</h4>
-                        <div class="dose-info">Calculated: ${phUpAmount.toFixed(2)} ml</div>
-                        <button id="dose-up-calc-${device_id}" class="dose-button" ${phUpAmount === 0 ? 'disabled' : ''}>Dose Calculated Amount</button>
+                        <div style="margin-bottom: 0.5rem;">
+                            <h4>pH Up</h4>
+                            <span class="dose-info">${phUpAmount.toFixed(2)} ml</span>
+                            <button id="dose-up-calc-${device_id}" class="dose-button" ${phUpAmount === 0 ? 'disabled' : ''}>Dose Calculated</button>
+                        </div>
                         <div class="manual-section">
-                            <label>Manual Dosing</label>
+                            <label>Manual</label>
                             <div class="manual-input">
                                 <input type="number" id="manual-up-${device_id}" placeholder="ml" step="0.1" min="0" value="5">
                                 <button id="dose-up-manual-${device_id}">Dose</button>
@@ -980,11 +982,13 @@
                         </div>
                     </div>
                     <div class="dose-section">
-                        <h4>pH Down</h4>
-                        <div class="dose-info">Calculated: ${phDownAmount.toFixed(2)} ml</div>
-                        <button id="dose-down-calc-${device_id}" class="dose-button" ${phDownAmount === 0 ? 'disabled' : ''}>Dose Calculated Amount</button>
+                        <div style="margin-bottom: 0.5rem;">
+                            <h4>pH Down</h4>
+                            <span class="dose-info">${phDownAmount.toFixed(2)} ml</span>
+                            <button id="dose-down-calc-${device_id}" class="dose-button" ${phDownAmount === 0 ? 'disabled' : ''}>Dose Calculated</button>
+                        </div>
                         <div class="manual-section">
-                            <label>Manual Dosing</label>
+                            <label>Manual</label>
                             <div class="manual-input">
                                 <input type="number" id="manual-down-${device_id}" placeholder="ml" step="0.1" min="0" value="5">
                                 <button id="dose-down-manual-${device_id}">Dose</button>

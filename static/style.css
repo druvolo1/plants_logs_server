@@ -814,12 +814,12 @@ a:hover {
 }
 
 .device-section .card-title {
-    font-size: 0.95rem !important;
+    font-size: 0.85rem !important;
     font-weight: 700 !important;
-    margin-bottom: 1.25rem !important;
+    margin-bottom: 0.75rem !important;
     color: var(--primary) !important;
     border-bottom: 2px solid rgba(16, 185, 129, 0.3) !important;
-    padding-bottom: 0.75rem !important;
+    padding-bottom: 0.5rem !important;
     letter-spacing: 0.05em !important;
     text-transform: uppercase !important;
 }
@@ -829,12 +829,12 @@ a:hover {
     display: flex !important;
     justify-content: center !important;
     align-items: center !important;
-    padding: 1.5rem !important;
+    padding: 0.5rem !important;
 }
 
 .water-bucket {
-    width: 100px !important;
-    height: 140px !important;
+    width: 70px !important;
+    height: 100px !important;
     border: 3px solid var(--border-light) !important;
     border-top: none !important;
     border-radius: 0 0 12px 12px !important;
@@ -887,7 +887,7 @@ a:hover {
 
 /* Valve Controls - Modernized */
 .valve-group {
-    margin-bottom: 1.25rem !important;
+    margin-bottom: 0.75rem !important;
 }
 
 .valve-group:last-child {
@@ -895,8 +895,8 @@ a:hover {
 }
 
 .valve-label {
-    font-size: 1rem !important;
-    margin-bottom: 0.75rem !important;
+    font-size: 0.85rem !important;
+    margin-bottom: 0.5rem !important;
     display: block !important;
     color: var(--text-secondary) !important;
     font-weight: 600 !important;
@@ -904,19 +904,19 @@ a:hover {
 
 .valve-buttons {
     display: flex !important;
-    gap: 0.75rem !important;
+    gap: 0.5rem !important;
 }
 
 .valve-buttons button {
     flex: 1 !important;
-    padding: 0.875rem 1rem !important;
+    padding: 0.6rem 0.75rem !important;
     border: 2px solid var(--border) !important;
     border-radius: 10px !important;
     cursor: pointer !important;
     background: linear-gradient(135deg, rgba(51, 65, 85, 0.6) 0%, rgba(30, 41, 59, 0.8) 100%) !important;
     color: var(--text-primary) !important;
     font-weight: 700 !important;
-    font-size: 0.95rem !important;
+    font-size: 0.8rem !important;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
     text-transform: uppercase !important;
     letter-spacing: 0.05em !important;
@@ -952,72 +952,71 @@ a:hover {
 /* pH Dosing Controls - Modernized */
 .ph-header {
     display: flex !important;
-    justify-content: space-between !important;
+    justify-content: center !important;
     align-items: center !important;
-    margin-bottom: 1.5rem !important;
-    padding: 1rem !important;
+    margin-bottom: 0.75rem !important;
+    padding: 0.5rem !important;
     background: rgba(51, 65, 85, 0.4) !important;
-    border-radius: 10px !important;
+    border-radius: 8px !important;
     border: 1px solid var(--border) !important;
 }
 
 .ph-header span {
     color: var(--text-secondary) !important;
-    font-size: 0.95rem !important;
+    font-size: 0.85rem !important;
 }
 
 .ph-header strong {
     color: var(--primary) !important;
-    font-size: 1.1rem !important;
-    margin-left: 0.5rem !important;
+    font-size: 0.95rem !important;
+    margin-left: 0.25rem !important;
 }
 
 .dose-sections {
-    display: grid !important;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)) !important;
-    gap: 1.25rem !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.75rem !important;
 }
 
 .dose-section {
     background: rgba(30, 41, 59, 0.5) !important;
     border: 1px solid var(--border) !important;
-    border-radius: 12px !important;
-    padding: 1.25rem !important;
+    border-radius: 8px !important;
+    padding: 0.6rem !important;
 }
 
 .dose-section h4 {
-    font-size: 1rem !important;
+    font-size: 0.75rem !important;
     font-weight: 700 !important;
-    margin-bottom: 1rem !important;
+    margin: 0 !important;
     color: var(--primary) !important;
     text-transform: uppercase !important;
     letter-spacing: 0.05em !important;
+    display: inline-block !important;
+    min-width: 60px !important;
 }
 
 .dose-info {
     color: var(--text-secondary) !important;
-    margin-bottom: 1rem !important;
-    font-size: 0.95rem !important;
-    padding: 0.75rem !important;
-    background: rgba(51, 65, 85, 0.3) !important;
-    border-radius: 8px !important;
-    border-left: 3px solid var(--primary) !important;
+    font-size: 0.75rem !important;
+    display: inline-block !important;
+    margin: 0 0.5rem !important;
 }
 
 .dose-button {
-    width: 100% !important;
-    padding: 0.875rem !important;
+    padding: 0.5rem 0.75rem !important;
     background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%) !important;
     color: white !important;
     border: none !important;
-    border-radius: 10px !important;
+    border-radius: 6px !important;
     cursor: pointer !important;
     font-weight: 700 !important;
-    font-size: 0.95rem !important;
+    font-size: 0.7rem !important;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
     text-transform: uppercase !important;
     letter-spacing: 0.05em !important;
-    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3) !important;
+    box-shadow: 0 2px 6px rgba(16, 185, 129, 0.3) !important;
+    display: inline-block !important;
 }
 
 .dose-button:hover:not(:disabled) {
@@ -1033,57 +1032,60 @@ a:hover {
 }
 
 .manual-section {
-    margin-top: 1.25rem !important;
-    padding-top: 1.25rem !important;
+    margin-top: 0 !important;
+    padding-top: 0.5rem !important;
     border-top: 1px solid var(--border) !important;
 }
 
 .manual-section label {
-    display: block !important;
-    margin-bottom: 0.75rem !important;
+    display: inline-block !important;
+    margin-bottom: 0 !important;
+    margin-right: 0.5rem !important;
     color: var(--text-muted) !important;
-    font-size: 0.85rem !important;
+    font-size: 0.7rem !important;
     text-transform: uppercase !important;
     letter-spacing: 0.05em !important;
+    line-height: 2rem !important;
 }
 
 .manual-input {
-    display: flex !important;
-    gap: 0.75rem !important;
+    display: inline-flex !important;
+    gap: 0.4rem !important;
 }
 
 .manual-input input {
-    flex: 1 !important;
-    padding: 0.75rem !important;
+    width: 60px !important;
+    padding: 0.4rem 0.5rem !important;
     background: rgba(15, 23, 42, 0.6) !important;
-    border: 2px solid var(--border) !important;
-    border-radius: 8px !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 6px !important;
     color: var(--text-primary) !important;
-    font-size: 1rem !important;
+    font-size: 0.75rem !important;
     transition: all 0.3s ease !important;
+    text-align: center !important;
 }
 
 .manual-input input:focus {
     outline: none !important;
     border-color: var(--primary) !important;
-    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1) !important;
+    box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.1) !important;
 }
 
 .manual-input button {
-    padding: 0.75rem 1.5rem !important;
+    padding: 0.4rem 0.75rem !important;
     background: linear-gradient(135deg, var(--secondary) 0%, var(--secondary-dark) 100%) !important;
     color: white !important;
     border: none !important;
-    border-radius: 8px !important;
+    border-radius: 6px !important;
     cursor: pointer !important;
     font-weight: 700 !important;
     transition: all 0.3s ease !important;
     text-transform: uppercase !important;
-    font-size: 0.85rem !important;
+    font-size: 0.7rem !important;
     letter-spacing: 0.05em !important;
 }
 
 .manual-input button:hover {
-    transform: translateY(-2px) !important;
-    box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4) !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4) !important;
 }
