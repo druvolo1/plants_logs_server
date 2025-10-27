@@ -432,7 +432,7 @@
                             <div class="device-content-inner">
                                 <div class="cards-grid">
                                     <!-- Water Level Card -->
-                                    <div class="card">
+                                    <div class="card" id="water-level-card-${device.device_id}">
                                         <div class="card-title">💧 Water Level</div>
                                         <div class="bucket-container">
                                             <div class="water-bucket">
@@ -646,14 +646,14 @@
             const weeksItem = document.getElementById(`weeks-item-${device_id}`);
 
             if (plantName && plantName !== '-') {
-                plantItem.style.display = 'flex';
+                plantItem.style.setProperty('display', 'flex', 'important');
                 document.getElementById(`plant-name-${device_id}`).innerHTML = plantName;
             } else {
-                plantItem.style.display = 'none';
+                plantItem.style.setProperty('display', 'none', 'important');
             }
 
             if (startDate && startDate !== '-') {
-                startDateItem.style.display = 'flex';
+                startDateItem.style.setProperty('display', 'flex', 'important');
                 document.getElementById(`start-date-${device_id}`).innerHTML = startDate;
 
                 // Calculate weeks
@@ -664,15 +664,15 @@
                         const diffMs = now - start;
                         const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
                         const weeks = Math.floor(diffDays / 7);
-                        weeksItem.style.display = 'flex';
+                        weeksItem.style.setProperty('display', 'flex', 'important');
                         document.getElementById(`weeks-${device_id}`).innerHTML = weeks;
                     }
                 } catch (e) {
                     console.error('Error calculating weeks:', e);
                 }
             } else {
-                startDateItem.style.display = 'none';
-                weeksItem.style.display = 'none';
+                startDateItem.style.setProperty('display', 'none', 'important');
+                weeksItem.style.setProperty('display', 'none', 'important');
             }
             
             // pH/EC
@@ -704,6 +704,17 @@
         }
 
         function updateWaterBucket(device_id, statusData) {
+            const waterLevelCard = document.getElementById(`water-level-card-${device_id}`);
+            const waterSensorsEnabled = statusData.settings?.water_sensors_enabled;
+
+            // Hide water level card if sensors are disabled
+            if (!waterSensorsEnabled) {
+                waterLevelCard.style.display = 'none';
+                return;
+            }
+
+            waterLevelCard.style.display = 'block';
+
             const water = statusData.water_level || {};
             const sensor1 = water.sensor1?.triggered || false;
             const sensor2 = water.sensor2?.triggered || false;
