@@ -124,12 +124,15 @@
     </form>
     <div id="add-result"></div>
 
-    <!-- Devices list with Connect buttons -->
+    <!-- Devices list -->
     <h3>My Devices</h3>
     <div id="devices-list"></div>
 
     <script>
-        // Fetch and display devices list with Connect and Delete buttons
+        // Store WebSocket connections per device
+        let wsMap = {};
+
+        // Fetch and display devices list with Update and Delete buttons
         async function fetchDevices() {
             const response = await fetch('/user/devices');
             if (response.ok) {
@@ -138,18 +141,25 @@
                 listDiv.innerHTML = '';
                 devices.forEach(device => {
                     const deviceDiv = document.createElement('div');
+                    deviceDiv.style.marginBottom = '1.5rem';
+                    deviceDiv.style.padding = '1rem';
+                    deviceDiv.style.border = '1px solid #ccc';
+                    deviceDiv.style.borderRadius = '8px';
                     deviceDiv.innerHTML = `
-                        <p>${device.name || device.device_id} - Online: ${device.is_online ? 'Yes' : 'No'}</p>
-                        <button onclick="connectToDevice('${device.device_id}')">Connect</button>
+                        <p><strong>System Name:</strong> <span id="name-${device.device_id}">${device.name || 'Loading...'}</span></p>
+                        <p><strong>Device ID:</strong> ${device.device_id}</p>
+                        <p><strong>Version:</strong> <span id="version-${device.device_id}">Loading...</span></p>
+                        <p><strong>Online:</strong> <span id="online-${device.device_id}">${device.is_online ? 'Yes' : 'No'}</span></p>
+                        <button onclick="updateDevice('${device.device_id}')" id="update-btn-${device.device_id}">Update Software</button>
                         <button onclick="deleteDevice('${device.device_id}')">Delete</button>
-                        <div id="control-${device.device_id}" style="display:none;">
-                            <h3>Controls (Test)</h3>
-                            <p>pH: <span id="ph-${device.device_id}">Loading...</span></p>
-                            <button onclick="sendDose('${device.device_id}', 'up', 10)">Dose pH Up (10ml)</button>
-                            <button onclick="sendDose('${device.device_id}', 'down', 10)">Dose pH Down (10ml)</button>
-                        </div>
+                        <div id="update-status-${device.device_id}" style="margin-top: 0.5rem; color: #10b981;"></div>
                     `;
                     listDiv.appendChild(deviceDiv);
+
+                    // Auto-connect to WebSocket for status updates
+                    if (device.is_online) {
+                        connectToDevice(device.device_id);
+                    }
                 });
             }
         }
