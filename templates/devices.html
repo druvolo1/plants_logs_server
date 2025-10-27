@@ -115,12 +115,16 @@
     <h3>Add Device</h3>
     <form id="add-device-form">
         <label for="device_id">Device ID (from Pi):</label>
-        <input type="text" id="device_id" required>
+        <input type="text" id="device_id">
         <br>
         <label for="name">Device Name (optional):</label>
         <input type="text" id="name">
         <br>
-        <button type="submit">Add Device</button>
+        <label style="margin-top: 1rem; display: block; font-weight: normal; color: #888;">OR accept shared device:</label>
+        <label for="share_code">Share Code:</label>
+        <input type="text" id="share_code" placeholder="Enter 10-character code">
+        <br>
+        <button type="submit">Add Device / Accept Share</button>
     </form>
     <div id="add-result"></div>
 
@@ -128,9 +132,38 @@
     <h3>My Devices</h3>
     <div id="devices-list"></div>
 
+    <!-- Share Management Modal -->
+    <div id="share-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 2000;">
+        <div style="position: relative; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #1e293b; padding: 2rem; border-radius: 12px; max-width: 600px; width: 90%; box-shadow: 0 8px 32px rgba(0,0,0,0.5);">
+            <h3 style="color: #10b981; margin-top: 0;">Manage Device Sharing</h3>
+            <p style="color: #888; font-size: 0.9rem;" id="share-device-name"></p>
+
+            <!-- Create New Share -->
+            <div style="margin: 1.5rem 0; padding: 1rem; background: rgba(16, 185, 129, 0.1); border-radius: 8px; border-left: 4px solid #10b981;">
+                <h4 style="margin-top: 0; color: #10b981;">Create New Share Link</h4>
+                <label for="permission-select">Permission Level:</label>
+                <select id="permission-select" style="margin-left: 0.5rem; padding: 0.5rem; border-radius: 4px;">
+                    <option value="viewer">View Only</option>
+                    <option value="controller">Can Control</option>
+                </select>
+                <button onclick="createShare()" style="margin-left: 1rem;">Generate Share Code</button>
+                <div id="share-code-result" style="margin-top: 1rem;"></div>
+            </div>
+
+            <!-- Active Shares List -->
+            <div style="margin: 1.5rem 0;">
+                <h4 style="color: #10b981;">Active Shares</h4>
+                <div id="shares-list" style="margin-top: 1rem;"></div>
+            </div>
+
+            <button onclick="closeShareModal()" style="background: #64748b; margin-top: 1rem;">Close</button>
+        </div>
+    </div>
+
     <script>
         // Store WebSocket connections per device
         let wsMap = {};
+        let currentShareDeviceId = null;
 
         // Fetch and display devices list with Update and Delete buttons
         async function fetchDevices() {
@@ -145,7 +178,23 @@
                     deviceDiv.style.padding = '1rem';
                     deviceDiv.style.border = '1px solid #ccc';
                     deviceDiv.style.borderRadius = '8px';
+
+                    // Show ownership info
+                    const ownershipInfo = device.is_owner
+                        ? '<p style="color: #10b981; font-size: 0.9rem;">✓ You own this device</p>'
+                        : `<p style="color: #f59e0b; font-size: 0.9rem;">🔗 Shared by ${device.shared_by_email} (${device.permission_level})</p>`;
+
+                    // Only owners can share and delete
+                    const shareButton = device.is_owner
+                        ? `<button onclick="openShareModal('${device.device_id}')" style="background: #8b5cf6;">Share</button>`
+                        : '';
+
+                    const deleteButton = device.is_owner
+                        ? `<button onclick="deleteDevice('${device.device_id}')">Delete</button>`
+                        : '';
+
                     deviceDiv.innerHTML = `
+                        ${ownershipInfo}
                         <p><strong>System Name:</strong> <span id="name-${device.device_id}">${device.name || 'Loading...'}</span></p>
                         <p><strong>Device ID:</strong> ${device.device_id}</p>
                         <p><strong>Version:</strong> <span id="version-${device.device_id}">Loading...</span></p>
@@ -153,7 +202,8 @@
                         <button onclick="updateDevice('${device.device_id}')" id="update-btn-${device.device_id}">Update Software</button>
                         <button onclick="restartService('${device.device_id}')" id="restart-btn-${device.device_id}">Restart Service</button>
                         <button onclick="rebootSystem('${device.device_id}')" id="reboot-btn-${device.device_id}" style="background: #dc2626;">Reboot System</button>
-                        <button onclick="deleteDevice('${device.device_id}')">Delete</button>
+                        ${shareButton}
+                        ${deleteButton}
                         <div id="update-status-${device.device_id}" style="margin-top: 0.5rem; color: #10b981;"></div>
                     `;
                     listDiv.appendChild(deviceDiv);
@@ -163,6 +213,120 @@
                         connectToDevice(device.device_id);
                     }
                 });
+            }
+        }
+
+        // Share Management Functions
+        function openShareModal(device_id) {
+            currentShareDeviceId = device_id;
+            document.getElementById('share-device-name').textContent = `Device: ${device_id}`;
+            document.getElementById('share-modal').style.display = 'block';
+            loadShares(device_id);
+        }
+
+        function closeShareModal() {
+            document.getElementById('share-modal').style.display = 'none';
+            document.getElementById('share-code-result').innerHTML = '';
+            document.getElementById('shares-list').innerHTML = '';
+            currentShareDeviceId = null;
+        }
+
+        async function createShare() {
+            const permission = document.getElementById('permission-select').value;
+            const response = await fetch(`/user/devices/${currentShareDeviceId}/share`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ permission_level: permission })
+            });
+
+            const resultDiv = document.getElementById('share-code-result');
+            if (response.ok) {
+                const data = await response.json();
+                resultDiv.innerHTML = `
+                    <div style="background: rgba(16, 185, 129, 0.2); padding: 1rem; border-radius: 6px; margin-top: 0.5rem;">
+                        <p style="margin: 0; color: #10b981; font-weight: bold;">Share Code Generated!</p>
+                        <p style="margin: 0.5rem 0; font-size: 1.2rem; font-family: monospace; color: #fff;">${data.share_code}</p>
+                        <p style="margin: 0; font-size: 0.85rem; color: #888;">Expires: ${new Date(data.expires_at).toLocaleString()}</p>
+                        <button onclick="navigator.clipboard.writeText('${data.share_code}')" style="margin-top: 0.5rem; font-size: 0.85rem;">Copy Code</button>
+                    </div>
+                `;
+                // Reload shares list
+                loadShares(currentShareDeviceId);
+            } else {
+                resultDiv.innerHTML = `<p style="color: #ef4444;">Failed to create share</p>`;
+            }
+        }
+
+        async function loadShares(device_id) {
+            const response = await fetch(`/user/devices/${device_id}/shares`);
+            if (response.ok) {
+                const shares = await response.json();
+                const sharesDiv = document.getElementById('shares-list');
+
+                if (shares.length === 0) {
+                    sharesDiv.innerHTML = '<p style="color: #888;">No active shares</p>';
+                    return;
+                }
+
+                sharesDiv.innerHTML = '';
+                shares.forEach(share => {
+                    const shareDiv = document.createElement('div');
+                    shareDiv.style.padding = '1rem';
+                    shareDiv.style.marginBottom = '0.5rem';
+                    shareDiv.style.background = 'rgba(100, 116, 139, 0.2)';
+                    shareDiv.style.borderRadius = '6px';
+
+                    const statusText = share.accepted_at
+                        ? `Accepted by ${share.shared_with_email}`
+                        : `Pending (Code: ${share.share_code})`;
+
+                    const expiryText = new Date(share.expires_at) > new Date()
+                        ? `Expires: ${new Date(share.expires_at).toLocaleString()}`
+                        : '<span style="color: #ef4444;">Expired</span>';
+
+                    shareDiv.innerHTML = `
+                        <p style="margin: 0 0 0.5rem 0;"><strong>${statusText}</strong></p>
+                        <p style="margin: 0; font-size: 0.9rem; color: #888;">Permission: ${share.permission_level}</p>
+                        <p style="margin: 0; font-size: 0.9rem; color: #888;">${expiryText}</p>
+                        ${share.accepted_at ? `
+                            <select id="perm-${share.id}" style="margin-top: 0.5rem; margin-right: 0.5rem;">
+                                <option value="viewer" ${share.permission_level === 'viewer' ? 'selected' : ''}>View Only</option>
+                                <option value="controller" ${share.permission_level === 'controller' ? 'selected' : ''}>Can Control</option>
+                            </select>
+                            <button onclick="updatePermission(${share.id})" style="font-size: 0.85rem;">Update</button>
+                        ` : ''}
+                        <button onclick="revokeShare(${share.id})" style="background: #dc2626; font-size: 0.85rem; margin-top: 0.5rem;">Revoke</button>
+                    `;
+                    sharesDiv.appendChild(shareDiv);
+                });
+            }
+        }
+
+        async function revokeShare(share_id) {
+            if (!confirm('Are you sure you want to revoke this share?')) return;
+
+            const response = await fetch(`/user/devices/shares/${share_id}`, { method: 'DELETE' });
+            if (response.ok) {
+                loadShares(currentShareDeviceId);
+                alert('Share revoked successfully');
+            } else {
+                alert('Failed to revoke share');
+            }
+        }
+
+        async function updatePermission(share_id) {
+            const permission = document.getElementById(`perm-${share_id}`).value;
+            const response = await fetch(`/user/devices/shares/${share_id}/permission`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ permission_level: permission })
+            });
+
+            if (response.ok) {
+                alert('Permission updated successfully');
+                loadShares(currentShareDeviceId);
+            } else {
+                alert('Failed to update permission');
             }
         }
 
@@ -370,24 +534,52 @@
             }, 60000);
         }
 
-        // Add form submit
+        // Add form submit - handle both device adding and share code acceptance
         document.getElementById('add-device-form').addEventListener('submit', async function(event) {
             event.preventDefault();
-            const device_id = document.getElementById('device_id').value;
-            const name = document.getElementById('name').value;
-            const response = await fetch('/user/devices', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ device_id: device_id, name: name })
-            });
+            const device_id = document.getElementById('device_id').value.trim();
+            const name = document.getElementById('name').value.trim();
+            const share_code = document.getElementById('share_code').value.trim();
             const resultDiv = document.getElementById('add-result');
-            if (response.ok) {
-                const data = await response.json();
-                resultDiv.innerHTML = `Device added! API Key: ${data.api_key} (copy to Pi settings.json as "api_key")`;
-                fetchDevices();  // Reload list
+
+            // If share code is provided, accept share
+            if (share_code) {
+                const response = await fetch('/user/devices/accept-share', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ share_code: share_code })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    resultDiv.innerHTML = `<p style="color: #10b981;">✓ Device share accepted successfully! Device ID: ${data.device_id}</p>`;
+                    document.getElementById('share_code').value = '';
+                    fetchDevices();  // Reload list
+                } else {
+                    const error = await response.json();
+                    resultDiv.innerHTML = `<p style="color: #ef4444;">Error: ${error.detail}</p>`;
+                }
+            }
+            // Otherwise, add new device
+            else if (device_id) {
+                const response = await fetch('/user/devices', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ device_id: device_id, name: name })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    resultDiv.innerHTML = `<p style="color: #10b981;">Device added! API Key: <strong>${data.api_key}</strong> (copy to Pi settings.json as "api_key")</p>`;
+                    document.getElementById('device_id').value = '';
+                    document.getElementById('name').value = '';
+                    fetchDevices();  // Reload list
+                } else {
+                    const error = await response.json();
+                    resultDiv.innerHTML = `<p style="color: #ef4444;">Error: ${error.detail}</p>`;
+                }
             } else {
-                const error = await response.json();
-                resultDiv.innerHTML = `Error: ${error.detail}`;
+                resultDiv.innerHTML = `<p style="color: #ef4444;">Please enter either a Device ID or a Share Code</p>`;
             }
         });
 

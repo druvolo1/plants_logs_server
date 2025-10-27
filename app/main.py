@@ -5,8 +5,9 @@ from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, Integer, String, Boolean, select, ForeignKey
+from sqlalchemy import Column, Integer, String, Boolean, select, ForeignKey, DateTime
 from sqlalchemy.orm import relationship, selectinload, Session
+from datetime import datetime, timedelta
 from typing import List, Optional, Generator, Any, Dict
 from fastapi_users import FastAPIUsers, BaseUserManager, IntegerIDMixin
 from fastapi_users.authentication import CookieTransport, AuthenticationBackend, JWTStrategy
@@ -82,6 +83,26 @@ class Device(Base):
     is_online = Column(Boolean, default=False)
     user_id = Column(Integer, ForeignKey("users.id"))
     user = relationship("User", back_populates="devices")
+
+# Device Sharing model
+class DeviceShare(Base):
+    __tablename__ = "device_shares"
+    id = Column(Integer, primary_key=True, index=True)
+    device_id = Column(Integer, ForeignKey("devices.id"), nullable=False)
+    owner_user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    shared_with_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)  # NULL until accepted
+    share_code = Column(String(12), unique=True, index=True, nullable=False)
+    permission_level = Column(String(20), nullable=False)  # 'viewer' or 'controller'
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    expires_at = Column(DateTime, nullable=False)
+    accepted_at = Column(DateTime, nullable=True)
+    revoked_at = Column(DateTime, nullable=True)
+    is_active = Column(Boolean, default=True, nullable=False)
+
+    # Relationships
+    device = relationship("Device", foreign_keys=[device_id])
+    owner = relationship("User", foreign_keys=[owner_user_id])
+    shared_with = relationship("User", foreign_keys=[shared_with_user_id])
 
 async def create_db_and_tables():
     async with engine.begin() as conn:
@@ -584,6 +605,30 @@ class DeviceRead(BaseModel):
     device_id: str
     name: Optional[str]
     is_online: bool
+    is_owner: Optional[bool] = True  # Whether current user owns the device
+    permission_level: Optional[str] = None  # 'viewer', 'controller', or None if owner
+    shared_by_email: Optional[str] = None  # Email of owner if shared device
+
+# Device Sharing Pydantic models
+class ShareCreate(BaseModel):
+    permission_level: str  # 'viewer' or 'controller'
+
+class ShareAccept(BaseModel):
+    share_code: str
+
+class ShareUpdate(BaseModel):
+    permission_level: str
+
+class ShareRead(BaseModel):
+    id: int
+    device_id: int
+    share_code: str
+    permission_level: str
+    created_at: datetime
+    expires_at: datetime
+    accepted_at: Optional[datetime]
+    is_active: bool
+    shared_with_email: Optional[str]
 
 @app.post("/user/devices", response_model=Dict[str, str])
 async def add_device(device: DeviceCreate, user: User = Depends(current_user), session: AsyncSession = Depends(get_db)):
@@ -605,11 +650,47 @@ async def add_device(device: DeviceCreate, user: User = Depends(current_user), s
     
     return {"api_key": api_key, "message": "Device added. Copy API key to Pi settings."}
 
-# Added: List user devices
+# Added: List user devices (owned and shared)
 @app.get("/user/devices", response_model=List[DeviceRead])
 async def list_devices(user: User = Depends(current_user), session: AsyncSession = Depends(get_db)):
-    result = await session.execute(select(Device).where(Device.user_id == user.id))
-    return result.scalars().all()
+    devices_list = []
+
+    # Get owned devices
+    owned_result = await session.execute(select(Device).where(Device.user_id == user.id))
+    for device in owned_result.scalars().all():
+        devices_list.append(DeviceRead(
+            device_id=device.device_id,
+            name=device.name,
+            is_online=device.is_online,
+            is_owner=True,
+            permission_level=None,
+            shared_by_email=None
+        ))
+
+    # Get shared devices
+    shared_result = await session.execute(
+        select(Device, DeviceShare, User.email)
+        .join(DeviceShare, DeviceShare.device_id == Device.id)
+        .join(User, DeviceShare.owner_user_id == User.id)
+        .where(
+            DeviceShare.shared_with_user_id == user.id,
+            DeviceShare.is_active == True,
+            DeviceShare.revoked_at == None,
+            DeviceShare.accepted_at != None
+        )
+    )
+
+    for device, share, owner_email in shared_result.all():
+        devices_list.append(DeviceRead(
+            device_id=device.device_id,
+            name=device.name,
+            is_online=device.is_online,
+            is_owner=False,
+            permission_level=share.permission_level,
+            shared_by_email=owner_email
+        ))
+
+    return devices_list
 
 # Added: Delete device
 @app.delete("/user/devices/{device_id}")
@@ -621,6 +702,197 @@ async def delete_device(device_id: str, user: User = Depends(current_user), sess
     await session.delete(device)
     await session.commit()
     return {"status": "success"}
+
+# Helper function to generate unique share code
+async def generate_share_code(session: AsyncSession) -> str:
+    """Generate a unique 10-character alphanumeric share code."""
+    import string
+    import random
+
+    while True:
+        code = ''.join(random.choices(string.ascii_uppercase + string.ascii_lowercase + string.digits, k=10))
+        # Check if code already exists
+        result = await session.execute(select(DeviceShare).where(DeviceShare.share_code == code))
+        if not result.scalars().first():
+            return code
+
+# Create a share link for a device
+@app.post("/user/devices/{device_id}/share", response_model=Dict[str, str])
+async def create_share(
+    device_id: str,
+    share_data: ShareCreate,
+    user: User = Depends(current_user),
+    session: AsyncSession = Depends(get_db)
+):
+    # Verify user owns the device
+    result = await session.execute(select(Device).where(Device.device_id == device_id, Device.user_id == user.id))
+    device = result.scalars().first()
+    if not device:
+        raise HTTPException(404, "Device not found or not owned by you")
+
+    # Validate permission level
+    if share_data.permission_level not in ['viewer', 'controller']:
+        raise HTTPException(400, "Invalid permission level. Must be 'viewer' or 'controller'")
+
+    # Generate unique share code
+    share_code = await generate_share_code(session)
+
+    # Create share
+    share = DeviceShare(
+        device_id=device.id,
+        owner_user_id=user.id,
+        share_code=share_code,
+        permission_level=share_data.permission_level,
+        expires_at=datetime.utcnow() + timedelta(hours=24),
+        is_active=True
+    )
+
+    session.add(share)
+    await session.commit()
+    await session.refresh(share)
+
+    return {"share_code": share_code, "expires_at": share.expires_at.isoformat()}
+
+# Accept a share with a code
+@app.post("/user/devices/accept-share", response_model=Dict[str, str])
+async def accept_share(
+    share_data: ShareAccept,
+    user: User = Depends(current_user),
+    session: AsyncSession = Depends(get_db)
+):
+    # Find the share by code
+    result = await session.execute(
+        select(DeviceShare).where(
+            DeviceShare.share_code == share_data.share_code,
+            DeviceShare.is_active == True,
+            DeviceShare.accepted_at == None
+        )
+    )
+    share = result.scalars().first()
+
+    if not share:
+        raise HTTPException(404, "Invalid or already accepted share code")
+
+    # Check if expired
+    if datetime.utcnow() > share.expires_at:
+        share.is_active = False
+        await session.commit()
+        raise HTTPException(400, "Share code has expired")
+
+    # Check if user is trying to share with themselves
+    if share.owner_user_id == user.id:
+        raise HTTPException(400, "You cannot accept your own share")
+
+    # Accept the share
+    share.shared_with_user_id = user.id
+    share.accepted_at = datetime.utcnow()
+
+    await session.commit()
+    await session.refresh(share)
+
+    # Get device info
+    device_result = await session.execute(select(Device).where(Device.id == share.device_id))
+    device = device_result.scalars().first()
+
+    return {"status": "success", "device_id": device.device_id if device else "unknown"}
+
+# List all shares for a device (for owner only)
+@app.get("/user/devices/{device_id}/shares", response_model=List[ShareRead])
+async def list_shares(
+    device_id: str,
+    user: User = Depends(current_user),
+    session: AsyncSession = Depends(get_db)
+):
+    # Verify user owns the device
+    result = await session.execute(select(Device).where(Device.device_id == device_id, Device.user_id == user.id))
+    device = result.scalars().first()
+    if not device:
+        raise HTTPException(404, "Device not found or not owned by you")
+
+    # Get all active shares for this device
+    result = await session.execute(
+        select(DeviceShare, User.email)
+        .outerjoin(User, DeviceShare.shared_with_user_id == User.id)
+        .where(
+            DeviceShare.device_id == device.id,
+            DeviceShare.is_active == True,
+            DeviceShare.revoked_at == None
+        )
+    )
+
+    shares_data = []
+    for share, email in result.all():
+        shares_data.append(ShareRead(
+            id=share.id,
+            device_id=share.device_id,
+            share_code=share.share_code,
+            permission_level=share.permission_level,
+            created_at=share.created_at,
+            expires_at=share.expires_at,
+            accepted_at=share.accepted_at,
+            is_active=share.is_active,
+            shared_with_email=email
+        ))
+
+    return shares_data
+
+# Revoke a share
+@app.delete("/user/devices/shares/{share_id}")
+async def revoke_share(
+    share_id: int,
+    user: User = Depends(current_user),
+    session: AsyncSession = Depends(get_db)
+):
+    # Find the share and verify ownership
+    result = await session.execute(
+        select(DeviceShare).where(
+            DeviceShare.id == share_id,
+            DeviceShare.owner_user_id == user.id
+        )
+    )
+    share = result.scalars().first()
+
+    if not share:
+        raise HTTPException(404, "Share not found or not owned by you")
+
+    # Revoke the share
+    share.is_active = False
+    share.revoked_at = datetime.utcnow()
+
+    await session.commit()
+
+    return {"status": "success"}
+
+# Update share permission
+@app.put("/user/devices/shares/{share_id}/permission")
+async def update_share_permission(
+    share_id: int,
+    share_data: ShareUpdate,
+    user: User = Depends(current_user),
+    session: AsyncSession = Depends(get_db)
+):
+    # Validate permission level
+    if share_data.permission_level not in ['viewer', 'controller']:
+        raise HTTPException(400, "Invalid permission level. Must be 'viewer' or 'controller'")
+
+    # Find the share and verify ownership
+    result = await session.execute(
+        select(DeviceShare).where(
+            DeviceShare.id == share_id,
+            DeviceShare.owner_user_id == user.id
+        )
+    )
+    share = result.scalars().first()
+
+    if not share:
+        raise HTTPException(404, "Share not found or not owned by you")
+
+    # Update permission
+    share.permission_level = share_data.permission_level
+
+    await session.commit()
+
+    return {"status": "success", "permission_level": share.permission_level}
 
 # Added: Global connections for WS relay
 device_connections: Dict[str, WebSocket] = {}

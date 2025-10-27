@@ -850,12 +850,35 @@
                 devices.forEach(device => {
                     const deviceSection = document.createElement('div');
                     deviceSection.classList.add('device-section');
+
+                    // Set header color based on ownership/permission
+                    let headerBgColor = '#1e293b'; // Default (owner)
+                    let headerBorderColor = '#10b981'; // Default (owner)
+                    let ownershipText = '';
+
+                    if (!device.is_owner) {
+                        if (device.permission_level === 'viewer') {
+                            headerBgColor = '#312e81'; // Indigo for viewer
+                            headerBorderColor = '#8b5cf6'; // Purple border
+                            ownershipText = `<span style="font-size: 0.8em; color: #a78bfa;">👁️ View Only (${device.shared_by_email})</span>`;
+                        } else {
+                            headerBgColor = '#1e3a8a'; // Blue for controller
+                            headerBorderColor = '#3b82f6'; // Lighter blue border
+                            ownershipText = `<span style="font-size: 0.8em; color: #60a5fa;">🔧 Shared (${device.shared_by_email})</span>`;
+                        }
+                    }
+
+                    // Store permission level on device section for later use
+                    deviceSection.dataset.permissionLevel = device.permission_level || 'owner';
+                    deviceSection.dataset.isOwner = device.is_owner;
+
                     deviceSection.innerHTML = `
-                        <div class="device-header" onclick="toggleDevice('${device.device_id}')" style="cursor: ${device.is_online ? 'pointer' : 'not-allowed'}; opacity: ${device.is_online ? '1' : '0.6'};">
+                        <div class="device-header" onclick="toggleDevice('${device.device_id}')" style="cursor: ${device.is_online ? 'pointer' : 'not-allowed'}; opacity: ${device.is_online ? '1' : '0.6'}; background: ${headerBgColor}; border-color: ${headerBorderColor};">
                             <div class="device-header-left">
                                 <div class="status-badge ${device.is_online ? 'status-online' : 'status-offline'}" id="status-badge-${device.device_id}">
                                     ● ${device.is_online ? 'Online' : 'Offline'}
                                 </div>
+                                ${ownershipText ? `<div style="margin-left: 1rem;">${ownershipText}</div>` : ''}
                                 <div class="header-ph-ec" id="header-ph-ec-${device.device_id}" style="display:none; font-size: 0.7em; color: #10b981; gap: 8px;">
                                     <span id="header-ph-${device.device_id}" style="display:none;"></span>
                                     <span id="header-ec-${device.device_id}" style="display:none;"></span>
@@ -893,7 +916,7 @@
                             </div>
                         </div>
                         
-                        <div class="device-content" id="device-content-${device.device_id}">
+                        <div class="device-content" id="device-content-${device.device_id}" data-device-id="${device.device_id}">
                             <div class="device-content-inner">
                                 <div class="cards-grid">
                                     <!-- Water Level Card -->
@@ -1344,20 +1367,29 @@
             }
         }
 
+        // Helper function to check if user can control device
+        function canControl(device_id) {
+            const deviceSection = document.querySelector(`[data-device-id="${device_id}"]`)?.closest('.device-section');
+            if (!deviceSection) return true; // Default to allow if not found
+            const permissionLevel = deviceSection.dataset.permissionLevel;
+            return permissionLevel !== 'viewer';
+        }
+
         function updateValveControls(device_id, statusData) {
             const valveControlsDiv = document.getElementById(`valve-controls-${device_id}`);
             const valvesCard = document.getElementById(`valves-card-${device_id}`);
             const fillLabel = statusData.settings?.fill_valve_label;
             const drainLabel = statusData.settings?.drain_valve_label;
             const valveRelays = statusData.valve_info?.valve_relays || {};
+            const isViewOnly = !canControl(device_id);
 
             valveControlsDiv.innerHTML = '';
-            
+
             if (!fillLabel && !drainLabel) {
                 valvesCard.style.display = 'none';
                 return;
             }
-            
+
             valvesCard.style.display = 'block';
 
             if (fillLabel) {
@@ -1367,13 +1399,15 @@
                 fillGroup.innerHTML = `
                     <div class="valve-label">${fillLabel}: <strong id="fill-status-${device_id}">${fillStatus === 'on' ? 'On' : 'Off'}</strong></div>
                     <div class="valve-buttons">
-                        <button id="fill-on-${device_id}" class="${fillStatus === 'on' ? 'btn-on-active' : 'btn-inactive'}">On</button>
-                        <button id="fill-off-${device_id}" class="${fillStatus === 'off' ? 'btn-off-active' : 'btn-inactive'}">Off</button>
+                        <button id="fill-on-${device_id}" class="${fillStatus === 'on' ? 'btn-on-active' : 'btn-inactive'}" ${isViewOnly ? 'disabled style="opacity: 0.5; cursor: not-allowed;"' : ''}>On</button>
+                        <button id="fill-off-${device_id}" class="${fillStatus === 'off' ? 'btn-off-active' : 'btn-inactive'}" ${isViewOnly ? 'disabled style="opacity: 0.5; cursor: not-allowed;"' : ''}>Off</button>
                     </div>
                 `;
                 valveControlsDiv.appendChild(fillGroup);
-                document.getElementById(`fill-on-${device_id}`).onclick = (e) => { e.stopPropagation(); sendValveCommand(device_id, fillLabel, 'on'); };
-                document.getElementById(`fill-off-${device_id}`).onclick = (e) => { e.stopPropagation(); sendValveCommand(device_id, fillLabel, 'off'); };
+                if (!isViewOnly) {
+                    document.getElementById(`fill-on-${device_id}`).onclick = (e) => { e.stopPropagation(); sendValveCommand(device_id, fillLabel, 'on'); };
+                    document.getElementById(`fill-off-${device_id}`).onclick = (e) => { e.stopPropagation(); sendValveCommand(device_id, fillLabel, 'off'); };
+                }
             }
 
             if (drainLabel) {
@@ -1383,13 +1417,15 @@
                 drainGroup.innerHTML = `
                     <div class="valve-label">${drainLabel}: <strong id="drain-status-${device_id}">${drainStatus === 'on' ? 'On' : 'Off'}</strong></div>
                     <div class="valve-buttons">
-                        <button id="drain-on-${device_id}" class="${drainStatus === 'on' ? 'btn-on-active' : 'btn-inactive'}">On</button>
-                        <button id="drain-off-${device_id}" class="${drainStatus === 'off' ? 'btn-off-active' : 'btn-inactive'}">Off</button>
+                        <button id="drain-on-${device_id}" class="${drainStatus === 'on' ? 'btn-on-active' : 'btn-inactive'}" ${isViewOnly ? 'disabled style="opacity: 0.5; cursor: not-allowed;"' : ''}>On</button>
+                        <button id="drain-off-${device_id}" class="${drainStatus === 'off' ? 'btn-off-active' : 'btn-inactive'}" ${isViewOnly ? 'disabled style="opacity: 0.5; cursor: not-allowed;"' : ''}>Off</button>
                     </div>
                 `;
                 valveControlsDiv.appendChild(drainGroup);
-                document.getElementById(`drain-on-${device_id}`).onclick = (e) => { e.stopPropagation(); sendValveCommand(device_id, drainLabel, 'on'); };
-                document.getElementById(`drain-off-${device_id}`).onclick = (e) => { e.stopPropagation(); sendValveCommand(device_id, drainLabel, 'off'); };
+                if (!isViewOnly) {
+                    document.getElementById(`drain-on-${device_id}`).onclick = (e) => { e.stopPropagation(); sendValveCommand(device_id, drainLabel, 'on'); };
+                    document.getElementById(`drain-off-${device_id}`).onclick = (e) => { e.stopPropagation(); sendValveCommand(device_id, drainLabel, 'off'); };
+                }
             }
         }
 
@@ -1398,13 +1434,14 @@
             const dosingCard = document.getElementById(`dosing-card-${device_id}`);
             const dosageInfo = statusData.dosage_info;
             const hasPhProbe = statusData.settings?.usb_roles?.ph_probe;
+            const isViewOnly = !canControl(device_id);
 
             // Hide dosing card if no pH probe assigned or no dosage info
             if (!hasPhProbe || !dosageInfo) {
                 dosingCard.style.display = 'none';
                 return;
             }
-            
+
             dosingCard.style.display = 'block';
 
             const phUpAmount = dosageInfo.ph_up_amount || 0;
@@ -1418,19 +1455,21 @@
                 phTitleEl.innerHTML = `pH: <strong style="color: var(--primary);">${currentPh}</strong> | Target: <strong style="color: var(--primary);">${phTarget}</strong>`;
             }
 
+            const disabledStyle = isViewOnly ? 'disabled style="opacity: 0.5; cursor: not-allowed;"' : '';
+
             dosingControlsDiv.innerHTML = `
                 <div class="dose-sections">
                     <div class="dose-section">
                         <div style="margin-bottom: 0.3rem;">
                             <h4>pH Up</h4>
                             <span class="dose-info">${phUpAmount.toFixed(2)} ml</span>
-                            <button id="dose-up-calc-${device_id}" class="dose-button" ${phUpAmount === 0 ? 'disabled' : ''}>Dose</button>
+                            <button id="dose-up-calc-${device_id}" class="dose-button" ${(phUpAmount === 0 || isViewOnly) ? 'disabled' : ''} ${isViewOnly ? 'style="opacity: 0.5; cursor: not-allowed;"' : ''}>Dose</button>
                         </div>
                         <div class="manual-section">
                             <label>Manual</label>
                             <div class="manual-input">
-                                <input type="text" inputmode="decimal" id="manual-up-${device_id}" placeholder="ml" value="5">
-                                <button id="dose-up-manual-${device_id}">Dose</button>
+                                <input type="text" inputmode="decimal" id="manual-up-${device_id}" placeholder="ml" value="5" ${disabledStyle}>
+                                <button id="dose-up-manual-${device_id}" ${disabledStyle}>Dose</button>
                             </div>
                         </div>
                     </div>
@@ -1438,18 +1477,20 @@
                         <div style="margin-bottom: 0.3rem;">
                             <h4>pH Down</h4>
                             <span class="dose-info">${phDownAmount.toFixed(2)} ml</span>
-                            <button id="dose-down-calc-${device_id}" class="dose-button" ${phDownAmount === 0 ? 'disabled' : ''}>Dose</button>
+                            <button id="dose-down-calc-${device_id}" class="dose-button" ${(phDownAmount === 0 || isViewOnly) ? 'disabled' : ''} ${isViewOnly ? 'style="opacity: 0.5; cursor: not-allowed;"' : ''}>Dose</button>
                         </div>
                         <div class="manual-section">
                             <label>Manual</label>
                             <div class="manual-input">
-                                <input type="text" inputmode="decimal" id="manual-down-${device_id}" placeholder="ml" value="5">
-                                <button id="dose-down-manual-${device_id}">Dose</button>
+                                <input type="text" inputmode="decimal" id="manual-down-${device_id}" placeholder="ml" value="5" ${disabledStyle}>
+                                <button id="dose-down-manual-${device_id}" ${disabledStyle}>Dose</button>
                             </div>
                         </div>
                     </div>
                 </div>
             `;
+
+            if (isViewOnly) return; // Don't add click handlers for view-only users
 
             document.getElementById(`dose-up-calc-${device_id}`).onclick = (e) => {
                 e.stopPropagation();

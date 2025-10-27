@@ -47,7 +47,7 @@ async def check_and_modify_column_default(connection, table_name: str, column_na
     """Modify the default value of a column."""
     try:
         print(f"  Updating default value for '{column_name}' in '{table_name}'...")
-        
+
         # For MariaDB/MySQL, we need to know the full column definition to modify it
         # Get current column definition
         result = await connection.execute(text(f"""
@@ -58,17 +58,17 @@ async def check_and_modify_column_default(connection, table_name: str, column_na
             AND COLUMN_NAME = '{column_name}'
         """))
         row = result.fetchone()
-        
+
         if row:
             column_type = row[0]
             is_nullable = 'NULL' if row[1] == 'YES' else 'NOT NULL'
             current_default = row[2]
-            
+
             # Check if default needs to be changed
             if str(current_default) != str(new_default):
                 # Modify column with new default
                 await connection.execute(text(f"""
-                    ALTER TABLE {table_name} 
+                    ALTER TABLE {table_name}
                     MODIFY COLUMN {column_name} {column_type} {is_nullable} DEFAULT {new_default}
                 """))
                 await connection.commit()
@@ -80,9 +80,35 @@ async def check_and_modify_column_default(connection, table_name: str, column_na
         else:
             print(f"  ✗ Column '{column_name}' not found in '{table_name}'")
             return False
-            
+
     except Exception as e:
         print(f"  ✗ Error modifying column default: {e}")
+        return False
+
+async def check_and_create_table(connection, table_name: str, create_sql: str):
+    """Check if a table exists, and create it if it doesn't."""
+    try:
+        # Check if table exists
+        result = await connection.execute(text(f"""
+            SELECT COUNT(*) as count
+            FROM information_schema.TABLES
+            WHERE TABLE_SCHEMA = DATABASE()
+            AND TABLE_NAME = '{table_name}'
+        """))
+        row = result.fetchone()
+
+        if row[0] == 0:
+            # Table doesn't exist, create it
+            print(f"  Creating table '{table_name}'...")
+            await connection.execute(text(create_sql))
+            await connection.commit()
+            print(f"  ✓ Table '{table_name}' created successfully")
+            return True
+        else:
+            print(f"  ✓ Table '{table_name}' already exists")
+            return False
+    except Exception as e:
+        print(f"  ✗ Error checking/creating table '{table_name}': {e}")
         return False
 
 async def init_database():
@@ -131,7 +157,37 @@ async def init_database():
                 'is_active',
                 '0'  # FALSE in MySQL/MariaDB
             )
-            
+
+            print("\nChecking 'device_shares' table...")
+
+            # Create device_shares table if it doesn't exist
+            await check_and_create_table(
+                conn,
+                'device_shares',
+                """
+                CREATE TABLE device_shares (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    device_id INT NOT NULL,
+                    owner_user_id INT NOT NULL,
+                    shared_with_user_id INT NULL,
+                    share_code VARCHAR(12) NOT NULL UNIQUE,
+                    permission_level VARCHAR(20) NOT NULL,
+                    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    expires_at DATETIME NOT NULL,
+                    accepted_at DATETIME NULL,
+                    revoked_at DATETIME NULL,
+                    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+                    INDEX idx_device_id (device_id),
+                    INDEX idx_share_code (share_code),
+                    INDEX idx_owner_user_id (owner_user_id),
+                    INDEX idx_shared_with_user_id (shared_with_user_id),
+                    FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE CASCADE,
+                    FOREIGN KEY (owner_user_id) REFERENCES users(id) ON DELETE CASCADE,
+                    FOREIGN KEY (shared_with_user_id) REFERENCES users(id) ON DELETE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+                """
+            )
+
             print("\n" + "="*80)
             print("✓ Database initialization complete!")
             print("="*80 + "\n")
