@@ -3,6 +3,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -138,6 +139,96 @@
             margin-right: 5px;
             margin-bottom: 5px;
         }
+
+        /* Hamburger menu button (hidden on desktop) */
+        .navbar-toggle {
+            display: none;
+            background: none;
+            border: none;
+            color: #10b981;
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 0.5rem;
+        }
+
+        /* Mobile Navigation */
+        @media (max-width: 768px) {
+            .navbar-container {
+                padding: 0 1rem;
+            }
+
+            .navbar-toggle {
+                display: block;
+            }
+
+            .navbar-menu {
+                display: none;
+                position: absolute;
+                top: 100%;
+                left: 0;
+                right: 0;
+                background: #0f172a;
+                flex-direction: column;
+                gap: 0;
+                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+            }
+
+            .navbar-menu.active {
+                display: flex;
+            }
+
+            .navbar-link {
+                width: 100%;
+                text-align: left;
+                border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+            }
+
+            .navbar-user {
+                width: 100%;
+                border-left: none;
+                border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+            }
+
+            .navbar-logout {
+                margin: 0.5rem 1rem;
+                width: calc(100% - 2rem);
+                text-align: center;
+            }
+
+            /* Make table scrollable on mobile */
+            table {
+                display: block;
+                overflow-x: auto;
+                white-space: nowrap;
+            }
+
+            .modal-content {
+                width: 90%;
+                margin: 20% auto;
+            }
+        }
+
+        /* Phone adjustments */
+        @media (max-width: 480px) {
+            .navbar-brand {
+                font-size: 1rem;
+            }
+
+            .navbar-link, .navbar-user {
+                font-size: 0.85rem;
+                padding: 0.75rem 1rem;
+            }
+
+            th, td {
+                font-size: 0.85rem;
+                padding: 0.5rem;
+            }
+
+            button {
+                font-size: 0.85rem;
+                padding: 0.4rem 0.6rem;
+            }
+        }
     </style>
 </head>
 <body>
@@ -147,7 +238,8 @@
             <a href="/dashboard" class="navbar-brand">
                 🌱 Plant Monitor
             </a>
-            <div class="navbar-menu">
+            <button class="navbar-toggle" onclick="toggleMobileMenu()" aria-label="Toggle menu">☰</button>
+            <div class="navbar-menu" id="navbar-menu">
                 <a href="/dashboard" class="navbar-link">Dashboard</a>
                 <a href="/devices" class="navbar-link">Devices</a>
                 <a href="/admin/users" class="navbar-link active">Users</a>
@@ -450,6 +542,12 @@
                 window.location.reload();
             }
         };
+
+        // Mobile menu toggle
+        function toggleMobileMenu() {
+            const menu = document.getElementById('navbar-menu');
+            menu.classList.toggle('active');
+        }
     </script>
     </div>
 </body>

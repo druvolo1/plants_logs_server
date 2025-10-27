@@ -3,14 +3,67 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>Create Account</title>
     <link rel="stylesheet" href="/static/style.css">
+    <style>
+        body {
+            padding: 1rem;
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            font-size: 2rem;
+            margin-bottom: 1.5rem;
+        }
+
+        form {
+            width: 100%;
+        }
+
+        input[type="text"],
+        input[type="email"],
+        input[type="password"] {
+            width: 100%;
+            box-sizing: border-box;
+            font-size: 1rem;
+            padding: 0.75rem;
+        }
+
+        button {
+            width: 100%;
+            box-sizing: border-box;
+            font-size: 1rem;
+            padding: 0.75rem;
+            margin-top: 0.5rem;
+        }
+
+        label {
+            display: block;
+            margin-top: 1rem;
+            margin-bottom: 0.5rem;
+        }
+
+        @media (max-width: 480px) {
+            h1 {
+                font-size: 1.5rem;
+            }
+
+            input[type="text"],
+            input[type="email"],
+            input[type="password"],
+            button {
+                font-size: 0.95rem;
+            }
+        }
+    </style>
 </head>
 <body>
-    <h1>Create Account</h1>
+    <h1>🌱 Create Account</h1>
     {% if error %}
         <p style="color: red;">{{ error }}</p>
     {% endif %}

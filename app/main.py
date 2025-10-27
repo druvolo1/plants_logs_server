@@ -403,6 +403,11 @@ async def root(request: Request):
     # If anything fails, go to login
     return RedirectResponse("/login")
 
+# Root redirect to login
+@app.get("/")
+async def root():
+    return RedirectResponse(url="/login")
+
 # Login page
 @app.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request, error: str = None):
