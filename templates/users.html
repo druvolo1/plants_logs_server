@@ -16,7 +16,7 @@
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
             position: sticky;
             top: 0;
-            z-index: 1000;
+            z-index: 1001;
             border-bottom: 2px solid #10b981;
         }
         .navbar-container {
@@ -159,6 +159,9 @@
 
     <div style="padding: 2rem 1.5rem; max-width: 1400px; margin: 0 auto;">
     <h2 style="color: #10b981; margin-bottom: 1.5rem;">User Management</h2>
+    
+    <h3>Add New User</h3>
+    <form id="add-user-form">
         <label for="first_name">First Name:</label>
         <input type="text" id="first_name" required>
         <br>
@@ -180,7 +183,7 @@
         <button type="submit">Add User</button>
     </form>
     
-    <h2>All Users</h2>
+    <h3 style="margin-top: 2rem;">All Users</h3>
     <table>
         <thead>
             <tr>
@@ -448,5 +451,6 @@
             }
         };
     </script>
+    </div>
 </body>
 </html>
