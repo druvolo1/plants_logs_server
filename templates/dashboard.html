@@ -429,57 +429,68 @@
                 font-size: 0.7em;
             }
             .info-item {
-                display: flex;
-                flex-direction: row;
-                align-items: center;
-                gap: 4px;
+                display: flex !important;
+                flex-direction: row !important;
+                align-items: center !important;
+                gap: 4px !important;
                 background: rgba(51, 65, 85, 0.5) !important;
                 border: 1px solid rgba(148, 163, 184, 0.2) !important;
                 padding: 6px 10px !important;
                 border-radius: 8px !important;
-                min-width: 0;
+                min-width: 0 !important;
                 margin: 0 !important;
-                width: auto;
-                max-width: 100%;
+                width: 100% !important;
+                box-sizing: border-box !important;
             }
             .info-item label {
-                font-size: 1em;
-                color: #888;
-                text-transform: uppercase;
-                letter-spacing: 0.3px;
-                font-weight: 600;
-                flex-shrink: 0;
-                white-space: nowrap;
+                display: inline !important;
+                font-size: 1em !important;
+                color: #888 !important;
+                text-transform: uppercase !important;
+                letter-spacing: 0.3px !important;
+                font-weight: 600 !important;
+                flex-shrink: 0 !important;
+                white-space: nowrap !important;
             }
             .info-item label::after {
                 content: ':';
             }
             .info-item span {
-                font-size: 1em;
-                font-weight: 500;
-                color: #10b981;
-                white-space: nowrap;
-                flex: 1;
-                overflow: hidden;
-                text-overflow: ellipsis;
+                display: inline !important;
+                font-size: 1em !important;
+                font-weight: 500 !important;
+                color: #10b981 !important;
+                white-space: nowrap !important;
+                flex: 1 !important;
+                overflow: visible !important;
             }
 
             /* Force positioning in grid */
             .header-info > .info-item[id^="system-item"] {
-                grid-column: 1;
-                grid-row: 1;
+                grid-column: 1 !important;
+                grid-row: 1 !important;
             }
             .header-info > .info-item[id^="plant-item"] {
-                grid-column: 2;
-                grid-row: 1;
+                grid-column: 2 !important;
+                grid-row: 1 !important;
             }
             .header-info > .info-item[id^="start-date-item"] {
-                grid-column: 1;
-                grid-row: 2;
+                grid-column: 1 !important;
+                grid-row: 2 !important;
             }
             .header-info > .info-item[id^="weeks-item"] {
-                grid-column: 2;
-                grid-row: 2;
+                grid-column: 2 !important;
+                grid-row: 2 !important;
+            }
+
+            /* Force span visibility inside each info item */
+            .info-item span[id^="system-name-"],
+            .info-item span[id^="plant-name-"],
+            .info-item span[id^="start-date-"],
+            .info-item span[id^="weeks-"] {
+                display: inline !important;
+                visibility: visible !important;
+                opacity: 1 !important;
             }
 
             /* Reposition wrapper to top-right corner and make it span full height */
@@ -670,15 +681,16 @@
                 gap: 5px;
             }
             .info-item {
-                gap: 3px;
+                gap: 3px !important;
                 padding: 5px 8px !important;
             }
             .info-item label {
-                font-size: 1em;
-                letter-spacing: 0.2px;
+                font-size: 1em !important;
+                letter-spacing: 0.2px !important;
             }
             .info-item span {
-                font-size: 1em;
+                font-size: 1em !important;
+                display: inline !important;
             }
 
             /* Even smaller water level on phones */
