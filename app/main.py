@@ -321,59 +321,68 @@ app.include_router(
     tags=["auth"],
 )
 
-# Middleware to intercept OAuth callback and return success page
+# Middleware to intercept OAuth callback and return success page or handle errors
 @app.middleware("http")
 async def oauth_redirect_middleware(request: Request, call_next):
-    response = await call_next(request)
-    
-    # If this is the OAuth callback and it returns 204, return a success page that redirects
-    if request.url.path == "/auth/google/callback" and response.status_code == 204:
-        # Return an HTML page that will redirect client-side
-        # This preserves the cookie that was set
-        html_content = """
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset="UTF-8">
-            <title>Login Successful</title>
-            <style>
-                body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
-                .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #3498db; 
-                           border-radius: 50%; width: 40px; height: 40px; 
-                           animation: spin 1s linear infinite; margin: 20px auto; }
-                @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-            </style>
-        </head>
-        <body>
-            <h1>Login Successful!</h1>
-            <div class="spinner"></div>
-            <p>Redirecting...</p>
-            <script>
-                setTimeout(function() {
-                    window.location.href = '/';
-                }, 500);
-            </script>
-        </body>
-        </html>
-        """
-        
-        from fastapi.responses import HTMLResponse
-        html_response = HTMLResponse(content=html_content, status_code=200)
-        
-        # Copy cookies from original OAuth response
-        if hasattr(response, 'headers'):
-            for key, value in response.headers.items():
-                if key.lower() == 'set-cookie':
-                    html_response.headers.append(key, value)
-        
-        if hasattr(response, 'raw_headers'):
-            for header_name, header_value in response.raw_headers:
-                if header_name == b'set-cookie':
-                    html_response.raw_headers.append((header_name, header_value))
-        
-        return html_response
-    
-    return response
+    try:
+        response = await call_next(request)
+
+        # If this is the OAuth callback and it returns 204, return a success page that redirects
+        if request.url.path == "/auth/google/callback" and response.status_code == 204:
+            # Return an HTML page that will redirect client-side
+            # This preserves the cookie that was set
+            html_content = """
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <title>Login Successful</title>
+                <style>
+                    body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
+                    .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #3498db;
+                               border-radius: 50%; width: 40px; height: 40px;
+                               animation: spin 1s linear infinite; margin: 20px auto; }
+                    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+                </style>
+            </head>
+            <body>
+                <h1>Login Successful!</h1>
+                <div class="spinner"></div>
+                <p>Redirecting...</p>
+                <script>
+                    setTimeout(function() {
+                        window.location.href = '/';
+                    }, 500);
+                </script>
+            </body>
+            </html>
+            """
+
+            from fastapi.responses import HTMLResponse
+            html_response = HTMLResponse(content=html_content, status_code=200)
+
+            # Copy cookies from original OAuth response
+            if hasattr(response, 'headers'):
+                for key, value in response.headers.items():
+                    if key.lower() == 'set-cookie':
+                        html_response.headers.append(key, value)
+
+            if hasattr(response, 'raw_headers'):
+                for header_name, header_value in response.raw_headers:
+                    if header_name == b'set-cookie':
+                        html_response.raw_headers.append((header_name, header_value))
+
+            return html_response
+
+        return response
+    except HTTPException as e:
+        # Handle OAuth callback errors (pending approval or suspended)
+        if request.url.path == "/auth/google/callback":
+            if e.detail == "PENDING_APPROVAL":
+                return templates.TemplateResponse("pending_approval.html", {"request": request})
+            elif e.detail == "SUSPENDED":
+                return templates.TemplateResponse("suspended.html", {"request": request})
+        raise
 
 @app.get("/auth/google/authorize", response_model=dict)
 async def google_authorize(request: Request):
