@@ -697,9 +697,9 @@
             const sensor2 = water.sensor2?.triggered || false;
             const sensor3 = water.sensor3?.triggered || false;
 
-            document.getElementById(`sensor1-label-${device_id}`).innerHTML = `${water.sensor1?.label || 'Full'} <span style="color: ${sensor1 ? '#10b981' : '#ef4444'}; font-size: 2em;">●</span>`;
-            document.getElementById(`sensor2-label-${device_id}`).innerHTML = `${water.sensor2?.label || 'Low'} <span style="color: ${sensor2 ? '#10b981' : '#ef4444'}; font-size: 2em;">●</span>`;
-            document.getElementById(`sensor3-label-${device_id}`).innerHTML = `${water.sensor3?.label || 'Empty'} <span style="color: ${sensor3 ? '#10b981' : '#ef4444'}; font-size: 2em;">●</span>`;
+            document.getElementById(`sensor1-label-${device_id}`).innerHTML = `<span style="color: ${sensor1 ? '#10b981' : '#ef4444'}; font-size: 2em;">●</span> ${water.sensor1?.label || 'Full'}`;
+            document.getElementById(`sensor2-label-${device_id}`).innerHTML = `<span style="color: ${sensor2 ? '#10b981' : '#ef4444'}; font-size: 2em;">●</span> ${water.sensor2?.label || 'Low'}`;
+            document.getElementById(`sensor3-label-${device_id}`).innerHTML = `<span style="color: ${sensor3 ? '#10b981' : '#ef4444'}; font-size: 2em;">●</span> ${water.sensor3?.label || 'Empty'}`;
 
             let waterHeight = 0;
             if (sensor1) waterHeight = 90;
@@ -715,9 +715,9 @@
             const sensor2 = data.sensor2?.triggered || false;
             const sensor3 = data.sensor3?.triggered || false;
 
-            document.getElementById(`sensor1-label-${device_id}`).innerHTML = `${data.sensor1?.label || 'Full'} <span style="color: ${sensor1 ? '#10b981' : '#ef4444'}; font-size: 2em;">●</span>`;
-            document.getElementById(`sensor2-label-${device_id}`).innerHTML = `${data.sensor2?.label || 'Low'} <span style="color: ${sensor2 ? '#10b981' : '#ef4444'}; font-size: 2em;">●</span>`;
-            document.getElementById(`sensor3-label-${device_id}`).innerHTML = `${data.sensor3?.label || 'Empty'} <span style="color: ${sensor3 ? '#10b981' : '#ef4444'}; font-size: 2em;">●</span>`;
+            document.getElementById(`sensor1-label-${device_id}`).innerHTML = `<span style="color: ${sensor1 ? '#10b981' : '#ef4444'}; font-size: 2em;">●</span> ${data.sensor1?.label || 'Full'}`;
+            document.getElementById(`sensor2-label-${device_id}`).innerHTML = `<span style="color: ${sensor2 ? '#10b981' : '#ef4444'}; font-size: 2em;">●</span> ${data.sensor2?.label || 'Low'}`;
+            document.getElementById(`sensor3-label-${device_id}`).innerHTML = `<span style="color: ${sensor3 ? '#10b981' : '#ef4444'}; font-size: 2em;">●</span> ${data.sensor3?.label || 'Empty'}`;
 
             let waterHeight = 0;
             if (sensor1) waterHeight = 90;

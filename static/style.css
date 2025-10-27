@@ -875,7 +875,7 @@ a:hover {
 
 .sensor-label {
     position: absolute !important;
-    left: 120px !important;
+    left: 138px !important;
     font-size: 1.5rem !important;
     white-space: nowrap !important;
     color: var(--text-secondary) !important;
@@ -887,6 +887,7 @@ a:hover {
     align-items: center !important;
     gap: 0.5rem !important;
     transform: translateY(-50%) !important;
+    flex-direction: row !important;
 }
 
 /* Valve Controls - Modernized */
@@ -929,6 +930,9 @@ a:hover {
     text-transform: uppercase !important;
     letter-spacing: 0.05em !important;
     text-align: center !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
 }
 
 .valve-buttons button:hover {
