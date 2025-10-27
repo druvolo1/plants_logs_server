@@ -776,8 +776,8 @@
                     const onBtn = document.getElementById(`all-valve-${device_id}-${i}-on`);
                     const offBtn = document.getElementById(`all-valve-${device_id}-${i}-off`);
                     if (onBtn && offBtn) {
-                        onBtn.className = `valve-buttons button ${status === 'on' ? 'btn-on-active' : 'btn-inactive'}`;
-                        offBtn.className = `valve-buttons button ${status === 'off' ? 'btn-off-active' : 'btn-inactive'}`;
+                        onBtn.className = status === 'on' ? 'btn-on-active' : 'btn-inactive';
+                        offBtn.className = status === 'off' ? 'btn-off-active' : 'btn-inactive';
                     }
                     break;
                 }
@@ -1053,14 +1053,14 @@
                             <span id="all-valve-status-${device_id}-${valveId}">${status}</span>
                         </td>
                         <td style="padding: 0.5rem; text-align: center;">
-                            <div style="display: flex; gap: 0.5rem; justify-content: center;">
+                            <div class="valve-buttons" style="display: flex; gap: 0.5rem; justify-content: center;">
                                 <button id="all-valve-${device_id}-${valveId}-on"
-                                    class="valve-buttons button ${status === 'on' ? 'btn-on-active' : 'btn-inactive'}"
+                                    class="${status === 'on' ? 'btn-on-active' : 'btn-inactive'}"
                                     style="width: 50px; padding: 0.4rem; font-size: 0.75rem;">
                                     ON
                                 </button>
                                 <button id="all-valve-${device_id}-${valveId}-off"
-                                    class="valve-buttons button ${status === 'off' ? 'btn-off-active' : 'btn-inactive'}"
+                                    class="${status === 'off' ? 'btn-off-active' : 'btn-inactive'}"
                                     style="width: 50px; padding: 0.4rem; font-size: 0.75rem;">
                                     OFF
                                 </button>
