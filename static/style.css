@@ -888,6 +888,14 @@ a:hover {
     gap: 0.5rem !important;
     transform: translateY(-50%) !important;
     flex-direction: row !important;
+    line-height: 1 !important;
+}
+
+.sensor-label span {
+    line-height: 0.5 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    vertical-align: middle !important;
 }
 
 /* Valve Controls - Modernized */
