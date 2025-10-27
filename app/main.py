@@ -258,16 +258,11 @@ class CustomUserManager(IntegerIDMixin, BaseUserManager[User, int]):
                 user = await self.create(user_create)
                 user = await self.user_db.add_oauth_account(user, oauth_account_dict)
 
-        # Check if user is pending approval or suspended
+        # Check if user is pending approval or suspended (both have is_active=False)
         if not user.is_active:
             raise HTTPException(
                 status_code=403,
                 detail="PENDING_APPROVAL"
-            )
-        if user.is_suspended:
-            raise HTTPException(
-                status_code=403,
-                detail="SUSPENDED"
             )
 
         return user
