@@ -164,10 +164,7 @@ class CustomUserManager(IntegerIDMixin, BaseUserManager[User, int]):
     verification_token_secret = SECRET
 
     async def on_after_register(self, user: User, request: None = None):
-        if user.is_active:
-            print(f"User {user.id} has registered and been auto-approved (OAuth).")
-        else:
-            print(f"User {user.id} has registered and is pending approval.")
+        print(f"User {user.id} has registered and is pending approval.")
 
     async def authenticate(self, credentials: OAuth2PasswordRequestForm) -> Optional[User]:
         """
@@ -254,32 +251,21 @@ class CustomUserManager(IntegerIDMixin, BaseUserManager[User, int]):
                     pass
 
             if not user:
-                # Google OAuth users are auto-approved
+                # Google OAuth users also require approval (is_active=False)
                 # Generate a random secure password (OAuth users won't use it)
                 random_password = secrets.token_urlsafe(32)
                 user_create = UserCreate(
                     email=account_email,
                     password=random_password,  # Random password for OAuth users (not used)
                     is_verified=is_verified_by_default,
-                    is_active=True  # Auto-approve Google users
+                    is_active=False  # Require approval for OAuth users
                 )
                 user = await self.create(user_create)
                 user = await self.user_db.add_oauth_account(user, oauth_account_dict)
 
-        # Check if user is suspended (with fallback if column doesn't exist yet)
-        if getattr(user, 'is_suspended', False):
-            raise HTTPException(
-                status_code=403,
-                detail="SUSPENDED"
-            )
-
-        # Check if user is pending approval
-        if not user.is_active:
-            raise HTTPException(
-                status_code=403,
-                detail="PENDING_APPROVAL"
-            )
-
+        # Note: We don't check for suspended/pending here because OAuth callback
+        # should always succeed and set the cookie. The checks happen when the user
+        # tries to access protected routes via the current_user dependency.
         return user
 
 async def get_db():
@@ -310,25 +296,39 @@ fastapi_users = FastAPIUsers[User, int](
     [auth_backend],
 )
 
-_base_current_user = fastapi_users.current_user(active=True)
-_base_current_admin = fastapi_users.current_user(active=True, superuser=True)
+_base_current_user = fastapi_users.current_user(active=False)  # Don't check active here
+_base_current_admin = fastapi_users.current_user(active=False, superuser=True)  # Don't check active here
 
-# Custom dependency to check for suspended users
+# Custom dependency to check for suspended and pending users
 async def current_user(user: User = Depends(_base_current_user)) -> User:
-    """Check if user is suspended before allowing access"""
+    """Check if user is suspended or pending before allowing access"""
+    # Check if user is suspended
     if getattr(user, 'is_suspended', False):
         raise HTTPException(
             status_code=403,
             detail="SUSPENDED"
         )
+    # Check if user is pending approval
+    if not user.is_active:
+        raise HTTPException(
+            status_code=403,
+            detail="PENDING_APPROVAL"
+        )
     return user
 
 async def current_admin(user: User = Depends(_base_current_admin)) -> User:
-    """Check if admin is suspended before allowing access"""
+    """Check if admin is suspended or pending before allowing access"""
+    # Check if user is suspended
     if getattr(user, 'is_suspended', False):
         raise HTTPException(
             status_code=403,
             detail="SUSPENDED"
+        )
+    # Check if user is pending approval
+    if not user.is_active:
+        raise HTTPException(
+            status_code=403,
+            detail="PENDING_APPROVAL"
         )
     return user
 
