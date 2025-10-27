@@ -201,90 +201,12 @@
             padding-bottom: 6px;
         }
         
-        /* Water bucket */
-        .bucket-container {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 5px;
-        }
-        .water-bucket {
-            width: 70px;
-            height: 100px;
-            border: 3px solid #666;
-            border-top: none;
-            border-radius: 0 0 10px 10px;
-            position: relative;
-            background: linear-gradient(to top, #1a1a1a 0%, #2a2a2a 100%);
-        }
-        .water-level {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background: linear-gradient(to top, #1e90ff 0%, #4da6ff 100%);
-            transition: height 0.3s ease;
-            border-radius: 0 0 7px 7px;
-        }
-        .sensor-marker {
-            position: absolute;
-            left: -15px;
-            right: -15px;
-            height: 2px;
-            background: #fff;
-        }
-        .sensor-label {
-            position: absolute;
-            right: -80px;
-            font-size: 0.7em;
-            white-space: nowrap;
-        }
+        /* Water bucket - Styles are in style.css */
         .sensor-full { top: 10%; }
         .sensor-low { top: 50%; }
         .sensor-empty { bottom: 5%; }
         
-        /* Valve controls */
-        .valve-group {
-            margin-bottom: 10px;
-        }
-        .valve-group:last-child {
-            margin-bottom: 0;
-        }
-        .valve-label {
-            font-size: 0.85em;
-            margin-bottom: 6px;
-            display: block;
-        }
-        .valve-buttons {
-            display: flex;
-            gap: 6px;
-        }
-        .valve-buttons button {
-            flex: 1;
-            padding: 8px;
-            border: 1px solid #555;
-            border-radius: 6px;
-            cursor: pointer;
-            background: #333;
-            color: #fff;
-            font-weight: 500;
-            font-size: 0.85em;
-            transition: all 0.2s;
-        }
-        .valve-buttons button:hover {
-            transform: scale(1.05);
-        }
-        .btn-on-active {
-            background: #28a745 !important;
-            border-color: #28a745 !important;
-        }
-        .btn-off-active {
-            background: #dc3545 !important;
-            border-color: #dc3545 !important;
-        }
-        .btn-inactive {
-            opacity: 0.5;
-        }
+        /* Valve controls - These styles are overridden by style.css */
         
         /* pH Dosing - Compact Modern Style */
         .ph-header {
