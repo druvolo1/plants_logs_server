@@ -9,579 +9,458 @@
     <title>Dashboard</title>
     <link rel="stylesheet" href="/static/style.css">
     <style>
-        /* Compact Horizontal Layout */
+        /* Device section layout */
         .device-section {
-            margin-bottom: 1rem;
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            background: linear-gradient(135deg, rgba(51, 65, 85, 0.4) 0%, rgba(30, 41, 59, 0.6) 100%);
-            backdrop-filter: blur(10px);
+            margin-bottom: 10px;
+            border: 1px solid #444;
+            border-radius: 8px;
+            background: #1a1a1a;
             overflow: hidden;
             transition: all 0.3s ease;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
         }
         
-        .device-section:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
-            border-color: var(--primary);
-        }
-        
-        /* Compact header */
+        /* Collapsible header - always visible */
         .device-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 0.75rem 1rem;
-            background: linear-gradient(135deg, rgba(30, 41, 59, 0.8) 0%, rgba(15, 23, 42, 0.9) 100%);
+            padding: 12px 15px;
+            background: #2a2a2a;
             cursor: pointer;
             user-select: none;
             transition: background 0.2s;
-            border-bottom: 1px solid var(--border);
         }
-        
         .device-header:hover {
-            background: linear-gradient(135deg, rgba(51, 65, 85, 0.8) 0%, rgba(30, 41, 59, 0.9) 100%);
+            background: #333;
         }
-        
         .device-header-left {
             display: flex;
             align-items: center;
-            gap: 0.75rem;
+            gap: 15px;
             flex: 1;
         }
-        
         .device-name {
-            font-size: 1rem;
-            font-weight: 700;
-            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+            font-size: 1.1em;
+            font-weight: 600;
+            color: #4da6ff;
         }
-        
         .status-badge {
-            padding: 0.25rem 0.6rem;
+            padding: 4px 12px;
             border-radius: 12px;
-            font-size: 0.7rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
+            font-size: 0.85em;
+            font-weight: 600;
         }
-        
         .status-online {
-            background: linear-gradient(135deg, var(--success) 0%, #059669 100%);
-            color: white;
+            background: #28a745;
+            color: #fff;
         }
-        
         .status-offline {
-            background: linear-gradient(135deg, var(--danger) 0%, #dc2626 100%);
-            color: white;
+            background: #dc3545;
+            color: #fff;
         }
-        
         .header-info {
             display: flex;
-            gap: 1rem;
+            gap: 20px;
             align-items: center;
         }
-        
         .info-item {
             display: flex;
             align-items: baseline;
-            gap: 0.4rem;
-            font-size: 0.85rem;
-            padding: 0.25rem 0.5rem;
-            background: rgba(51, 65, 85, 0.5);
-            border-radius: 6px;
+            gap: 6px;
+            font-size: 0.95em;
         }
-        
         .info-item label {
-            color: var(--text-muted);
-            font-size: 0.75rem;
+            color: #999;
         }
-        
         .info-item span {
-            color: var(--primary);
-            font-weight: 600;
+            color: #fff;
+            font-weight: 500;
         }
-        
         .expand-icon {
-            font-size: 1rem;
+            font-size: 1.2em;
             transition: transform 0.3s;
-            color: var(--primary);
+            color: #4da6ff;
         }
-        
         .expand-icon.expanded {
             transform: rotate(180deg);
         }
         
-        /* Expandable content - Horizontal Layout */
+        /* Expandable content */
         .device-content {
             max-height: 0;
             overflow: hidden;
             transition: max-height 0.3s ease;
         }
-        
         .device-content.expanded {
-            max-height: 500px;
-            overflow-x: auto;
+            max-height: 2000px;
         }
-        
         .device-content-inner {
-            padding: 1rem;
-            background: linear-gradient(135deg, rgba(15, 23, 42, 0.3) 0%, rgba(30, 41, 59, 0.3) 100%);
+            padding: 15px;
         }
         
-        /* Horizontal card layout - wider to prevent overflow */
+        /* Card grid layout */
         .cards-grid {
-            display: flex;
-            gap: 1rem;
-            flex-wrap: nowrap;
-            min-width: max-content;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+            margin-bottom: 15px;
         }
         
-        /* Compact card styling */
+        /* Card styling */
         .card {
-            background: linear-gradient(135deg, rgba(51, 65, 85, 0.6) 0%, rgba(30, 41, 59, 0.8) 100%);
-            border: 1px solid var(--border);
-            border-radius: 10px;
-            padding: 0.65rem;
-            min-width: 200px;
-            flex-shrink: 0;
-            transition: all 0.3s ease;
+            background: #2a2a2a;
+            border: 1px solid #444;
+            border-radius: 8px;
+            padding: 15px;
         }
-        
-        .card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-            border-color: var(--primary);
-        }
-        
         .card-title {
-            font-size: 0.8rem;
-            font-weight: 700;
-            margin-bottom: 0.75rem;
-            color: var(--primary);
-            border-bottom: 1px solid rgba(16, 185, 129, 0.3);
-            padding-bottom: 0.5rem;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+            font-size: 1.05em;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #4da6ff;
+            border-bottom: 1px solid #444;
+            padding-bottom: 8px;
         }
         
-        .card-title-text {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-        
-        .card-title-values {
-            display: flex;
-            gap: 1rem;
-            font-size: 0.7rem;
-            text-transform: none;
-        }
-        
-        .card-title-values span {
-            color: var(--text-secondary);
-        }
-        
-        .card-title-values strong {
-            color: var(--primary);
-            margin-left: 0.25rem;
-        }
-        
-        /* Compact water bucket */
+        /* Water bucket */
         .bucket-container {
             display: flex;
             justify-content: center;
             align-items: center;
-            padding: 0.5rem;
+            padding: 10px;
         }
-        
         .water-bucket {
-            width: 60px;
-            height: 90px;
-            border: 2px solid var(--border-light);
+            width: 80px;
+            height: 120px;
+            border: 3px solid #666;
             border-top: none;
-            border-radius: 0 0 8px 8px;
+            border-radius: 0 0 10px 10px;
             position: relative;
-            background: linear-gradient(to top, rgba(15, 23, 42, 0.8) 0%, rgba(30, 41, 59, 0.6) 100%);
-            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+            background: linear-gradient(to top, #1a1a1a 0%, #2a2a2a 100%);
         }
-        
         .water-level {
             position: absolute;
             bottom: 0;
             left: 0;
             right: 0;
-            background: linear-gradient(to top, 
-                rgba(59, 130, 246, 0.9) 0%, 
-                rgba(16, 185, 129, 0.7) 50%,
-                rgba(16, 185, 129, 0.5) 100%);
+            background: linear-gradient(to top, #1e90ff 0%, #4da6ff 100%);
             transition: height 0.3s ease;
-            border-radius: 0 0 6px 6px;
-            box-shadow: 0 -2px 6px rgba(16, 185, 129, 0.5);
-            animation: shimmer 3s ease-in-out infinite;
+            border-radius: 0 0 7px 7px;
         }
-        
-        @keyframes shimmer {
-            0%, 100% { opacity: 0.9; }
-            50% { opacity: 1; }
-        }
-        
         .sensor-marker {
             position: absolute;
-            left: -12px;
-            right: -12px;
-            height: 1px;
-            background: var(--warning);
-            box-shadow: 0 0 4px rgba(245, 158, 11, 0.6);
+            left: -15px;
+            right: -15px;
+            height: 2px;
+            background: #fff;
         }
-        
         .sensor-label {
             position: absolute;
-            right: -65px;
-            font-size: 0.65rem;
+            right: -80px;
+            font-size: 0.7em;
             white-space: nowrap;
-            color: var(--text-secondary);
-            font-weight: 600;
-            background: rgba(30, 41, 59, 0.8);
-            padding: 0.15rem 0.35rem;
-            border-radius: 3px;
         }
-        
         .sensor-full { top: 10%; }
         .sensor-low { top: 50%; }
         .sensor-empty { bottom: 5%; }
         
-        /* Compact valve controls */
+        /* Valve controls */
         .valve-group {
-            margin-bottom: 0.75rem;
+            margin-bottom: 15px;
         }
-        
         .valve-group:last-child {
             margin-bottom: 0;
         }
-        
         .valve-label {
-            font-size: 0.8rem;
-            margin-bottom: 0.5rem;
+            font-size: 0.95em;
+            margin-bottom: 8px;
             display: block;
-            color: var(--text-secondary);
-            font-weight: 600;
         }
-        
         .valve-buttons {
             display: flex;
-            gap: 0.5rem;
+            gap: 8px;
         }
-        
         .valve-buttons button {
             flex: 1;
-            padding: 0.5rem;
-            border: 1px solid var(--border);
+            padding: 10px;
+            border: 1px solid #555;
             border-radius: 6px;
             cursor: pointer;
-            background: linear-gradient(135deg, rgba(51, 65, 85, 0.6) 0%, rgba(30, 41, 59, 0.8) 100%);
-            color: var(--text-primary);
-            font-weight: 600;
-            font-size: 0.75rem;
+            background: #333;
+            color: #fff;
+            font-weight: 500;
             transition: all 0.2s;
-            text-transform: uppercase;
         }
-        
         .valve-buttons button:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+            transform: scale(1.05);
+        }
+        .btn-on-active {
+            background: #28a745 !important;
+            border-color: #28a745 !important;
+        }
+        .btn-off-active {
+            background: #dc3545 !important;
+            border-color: #dc3545 !important;
+        }
+        .btn-inactive {
+            opacity: 0.5;
         }
         
-        .valve-buttons button.btn-on-active {
-            background: linear-gradient(135deg, var(--success) 0%, #059669 100%);
-            border-color: var(--success);
-            color: white;
-        }
-        
-        .valve-buttons button.btn-off-active {
-            background: linear-gradient(135deg, var(--danger) 0%, #dc2626 100%);
-            border-color: var(--danger);
-            color: white;
-        }
-        
-        .valve-buttons button.btn-inactive {
-            opacity: 0.6;
-        }
-        
-        /* Compact pH dosing - removed ph-header since it's in card title now */
-        
-        .dose-sections {
+        /* pH Dosing */
+        .ph-header {
             display: flex;
-            gap: 0.4rem;
-            flex-direction: row;
-        }
-        
-        .dose-section {
-            background: rgba(30, 41, 59, 0.5);
-            border: 1px solid var(--border);
+            justify-content: space-between;
+            margin-bottom: 15px;
+            padding: 10px;
+            background: #1a1a1a;
             border-radius: 6px;
-            padding: 0.4rem;
-            flex: 1;
-            min-width: 0;
+            font-size: 0.9em;
         }
-        
+        .dose-sections {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        .dose-section {
+            padding: 15px;
+            background: #1a1a1a;
+            border-radius: 6px;
+        }
         .dose-section h4 {
-            font-size: 0.65rem;
-            font-weight: 700;
-            margin-bottom: 0.3rem;
-            color: var(--primary);
-            text-transform: uppercase;
+            margin: 0 0 10px 0;
+            color: #4da6ff;
+            font-size: 1em;
         }
-        
         .dose-info {
-            color: var(--text-secondary);
-            margin-bottom: 0.35rem;
-            font-size: 0.6rem;
-            padding: 0.2rem 0.3rem;
-            background: rgba(51, 65, 85, 0.3);
-            border-radius: 3px;
-            border-left: 2px solid var(--primary);
+            font-size: 0.9em;
+            color: #999;
+            margin-bottom: 10px;
         }
-        
         .dose-button {
             width: 100%;
-            padding: 0.3rem;
-            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
-            color: white;
-            border: none;
-            border-radius: 5px;
+            padding: 10px;
+            background: #007bff;
+            border: 1px solid #007bff;
+            border-radius: 6px;
+            color: #fff;
             cursor: pointer;
-            font-weight: 600;
-            font-size: 0.6rem;
+            font-weight: 500;
             transition: all 0.2s;
-            text-transform: uppercase;
-            margin-bottom: 0.35rem;
+            margin-bottom: 8px;
         }
-        
         .dose-button:hover:not(:disabled) {
-            transform: translateY(-1px);
-            box-shadow: 0 4px 8px rgba(16, 185, 129, 0.4);
+            background: #0056b3;
+            transform: scale(1.02);
         }
-        
         .dose-button:disabled {
-            opacity: 0.4;
+            opacity: 0.5;
             cursor: not-allowed;
-            background: linear-gradient(135deg, rgba(148, 163, 184, 0.3) 0%, rgba(100, 116, 139, 0.3) 100%);
         }
-        
         .manual-section {
-            margin-top: 0.35rem;
-            padding-top: 0.35rem;
-            border-top: 1px solid var(--border);
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #333;
         }
-        
         .manual-section label {
             display: block;
-            margin-bottom: 0.25rem;
-            color: var(--text-muted);
-            font-size: 0.55rem;
-            text-transform: uppercase;
-            letter-spacing: 0.02em;
+            font-size: 0.85em;
+            color: #999;
+            margin-bottom: 8px;
         }
-        
         .manual-input {
             display: flex;
-            gap: 0.25rem;
+            gap: 8px;
         }
-        
         .manual-input input {
             flex: 1;
-            padding: 0.25rem 0.3rem;
-            background: rgba(15, 23, 42, 0.6);
-            border: 1px solid var(--border);
-            border-radius: 3px;
-            color: var(--text-primary);
-            font-size: 0.65rem;
-            min-width: 0;
+            padding: 8px 12px;
+            border: 1px solid #555;
+            border-radius: 6px;
+            background: #2a2a2a;
+            color: #fff;
+        }
+        .manual-input button {
+            padding: 8px 16px;
+            background: #007bff;
+            border: 1px solid #007bff;
+            border-radius: 6px;
+            color: #fff;
+            cursor: pointer;
+            font-weight: 500;
         }
         
-        .manual-input button {
-            padding: 0.25rem 0.4rem;
-            background: linear-gradient(135deg, var(--secondary) 0%, var(--secondary-dark) 100%);
-            color: white;
-            border: none;
-            border-radius: 3px;
+        /* Refresh button */
+        .refresh-btn {
+            width: 100%;
+            padding: 12px;
+            background: #28a745;
+            border: 1px solid #28a745;
+            border-radius: 6px;
+            color: #fff;
             cursor: pointer;
             font-weight: 600;
-            font-size: 0.55rem;
-            text-transform: uppercase;
-            white-space: nowrap;
+            font-size: 1em;
+            transition: all 0.2s;
+        }
+        .refresh-btn:hover {
+            background: #218838;
+            transform: scale(1.02);
         }
         
-        /* Make pH dosing card specific width to fit side-by-side sections */
-        .card:has(.dose-sections) {
-            min-width: 380px;
-            max-width: 380px;
-        }
-        
-        /* Scrollbar styling for horizontal scroll */
-        .cards-grid::-webkit-scrollbar {
-            height: 6px;
-        }
-        
-        .cards-grid::-webkit-scrollbar-track {
-            background: rgba(30, 41, 59, 0.5);
-            border-radius: 3px;
-        }
-        
-        .cards-grid::-webkit-scrollbar-thumb {
-            background: var(--primary);
-            border-radius: 3px;
-        }
-        
-        .cards-grid::-webkit-scrollbar-thumb:hover {
-            background: var(--primary-dark);
+        @media (max-width: 768px) {
+            .dose-sections {
+                grid-template-columns: 1fr;
+            }
+            .cards-grid {
+                grid-template-columns: 1fr;
+            }
+            .header-info {
+                flex-wrap: wrap;
+                gap: 10px;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="header">
-        <div class="nav-container">
-            <div class="logo">Plant Monitor</div>
-            <div class="nav-links">
-                <a href="/" class="active">Dashboard</a>
-                <a href="/devices">Devices</a>
-                <a href="/settings">Settings</a>
-            </div>
-        </div>
-    </div>
+    <h1>Welcome, {{ user.email }}</h1>
+    <a href="/auth/logout">Logout</a>
+    <a href="/devices">Manage Devices</a>
 
-    <div class="container">
-        <h1>Dashboard</h1>
-        <div id="devices-container"></div>
-    </div>
+    <h2>My Devices Statuses</h2>
+    <div id="devices-status"></div>
 
     <script>
-        const wsMap = {};
+        let wsMap = {};
 
         async function fetchAndConnectDevices() {
-            try {
-                const response = await fetch('/user/devices');
-                if (!response.ok) {
-                    console.error('Failed to fetch devices:', response.status);
-                    return;
-                }
+            const response = await fetch('/user/devices');
+            if (response.ok) {
                 const devices = await response.json();
-                const container = document.getElementById('devices-container');
-                container.innerHTML = '';
-                
+                const statusDiv = document.getElementById('devices-status');
+                statusDiv.innerHTML = '';
                 devices.forEach(device => {
-                    const deviceSection = createDeviceSection(device);
-                    container.appendChild(deviceSection);
-                    connectWebSocket(device.device_id);
-                });
-            } catch (error) {
-                console.error('Error fetching devices:', error);
-            }
-        }
-
-        function createDeviceSection(device) {
-            const section = document.createElement('div');
-            section.className = 'device-section';
-            section.id = `device-${device.device_id}`;
-            
-            section.innerHTML = `
-                <div class="device-header" onclick="toggleExpand('${device.device_id}')">
-                    <div class="device-header-left">
-                        <span class="device-name">Loading...</span>
-                        <span id="status-badge-${device.device_id}" class="status-badge status-offline">Offline</span>
-                        <div class="header-info">
-                            <div class="info-item">
-                                <label>PLANT:</label>
-                                <span id="plant-${device.device_id}">-</span>
-                            </div>
-                            <div class="info-item" style="display: none;" id="started-item-${device.device_id}">
-                                <label>STARTED:</label>
-                                <span id="started-${device.device_id}">-</span>
-                            </div>
-                            <div class="info-item" style="display: none;" id="weeks-item-${device.device_id}">
-                                <label>WEEK:</label>
-                                <span id="weeks-${device.device_id}">-</span>
-                            </div>
-                            <div class="info-item" style="display: none;" id="ph-item-${device.device_id}">
-                                <label>PH:</label>
-                                <span id="ph-${device.device_id}">-</span>
-                            </div>
-                        </div>
-                    </div>
-                    <span class="expand-icon" id="expand-icon-${device.device_id}">▼</span>
-                </div>
-                <div class="device-content" id="content-${device.device_id}">
-                    <div class="device-content-inner">
-                        <div class="cards-grid">
-                            <!-- Water Level Card -->
-                            <div class="card">
-                                <div class="card-title">💧 Water Level</div>
-                                <div class="bucket-container">
-                                    <div class="water-bucket">
-                                        <div class="water-level" id="water-level-${device.device_id}" style="height: 0%;"></div>
-                                        <div class="sensor-marker sensor-full">
-                                            <span class="sensor-label">Full ✓</span>
-                                        </div>
-                                        <div class="sensor-marker sensor-low">
-                                            <span class="sensor-label">Low ✗</span>
-                                        </div>
-                                        <div class="sensor-marker sensor-empty">
-                                            <span class="sensor-label">Empty ✗</span>
-                                        </div>
+                    const deviceSection = document.createElement('div');
+                    deviceSection.classList.add('device-section');
+                    deviceSection.innerHTML = `
+                        <div class="device-header" onclick="toggleDevice('${device.device_id}')" style="cursor: ${device.is_online ? 'pointer' : 'not-allowed'}; opacity: ${device.is_online ? '1' : '0.6'};">
+                            <div class="device-header-left">
+                                <div class="status-badge ${device.is_online ? 'status-online' : 'status-offline'}" id="status-badge-${device.device_id}">
+                                    ● ${device.is_online ? 'Online' : 'Offline'}
+                                </div>
+                                <div class="header-info">
+                                    <div class="info-item">
+                                        <label>System:</label>
+                                        <span id="system-name-${device.device_id}">Loading...</span>
+                                    </div>
+                                    <div class="info-item" id="plant-item-${device.device_id}" style="display:none;">
+                                        <label>Plant:</label>
+                                        <span id="plant-name-${device.device_id}">-</span>
+                                    </div>
+                                    <div class="info-item" id="start-date-item-${device.device_id}" style="display:none;">
+                                        <label>Started:</label>
+                                        <span id="start-date-${device.device_id}">-</span>
+                                    </div>
+                                    <div class="info-item" id="weeks-item-${device.device_id}" style="display:none;">
+                                        <label>Week:</label>
+                                        <span id="weeks-${device.device_id}">-</span>
+                                    </div>
+                                    <div class="info-item" id="ph-item-${device.device_id}" style="display:none;">
+                                        <label>pH:</label>
+                                        <span id="ph-${device.device_id}">-</span>
+                                    </div>
+                                    <div class="info-item" id="ec-item-${device.device_id}" style="display:none;">
+                                        <label>EC:</label>
+                                        <span id="ec-${device.device_id}">-</span>
                                     </div>
                                 </div>
                             </div>
-                            
-                            <!-- Valve Controls Card -->
-                            <div class="card" id="valves-card-${device.device_id}" style="display: none;">
-                                <div class="card-title">🔧 Valve Controls</div>
-                                <div id="valve-controls-${device.device_id}"></div>
-                            </div>
-                            
-                            <!-- pH Dosing Card -->
-                            <div class="card" id="dosing-card-${device.device_id}" style="display: none;">
-                                <div class="card-title">
-                                    <span class="card-title-text">⚗️ pH Dosing</span>
-                                    <span class="card-title-values" id="ph-values-${device.device_id}">
-                                        <span>Current pH: <strong id="current-ph-${device.device_id}">-</strong></span>
-                                        <span>Target: <strong id="target-ph-${device.device_id}">-</strong></span>
-                                    </span>
+                            <div class="expand-icon" id="expand-icon-${device.device_id}">▼</div>
+                        </div>
+                        
+                        <div class="device-content" id="device-content-${device.device_id}">
+                            <div class="device-content-inner">
+                                <div class="cards-grid">
+                                    <!-- Water Level Card -->
+                                    <div class="card">
+                                        <div class="card-title">💧 Water Level</div>
+                                        <div class="bucket-container">
+                                            <div class="water-bucket">
+                                                <div class="water-level" id="water-level-${device.device_id}"></div>
+                                                <div class="sensor-marker sensor-full">
+                                                    <span class="sensor-label" id="sensor1-label-${device.device_id}">Full</span>
+                                                </div>
+                                                <div class="sensor-marker sensor-low">
+                                                    <span class="sensor-label" id="sensor2-label-${device.device_id}">Low</span>
+                                                </div>
+                                                <div class="sensor-marker sensor-empty">
+                                                    <span class="sensor-label" id="sensor3-label-${device.device_id}">Empty</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Valves Card -->
+                                    <div class="card" id="valves-card-${device.device_id}" style="display:none;">
+                                        <div class="card-title">🚰 Valve Controls</div>
+                                        <div id="valve-controls-${device.device_id}"></div>
+                                    </div>
                                 </div>
-                                <div id="dosing-controls-${device.device_id}"></div>
+                                
+                                <!-- pH Dosing Card (full width) -->
+                                <div class="card" id="dosing-card-${device.device_id}" style="display:none;">
+                                    <div class="card-title">⚗️ pH Dosing</div>
+                                    <div id="dosing-controls-${device.device_id}"></div>
+                                </div>
+                                
+                                <button class="refresh-btn" id="refresh-${device.device_id}">🔄 Refresh</button>
                             </div>
                         </div>
-                    </div>
-                </div>
-            `;
-            
-            return section;
+                    `;
+                    statusDiv.appendChild(deviceSection);
+
+                    document.getElementById(`refresh-${device.device_id}`).addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const ws = wsMap[device.device_id];
+                        if (ws) {
+                            ws.send(JSON.stringify({ type: 'request_refresh' }));
+                        }
+                    });
+
+                    connectToDevice(device.device_id);
+                });
+            }
         }
 
-        function toggleExpand(device_id) {
-            const content = document.getElementById(`content-${device_id}`);
+        function toggleDevice(device_id) {
+            // Check if device is online
+            const statusBadge = document.getElementById(`status-badge-${device_id}`);
+            const isOnline = statusBadge && statusBadge.classList.contains('status-online');
+            
+            if (!isOnline) {
+                // Don't allow expanding offline devices
+                return;
+            }
+            
+            const content = document.getElementById(`device-content-${device_id}`);
             const icon = document.getElementById(`expand-icon-${device_id}`);
             
-            content.classList.toggle('expanded');
-            icon.classList.toggle('expanded');
+            if (content.classList.contains('expanded')) {
+                content.classList.remove('expanded');
+                icon.classList.remove('expanded');
+            } else {
+                content.classList.add('expanded');
+                icon.classList.add('expanded');
+            }
         }
 
-        function connectWebSocket(device_id) {
-            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const ws = new WebSocket(`${protocol}//${window.location.host}/ws/user/devices/${device_id}`);
-            wsMap[device_id] = ws;
-            
+        function connectToDevice(device_id) {
+            if (wsMap[device_id]) return;
+            const ws = new WebSocket(`wss://${window.location.host}/ws/user/devices/${device_id}`);
             ws.onopen = () => {
-                console.log(`Connected to device ${device_id}`);
+                console.log(`Connected to ${device_id}`);
+                // Don't automatically set online - wait for actual device status
                 ws.send(JSON.stringify({ type: 'request_refresh' }));
             };
-            
             ws.onmessage = (event) => {
                 const data = JSON.parse(event.data);
                 
@@ -605,6 +484,15 @@
                         document.getElementById(`ph-${device_id}`).innerHTML = data.value;
                     }
                 }
+                // Handle granular EC update
+                else if (data.type === 'ec_update') {
+                    updateOnlineStatus(device_id, true);
+                    const ecItem = document.getElementById(`ec-item-${device_id}`);
+                    if (data.value !== null && data.value !== undefined) {
+                        ecItem.style.display = 'flex';
+                        document.getElementById(`ec-${device_id}`).innerHTML = data.value;
+                    }
+                }
                 // Handle granular water level update
                 else if (data.type === 'water_level_update') {
                     updateOnlineStatus(device_id, true);
@@ -613,59 +501,96 @@
                 // Handle granular valve update
                 else if (data.type === 'valve_update') {
                     updateOnlineStatus(device_id, true);
-                    updateValveStatusGranular(device_id, data);
+                    updateSingleValve(device_id, data.label, data.status);
+                }
+                // Handle granular settings update
+                else if (data.type === 'settings_update') {
+                    updateOnlineStatus(device_id, true);
+                    if (data.system_name) {
+                        document.getElementById(`system-name-${device_id}`).innerHTML = data.system_name;
+                    }
+                }
+                // Handle granular plant info update
+                else if (data.type === 'plant_info_update') {
+                    updateOnlineStatus(device_id, true);
+                    updatePlantInfo(device_id, data);
                 }
                 // Handle granular dosage update
                 else if (data.type === 'dosage_update') {
                     updateOnlineStatus(device_id, true);
                     updateDosingControlsGranular(device_id, data);
                 }
+                // Legacy: Handle old status_update format for backwards compatibility
+                else if (data.type === 'status_update' && data.data) {
+                    updateOnlineStatus(device_id, true);
+                    updateDeviceStatus(device_id, data.data);
+                }
             };
-            
-            ws.onerror = (error) => {
-                console.error(`WebSocket error for device ${device_id}:`, error);
-            };
-            
             ws.onclose = () => {
-                console.log(`Disconnected from device ${device_id}`);
+                console.log(`Disconnected from ${device_id}`);
                 updateOnlineStatus(device_id, false);
-                setTimeout(() => connectWebSocket(device_id), 5000);
+                delete wsMap[device_id];
             };
+            ws.onerror = (error) => {
+                console.error(`WebSocket error for ${device_id}:`, error);
+                updateOnlineStatus(device_id, false);
+            };
+            wsMap[device_id] = ws;
         }
 
         function updateOnlineStatus(device_id, isOnline) {
             const statusBadge = document.getElementById(`status-badge-${device_id}`);
             if (statusBadge) {
-                statusBadge.textContent = isOnline ? 'Online' : 'Offline';
                 statusBadge.className = `status-badge ${isOnline ? 'status-online' : 'status-offline'}`;
+                statusBadge.textContent = isOnline ? '● Online' : '● Offline';
+            }
+            
+            // If going offline, collapse the device section
+            if (!isOnline) {
+                const content = document.getElementById(`device-content-${device_id}`);
+                const icon = document.getElementById(`expand-icon-${device_id}`);
+                if (content && content.classList.contains('expanded')) {
+                    content.classList.remove('expanded');
+                    icon.classList.remove('expanded');
+                }
+            }
+            
+            // Update header clickability visual indication
+            const header = document.querySelector(`[onclick="toggleDevice('${device_id}')"]`);
+            if (header) {
+                header.style.cursor = isOnline ? 'pointer' : 'not-allowed';
+                header.style.opacity = isOnline ? '1' : '0.6';
             }
         }
 
-        function updateDeviceStatus(device_id, data) {
-            // Update device name
-            const deviceName = document.querySelector(`#device-${device_id} .device-name`);
-            if (deviceName && data.settings?.system_name) {
-                deviceName.textContent = data.settings.system_name;
+        function updateDeviceStatus(device_id, statusData) {
+            document.getElementById(`system-name-${device_id}`).innerHTML = statusData.settings?.system_name || 'N/A';
+            
+            // Plant info
+            const plantInfo = statusData.settings?.plant_info || {};
+            const plantName = plantInfo.name;
+            const startDate = plantInfo.start_date;
+            
+            const plantItem = document.getElementById(`plant-item-${device_id}`);
+            const startDateItem = document.getElementById(`start-date-item-${device_id}`);
+            const weeksItem = document.getElementById(`weeks-item-${device_id}`);
+            
+            if (plantName) {
+                plantItem.style.display = 'flex';
+                document.getElementById(`plant-name-${device_id}`).innerHTML = plantName;
             }
             
-            // Update plant name
-            if (data.settings?.plant_name) {
-                document.getElementById(`plant-${device_id}`).textContent = data.settings.plant_name;
-            }
-            
-            // Update start date and week
-            if (data.settings?.start_date) {
-                const startedItem = document.getElementById(`started-item-${device_id}`);
-                startedItem.style.display = 'flex';
-                document.getElementById(`started-${device_id}`).textContent = data.settings.start_date;
+            if (startDate) {
+                startDateItem.style.display = 'flex';
+                document.getElementById(`start-date-${device_id}`).innerHTML = startDate;
                 
+                // Calculate weeks
                 try {
-                    const weeksItem = document.getElementById(`weeks-item-${device_id}`);
-                    const startDate = new Date(data.settings.start_date);
-                    const now = new Date();
-                    const diffTime = Math.abs(now - startDate);
-                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                    if (diffDays > 0) {
+                    const start = new Date(startDate);
+                    if (!isNaN(start.getTime())) {
+                        const now = new Date();
+                        const diffMs = now - start;
+                        const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
                         const weeks = Math.floor(diffDays / 7);
                         weeksItem.style.display = 'flex';
                         document.getElementById(`weeks-${device_id}`).innerHTML = weeks;
@@ -675,82 +600,128 @@
                 }
             }
             
-            // Update pH
-            if (data.dosage_info?.current_ph) {
-                const phItem = document.getElementById(`ph-item-${device_id}`);
+            // pH/EC
+            const phProbe = statusData.settings?.usb_roles?.ph_probe;
+            const phItem = document.getElementById(`ph-item-${device_id}`);
+            if (phProbe) {
                 phItem.style.display = 'flex';
-                document.getElementById(`ph-${device_id}`).textContent = data.dosage_info.current_ph;
+                document.getElementById(`ph-${device_id}`).innerHTML = statusData.current_ph || '-';
             }
             
-            // Update water level
-            updateWaterLevel(device_id, data.water_level_info);
+            const ecMeter = statusData.settings?.usb_roles?.ec_meter;
+            const ecItem = document.getElementById(`ec-item-${device_id}`);
+            if (ecMeter) {
+                ecItem.style.display = 'flex';
+                document.getElementById(`ec-${device_id}`).innerHTML = statusData.current_ec || '-';
+            }
             
-            // Update valves
-            updateValveControls(device_id, data);
+            updateWaterBucket(device_id, statusData);
+            updateValveControls(device_id, statusData);
+            updateDosingControls(device_id, statusData);
+        }
+
+        function updateWaterBucket(device_id, statusData) {
+            const water = statusData.water_level || {};
+            const sensor1 = water.sensor1?.triggered || false;
+            const sensor2 = water.sensor2?.triggered || false;
+            const sensor3 = water.sensor3?.triggered || false;
             
-            // Update dosing
-            updateDosingControls(device_id, data);
+            document.getElementById(`sensor1-label-${device_id}`).textContent = `${water.sensor1?.label || 'Full'} ${sensor1 ? '✓' : '✗'}`;
+            document.getElementById(`sensor2-label-${device_id}`).textContent = `${water.sensor2?.label || 'Low'} ${sensor2 ? '✓' : '✗'}`;
+            document.getElementById(`sensor3-label-${device_id}`).textContent = `${water.sensor3?.label || 'Empty'} ${sensor3 ? '✓' : '✗'}`;
+            
+            let waterHeight = 0;
+            if (sensor1) waterHeight = 90;
+            else if (sensor2) waterHeight = 33;
+            else if (sensor3) waterHeight = 10;
+            
+            document.getElementById(`water-level-${device_id}`).style.height = `${waterHeight}%`;
         }
 
         function updateWaterBucketGranular(device_id, data) {
-            const waterLevelDiv = document.getElementById(`water-level-${device_id}`);
-            if (!waterLevelDiv) return;
+            // Granular water level update
+            const sensor1 = data.sensor1?.triggered || false;
+            const sensor2 = data.sensor2?.triggered || false;
+            const sensor3 = data.sensor3?.triggered || false;
             
-            const full = data.full_sensor || false;
-            const low = data.low_sensor || false;
-            const empty = data.empty_sensor || false;
+            document.getElementById(`sensor1-label-${device_id}`).textContent = `${data.sensor1?.label || 'Full'} ${sensor1 ? '✓' : '✗'}`;
+            document.getElementById(`sensor2-label-${device_id}`).textContent = `${data.sensor2?.label || 'Low'} ${sensor2 ? '✓' : '✗'}`;
+            document.getElementById(`sensor3-label-${device_id}`).textContent = `${data.sensor3?.label || 'Empty'} ${sensor3 ? '✓' : '✗'}`;
             
-            let heightPercent = 0;
-            if (full) heightPercent = 100;
-            else if (low) heightPercent = 50;
-            else if (empty) heightPercent = 10;
+            let waterHeight = 0;
+            if (sensor1) waterHeight = 90;
+            else if (sensor2) waterHeight = 33;
+            else if (sensor3) waterHeight = 10;
             
-            waterLevelDiv.style.height = `${heightPercent}%`;
+            document.getElementById(`water-level-${device_id}`).style.height = `${waterHeight}%`;
         }
 
-        function updateValveStatusGranular(device_id, data) {
-            if (data.valve_label && data.status) {
-                const statusSpan = document.getElementById(`${data.valve_label.toLowerCase().replace(' ', '-')}-status-${device_id}`);
-                if (statusSpan) {
-                    statusSpan.textContent = data.status === 'on' ? 'On' : 'Off';
+        function updateSingleValve(device_id, label, status) {
+            // Update a single valve status
+            const fillStatusEl = document.getElementById(`fill-status-${device_id}`);
+            const drainStatusEl = document.getElementById(`drain-status-${device_id}`);
+            
+            // Update the appropriate valve
+            const settings = {}; // We don't have full settings here, so we check by element existence
+            
+            if (fillStatusEl) {
+                const fillOnBtn = document.getElementById(`fill-on-${device_id}`);
+                const fillOffBtn = document.getElementById(`fill-off-${device_id}`);
+                if (fillOnBtn && fillOnBtn.parentElement.parentElement.querySelector('.valve-label').textContent.includes(label)) {
+                    fillStatusEl.textContent = status === 'on' ? 'On' : 'Off';
+                    fillOnBtn.className = status === 'on' ? 'btn-on-active' : 'btn-inactive';
+                    fillOffBtn.className = status === 'off' ? 'btn-off-active' : 'btn-inactive';
                 }
-                
-                // Update button states
-                const onBtn = document.getElementById(`${data.valve_label.toLowerCase().replace(' ', '-')}-on-${device_id}`);
-                const offBtn = document.getElementById(`${data.valve_label.toLowerCase().replace(' ', '-')}-off-${device_id}`);
-                
-                if (onBtn && offBtn) {
-                    if (data.status === 'on') {
-                        onBtn.className = 'btn-on-active';
-                        offBtn.className = 'btn-inactive';
-                    } else {
-                        onBtn.className = 'btn-inactive';
-                        offBtn.className = 'btn-off-active';
-                    }
+            }
+            
+            if (drainStatusEl) {
+                const drainOnBtn = document.getElementById(`drain-on-${device_id}`);
+                const drainOffBtn = document.getElementById(`drain-off-${device_id}`);
+                if (drainOnBtn && drainOnBtn.parentElement.parentElement.querySelector('.valve-label').textContent.includes(label)) {
+                    drainStatusEl.textContent = status === 'on' ? 'On' : 'Off';
+                    drainOnBtn.className = status === 'on' ? 'btn-on-active' : 'btn-inactive';
+                    drainOffBtn.className = status === 'off' ? 'btn-off-active' : 'btn-inactive';
                 }
             }
         }
 
-        function updateWaterLevel(device_id, waterInfo) {
-            if (!waterInfo) return;
+        function updatePlantInfo(device_id, data) {
+            // Update plant info granularly
+            const plantItem = document.getElementById(`plant-item-${device_id}`);
+            const startDateItem = document.getElementById(`start-date-item-${device_id}`);
+            const weeksItem = document.getElementById(`weeks-item-${device_id}`);
             
-            const waterLevelDiv = document.getElementById(`water-level-${device_id}`);
-            const full = waterInfo.full_sensor || false;
-            const low = waterInfo.low_sensor || false;
-            const empty = waterInfo.empty_sensor || false;
+            if (data.name) {
+                plantItem.style.display = 'flex';
+                document.getElementById(`plant-name-${device_id}`).innerHTML = data.name;
+            }
             
-            let heightPercent = 0;
-            if (full) heightPercent = 100;
-            else if (low) heightPercent = 50;
-            else if (empty) heightPercent = 10;
-            
-            waterLevelDiv.style.height = `${heightPercent}%`;
+            if (data.start_date) {
+                startDateItem.style.display = 'flex';
+                document.getElementById(`start-date-${device_id}`).innerHTML = data.start_date;
+                
+                // Calculate weeks
+                try {
+                    const start = new Date(data.start_date);
+                    if (!isNaN(start.getTime())) {
+                        const now = new Date();
+                        const diffMs = now - start;
+                        const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+                        const weeks = Math.floor(diffDays / 7);
+                        weeksItem.style.display = 'flex';
+                        document.getElementById(`weeks-${device_id}`).innerHTML = weeks;
+                    }
+                } catch (e) {
+                    console.error('Error calculating weeks:', e);
+                }
+            }
         }
 
         function updateDosingControlsGranular(device_id, data) {
+            // Update dosing controls with granular data
             const dosingCard = document.getElementById(`dosing-card-${device_id}`);
             if (!data || (data.ph_up_amount === 0 && data.ph_down_amount === 0)) {
-                return;
+                return; // Don't update if no dosing info
             }
             
             dosingCard.style.display = 'block';
@@ -760,19 +731,21 @@
             const phTarget = data.ph_target || '-';
             const currentPh = data.current_ph || '-';
             
-            // Update pH values in card title
-            const currentPhEl = document.getElementById(`current-ph-${device_id}`);
-            const targetPhEl = document.getElementById(`target-ph-${device_id}`);
-            if (currentPhEl) currentPhEl.textContent = currentPh;
-            if (targetPhEl) targetPhEl.textContent = phTarget;
-            
+            // Update the dosing controls (simplified - just update the values)
             const dosingControlsDiv = document.getElementById(`dosing-controls-${device_id}`);
-            if (dosingControlsDiv) {
+            if (dosingControlsDiv && dosingControlsDiv.querySelector('.ph-header')) {
+                dosingControlsDiv.querySelector('.ph-header').innerHTML = `
+                    <span>Current pH: <strong>${currentPh}</strong></span>
+                    <span>Target: <strong>${phTarget}</strong></span>
+                `;
+                
+                // Update calculated amounts
                 const upInfo = dosingControlsDiv.querySelector('.dose-section:first-child .dose-info');
                 const downInfo = dosingControlsDiv.querySelector('.dose-section:last-child .dose-info');
                 if (upInfo) upInfo.textContent = `Calculated: ${phUpAmount.toFixed(2)} ml`;
                 if (downInfo) downInfo.textContent = `Calculated: ${phDownAmount.toFixed(2)} ml`;
                 
+                // Update button states
                 const upCalcBtn = document.getElementById(`dose-up-calc-${device_id}`);
                 const downCalcBtn = document.getElementById(`dose-down-calc-${device_id}`);
                 if (upCalcBtn) upCalcBtn.disabled = phUpAmount === 0;
@@ -845,17 +818,17 @@
             const phDownAmount = dosageInfo.ph_down_amount || 0;
             const phTarget = dosageInfo.ph_target || '-';
             const currentPh = dosageInfo.current_ph || '-';
-            
-            // Update pH values in card title
-            document.getElementById(`current-ph-${device_id}`).textContent = currentPh;
-            document.getElementById(`target-ph-${device_id}`).textContent = phTarget;
 
             dosingControlsDiv.innerHTML = `
+                <div class="ph-header">
+                    <span>Current pH: <strong>${currentPh}</strong></span>
+                    <span>Target: <strong>${phTarget}</strong></span>
+                </div>
                 <div class="dose-sections">
                     <div class="dose-section">
                         <h4>pH Up</h4>
                         <div class="dose-info">Calculated: ${phUpAmount.toFixed(2)} ml</div>
-                        <button id="dose-up-calc-${device_id}" class="dose-button" ${phUpAmount === 0 ? 'disabled' : ''}>Dose Calculated</button>
+                        <button id="dose-up-calc-${device_id}" class="dose-button" ${phUpAmount === 0 ? 'disabled' : ''}>Dose Calculated Amount</button>
                         <div class="manual-section">
                             <label>Manual Dosing</label>
                             <div class="manual-input">
@@ -867,7 +840,7 @@
                     <div class="dose-section">
                         <h4>pH Down</h4>
                         <div class="dose-info">Calculated: ${phDownAmount.toFixed(2)} ml</div>
-                        <button id="dose-down-calc-${device_id}" class="dose-button" ${phDownAmount === 0 ? 'disabled' : ''}>Dose Calculated</button>
+                        <button id="dose-down-calc-${device_id}" class="dose-button" ${phDownAmount === 0 ? 'disabled' : ''}>Dose Calculated Amount</button>
                         <div class="manual-section">
                             <label>Manual Dosing</label>
                             <div class="manual-input">
