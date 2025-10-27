@@ -491,7 +491,7 @@ async def users_page(request: Request, admin: User = Depends(current_admin), ses
         select(User).options(selectinload(User.oauth_accounts))
     )
     users = result.scalars().all()
-    return templates.TemplateResponse("users.html", {"request": request, "users": users})
+    return templates.TemplateResponse("users.html", {"request": request, "user": admin, "users": users})
 
 # Admin: Add user
 @app.post("/admin/users")
