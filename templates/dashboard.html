@@ -124,6 +124,7 @@
         
         .device-content.expanded {
             max-height: 500px;
+            overflow-x: auto;
         }
         
         .device-content-inner {
@@ -131,12 +132,12 @@
             background: linear-gradient(135deg, rgba(15, 23, 42, 0.3) 0%, rgba(30, 41, 59, 0.3) 100%);
         }
         
-        /* Horizontal card layout */
+        /* Horizontal card layout - wider to prevent overflow */
         .cards-grid {
             display: flex;
             gap: 1rem;
             flex-wrap: nowrap;
-            overflow-x: auto;
+            min-width: max-content;
         }
         
         /* Compact card styling */
@@ -148,11 +149,6 @@
             min-width: 200px;
             flex-shrink: 0;
             transition: all 0.3s ease;
-        }
-        
-        /* Make pH dosing card wider to fit side-by-side sections */
-        .card:has(.dose-sections) {
-            min-width: 480px;
         }
         
         .card:hover {
@@ -322,7 +318,7 @@
         
         .dose-sections {
             display: flex;
-            gap: 0.75rem;
+            gap: 0.5rem;
             flex-direction: row;
         }
         
@@ -330,12 +326,13 @@
             background: rgba(30, 41, 59, 0.5);
             border: 1px solid var(--border);
             border-radius: 8px;
-            padding: 0.6rem;
+            padding: 0.5rem;
             flex: 1;
+            min-width: 0;
         }
         
         .dose-section h4 {
-            font-size: 0.75rem;
+            font-size: 0.7rem;
             font-weight: 700;
             margin-bottom: 0.4rem;
             color: var(--primary);
@@ -344,9 +341,9 @@
         
         .dose-info {
             color: var(--text-secondary);
-            margin-bottom: 0.5rem;
-            font-size: 0.7rem;
-            padding: 0.3rem 0.4rem;
+            margin-bottom: 0.4rem;
+            font-size: 0.65rem;
+            padding: 0.25rem 0.35rem;
             background: rgba(51, 65, 85, 0.3);
             border-radius: 4px;
             border-left: 2px solid var(--primary);
@@ -354,17 +351,17 @@
         
         .dose-button {
             width: 100%;
-            padding: 0.4rem;
+            padding: 0.35rem;
             background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
             color: white;
             border: none;
             border-radius: 6px;
             cursor: pointer;
             font-weight: 600;
-            font-size: 0.7rem;
+            font-size: 0.65rem;
             transition: all 0.2s;
             text-transform: uppercase;
-            margin-bottom: 0.5rem;
+            margin-bottom: 0.4rem;
         }
         
         .dose-button:hover:not(:disabled) {
@@ -379,44 +376,52 @@
         }
         
         .manual-section {
-            margin-top: 0.5rem;
-            padding-top: 0.5rem;
+            margin-top: 0.4rem;
+            padding-top: 0.4rem;
             border-top: 1px solid var(--border);
         }
         
         .manual-section label {
             display: block;
-            margin-bottom: 0.4rem;
+            margin-bottom: 0.3rem;
             color: var(--text-muted);
-            font-size: 0.65rem;
+            font-size: 0.6rem;
             text-transform: uppercase;
         }
         
         .manual-input {
             display: flex;
-            gap: 0.4rem;
+            gap: 0.3rem;
         }
         
         .manual-input input {
             flex: 1;
-            padding: 0.35rem 0.4rem;
+            padding: 0.3rem 0.35rem;
             background: rgba(15, 23, 42, 0.6);
             border: 1px solid var(--border);
             border-radius: 4px;
             color: var(--text-primary);
-            font-size: 0.75rem;
+            font-size: 0.7rem;
+            min-width: 0;
         }
         
         .manual-input button {
-            padding: 0.35rem 0.6rem;
+            padding: 0.3rem 0.5rem;
             background: linear-gradient(135deg, var(--secondary) 0%, var(--secondary-dark) 100%);
             color: white;
             border: none;
             border-radius: 4px;
             cursor: pointer;
             font-weight: 600;
-            font-size: 0.65rem;
+            font-size: 0.6rem;
             text-transform: uppercase;
+            white-space: nowrap;
+        }
+        
+        /* Make pH dosing card specific width to fit side-by-side sections */
+        .card:has(.dose-sections) {
+            min-width: 440px;
+            max-width: 440px;
         }
         
         /* Scrollbar styling for horizontal scroll */
