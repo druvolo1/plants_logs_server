@@ -390,8 +390,9 @@
             .device-header {
                 flex-direction: column;
                 align-items: stretch;
-                gap: 4px;
-                padding: 8px 10px;
+                gap: 2px;
+                padding: 6px 10px;
+                position: relative;
             }
             .device-header-left {
                 flex-direction: row;
@@ -422,10 +423,10 @@
             .header-info {
                 display: flex;
                 flex-wrap: wrap;
-                gap: 1px 8px;
+                gap: 0px 8px;
                 width: 100%;
                 font-size: 0.7em;
-                line-height: 1.3;
+                line-height: 1.1;
             }
             .info-item {
                 display: inline-flex;
@@ -437,6 +438,8 @@
                 padding: 0 !important;
                 border-radius: 0 !important;
                 min-width: 0;
+                margin: 0 !important;
+                height: auto;
             }
             .info-item label {
                 font-size: 1em;
@@ -456,6 +459,38 @@
                 overflow: hidden;
                 text-overflow: ellipsis;
                 white-space: nowrap;
+            }
+
+            /* Force system and plant on same row */
+            .info-item[id^="plant-item"] {
+                margin-left: 8px !important;
+            }
+
+            /* Position refresh and expand icons in corners on mobile */
+            .device-header .refresh-icon {
+                position: absolute;
+                top: 6px;
+                right: 10px;
+                font-size: 1.2rem !important;
+                z-index: 10;
+            }
+
+            .device-header .expand-icon {
+                position: absolute;
+                bottom: 6px;
+                right: 10px;
+                font-size: 1rem !important;
+                z-index: 10;
+            }
+
+            /* Hide the wrapper div and use absolute positioning for icons */
+            .header-icons-wrapper {
+                display: none !important;
+            }
+
+            /* Add padding to header-left to avoid overlap with icons */
+            .device-header-left {
+                padding-right: 30px;
             }
 
             /* Cards grid mobile */
@@ -613,8 +648,8 @@
             }
             .header-info {
                 font-size: 0.65em;
-                gap: 1px 6px;
-                line-height: 1.2;
+                gap: 0px 6px;
+                line-height: 1.1;
             }
             .info-item {
                 gap: 2px;
@@ -675,6 +710,18 @@
             /* Hide mobile pH/EC on desktop */
             .header-ph-ec {
                 display: none !important;
+            }
+            /* Show wrapper on desktop */
+            .header-icons-wrapper {
+                display: flex !important;
+            }
+            /* Reset icon positioning on desktop */
+            .device-header .refresh-icon,
+            .device-header .expand-icon {
+                position: static !important;
+            }
+            .device-header-left {
+                padding-right: 0 !important;
             }
         }
     </style>
@@ -784,7 +831,7 @@
                                     </div>
                                 </div>
                             </div>
-                            <div style="display: flex; align-items: center; gap: 1rem;">
+                            <div class="header-icons-wrapper" style="display: flex; align-items: center; gap: 1rem;">
                                 <div class="refresh-icon" id="refresh-icon-${device.device_id}" style="cursor: pointer; font-size: 1.5rem; color: #4da6ff; transition: transform 0.3s;" title="Refresh">🔄</div>
                                 <div class="expand-icon" id="expand-icon-${device.device_id}">▼</div>
                             </div>
