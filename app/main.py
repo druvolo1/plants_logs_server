@@ -998,15 +998,38 @@ async def user_websocket(websocket: WebSocket, device_id: str):
                 await websocket.close(code=1008, reason="User not active")
                 return
             
-            # Check if user owns this device
+            # Check if user owns this device OR has it shared with them
             result = await session.execute(select(Device).where(Device.device_id == device_id, Device.user_id == user.id))
             device = result.scalars().first()
-            
+
+            # If not owner, check if device is shared with user
             if not device:
-                print(f"WebSocket auth failed: Device {device_id} not found or not owned by user {user_id}")
-                await websocket.close(code=1008, reason="Device not found or not owned by user")
-                return
-            
+                # Get device first
+                result = await session.execute(select(Device).where(Device.device_id == device_id))
+                device = result.scalars().first()
+
+                if not device:
+                    print(f"WebSocket auth failed: Device {device_id} not found")
+                    await websocket.close(code=1008, reason="Device not found")
+                    return
+
+                # Check if device is shared with this user
+                result = await session.execute(
+                    select(DeviceShare).where(
+                        DeviceShare.device_id == device.id,
+                        DeviceShare.shared_with_user_id == user.id,
+                        DeviceShare.is_active == True,
+                        DeviceShare.revoked_at == None,
+                        DeviceShare.accepted_at != None
+                    )
+                )
+                share = result.scalars().first()
+
+                if not share:
+                    print(f"WebSocket auth failed: Device {device_id} not owned or shared with user {user_id}")
+                    await websocket.close(code=1008, reason="Access denied")
+                    return
+
             print(f"WebSocket authenticated successfully for user {user_id} connecting to device {device_id}")
             
             # Accept the WebSocket connection
