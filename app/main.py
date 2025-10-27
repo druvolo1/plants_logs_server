@@ -163,7 +163,10 @@ class CustomUserManager(IntegerIDMixin, BaseUserManager[User, int]):
     verification_token_secret = SECRET
 
     async def on_after_register(self, user: User, request: None = None):
-        print(f"User {user.id} has registered and is pending approval.")
+        if user.is_active:
+            print(f"User {user.id} has registered and been auto-approved (OAuth).")
+        else:
+            print(f"User {user.id} has registered and is pending approval.")
 
     async def authenticate(self, credentials: OAuth2PasswordRequestForm) -> Optional[User]:
         """
@@ -254,6 +257,19 @@ class CustomUserManager(IntegerIDMixin, BaseUserManager[User, int]):
                 )
                 user = await self.create(user_create)
                 user = await self.user_db.add_oauth_account(user, oauth_account_dict)
+
+        # Check if user is pending approval or suspended
+        if not user.is_active:
+            raise HTTPException(
+                status_code=403,
+                detail="PENDING_APPROVAL"
+            )
+        if user.is_suspended:
+            raise HTTPException(
+                status_code=403,
+                detail="SUSPENDED"
+            )
+
         return user
 
 async def get_db():
