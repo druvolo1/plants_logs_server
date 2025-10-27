@@ -390,31 +390,48 @@
             .device-header {
                 flex-direction: column;
                 align-items: stretch;
-                gap: 10px;
+                gap: 8px;
                 padding: 10px;
             }
             .device-header-left {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 8px;
+                flex-direction: row;
+                align-items: center;
+                gap: 10px;
+                flex-wrap: wrap;
             }
             .device-name {
-                font-size: 1em;
+                font-size: 0.95em;
+            }
+            .status-badge {
+                padding: 3px 8px;
+                font-size: 0.75em;
             }
             .header-info {
                 display: grid;
-                grid-template-columns: 1fr 1fr;
-                gap: 8px 12px;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 6px 8px;
                 width: 100%;
+                font-size: 0.75em;
             }
             .info-item {
-                font-size: 0.85em;
                 display: flex;
-                flex-direction: column;
-                gap: 2px;
+                flex-direction: row;
+                align-items: baseline;
+                gap: 4px;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
             }
             .info-item label {
-                font-size: 0.75em;
+                font-size: 0.85em;
+                color: #888;
+                flex-shrink: 0;
+            }
+            .info-item span {
+                font-size: 0.95em;
+                font-weight: 500;
+                overflow: hidden;
+                text-overflow: ellipsis;
             }
 
             /* Cards grid mobile */
@@ -544,10 +561,24 @@
                 font-size: 0.9rem;
             }
             .device-name {
-                font-size: 0.95em;
+                font-size: 0.85em;
+            }
+            .status-badge {
+                padding: 2px 6px;
+                font-size: 0.7em;
+            }
+            .header-info {
+                font-size: 0.7em;
+                gap: 4px 6px;
             }
             .info-item {
-                font-size: 0.8em;
+                gap: 3px;
+            }
+            .info-item label {
+                font-size: 0.9em;
+            }
+            .info-item span {
+                font-size: 0.95em;
             }
             .card-title {
                 font-size: 0.85em;
