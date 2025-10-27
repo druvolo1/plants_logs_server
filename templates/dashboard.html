@@ -206,87 +206,114 @@
             opacity: 0.5;
         }
         
-        /* pH Dosing */
+        /* pH Dosing - Compact Modern Style */
         .ph-header {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 15px;
-            padding: 10px;
-            background: #1a1a1a;
+            margin-bottom: 0.5rem;
+            padding: 0.4rem 0.6rem;
+            background: rgba(51, 65, 85, 0.4);
             border-radius: 6px;
-            font-size: 0.9em;
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            font-size: 0.7rem;
+        }
+        .ph-header span {
+            color: rgba(148, 163, 184, 0.9);
+        }
+        .ph-header strong {
+            color: #10b981;
+            margin-left: 0.25rem;
         }
         .dose-sections {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px;
+            display: flex;
+            gap: 0.4rem;
+            flex-direction: row;
         }
         .dose-section {
-            padding: 15px;
-            background: #1a1a1a;
+            background: rgba(30, 41, 59, 0.5);
+            border: 1px solid rgba(148, 163, 184, 0.2);
             border-radius: 6px;
+            padding: 0.4rem;
+            flex: 1;
+            min-width: 0;
         }
         .dose-section h4 {
-            margin: 0 0 10px 0;
-            color: #4da6ff;
-            font-size: 1em;
+            font-size: 0.65rem;
+            font-weight: 700;
+            margin-bottom: 0.3rem;
+            color: #10b981;
+            text-transform: uppercase;
         }
         .dose-info {
-            font-size: 0.9em;
-            color: #999;
-            margin-bottom: 10px;
+            color: rgba(148, 163, 184, 0.9);
+            margin-bottom: 0.35rem;
+            font-size: 0.6rem;
+            padding: 0.2rem 0.3rem;
+            background: rgba(51, 65, 85, 0.3);
+            border-radius: 3px;
+            border-left: 2px solid #10b981;
         }
         .dose-button {
             width: 100%;
-            padding: 10px;
-            background: #007bff;
-            border: 1px solid #007bff;
-            border-radius: 6px;
-            color: #fff;
+            padding: 0.3rem;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            border: none;
+            border-radius: 5px;
             cursor: pointer;
-            font-weight: 500;
+            font-weight: 600;
+            font-size: 0.6rem;
             transition: all 0.2s;
-            margin-bottom: 8px;
+            text-transform: uppercase;
+            margin-bottom: 0.35rem;
         }
         .dose-button:hover:not(:disabled) {
-            background: #0056b3;
-            transform: scale(1.02);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(16, 185, 129, 0.4);
         }
         .dose-button:disabled {
-            opacity: 0.5;
+            opacity: 0.4;
             cursor: not-allowed;
+            background: linear-gradient(135deg, rgba(148, 163, 184, 0.3) 0%, rgba(100, 116, 139, 0.3) 100%);
         }
         .manual-section {
-            margin-top: 15px;
-            padding-top: 15px;
-            border-top: 1px solid #333;
+            margin-top: 0.35rem;
+            padding-top: 0.35rem;
+            border-top: 1px solid rgba(148, 163, 184, 0.2);
         }
         .manual-section label {
             display: block;
-            font-size: 0.85em;
-            color: #999;
-            margin-bottom: 8px;
+            margin-bottom: 0.25rem;
+            color: rgba(148, 163, 184, 0.7);
+            font-size: 0.55rem;
+            text-transform: uppercase;
+            letter-spacing: 0.02em;
         }
         .manual-input {
             display: flex;
-            gap: 8px;
+            gap: 0.25rem;
         }
         .manual-input input {
             flex: 1;
-            padding: 8px 12px;
-            border: 1px solid #555;
-            border-radius: 6px;
-            background: #2a2a2a;
+            padding: 0.25rem 0.3rem;
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 3px;
             color: #fff;
+            font-size: 0.65rem;
+            min-width: 0;
         }
         .manual-input button {
-            padding: 8px 16px;
-            background: #007bff;
-            border: 1px solid #007bff;
-            border-radius: 6px;
-            color: #fff;
+            padding: 0.25rem 0.4rem;
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            color: white;
+            border: none;
+            border-radius: 3px;
             cursor: pointer;
-            font-weight: 500;
+            font-weight: 600;
+            font-size: 0.55rem;
+            text-transform: uppercase;
+            white-space: nowrap;
         }
         
         /* Refresh button */
@@ -806,8 +833,10 @@
             const dosingControlsDiv = document.getElementById(`dosing-controls-${device_id}`);
             const dosingCard = document.getElementById(`dosing-card-${device_id}`);
             const dosageInfo = statusData.dosage_info;
+            const hasPhProbe = statusData.settings?.usb_roles?.ph_probe;
 
-            if (!dosageInfo) {
+            // Hide dosing card if no pH probe assigned or no dosage info
+            if (!hasPhProbe || !dosageInfo) {
                 dosingCard.style.display = 'none';
                 return;
             }
