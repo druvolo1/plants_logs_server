@@ -244,9 +244,11 @@ class CustomUserManager(IntegerIDMixin, BaseUserManager[User, int]):
 
             if not user:
                 # Google OAuth users are auto-approved
+                # Generate a random secure password (OAuth users won't use it)
+                random_password = secrets.token_urlsafe(32)
                 user_create = UserCreate(
                     email=account_email,
-                    password=None,  # OAuth users don't have passwords
+                    password=random_password,  # Random password for OAuth users (not used)
                     is_verified=is_verified_by_default,
                     is_active=True  # Auto-approve Google users
                 )

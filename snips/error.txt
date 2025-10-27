@@ -1,0 +1,209 @@
+vice 1aba9e83-cda4-40fc-9466-7ddec92f5603: {"type": "dosage_update", "ph_up_amount": 5, "ph_down_amount": 0.0, "current_ph": 0.0, "ph_target": 5.8}
+Received from device 6072daae-2e9a-4798-99a7-6fb9feb80d7a: {"type": "plant_info_update", "name": "newer plant", "start_date": "2025-09-10"}
+Received from device 6072daae-2e9a-4798-99a7-6fb9feb80d7a: {"type": "dosage_update", "ph_up_amount": 4.23, "ph_down_amount": 0.0, "current_ph": 8.35, "ph_target": 9}
+Received from device 6072daae-2e9a-4798-99a7-6fb9feb80d7a: {"type": "ph_update", "value": 8.36}
+Received from device 6072daae-2e9a-4798-99a7-6fb9feb80d7a: {"type": "dosage_update", "ph_up_amount": 4.16, "ph_down_amount": 0.0, "current_ph": 8.36, "ph_target": 9}
+Received from device 6072daae-2e9a-4798-99a7-6fb9feb80d7a: {"type": "ph_update", "ph": 8.36}
+Received from device 6072daae-2e9a-4798-99a7-6fb9feb80d7a: {"type": "ph_update", "ph": 8.35}
+Received from device 6072daae-2e9a-4798-99a7-6fb9feb80d7a: {"type": "ph_update", "value": 8.35}
+Received from device 6072daae-2e9a-4798-99a7-6fb9feb80d7a: {"type": "dosage_update", "ph_up_amount": 4.23, "ph_down_amount": 0.0, "current_ph": 8.35, "ph_target": 9}
+Received from device 6072daae-2e9a-4798-99a7-6fb9feb80d7a: {"type": "ph_update", "value": 8.36}
+Received from device 6072daae-2e9a-4798-99a7-6fb9feb80d7a: {"type": "dosage_update", "ph_up_amount": 4.16, "ph_down_amount": 0.0, "current_ph": 8.36, "ph_target": 9}
+Received from device 6072daae-2e9a-4798-99a7-6fb9feb80d7a: {"type": "ph_update", "ph": 8.36}
+Received from device 6072daae-2e9a-4798-99a7-6fb9feb80d7a: {"type": "ph_update", "ph": 8.35}
+Received from device 6072daae-2e9a-4798-99a7-6fb9feb80d7a: {"type": "ph_update", "value": 8.35}
+Received from device 6072daae-2e9a-4798-99a7-6fb9feb80d7a: {"type": "dosage_update", "ph_up_amount": 4.23, "ph_down_amount": 0.0, "current_ph": 8.35, "ph_target": 9}
+Received from device 6072daae-2e9a-4798-99a7-6fb9feb80d7a: {"type": "ph_update", "ph": 8.36}
+Received from device 6072daae-2e9a-4798-99a7-6fb9feb80d7a: {"type": "ph_update", "value": 8.36}
+Received from device 6072daae-2e9a-4798-99a7-6fb9feb80d7a: {"type": "dosage_update", "ph_up_amount": 4.16, "ph_down_amount": 0.0, "current_ph": 8.36, "ph_target": 9}
+Received from device 6072daae-2e9a-4798-99a7-6fb9feb80d7a: {"type": "ph_update", "value": 8.35}
+Received from device 6072daae-2e9a-4798-99a7-6fb9feb80d7a: {"type": "dosage_update", "ph_up_amount": 4.23, "ph_down_amount": 0.0, "current_ph": 8.35, "ph_target": 9}
+Received from device 6072daae-2e9a-4798-99a7-6fb9feb80d7a: {"type": "ph_update", "ph": 8.35}
+INFO:     172.16.1.150:44042 - "GET / HTTP/1.1" 307 Temporary Redirect
+INFO:     172.16.1.150:44046 - "GET /login HTTP/1.1" 200 OK
+Received from device 6072daae-2e9a-4798-99a7-6fb9feb80d7a: {"type": "ph_update", "ph": 8.36}
+Received from device 6072daae-2e9a-4798-99a7-6fb9feb80d7a: {"type": "ph_update", "value": 8.36}
+Received from device 6072daae-2e9a-4798-99a7-6fb9feb80d7a: {"type": "dosage_update", "ph_up_amount": 4.16, "ph_down_amount": 0.0, "current_ph": 8.36, "ph_target": 9}
+INFO:     172.16.1.150:44048 - "GET /auth/google/authorize HTTP/1.1" 200 OK
+INFO:     172.16.1.150:44058 - "GET /auth/google/callback?state=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJmYXN0YXBpLXVzZXJzOm9hdXRoLXN0YXRlIiwiZXhwIjoxNzYxNTk2MzE3fQ.xb2hEN2TCVmCdJFvKfgtDMFRFlTzEdZfatDIJCWR6Bc&code=4%2F0Ab32j93LT9TK5kyTp2683m_MTnUdE9SzfRLwXpPseP0xIxehE5pE3s4DJplBsbTIu_IqpQ&scope=email+profile+https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.email+openid+https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.profile&authuser=0&prompt=none HTTP/1.1" 500 Internal Server Error
+ERROR:    Exception in ASGI application
+  + Exception Group Traceback (most recent call last):
+  |   File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/starlette/_utils.py", line 77, in collapse_excgroups
+  |     yield
+  |   File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/starlette/middleware/base.py", line 186, in __call__
+  |     async with anyio.create_task_group() as task_group:
+  |   File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 781, in __aexit__
+  |     raise BaseExceptionGroup(
+  | ExceptionGroup: unhandled errors in a TaskGroup (1 sub-exception)
+  +-+---------------- 1 ----------------
+    | Traceback (most recent call last):
+    |   File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/uvicorn/protocols/http/httptools_impl.py", line 401, in run_asgi
+    |     result = await app(  # type: ignore[func-returns-value]
+    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/uvicorn/middleware/proxy_headers.py", line 60, in __call__
+    |     return await self.app(scope, receive, send)
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/fastapi/applications.py", line 1054, in __call__
+    |     await super().__call__(scope, receive, send)
+    |   File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/starlette/applications.py", line 113, in __call__
+    |     await self.middleware_stack(scope, receive, send)
+    |   File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/starlette/middleware/errors.py", line 187, in __call__
+    |     raise exc
+    |   File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/starlette/middleware/errors.py", line 165, in __call__
+    |     await self.app(scope, receive, _send)
+    |   File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/starlette/middleware/base.py", line 185, in __call__
+    |     with collapse_excgroups():
+    |   File "/usr/lib/python3.11/contextlib.py", line 155, in __exit__
+    |     self.gen.throw(typ, value, traceback)
+    |   File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/starlette/_utils.py", line 83, in collapse_excgroups
+    |     raise exc
+    |   File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/starlette/middleware/base.py", line 187, in __call__
+    |     response = await self.dispatch_func(request, call_next)
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/home/dave/plants_logs_server/app/main.py", line 309, in oauth_redirect_middleware
+    |     response = await call_next(request)
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/starlette/middleware/base.py", line 163, in call_next
+    |     raise app_exc
+    |   File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/starlette/middleware/base.py", line 149, in coro
+    |     await self.app(scope, receive_or_disconnect, send_no_error)
+    |   File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 62, in __call__
+    |     await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+    |   File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/starlette/_exception_handler.py", line 62, in wrapped_app
+    |     raise exc
+    |   File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/starlette/_exception_handler.py", line 51, in wrapped_app
+    |     await app(scope, receive, sender)
+    |   File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/starlette/routing.py", line 715, in __call__
+    |     await self.middleware_stack(scope, receive, send)
+    |   File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/starlette/routing.py", line 735, in app
+    |     await route.handle(scope, receive, send)
+    |   File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/starlette/routing.py", line 288, in handle
+    |     await self.app(scope, receive, send)
+    |   File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/starlette/routing.py", line 76, in app
+    |     await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+    |   File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/starlette/_exception_handler.py", line 62, in wrapped_app
+    |     raise exc
+    |   File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/starlette/_exception_handler.py", line 51, in wrapped_app
+    |     await app(scope, receive, sender)
+    |   File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/starlette/routing.py", line 73, in app
+    |     response = await f(request)
+    |                ^^^^^^^^^^^^^^^^
+    |   File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/fastapi/routing.py", line 301, in app
+    |     raw_response = await run_endpoint_function(
+    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/fastapi/routing.py", line 212, in run_endpoint_function
+    |     return await dependant.call(**values)
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/fastapi_users/router/oauth.py", line 126, in callback
+    |     user = await user_manager.oauth_callback(
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/home/dave/plants_logs_server/app/main.py", line 253, in oauth_callback
+    |     user = await self.create(user_create)
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/fastapi_users/manager.py", line 141, in create
+    |     user_dict["hashed_password"] = self.password_helper.hash(password)
+    |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/fastapi_users/password.py", line 37, in hash
+    |     return self.password_hash.hash(password)
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/pwdlib/_hash.py", line 60, in hash
+    |     return self.current_hasher.hash(password, salt=salt)
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/pwdlib/hashers/argon2.py", line 53, in hash
+    |     return self._hasher.hash(password, salt=salt)
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/argon2/_password_hasher.py", line 174, in hash
+    |     secret=_ensure_bytes(password, self.encoding),
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/argon2/_password_hasher.py", line 29, in _ensure_bytes
+    |     return s.encode(encoding)
+    |            ^^^^^^^^
+    | AttributeError: 'NoneType' object has no attribute 'encode'
+    +------------------------------------
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/uvicorn/protocols/http/httptools_impl.py", line 401, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/uvicorn/middleware/proxy_headers.py", line 60, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/fastapi/applications.py", line 1054, in __call__
+    await super().__call__(scope, receive, send)
+  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/starlette/applications.py", line 113, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/starlette/middleware/errors.py", line 187, in __call__
+    raise exc
+  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/starlette/middleware/errors.py", line 165, in __call__
+    await self.app(scope, receive, _send)
+  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/starlette/middleware/base.py", line 185, in __call__
+    with collapse_excgroups():
+  File "/usr/lib/python3.11/contextlib.py", line 155, in __exit__
+    self.gen.throw(typ, value, traceback)
+  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/starlette/_utils.py", line 83, in collapse_excgroups
+    raise exc
+  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/starlette/middleware/base.py", line 187, in __call__
+    response = await self.dispatch_func(request, call_next)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dave/plants_logs_server/app/main.py", line 309, in oauth_redirect_middleware
+    response = await call_next(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/starlette/middleware/base.py", line 163, in call_next
+    raise app_exc
+  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/starlette/middleware/base.py", line 149, in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 62, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/starlette/_exception_handler.py", line 62, in wrapped_app
+    raise exc
+  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/starlette/_exception_handler.py", line 51, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/starlette/routing.py", line 715, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/starlette/routing.py", line 735, in app
+    await route.handle(scope, receive, send)
+  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/starlette/routing.py", line 288, in handle
+    await self.app(scope, receive, send)
+  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/starlette/routing.py", line 76, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/starlette/_exception_handler.py", line 62, in wrapped_app
+    raise exc
+  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/starlette/_exception_handler.py", line 51, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/starlette/routing.py", line 73, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/fastapi/routing.py", line 301, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/fastapi/routing.py", line 212, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/fastapi_users/router/oauth.py", line 126, in callback
+    user = await user_manager.oauth_callback(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dave/plants_logs_server/app/main.py", line 253, in oauth_callback
+    user = await self.create(user_create)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/fastapi_users/manager.py", line 141, in create
+    user_dict["hashed_password"] = self.password_helper.hash(password)
+                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/fastapi_users/password.py", line 37, in hash
+    return self.password_hash.hash(password)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/pwdlib/_hash.py", line 60, in hash
+    return self.current_hasher.hash(password, salt=salt)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/pwdlib/hashers/argon2.py", line 53, in hash
+    return self._hasher.hash(password, salt=salt)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/argon2/_password_hasher.py", line 174, in hash
+    secret=_ensure_bytes(password, self.encoding),
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/argon2/_password_hasher.py", line 29, in _ensure_bytes
+    return s.encode(encoding)
+           ^^^^^^^^
+AttributeError: 'NoneType' object has no attribute 'encode'
+INFO:     172.16.1.150:59572 - "GET /auth/google/callback?state=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJmYXN0YXBpLXVzZXJzOm9hdXRoLXN0YXRlIiwiZXhwIjoxNzYxNTk2MzE3fQ.xb2hEN2TCVmCdJFvKfgtDMFRFlTzEdZfatDIJCWR6Bc&code=4%2F0Ab32j93LT9TK5kyTp2683m_MTnUdE9SzfRLwXpPseP0xIxehE5pE3s4DJplBsbTIu_IqpQ&scope=email+profile+https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.email+openid+https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.profile&authuser=0&prompt=none HTTP/1.1" 500 Internal Server Error
