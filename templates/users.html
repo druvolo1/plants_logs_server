@@ -294,7 +294,7 @@
                     <td>{{ user.email }}</td>
                     <td>{{ 'Yes' if user.is_superuser else 'No' }}</td>
                     <td>
-                        {% if user.is_suspended %}
+                        {% if user.is_suspended|default(false) %}
                             Suspended
                         {% elif user.is_active %}
                             Active
@@ -311,11 +311,11 @@
                                 data-lastname="{{ user.last_name or '' }}"
                                 data-admin="{{ user.is_superuser }}"
                                 data-active="{{ user.is_active }}"
-                                data-suspended="{{ user.is_suspended }}">Edit</button>
+                                data-suspended="{{ user.is_suspended|default(false) }}">Edit</button>
                         {% if not user.oauth_accounts %}
                             <button class="reset-password-btn" data-user-id="{{ user.id }}">Reset Password</button>
                         {% endif %}
-                        {% if user.is_suspended %}
+                        {% if user.is_suspended|default(false) %}
                             <button class="unsuspend-btn" data-user-id="{{ user.id }}">Unsuspend</button>
                         {% elif user.is_active %}
                             <button class="suspend-btn" data-user-id="{{ user.id }}">Suspend</button>

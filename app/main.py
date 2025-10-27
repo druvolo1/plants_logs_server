@@ -186,8 +186,8 @@ class CustomUserManager(IntegerIDMixin, BaseUserManager[User, int]):
         if not verified:
             return None
 
-        # Check if user is suspended
-        if user.is_suspended:
+        # Check if user is suspended (with fallback if column doesn't exist yet)
+        if getattr(user, 'is_suspended', False):
             raise HTTPException(
                 status_code=403,
                 detail="SUSPENDED"
@@ -266,8 +266,8 @@ class CustomUserManager(IntegerIDMixin, BaseUserManager[User, int]):
                 user = await self.create(user_create)
                 user = await self.user_db.add_oauth_account(user, oauth_account_dict)
 
-        # Check if user is suspended
-        if user.is_suspended:
+        # Check if user is suspended (with fallback if column doesn't exist yet)
+        if getattr(user, 'is_suspended', False):
             raise HTTPException(
                 status_code=403,
                 detail="SUSPENDED"
