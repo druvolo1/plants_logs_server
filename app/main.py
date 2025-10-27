@@ -245,7 +245,8 @@ class CustomUserManager(IntegerIDMixin, BaseUserManager[User, int]):
             if not user:
                 # Google OAuth users are auto-approved
                 user_create = UserCreate(
-                    email=account_email, 
+                    email=account_email,
+                    password=None,  # OAuth users don't have passwords
                     is_verified=is_verified_by_default,
                     is_active=True  # Auto-approve Google users
                 )
