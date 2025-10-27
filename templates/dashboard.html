@@ -429,6 +429,7 @@
                 font-size: 0.7em;
             }
             .info-item {
+                display: flex;
                 flex-direction: row;
                 align-items: center;
                 gap: 4px;
@@ -438,6 +439,8 @@
                 border-radius: 8px !important;
                 min-width: 0;
                 margin: 0 !important;
+                width: auto;
+                max-width: 100%;
             }
             .info-item label {
                 font-size: 1em;
@@ -456,26 +459,25 @@
                 font-weight: 500;
                 color: #10b981;
                 white-space: nowrap;
+                flex: 1;
                 overflow: hidden;
                 text-overflow: ellipsis;
-                min-width: 0;
             }
 
-            /* Force system to first column, plant to second column */
-            .info-item[id^="system-item"] {
-                display: flex !important;
+            /* Force positioning in grid */
+            .header-info > .info-item[id^="system-item"] {
                 grid-column: 1;
                 grid-row: 1;
             }
-            .info-item[id^="plant-item"] {
+            .header-info > .info-item[id^="plant-item"] {
                 grid-column: 2;
                 grid-row: 1;
             }
-            .info-item[id^="start-date-item"] {
+            .header-info > .info-item[id^="start-date-item"] {
                 grid-column: 1;
                 grid-row: 2;
             }
-            .info-item[id^="weeks-item"] {
+            .header-info > .info-item[id^="weeks-item"] {
                 grid-column: 2;
                 grid-row: 2;
             }
@@ -668,7 +670,8 @@
                 gap: 5px;
             }
             .info-item {
-                gap: 2px;
+                gap: 3px;
+                padding: 5px 8px !important;
             }
             .info-item label {
                 font-size: 1em;
