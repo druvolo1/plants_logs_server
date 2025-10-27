@@ -640,20 +640,22 @@
             const plantInfo = statusData.settings?.plant_info || {};
             const plantName = plantInfo.name;
             const startDate = plantInfo.start_date;
-            
+
             const plantItem = document.getElementById(`plant-item-${device_id}`);
             const startDateItem = document.getElementById(`start-date-item-${device_id}`);
             const weeksItem = document.getElementById(`weeks-item-${device_id}`);
-            
-            if (plantName) {
+
+            if (plantName && plantName !== '-') {
                 plantItem.style.display = 'flex';
                 document.getElementById(`plant-name-${device_id}`).innerHTML = plantName;
+            } else {
+                plantItem.style.display = 'none';
             }
-            
-            if (startDate) {
+
+            if (startDate && startDate !== '-') {
                 startDateItem.style.display = 'flex';
                 document.getElementById(`start-date-${device_id}`).innerHTML = startDate;
-                
+
                 // Calculate weeks
                 try {
                     const start = new Date(startDate);
@@ -668,6 +670,9 @@
                 } catch (e) {
                     console.error('Error calculating weeks:', e);
                 }
+            } else {
+                startDateItem.style.display = 'none';
+                weeksItem.style.display = 'none';
             }
             
             // pH/EC
@@ -738,10 +743,10 @@
             // Update a single valve status
             const fillStatusEl = document.getElementById(`fill-status-${device_id}`);
             const drainStatusEl = document.getElementById(`drain-status-${device_id}`);
-            
-            // Update the appropriate valve
+
+            // Update the appropriate valve in fill/drain controls
             const settings = {}; // We don't have full settings here, so we check by element existence
-            
+
             if (fillStatusEl) {
                 const fillOnBtn = document.getElementById(`fill-on-${device_id}`);
                 const fillOffBtn = document.getElementById(`fill-off-${device_id}`);
@@ -751,7 +756,7 @@
                     fillOffBtn.className = status === 'off' ? 'btn-off-active' : 'btn-inactive';
                 }
             }
-            
+
             if (drainStatusEl) {
                 const drainOnBtn = document.getElementById(`drain-on-${device_id}`);
                 const drainOffBtn = document.getElementById(`drain-off-${device_id}`);
@@ -759,6 +764,22 @@
                     drainStatusEl.textContent = status === 'on' ? 'On' : 'Off';
                     drainOnBtn.className = status === 'on' ? 'btn-on-active' : 'btn-inactive';
                     drainOffBtn.className = status === 'off' ? 'btn-off-active' : 'btn-inactive';
+                }
+            }
+
+            // Also update the all valves table if it exists
+            // Try to find the valve by label in the all valves table
+            for (let i = 1; i <= 8; i++) {
+                const statusEl = document.getElementById(`all-valve-status-${device_id}-${i}`);
+                if (statusEl && statusEl.parentElement.parentElement.querySelector('td:nth-child(2)').textContent === label) {
+                    statusEl.textContent = status;
+                    const onBtn = document.getElementById(`all-valve-${device_id}-${i}-on`);
+                    const offBtn = document.getElementById(`all-valve-${device_id}-${i}-off`);
+                    if (onBtn && offBtn) {
+                        onBtn.className = `valve-buttons button ${status === 'on' ? 'btn-on-active' : 'btn-inactive'}`;
+                        offBtn.className = `valve-buttons button ${status === 'off' ? 'btn-off-active' : 'btn-inactive'}`;
+                    }
+                    break;
                 }
             }
         }
