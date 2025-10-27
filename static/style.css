@@ -989,11 +989,12 @@ a:hover {
     font-size: 0.75rem !important;
     font-weight: 700 !important;
     margin: 0 !important;
+    padding: 0 !important;
     color: var(--primary) !important;
     text-transform: uppercase !important;
     letter-spacing: 0.05em !important;
     display: inline-block !important;
-    min-width: 60px !important;
+    vertical-align: middle !important;
 }
 
 .dose-info {
@@ -1001,6 +1002,8 @@ a:hover {
     font-size: 0.75rem !important;
     display: inline-block !important;
     margin: 0 0.5rem !important;
+    padding: 0 !important;
+    vertical-align: middle !important;
 }
 
 .dose-button {
@@ -1011,12 +1014,16 @@ a:hover {
     border-radius: 6px !important;
     cursor: pointer !important;
     font-weight: 700 !important;
-    font-size: 0.7rem !important;
+    font-size: 0.65rem !important;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
     text-transform: uppercase !important;
     letter-spacing: 0.05em !important;
     box-shadow: 0 2px 6px rgba(16, 185, 129, 0.3) !important;
     display: inline-block !important;
+    vertical-align: middle !important;
+    width: auto !important;
+    min-width: 44px !important;
+    white-space: nowrap !important;
 }
 
 .dose-button:hover:not(:disabled) {
@@ -1033,7 +1040,7 @@ a:hover {
 
 .manual-section {
     margin-top: 0 !important;
-    padding-top: 0.5rem !important;
+    padding-top: 0.3rem !important;
     border-top: 1px solid var(--border) !important;
 }
 
