@@ -3,6 +3,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -339,17 +340,179 @@
             background: #218838;
             transform: scale(1.02);
         }
-        
+
+        /* Mobile Responsive Styles */
         @media (max-width: 768px) {
-            .dose-sections {
-                grid-template-columns: 1fr;
+            /* Navbar mobile adjustments */
+            .navbar-container {
+                padding: 0 0.75rem;
+                flex-wrap: wrap;
             }
-            .cards-grid {
-                grid-template-columns: 1fr;
+            .navbar-brand {
+                font-size: 1rem;
+                padding: 0.75rem 0;
+            }
+            .navbar-menu {
+                width: 100%;
+                flex-direction: column;
+                align-items: stretch;
+                gap: 0;
+                display: none;
+            }
+            .navbar-menu.mobile-open {
+                display: flex;
+            }
+            .navbar-link {
+                padding: 0.75rem 1rem;
+                border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+            }
+            .navbar-user {
+                padding: 0.75rem 1rem;
+                border-left: none;
+                border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+            }
+            .navbar-logout {
+                margin: 0.75rem 1rem;
+            }
+
+            /* Hamburger menu button */
+            .navbar-toggle {
+                display: block;
+                background: none;
+                border: none;
+                color: #10b981;
+                font-size: 1.5rem;
+                cursor: pointer;
+                padding: 0.5rem;
+            }
+
+            /* Device header mobile */
+            .device-header {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 10px;
+                padding: 10px;
+            }
+            .device-header-left {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 8px;
+            }
+            .device-name {
+                font-size: 1em;
             }
             .header-info {
-                flex-wrap: wrap;
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 8px;
+            }
+            .info-item {
+                font-size: 0.85em;
+            }
+
+            /* Cards grid mobile */
+            .cards-grid {
+                grid-template-columns: 1fr !important;
                 gap: 10px;
+            }
+
+            /* Card adjustments */
+            .card {
+                padding: 8px;
+            }
+            .card-title {
+                font-size: 0.9em;
+            }
+
+            /* Dose sections mobile */
+            .dose-sections {
+                flex-direction: column;
+                gap: 0.75rem;
+            }
+            .dose-section {
+                padding: 0.75rem;
+            }
+
+            /* Water bucket mobile */
+            .water-bucket-container {
+                justify-content: center;
+            }
+
+            /* Valve controls mobile */
+            .valve-controls {
+                flex-direction: column;
+                gap: 8px;
+            }
+            .valve-controls button {
+                width: 100% !important;
+                min-width: unset !important;
+            }
+
+            /* pH dosing mobile */
+            .ph-header {
+                font-size: 0.85rem;
+                flex-direction: column;
+                text-align: center;
+            }
+
+            /* Buttons mobile */
+            button {
+                padding: 0.75rem 1rem !important;
+                font-size: 0.9rem !important;
+                min-height: 44px; /* Touch-friendly size */
+            }
+
+            /* Input fields mobile */
+            input[type="number"] {
+                font-size: 1rem !important;
+                padding: 0.75rem !important;
+                min-height: 44px;
+            }
+
+            /* Dose info mobile */
+            .dose-info {
+                font-size: 0.85rem;
+                padding: 0.5rem;
+            }
+
+            /* Main container mobile */
+            .main-container {
+                padding: 1rem 0.75rem !important;
+            }
+
+            /* Device section spacing mobile */
+            .device-section {
+                margin-bottom: 15px;
+            }
+        }
+
+        /* Extra small devices */
+        @media (max-width: 480px) {
+            .navbar-brand {
+                font-size: 0.9rem;
+            }
+            .device-name {
+                font-size: 0.95em;
+            }
+            .info-item {
+                font-size: 0.8em;
+            }
+            .card-title {
+                font-size: 0.85em;
+            }
+            button {
+                padding: 0.6rem 0.8rem !important;
+                font-size: 0.85rem !important;
+            }
+        }
+
+        /* Hide hamburger on desktop */
+        @media (min-width: 769px) {
+            .navbar-toggle {
+                display: none;
+            }
+            .navbar-menu {
+                display: flex !important;
             }
         }
     </style>
@@ -361,7 +524,10 @@
             <a href="/dashboard" class="navbar-brand">
                 🌱 Plant Monitor
             </a>
-            <div class="navbar-menu">
+            <button class="navbar-toggle" onclick="toggleMobileMenu()" aria-label="Toggle menu">
+                ☰
+            </button>
+            <div class="navbar-menu" id="navbar-menu">
                 <a href="/dashboard" class="navbar-link active">Dashboard</a>
                 <a href="/devices" class="navbar-link">Devices</a>
                 {% if user.is_superuser %}
@@ -373,7 +539,37 @@
         </div>
     </nav>
 
-    <div style="padding: 2rem 1.5rem; max-width: 1400px; margin: 0 auto;">
+    <script>
+        // Toggle mobile menu
+        function toggleMobileMenu() {
+            const menu = document.getElementById('navbar-menu');
+            menu.classList.toggle('mobile-open');
+        }
+
+        // Close mobile menu when clicking a link
+        document.querySelectorAll('.navbar-link, .navbar-logout').forEach(link => {
+            link.addEventListener('click', () => {
+                const menu = document.getElementById('navbar-menu');
+                if (menu.classList.contains('mobile-open')) {
+                    menu.classList.remove('mobile-open');
+                }
+            });
+        });
+
+        // Close mobile menu when clicking outside
+        document.addEventListener('click', (e) => {
+            const menu = document.getElementById('navbar-menu');
+            const toggle = document.querySelector('.navbar-toggle');
+            const navbar = document.querySelector('.navbar-container');
+
+            if (menu.classList.contains('mobile-open') &&
+                !navbar.contains(e.target)) {
+                menu.classList.remove('mobile-open');
+            }
+        });
+    </script>
+
+    <div class="main-container" style="padding: 2rem 1.5rem; max-width: 1400px; margin: 0 auto;">
         <h2 style="color: #10b981; margin-bottom: 1.5rem;">My Devices</h2>
     <div id="devices-status"></div>
 
