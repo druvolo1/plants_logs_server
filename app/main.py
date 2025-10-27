@@ -310,12 +310,47 @@ fastapi_users = FastAPIUsers[User, int](
     [auth_backend],
 )
 
-current_user = fastapi_users.current_user(active=True)
-current_admin = fastapi_users.current_user(active=True, superuser=True)
+_base_current_user = fastapi_users.current_user(active=True)
+_base_current_admin = fastapi_users.current_user(active=True, superuser=True)
+
+# Custom dependency to check for suspended users
+async def current_user(user: User = Depends(_base_current_user)) -> User:
+    """Check if user is suspended before allowing access"""
+    if getattr(user, 'is_suspended', False):
+        raise HTTPException(
+            status_code=403,
+            detail="SUSPENDED"
+        )
+    return user
+
+async def current_admin(user: User = Depends(_base_current_admin)) -> User:
+    """Check if admin is suspended before allowing access"""
+    if getattr(user, 'is_suspended', False):
+        raise HTTPException(
+            status_code=403,
+            detail="SUSPENDED"
+        )
+    return user
 
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
+
+# Global exception handler for suspended/pending users
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    if exc.detail == "SUSPENDED":
+        # Clear auth cookie
+        response = templates.TemplateResponse("suspended.html", {"request": request}, status_code=403)
+        response.delete_cookie("auth_cookie")
+        return response
+    elif exc.detail == "PENDING_APPROVAL":
+        # Clear auth cookie
+        response = templates.TemplateResponse("pending_approval.html", {"request": request}, status_code=403)
+        response.delete_cookie("auth_cookie")
+        return response
+    # Re-raise other HTTP exceptions
+    raise exc
 
 # Auth routes - We have custom registration, so don't include the register router
 # app.include_router(
@@ -428,23 +463,30 @@ async def root(request: Request):
                 user_id = int(user_id)
                 result = await session.execute(select(User).where(User.id == user_id))
                 user = result.scalars().first()
-                
-                if user and user.is_active:
-                    # Redirect based on user type
+
+                if user:
+                    # Check if user is suspended
+                    if getattr(user, 'is_suspended', False):
+                        response = templates.TemplateResponse("suspended.html", {"request": request}, status_code=403)
+                        response.delete_cookie("auth_cookie")
+                        return response
+
+                    # Check if user is pending approval
+                    if not user.is_active:
+                        response = templates.TemplateResponse("pending_approval.html", {"request": request}, status_code=403)
+                        response.delete_cookie("auth_cookie")
+                        return response
+
+                    # User is active and not suspended - redirect to dashboard
                     if user.is_superuser:
                         return RedirectResponse("/dashboard")
                     else:
                         return RedirectResponse("/dashboard")
     except:
         pass
-    
+
     # If anything fails, go to login
     return RedirectResponse("/login")
-
-# Root redirect to login
-@app.get("/")
-async def root():
-    return RedirectResponse(url="/login")
 
 # Login page
 @app.get("/login", response_class=HTMLResponse)
