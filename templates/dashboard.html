@@ -390,13 +390,13 @@
             .device-header {
                 flex-direction: column;
                 align-items: stretch;
-                gap: 8px;
-                padding: 10px;
+                gap: 4px;
+                padding: 8px 10px;
             }
             .device-header-left {
                 flex-direction: row;
                 align-items: center;
-                gap: 10px;
+                gap: 6px;
                 flex-wrap: wrap;
             }
             .device-name {
@@ -406,13 +406,26 @@
                 padding: 2px 6px;
                 font-size: 0.65em;
             }
+
+            /* Hide pH and EC from header-info on mobile, will show next to badge */
+            .header-info [data-key="ph"],
+            .header-info [data-key="ec"] {
+                display: none !important;
+            }
+
+            /* Show pH/EC next to badge on mobile */
+            .header-ph-ec {
+                display: flex !important;
+                flex-wrap: wrap;
+            }
+
             .header-info {
                 display: flex;
                 flex-wrap: wrap;
-                gap: 2px 8px;
+                gap: 1px 8px;
                 width: 100%;
                 font-size: 0.7em;
-                line-height: 1.4;
+                line-height: 1.3;
             }
             .info-item {
                 display: inline-flex;
@@ -594,10 +607,14 @@
                 padding: 2px 5px;
                 font-size: 0.6em;
             }
+            .header-ph-ec {
+                font-size: 0.6em !important;
+                gap: 6px !important;
+            }
             .header-info {
                 font-size: 0.65em;
-                gap: 2px 6px;
-                line-height: 1.3;
+                gap: 1px 6px;
+                line-height: 1.2;
             }
             .info-item {
                 gap: 2px;
@@ -654,6 +671,10 @@
             }
             .navbar-menu {
                 display: flex !important;
+            }
+            /* Hide mobile pH/EC on desktop */
+            .header-ph-ec {
+                display: none !important;
             }
         }
     </style>
@@ -732,6 +753,10 @@
                                 <div class="status-badge ${device.is_online ? 'status-online' : 'status-offline'}" id="status-badge-${device.device_id}">
                                     ● ${device.is_online ? 'Online' : 'Offline'}
                                 </div>
+                                <div class="header-ph-ec" id="header-ph-ec-${device.device_id}" style="display:none; font-size: 0.7em; color: #10b981; gap: 8px;">
+                                    <span id="header-ph-${device.device_id}" style="display:none;"></span>
+                                    <span id="header-ec-${device.device_id}" style="display:none;"></span>
+                                </div>
                                 <div class="header-info">
                                     <div class="info-item">
                                         <label>System:</label>
@@ -749,11 +774,11 @@
                                         <label>Week:</label>
                                         <span id="weeks-${device.device_id}">-</span>
                                     </div>
-                                    <div class="info-item" id="ph-item-${device.device_id}" style="display:none;">
+                                    <div class="info-item" id="ph-item-${device.device_id}" data-key="ph" style="display:none;">
                                         <label>pH:</label>
                                         <span id="ph-${device.device_id}">-</span>
                                     </div>
-                                    <div class="info-item" id="ec-item-${device.device_id}" style="display:none;">
+                                    <div class="info-item" id="ec-item-${device.device_id}" data-key="ec" style="display:none;">
                                         <label>EC:</label>
                                         <span id="ec-${device.device_id}">-</span>
                                     </div>
@@ -1015,23 +1040,39 @@
             // pH/EC
             const phProbe = statusData.settings?.usb_roles?.ph_probe;
             const phItem = document.getElementById(`ph-item-${device_id}`);
+            const headerPhEl = document.getElementById(`header-ph-${device_id}`);
             if (phProbe) {
                 phItem.style.display = 'flex';
-                document.getElementById(`ph-${device_id}`).innerHTML = statusData.current_ph || '-';
+                const phValue = statusData.current_ph || '-';
+                document.getElementById(`ph-${device_id}`).innerHTML = phValue;
+                // Update header pH for mobile
+                if (headerPhEl) {
+                    headerPhEl.innerHTML = `pH: ${phValue}`;
+                    headerPhEl.style.display = 'inline';
+                }
             } else {
                 phItem.style.setProperty('display', 'none', 'important');
+                if (headerPhEl) headerPhEl.style.display = 'none';
             }
-            
+
             const ecMeter = statusData.settings?.usb_roles?.ec_meter;
             const ecItem = document.getElementById(`ec-item-${device_id}`);
+            const headerEcEl = document.getElementById(`header-ec-${device_id}`);
             console.log('EC Meter check:', device_id, 'ecMeter:', ecMeter, 'ecItem:', ecItem);
             if (ecMeter) {
                 console.log('Showing EC for device', device_id);
                 ecItem.style.display = 'flex';
-                document.getElementById(`ec-${device_id}`).innerHTML = statusData.current_ec || '-';
+                const ecValue = statusData.current_ec || '-';
+                document.getElementById(`ec-${device_id}`).innerHTML = ecValue;
+                // Update header EC for mobile
+                if (headerEcEl) {
+                    headerEcEl.innerHTML = `EC: ${ecValue}`;
+                    headerEcEl.style.display = 'inline';
+                }
             } else {
                 console.log('Hiding EC for device', device_id);
                 ecItem.style.setProperty('display', 'none', 'important');
+                if (headerEcEl) headerEcEl.style.display = 'none';
             }
             
             updateWaterBucket(device_id, statusData);
