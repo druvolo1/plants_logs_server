@@ -519,20 +519,20 @@
                                             </div>
                                         </div>
                                     </div>
-                                    
+
                                     <!-- Valves Card -->
                                     <div class="card" id="valves-card-${device.device_id}" style="display:none;">
                                         <div class="card-title">🚰 Valve Controls</div>
                                         <div id="valve-controls-${device.device_id}"></div>
                                     </div>
+
+                                    <!-- pH Dosing Card (inline with others) -->
+                                    <div class="card" id="dosing-card-${device.device_id}" style="display:none;">
+                                        <div class="card-title">⚗️ pH Dosing</div>
+                                        <div id="dosing-controls-${device.device_id}"></div>
+                                    </div>
                                 </div>
-                                
-                                <!-- pH Dosing Card (full width) -->
-                                <div class="card" id="dosing-card-${device.device_id}" style="display:none;">
-                                    <div class="card-title">⚗️ pH Dosing</div>
-                                    <div id="dosing-controls-${device.device_id}"></div>
-                                </div>
-                                
+
                                 <button class="refresh-btn" id="refresh-${device.device_id}">🔄 Refresh</button>
                             </div>
                         </div>
