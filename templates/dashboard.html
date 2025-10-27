@@ -433,18 +433,18 @@
                 display: flex !important;
                 flex-direction: column !important;
                 align-items: flex-start !important;
-                justify-content: flex-start !important;
-                gap: 2px !important;
+                justify-content: center !important;
+                gap: 3px !important;
                 background: rgba(51, 65, 85, 0.5) !important;
                 border: 1px solid rgba(148, 163, 184, 0.2) !important;
-                padding: 8px 10px !important;
+                padding: 10px 12px !important;
                 border-radius: 8px !important;
-                min-width: 0 !important;
-                min-height: 50px !important;
+                min-width: fit-content !important;
+                min-height: auto !important;
                 margin: 0 !important;
-                width: 100% !important;
+                width: auto !important;
                 box-sizing: border-box !important;
-                overflow: hidden !important;
+                overflow: visible !important;
             }
             .info-item label {
                 display: inline !important;
@@ -464,11 +464,9 @@
                 font-size: 1em !important;
                 font-weight: 500 !important;
                 color: #10b981 !important;
-                white-space: normal !important;
-                width: 100% !important;
-                overflow: hidden !important;
-                word-wrap: break-word !important;
-                word-break: break-word !important;
+                white-space: nowrap !important;
+                width: auto !important;
+                overflow: visible !important;
                 line-height: 1.3 !important;
             }
 
@@ -689,8 +687,8 @@
             }
             .info-item {
                 gap: 2px !important;
-                padding: 6px 8px !important;
-                min-height: 45px !important;
+                padding: 8px 10px !important;
+                min-height: auto !important;
             }
             .info-item label {
                 font-size: 1em !important;
@@ -698,7 +696,8 @@
             }
             .info-item span {
                 font-size: 1em !important;
-                display: inline !important;
+                display: block !important;
+                white-space: nowrap !important;
             }
 
             /* Even smaller water level on phones */
