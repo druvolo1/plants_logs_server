@@ -151,6 +151,8 @@
                         <p><strong>Version:</strong> <span id="version-${device.device_id}">Loading...</span></p>
                         <p><strong>Online:</strong> <span id="online-${device.device_id}">${device.is_online ? 'Yes' : 'No'}</span></p>
                         <button onclick="updateDevice('${device.device_id}')" id="update-btn-${device.device_id}">Update Software</button>
+                        <button onclick="restartService('${device.device_id}')" id="restart-btn-${device.device_id}">Restart Service</button>
+                        <button onclick="rebootSystem('${device.device_id}')" id="reboot-btn-${device.device_id}" style="background: #dc2626;">Reboot System</button>
                         <button onclick="deleteDevice('${device.device_id}')">Delete</button>
                         <div id="update-status-${device.device_id}" style="margin-top: 0.5rem; color: #10b981;"></div>
                     `;
@@ -296,6 +298,76 @@
 
             // Mark that this device is updating so we can clear status when it reconnects
             localStorage.setItem(`updating_${device_id}`, 'true');
+        }
+
+        // Restart service
+        function restartService(device_id) {
+            const ws = wsMap[device_id];
+            if (!ws) {
+                alert('Device is not connected');
+                return;
+            }
+
+            if (!confirm('This will restart the garden service on the device. Continue?')) {
+                return;
+            }
+
+            const statusDiv = document.getElementById(`update-status-${device_id}`);
+            const restartBtn = document.getElementById(`restart-btn-${device_id}`);
+
+            statusDiv.textContent = 'Restarting service...';
+            statusDiv.style.color = '#f59e0b';
+            restartBtn.disabled = true;
+
+            // Send restart command via WebSocket
+            ws.send(JSON.stringify({
+                command: 'restart_service'
+            }));
+
+            // Re-enable button after 10 seconds
+            setTimeout(() => {
+                restartBtn.disabled = false;
+                statusDiv.textContent = 'Service restart command sent.';
+                statusDiv.style.color = '#10b981';
+                setTimeout(() => {
+                    statusDiv.textContent = '';
+                }, 3000);
+            }, 10000);
+        }
+
+        // Reboot system
+        function rebootSystem(device_id) {
+            const ws = wsMap[device_id];
+            if (!ws) {
+                alert('Device is not connected');
+                return;
+            }
+
+            if (!confirm('WARNING: This will reboot the entire Raspberry Pi system. Continue?')) {
+                return;
+            }
+
+            const statusDiv = document.getElementById(`update-status-${device_id}`);
+            const rebootBtn = document.getElementById(`reboot-btn-${device_id}`);
+
+            statusDiv.textContent = 'Rebooting system...';
+            statusDiv.style.color = '#dc2626';
+            rebootBtn.disabled = true;
+
+            // Send reboot command via WebSocket
+            ws.send(JSON.stringify({
+                command: 'reboot_system'
+            }));
+
+            // Re-enable button after 60 seconds (system reboot takes longer)
+            setTimeout(() => {
+                rebootBtn.disabled = false;
+                statusDiv.textContent = 'System reboot command sent. Device will be offline briefly.';
+                statusDiv.style.color = '#10b981';
+                setTimeout(() => {
+                    statusDiv.textContent = '';
+                }, 5000);
+            }, 60000);
         }
 
         // Add form submit
