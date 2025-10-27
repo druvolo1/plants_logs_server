@@ -202,14 +202,20 @@
             ws.onmessage = (event) => {
                 const data = JSON.parse(event.data);
                 console.log(`Received from server for ${device_id}:`, data);
+                console.log(`Message type: ${data.type}`);
+                if (data.type === 'full_sync' || data.type === 'status_update') {
+                    console.log(`Has data.data? ${!!data.data}`);
+                    console.log(`Has data.data.settings? ${!!(data.data && data.data.settings)}`);
+                    console.log(`Version in data: ${data.data?.settings?.current_version}`);
+                }
 
                 // Update system name from settings
                 if (data.type === 'settings_update' && data.system_name) {
                     document.getElementById(`name-${device_id}`).textContent = data.system_name;
                 }
 
-                // Update version from full_sync
-                if (data.type === 'full_sync' && data.data && data.data.settings) {
+                // Update version from full_sync or status_update
+                if ((data.type === 'full_sync' || data.type === 'status_update') && data.data && data.data.settings) {
                     if (data.data.settings.current_version) {
                         document.getElementById(`version-${device_id}`).textContent = data.data.settings.current_version;
 
