@@ -9,6 +9,85 @@
     <title>Dashboard</title>
     <link rel="stylesheet" href="/static/style.css">
     <style>
+        /* Modern Navigation Bar */
+        .navbar {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            padding: 0;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            border-bottom: 2px solid #10b981;
+        }
+        .navbar-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 1.5rem;
+        }
+        .navbar-brand {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 1rem 0;
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #10b981;
+            text-decoration: none;
+        }
+        .navbar-brand:hover {
+            color: #34d399;
+        }
+        .navbar-menu {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+        .navbar-link {
+            padding: 1rem 1.25rem;
+            color: rgba(255, 255, 255, 0.9);
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.2s;
+            border-bottom: 3px solid transparent;
+        }
+        .navbar-link:hover {
+            background: rgba(16, 185, 129, 0.1);
+            border-bottom-color: #10b981;
+        }
+        .navbar-link.active {
+            background: rgba(16, 185, 129, 0.15);
+            border-bottom-color: #10b981;
+            color: #10b981;
+        }
+        .navbar-user {
+            padding: 1rem 1.25rem;
+            color: rgba(148, 163, 184, 0.9);
+            font-size: 0.9rem;
+            border-left: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        .navbar-logout {
+            padding: 0.5rem 1rem;
+            margin-left: 0.5rem;
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+        }
+        .navbar-logout:hover {
+            background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(239, 68, 68, 0.3);
+        }
+        
         /* Device section layout */
         .device-section {
             margin-bottom: 10px;
@@ -349,11 +428,26 @@
     </style>
 </head>
 <body>
-    <h1>Welcome, {{ user.email }}</h1>
-    <a href="/auth/logout">Logout</a>
-    <a href="/devices">Manage Devices</a>
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+        <div class="navbar-container">
+            <a href="/dashboard" class="navbar-brand">
+                🌱 Plant Monitor
+            </a>
+            <div class="navbar-menu">
+                <a href="/dashboard" class="navbar-link active">Dashboard</a>
+                <a href="/devices" class="navbar-link">Devices</a>
+                {% if user.is_superuser %}
+                <a href="/admin/users" class="navbar-link">Users</a>
+                {% endif %}
+                <span class="navbar-user">{{ user.email }}</span>
+                <a href="/auth/logout" class="navbar-logout">Logout</a>
+            </div>
+        </div>
+    </nav>
 
-    <h2>My Devices Statuses</h2>
+    <div style="padding: 2rem 1.5rem; max-width: 1400px; margin: 0 auto;">
+        <h2 style="color: #10b981; margin-bottom: 1.5rem;">My Devices</h2>
     <div id="devices-status"></div>
 
     <script>
@@ -943,5 +1037,6 @@
         window.onload = fetchAndConnectDevices;
         window.onpageshow = (evt) => { if (evt.persisted) window.location.reload(); };
     </script>
+    </div>
 </body>
 </html>
