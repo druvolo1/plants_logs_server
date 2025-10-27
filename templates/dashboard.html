@@ -464,6 +464,12 @@
                                         </div>
                                         <div id="dosing-controls-${device.device_id}"></div>
                                     </div>
+
+                                    <!-- All Valves Card -->
+                                    <div class="card" id="all-valves-card-${device.device_id}" style="display:none;">
+                                        <div class="card-title">🎛️ All Valves</div>
+                                        <div id="all-valves-controls-${device.device_id}"></div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -689,6 +695,7 @@
             updateWaterBucket(device_id, statusData);
             updateValveControls(device_id, statusData);
             updateDosingControls(device_id, statusData);
+            updateAllValvesControls(device_id, statusData);
         }
 
         function updateWaterBucket(device_id, statusData) {
@@ -971,6 +978,106 @@
                     params: { dispense_type: dispense_type, amount: amount }
                 }));
                 alert(`Dosing ${amount.toFixed(2)}ml of pH ${dispense_type.toUpperCase()}`);
+            }
+        }
+
+        function updateAllValvesControls(device_id, statusData) {
+            const allValvesCard = document.getElementById(`all-valves-card-${device_id}`);
+            const allValvesControlsDiv = document.getElementById(`all-valves-controls-${device_id}`);
+            const hasValveRelay = statusData.settings?.usb_roles?.valve_relay;
+            const valveLabels = statusData.settings?.valve_labels || {};
+            const valveRelays = statusData.valve_info?.valve_relays || {};
+
+            // Only show if valve_relay is assigned
+            if (!hasValveRelay) {
+                allValvesCard.style.display = 'none';
+                return;
+            }
+
+            allValvesCard.style.display = 'block';
+
+            // Build table HTML
+            let tableHTML = `
+                <div style="overflow-x: auto;">
+                    <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
+                        <thead>
+                            <tr style="border-bottom: 1px solid #444;">
+                                <th style="padding: 0.5rem; text-align: center;">ID</th>
+                                <th style="padding: 0.5rem; text-align: left;">Label</th>
+                                <th style="padding: 0.5rem; text-align: center;">Status</th>
+                                <th style="padding: 0.5rem; text-align: center;">Control</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+
+            // Iterate through all 8 valve IDs
+            for (let i = 1; i <= 8; i++) {
+                const valveId = i.toString();
+                const label = valveLabels[valveId] || `Valve ${valveId}`;
+
+                // Find status from valve_relays by matching label
+                let status = 'unknown';
+                Object.keys(valveRelays).forEach(relayLabel => {
+                    if (relayLabel === label) {
+                        status = valveRelays[relayLabel].status || 'off';
+                    }
+                });
+
+                tableHTML += `
+                    <tr style="border-bottom: 1px solid #333;">
+                        <td style="padding: 0.5rem; text-align: center;">${valveId}</td>
+                        <td style="padding: 0.5rem;">${label}</td>
+                        <td style="padding: 0.5rem; text-align: center;">
+                            <span id="all-valve-status-${device_id}-${valveId}">${status}</span>
+                        </td>
+                        <td style="padding: 0.5rem; text-align: center;">
+                            <div style="display: flex; gap: 0.5rem; justify-content: center;">
+                                <button id="all-valve-${device_id}-${valveId}-on"
+                                    class="valve-buttons button ${status === 'on' ? 'btn-on-active' : 'btn-inactive'}"
+                                    style="width: 50px; padding: 0.4rem; font-size: 0.75rem;">
+                                    ON
+                                </button>
+                                <button id="all-valve-${device_id}-${valveId}-off"
+                                    class="valve-buttons button ${status === 'off' ? 'btn-off-active' : 'btn-inactive'}"
+                                    style="width: 50px; padding: 0.4rem; font-size: 0.75rem;">
+                                    OFF
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }
+
+            tableHTML += `
+                        </tbody>
+                    </table>
+                </div>
+            `;
+
+            allValvesControlsDiv.innerHTML = tableHTML;
+
+            // Attach event listeners
+            for (let i = 1; i <= 8; i++) {
+                const valveId = i.toString();
+                const label = valveLabels[valveId] || `Valve ${valveId}`;
+
+                const onBtn = document.getElementById(`all-valve-${device_id}-${valveId}-on`);
+                const offBtn = document.getElementById(`all-valve-${device_id}-${valveId}-off`);
+
+                if (onBtn) {
+                    onBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        sendValveCommand(device_id, label, 'on');
+                    };
+                }
+
+                if (offBtn) {
+                    offBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        sendValveCommand(device_id, label, 'off');
+                    };
+                }
             }
         }
 
