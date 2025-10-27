@@ -533,7 +533,10 @@
 
                                     <!-- pH Dosing Card (inline with others) -->
                                     <div class="card" id="dosing-card-${device.device_id}" style="display:none;">
-                                        <div class="card-title">⚗️ pH Dosing</div>
+                                        <div class="card-title">
+                                            <span>⚗️ pH Dosing</span>
+                                            <span id="ph-title-${device.device_id}" style="float: right; font-size: 0.8rem; color: var(--text-secondary);"></span>
+                                        </div>
                                         <div id="dosing-controls-${device.device_id}"></div>
                                     </div>
                                 </div>
@@ -874,18 +877,19 @@
             const currentPh = data.current_ph || '-';
             
             // Update the dosing controls (simplified - just update the values)
+            const phTitleEl = document.getElementById(`ph-title-${device_id}`);
+            if (phTitleEl) {
+                phTitleEl.innerHTML = `pH: <strong style="color: var(--primary);">${currentPh}</strong> | Target: <strong style="color: var(--primary);">${phTarget}</strong>`;
+            }
+
             const dosingControlsDiv = document.getElementById(`dosing-controls-${device_id}`);
-            if (dosingControlsDiv && dosingControlsDiv.querySelector('.ph-header')) {
-                dosingControlsDiv.querySelector('.ph-header').innerHTML = `
-                    <span>pH: <strong>${currentPh}</strong> | Target: <strong>${phTarget}</strong></span>
-                `;
-                
+            if (dosingControlsDiv) {
                 // Update calculated amounts
                 const upInfo = dosingControlsDiv.querySelector('.dose-section:first-child .dose-info');
                 const downInfo = dosingControlsDiv.querySelector('.dose-section:last-child .dose-info');
-                if (upInfo) upInfo.textContent = `Calculated: ${phUpAmount.toFixed(2)} ml`;
-                if (downInfo) downInfo.textContent = `Calculated: ${phDownAmount.toFixed(2)} ml`;
-                
+                if (upInfo) upInfo.textContent = `${phUpAmount.toFixed(2)} ml`;
+                if (downInfo) downInfo.textContent = `${phDownAmount.toFixed(2)} ml`;
+
                 // Update button states
                 const upCalcBtn = document.getElementById(`dose-up-calc-${device_id}`);
                 const downCalcBtn = document.getElementById(`dose-down-calc-${device_id}`);
@@ -962,10 +966,13 @@
             const phTarget = dosageInfo.ph_target || '-';
             const currentPh = dosageInfo.current_ph || '-';
 
+            // Update pH in card title
+            const phTitleEl = document.getElementById(`ph-title-${device_id}`);
+            if (phTitleEl) {
+                phTitleEl.innerHTML = `pH: <strong style="color: var(--primary);">${currentPh}</strong> | Target: <strong style="color: var(--primary);">${phTarget}</strong>`;
+            }
+
             dosingControlsDiv.innerHTML = `
-                <div class="ph-header">
-                    <span>pH: <strong>${currentPh}</strong> | Target: <strong>${phTarget}</strong></span>
-                </div>
                 <div class="dose-sections">
                     <div class="dose-section">
                         <div style="margin-bottom: 0.3rem;">
@@ -976,7 +983,7 @@
                         <div class="manual-section">
                             <label>Manual</label>
                             <div class="manual-input">
-                                <input type="number" id="manual-up-${device_id}" placeholder="ml" step="0.1" min="0" value="5">
+                                <input type="text" inputmode="decimal" id="manual-up-${device_id}" placeholder="ml" value="5">
                                 <button id="dose-up-manual-${device_id}">Dose</button>
                             </div>
                         </div>
@@ -990,7 +997,7 @@
                         <div class="manual-section">
                             <label>Manual</label>
                             <div class="manual-input">
-                                <input type="number" id="manual-down-${device_id}" placeholder="ml" step="0.1" min="0" value="5">
+                                <input type="text" inputmode="decimal" id="manual-down-${device_id}" placeholder="ml" value="5">
                                 <button id="dose-down-manual-${device_id}">Dose</button>
                             </div>
                         </div>
