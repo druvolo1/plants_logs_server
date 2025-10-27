@@ -145,14 +145,9 @@
             border: 1px solid var(--border);
             border-radius: 10px;
             padding: 0.75rem;
-            min-width: 200px;
+            min-width: 180px;
             flex-shrink: 0;
             transition: all 0.3s ease;
-        }
-        
-        /* Make pH dosing card wider to fit side-by-side sections */
-        .card:has(.ph-header) {
-            min-width: 400px;
         }
         
         .card:hover {
@@ -297,12 +292,12 @@
         .ph-header {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 0.5rem;
-            padding: 0.4rem 0.6rem;
+            margin-bottom: 0.75rem;
+            padding: 0.5rem;
             background: rgba(51, 65, 85, 0.4);
             border-radius: 6px;
             border: 1px solid var(--border);
-            font-size: 0.7rem;
+            font-size: 0.75rem;
         }
         
         .ph-header span {
@@ -316,6 +311,7 @@
         
         .dose-sections {
             display: flex;
+            flex-direction: column;
             gap: 0.75rem;
         }
         
@@ -323,14 +319,13 @@
             background: rgba(30, 41, 59, 0.5);
             border: 1px solid var(--border);
             border-radius: 8px;
-            padding: 0.6rem;
-            flex: 1;
+            padding: 0.75rem;
         }
         
         .dose-section h4 {
-            font-size: 0.75rem;
+            font-size: 0.8rem;
             font-weight: 700;
-            margin-bottom: 0.4rem;
+            margin-bottom: 0.5rem;
             color: var(--primary);
             text-transform: uppercase;
         }
@@ -338,8 +333,8 @@
         .dose-info {
             color: var(--text-secondary);
             margin-bottom: 0.5rem;
-            font-size: 0.7rem;
-            padding: 0.3rem 0.4rem;
+            font-size: 0.75rem;
+            padding: 0.4rem;
             background: rgba(51, 65, 85, 0.3);
             border-radius: 4px;
             border-left: 2px solid var(--primary);
@@ -347,17 +342,16 @@
         
         .dose-button {
             width: 100%;
-            padding: 0.4rem;
+            padding: 0.5rem;
             background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
             color: white;
             border: none;
             border-radius: 6px;
             cursor: pointer;
             font-weight: 600;
-            font-size: 0.7rem;
+            font-size: 0.75rem;
             transition: all 0.2s;
             text-transform: uppercase;
-            margin-bottom: 0.5rem;
         }
         
         .dose-button:hover:not(:disabled) {
@@ -372,43 +366,43 @@
         }
         
         .manual-section {
-            margin-top: 0.5rem;
-            padding-top: 0.5rem;
+            margin-top: 0.75rem;
+            padding-top: 0.75rem;
             border-top: 1px solid var(--border);
         }
         
         .manual-section label {
             display: block;
-            margin-bottom: 0.4rem;
+            margin-bottom: 0.5rem;
             color: var(--text-muted);
-            font-size: 0.65rem;
+            font-size: 0.7rem;
             text-transform: uppercase;
         }
         
         .manual-input {
             display: flex;
-            gap: 0.4rem;
+            gap: 0.5rem;
         }
         
         .manual-input input {
             flex: 1;
-            padding: 0.35rem 0.4rem;
+            padding: 0.4rem;
             background: rgba(15, 23, 42, 0.6);
             border: 1px solid var(--border);
             border-radius: 4px;
             color: var(--text-primary);
-            font-size: 0.75rem;
+            font-size: 0.8rem;
         }
         
         .manual-input button {
-            padding: 0.35rem 0.6rem;
+            padding: 0.4rem 0.75rem;
             background: linear-gradient(135deg, var(--secondary) 0%, var(--secondary-dark) 100%);
             color: white;
             border: none;
             border-radius: 4px;
             cursor: pointer;
             font-weight: 600;
-            font-size: 0.65rem;
+            font-size: 0.7rem;
             text-transform: uppercase;
         }
         
@@ -454,19 +448,14 @@
 
         async function fetchAndConnectDevices() {
             try {
-                const response = await fetch('/user/devices');
-                if (!response.ok) {
-                    console.error('Failed to fetch devices:', response.status);
-                    return;
-                }
+                const response = await fetch('/api/devices');
                 const devices = await response.json();
                 const container = document.getElementById('devices-container');
-                container.innerHTML = '';
                 
                 devices.forEach(device => {
                     const deviceSection = createDeviceSection(device);
                     container.appendChild(deviceSection);
-                    connectWebSocket(device.device_id);
+                    connectWebSocket(device.id);
                 });
             } catch (error) {
                 console.error('Error fetching devices:', error);
@@ -476,35 +465,35 @@
         function createDeviceSection(device) {
             const section = document.createElement('div');
             section.className = 'device-section';
-            section.id = `device-${device.device_id}`;
+            section.id = `device-${device.id}`;
             
             section.innerHTML = `
-                <div class="device-header" onclick="toggleExpand('${device.device_id}')">
+                <div class="device-header" onclick="toggleExpand(${device.id})">
                     <div class="device-header-left">
-                        <span class="device-name">Loading...</span>
-                        <span id="status-badge-${device.device_id}" class="status-badge status-offline">Offline</span>
+                        <span class="device-name">${device.system_name}</span>
+                        <span id="status-badge-${device.id}" class="status-badge status-offline">Offline</span>
                         <div class="header-info">
                             <div class="info-item">
                                 <label>PLANT:</label>
-                                <span id="plant-${device.device_id}">-</span>
+                                <span id="plant-${device.id}">-</span>
                             </div>
-                            <div class="info-item" style="display: none;" id="started-item-${device.device_id}">
+                            <div class="info-item" style="display: none;" id="started-item-${device.id}">
                                 <label>STARTED:</label>
-                                <span id="started-${device.device_id}">-</span>
+                                <span id="started-${device.id}">-</span>
                             </div>
-                            <div class="info-item" style="display: none;" id="weeks-item-${device.device_id}">
+                            <div class="info-item" style="display: none;" id="weeks-item-${device.id}">
                                 <label>WEEK:</label>
-                                <span id="weeks-${device.device_id}">-</span>
+                                <span id="weeks-${device.id}">-</span>
                             </div>
-                            <div class="info-item" style="display: none;" id="ph-item-${device.device_id}">
+                            <div class="info-item" style="display: none;" id="ph-item-${device.id}">
                                 <label>PH:</label>
-                                <span id="ph-${device.device_id}">-</span>
+                                <span id="ph-${device.id}">-</span>
                             </div>
                         </div>
                     </div>
-                    <span class="expand-icon" id="expand-icon-${device.device_id}">▼</span>
+                    <span class="expand-icon" id="expand-icon-${device.id}">▼</span>
                 </div>
-                <div class="device-content" id="content-${device.device_id}">
+                <div class="device-content" id="content-${device.id}">
                     <div class="device-content-inner">
                         <div class="cards-grid">
                             <!-- Water Level Card -->
@@ -512,7 +501,7 @@
                                 <div class="card-title">💧 Water Level</div>
                                 <div class="bucket-container">
                                     <div class="water-bucket">
-                                        <div class="water-level" id="water-level-${device.device_id}" style="height: 0%;"></div>
+                                        <div class="water-level" id="water-level-${device.id}" style="height: 0%;"></div>
                                         <div class="sensor-marker sensor-full">
                                             <span class="sensor-label">Full ✓</span>
                                         </div>
@@ -527,15 +516,15 @@
                             </div>
                             
                             <!-- Valve Controls Card -->
-                            <div class="card" id="valves-card-${device.device_id}" style="display: none;">
+                            <div class="card" id="valves-card-${device.id}" style="display: none;">
                                 <div class="card-title">🔧 Valve Controls</div>
-                                <div id="valve-controls-${device.device_id}"></div>
+                                <div id="valve-controls-${device.id}"></div>
                             </div>
                             
                             <!-- pH Dosing Card -->
-                            <div class="card" id="dosing-card-${device.device_id}" style="display: none;">
+                            <div class="card" id="dosing-card-${device.id}" style="display: none;">
                                 <div class="card-title">⚗️ pH Dosing</div>
-                                <div id="dosing-controls-${device.device_id}"></div>
+                                <div id="dosing-controls-${device.id}"></div>
                             </div>
                         </div>
                     </div>
@@ -554,53 +543,16 @@
         }
 
         function connectWebSocket(device_id) {
-            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const ws = new WebSocket(`${protocol}//${window.location.host}/ws/user/devices/${device_id}`);
+            const ws = new WebSocket(`ws://${window.location.host}/ws/device/${device_id}`);
             wsMap[device_id] = ws;
             
             ws.onopen = () => {
                 console.log(`Connected to device ${device_id}`);
-                ws.send(JSON.stringify({ type: 'request_refresh' }));
             };
             
             ws.onmessage = (event) => {
                 const data = JSON.parse(event.data);
-                
-                // Handle device status messages
-                if (data.error === 'Device offline') {
-                    updateOnlineStatus(device_id, false);
-                } else if (data.type === 'device_status') {
-                    updateOnlineStatus(device_id, data.online);
-                }
-                // Handle full sync (on connect or refresh)
-                else if (data.type === 'full_sync' && data.data) {
-                    updateOnlineStatus(device_id, true);
-                    updateDeviceStatus(device_id, data.data);
-                }
-                // Handle granular pH update
-                else if (data.type === 'ph_update') {
-                    updateOnlineStatus(device_id, true);
-                    const phItem = document.getElementById(`ph-item-${device_id}`);
-                    if (data.value !== null && data.value !== undefined) {
-                        phItem.style.display = 'flex';
-                        document.getElementById(`ph-${device_id}`).innerHTML = data.value;
-                    }
-                }
-                // Handle granular water level update
-                else if (data.type === 'water_level_update') {
-                    updateOnlineStatus(device_id, true);
-                    updateWaterBucketGranular(device_id, data);
-                }
-                // Handle granular valve update
-                else if (data.type === 'valve_update') {
-                    updateOnlineStatus(device_id, true);
-                    updateValveStatusGranular(device_id, data);
-                }
-                // Handle granular dosage update
-                else if (data.type === 'dosage_update') {
-                    updateOnlineStatus(device_id, true);
-                    updateDosingControlsGranular(device_id, data);
-                }
+                updateDeviceStatus(device_id, data);
             };
             
             ws.onerror = (error) => {
@@ -609,32 +561,19 @@
             
             ws.onclose = () => {
                 console.log(`Disconnected from device ${device_id}`);
-                updateOnlineStatus(device_id, false);
                 setTimeout(() => connectWebSocket(device_id), 5000);
             };
         }
 
-        function updateOnlineStatus(device_id, isOnline) {
-            const statusBadge = document.getElementById(`status-badge-${device_id}`);
-            if (statusBadge) {
-                statusBadge.textContent = isOnline ? 'Online' : 'Offline';
-                statusBadge.className = `status-badge ${isOnline ? 'status-online' : 'status-offline'}`;
-            }
-        }
-
         function updateDeviceStatus(device_id, data) {
-            // Update device name
-            const deviceName = document.querySelector(`#device-${device_id} .device-name`);
-            if (deviceName && data.settings?.system_name) {
-                deviceName.textContent = data.settings.system_name;
-            }
+            const statusBadge = document.getElementById(`status-badge-${device_id}`);
+            statusBadge.textContent = data.online ? 'Online' : 'Offline';
+            statusBadge.className = `status-badge ${data.online ? 'status-online' : 'status-offline'}`;
             
-            // Update plant name
             if (data.settings?.plant_name) {
                 document.getElementById(`plant-${device_id}`).textContent = data.settings.plant_name;
             }
             
-            // Update start date and week
             if (data.settings?.start_date) {
                 const startedItem = document.getElementById(`started-item-${device_id}`);
                 startedItem.style.display = 'flex';
@@ -656,59 +595,18 @@
                 }
             }
             
-            // Update pH
             if (data.dosage_info?.current_ph) {
                 const phItem = document.getElementById(`ph-item-${device_id}`);
                 phItem.style.display = 'flex';
                 document.getElementById(`ph-${device_id}`).textContent = data.dosage_info.current_ph;
             }
             
-            // Update water level
             updateWaterLevel(device_id, data.water_level_info);
-            
-            // Update valves
             updateValveControls(device_id, data);
-            
-            // Update dosing
             updateDosingControls(device_id, data);
-        }
-
-        function updateWaterBucketGranular(device_id, data) {
-            const waterLevelDiv = document.getElementById(`water-level-${device_id}`);
-            if (!waterLevelDiv) return;
             
-            const full = data.full_sensor || false;
-            const low = data.low_sensor || false;
-            const empty = data.empty_sensor || false;
-            
-            let heightPercent = 0;
-            if (full) heightPercent = 100;
-            else if (low) heightPercent = 50;
-            else if (empty) heightPercent = 10;
-            
-            waterLevelDiv.style.height = `${heightPercent}%`;
-        }
-
-        function updateValveStatusGranular(device_id, data) {
-            if (data.valve_label && data.status) {
-                const statusSpan = document.getElementById(`${data.valve_label.toLowerCase().replace(' ', '-')}-status-${device_id}`);
-                if (statusSpan) {
-                    statusSpan.textContent = data.status === 'on' ? 'On' : 'Off';
-                }
-                
-                // Update button states
-                const onBtn = document.getElementById(`${data.valve_label.toLowerCase().replace(' ', '-')}-on-${device_id}`);
-                const offBtn = document.getElementById(`${data.valve_label.toLowerCase().replace(' ', '-')}-off-${device_id}`);
-                
-                if (onBtn && offBtn) {
-                    if (data.status === 'on') {
-                        onBtn.className = 'btn-on-active';
-                        offBtn.className = 'btn-inactive';
-                    } else {
-                        onBtn.className = 'btn-inactive';
-                        offBtn.className = 'btn-off-active';
-                    }
-                }
+            if (data.dosage_info) {
+                updateDosingControlsGranular(device_id, data.dosage_info);
             }
         }
 
