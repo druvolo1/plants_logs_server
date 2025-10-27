@@ -446,6 +446,7 @@
                 letter-spacing: 0.3px;
                 font-weight: 600;
                 flex-shrink: 0;
+                white-space: nowrap;
             }
             .info-item label::after {
                 content: ':';
@@ -454,8 +455,10 @@
                 font-size: 1em;
                 font-weight: 500;
                 color: #10b981;
-                white-space: normal;
-                word-break: break-word;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                min-width: 0;
             }
 
             /* Force system to first column, plant to second column */
