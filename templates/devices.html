@@ -169,8 +169,22 @@
             if (confirm(`Are you sure you want to delete device ${device_id}?`)) {
                 const response = await fetch(`/user/devices/${device_id}`, { method: 'DELETE' });
                 if (response.ok) {
+                    // Close WebSocket connection if exists
+                    if (wsMap[device_id]) {
+                        wsMap[device_id].close();
+                        delete wsMap[device_id];
+                    }
+
+                    // Remove the device div from DOM instead of rebuilding entire list
+                    const deviceElements = document.querySelectorAll('#devices-list > div');
+                    for (let elem of deviceElements) {
+                        if (elem.innerHTML.includes(device_id)) {
+                            elem.remove();
+                            break;
+                        }
+                    }
+
                     alert('Device deleted successfully');
-                    fetchDevices();  // Reload list
                 } else {
                     alert('Failed to delete device');
                 }
@@ -196,6 +210,23 @@
                 if (data.type === 'version_info') {
                     document.getElementById(`version-${device_id}`).textContent = data.version || 'Unknown';
                     document.getElementById(`name-${device_id}`).textContent = data.system_name || 'Unknown';
+
+                    // Check if this device was updating and clear the status message
+                    if (localStorage.getItem(`updating_${device_id}`) === 'true') {
+                        const statusDiv = document.getElementById(`update-status-${device_id}`);
+                        const updateBtn = document.getElementById(`update-btn-${device_id}`);
+                        if (statusDiv) {
+                            statusDiv.textContent = 'Update completed successfully!';
+                            statusDiv.style.color = '#10b981';
+                            setTimeout(() => {
+                                statusDiv.textContent = '';
+                            }, 5000);
+                        }
+                        if (updateBtn) {
+                            updateBtn.disabled = false;
+                        }
+                        localStorage.removeItem(`updating_${device_id}`);
+                    }
                 }
 
                 // Update system name from settings
@@ -212,10 +243,28 @@
                         document.getElementById(`name-${device_id}`).textContent = data.data.settings.system_name;
                     }
                 }
+
+                // Handle device status changes (online/offline)
+                if (data.type === 'device_status') {
+                    const onlineElem = document.getElementById(`online-${device_id}`);
+                    if (onlineElem) {
+                        onlineElem.textContent = data.online ? 'Yes' : 'No';
+                    }
+
+                    // If device came back online after updating, request version again
+                    if (data.online && localStorage.getItem(`updating_${device_id}`) === 'true') {
+                        ws.send(JSON.stringify({
+                            command: 'request_version'
+                        }));
+                    }
+                }
             };
             ws.onclose = () => {
                 console.log(`Disconnected from ${device_id}`);
-                document.getElementById(`online-${device_id}`).textContent = 'No';
+                const onlineElem = document.getElementById(`online-${device_id}`);
+                if (onlineElem) {
+                    onlineElem.textContent = 'No';
+                }
                 delete wsMap[device_id];
             };
             wsMap[device_id] = ws;
@@ -254,6 +303,9 @@
                 updateBtn.disabled = false;
                 statusDiv.textContent = 'Update command sent. Please wait for the device to restart.';
             }, 30000);
+
+            // Mark that this device is updating so we can clear status when it reconnects
+            localStorage.setItem(`updating_${device_id}`, 'true');
         }
 
         // Add form submit
