@@ -659,6 +659,8 @@
         }
 
         function updateDeviceStatus(device_id, data) {
+            console.log('updateDeviceStatus called for', device_id, data);
+            
             // Store whether this device has pH and EC probes for granular updates
             if (!window.deviceHasPhProbe) window.deviceHasPhProbe = {};
             if (!window.deviceHasEcProbe) window.deviceHasEcProbe = {};
@@ -672,26 +674,33 @@
             }
             
             // Update plant name
-            if (data.settings?.plant_name) {
-                document.getElementById(`plant-${device_id}`).textContent = data.settings.plant_name;
+            const plantEl = document.getElementById(`plant-${device_id}`);
+            if (plantEl && data.settings?.plant_name) {
+                plantEl.textContent = data.settings.plant_name;
             }
             
             // Update start date and week
             if (data.settings?.start_date) {
                 const startedItem = document.getElementById(`started-item-${device_id}`);
-                startedItem.style.display = 'flex';
-                document.getElementById(`started-${device_id}`).textContent = data.settings.start_date;
+                const startedEl = document.getElementById(`started-${device_id}`);
+                if (startedItem && startedEl) {
+                    startedItem.style.display = 'flex';
+                    startedEl.textContent = data.settings.start_date;
+                }
                 
                 try {
                     const weeksItem = document.getElementById(`weeks-item-${device_id}`);
-                    const startDate = new Date(data.settings.start_date);
-                    const now = new Date();
-                    const diffTime = Math.abs(now - startDate);
-                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                    if (diffDays > 0) {
-                        const weeks = Math.floor(diffDays / 7);
-                        weeksItem.style.display = 'flex';
-                        document.getElementById(`weeks-${device_id}`).innerHTML = weeks;
+                    const weeksEl = document.getElementById(`weeks-${device_id}`);
+                    if (weeksItem && weeksEl) {
+                        const startDate = new Date(data.settings.start_date);
+                        const now = new Date();
+                        const diffTime = Math.abs(now - startDate);
+                        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                        if (diffDays > 0) {
+                            const weeks = Math.floor(diffDays / 7);
+                            weeksItem.style.display = 'flex';
+                            weeksEl.innerHTML = weeks;
+                        }
                     }
                 } catch (e) {
                     console.error('Error calculating weeks:', e);
@@ -701,16 +710,20 @@
             // Update pH - only show if pH probe is assigned
             if (data.settings?.ph_probe_usb_device && data.dosage_info?.current_ph) {
                 const phItem = document.getElementById(`ph-item-${device_id}`);
-                phItem.style.display = 'flex';
-                document.getElementById(`ph-${device_id}`).textContent = data.dosage_info.current_ph;
+                const phEl = document.getElementById(`ph-${device_id}`);
+                if (phItem && phEl) {
+                    phItem.style.display = 'flex';
+                    phEl.textContent = data.dosage_info.current_ph;
+                }
             }
             
             // Update EC - only show if EC probe is assigned
             if (data.settings?.ec_probe_usb_device && data.ec_info?.current_ec) {
                 const ecItem = document.getElementById(`ec-item-${device_id}`);
-                if (ecItem) {
+                const ecEl = document.getElementById(`ec-${device_id}`);
+                if (ecItem && ecEl) {
                     ecItem.style.display = 'flex';
-                    document.getElementById(`ec-${device_id}`).textContent = data.ec_info.current_ec;
+                    ecEl.textContent = data.ec_info.current_ec;
                 }
             }
             
@@ -741,11 +754,15 @@
         }
 
         function updateValveStatusGranular(device_id, data) {
+            console.log('updateValveStatusGranular called', device_id, data);
             if (!data.valve_label || !data.status) return;
             
             // Get the stored valve labels for this device
             const labels = window.deviceValveLabels?.[device_id];
-            if (!labels) return;
+            if (!labels) {
+                console.error('No valve labels stored for', device_id);
+                return;
+            }
             
             let valveType = null;
             
@@ -756,7 +773,12 @@
                 valveType = 'drain';
             }
             
-            if (!valveType) return;
+            if (!valveType) {
+                console.error('Valve label not matched:', data.valve_label, 'against', labels);
+                return;
+            }
+            
+            console.log('Updating valve', valveType, 'to', data.status);
             
             // Update status text
             const statusSpan = document.getElementById(`${valveType}-status-${device_id}`);
@@ -783,6 +805,11 @@
             if (!waterInfo) return;
             
             const waterLevelDiv = document.getElementById(`water-level-${device_id}`);
+            if (!waterLevelDiv) {
+                console.error('Water level div not found for', device_id);
+                return;
+            }
+            
             const full = waterInfo.full_sensor || false;
             const low = waterInfo.low_sensor || false;
             const empty = waterInfo.empty_sensor || false;
@@ -792,6 +819,7 @@
             else if (low) heightPercent = 50;
             else if (empty) heightPercent = 10;
             
+            console.log('Setting water level for', device_id, 'to', heightPercent + '%');
             waterLevelDiv.style.height = `${heightPercent}%`;
         }
 
