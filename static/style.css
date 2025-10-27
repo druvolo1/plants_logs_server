@@ -875,7 +875,8 @@ a:hover {
 
 .sensor-label {
     position: absolute !important;
-    right: -130px !important;
+    left: 120px !important;
+    top: -12px !important;
     font-size: 1.5rem !important;
     white-space: nowrap !important;
     color: var(--text-secondary) !important;
@@ -883,6 +884,9 @@ a:hover {
     background: rgba(30, 41, 59, 0.8) !important;
     padding: 0.35rem 0.65rem !important;
     border-radius: 6px !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.5rem !important;
 }
 
 /* Valve Controls - Modernized */
@@ -912,8 +916,8 @@ a:hover {
 
 .valve-buttons button {
     flex: none !important;
-    width: 55px !important;
-    padding: 0.7rem 0.6rem !important;
+    width: 110px !important;
+    padding: 1.05rem 0.6rem !important;
     border: 2px solid var(--border) !important;
     border-radius: 10px !important;
     cursor: pointer !important;
