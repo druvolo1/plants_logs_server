@@ -648,10 +648,13 @@
             
             const ecMeter = statusData.settings?.usb_roles?.ec_meter;
             const ecItem = document.getElementById(`ec-item-${device_id}`);
+            console.log('EC Meter check:', device_id, 'ecMeter:', ecMeter, 'ecItem:', ecItem);
             if (ecMeter) {
+                console.log('Showing EC for device', device_id);
                 ecItem.style.display = 'flex';
                 document.getElementById(`ec-${device_id}`).innerHTML = statusData.current_ec || '-';
             } else {
+                console.log('Hiding EC for device', device_id);
                 ecItem.style.display = 'none';
             }
             
