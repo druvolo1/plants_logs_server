@@ -505,8 +505,9 @@
                 // Handle granular pH update
                 else if (data.type === 'ph_update') {
                     updateOnlineStatus(device_id, true);
-                    const phItem = document.getElementById(`ph-item-${device_id}`);
-                    if (data.value !== null && data.value !== undefined) {
+                    const probeStatus = window.deviceProbeStatus?.[device_id];
+                    if (probeStatus?.hasPhProbe && data.value !== null && data.value !== undefined) {
+                        const phItem = document.getElementById(`ph-item-${device_id}`);
                         phItem.style.display = 'flex';
                         document.getElementById(`ph-${device_id}`).innerHTML = data.value;
                     }
@@ -514,8 +515,9 @@
                 // Handle granular EC update
                 else if (data.type === 'ec_update') {
                     updateOnlineStatus(device_id, true);
-                    const ecItem = document.getElementById(`ec-item-${device_id}`);
-                    if (data.value !== null && data.value !== undefined) {
+                    const probeStatus = window.deviceProbeStatus?.[device_id];
+                    if (probeStatus?.hasEcProbe && data.value !== null && data.value !== undefined) {
+                        const ecItem = document.getElementById(`ec-item-${device_id}`);
                         ecItem.style.display = 'flex';
                         document.getElementById(`ec-${device_id}`).innerHTML = data.value;
                     }
@@ -591,6 +593,13 @@
         }
 
         function updateDeviceStatus(device_id, statusData) {
+            // Store probe status for granular updates
+            if (!window.deviceProbeStatus) window.deviceProbeStatus = {};
+            window.deviceProbeStatus[device_id] = {
+                hasPhProbe: !!statusData.settings?.usb_roles?.ph_probe,
+                hasEcProbe: !!statusData.settings?.usb_roles?.ec_meter
+            };
+            
             document.getElementById(`system-name-${device_id}`).innerHTML = statusData.settings?.system_name || 'N/A';
             
             // Plant info
@@ -633,6 +642,8 @@
             if (phProbe) {
                 phItem.style.display = 'flex';
                 document.getElementById(`ph-${device_id}`).innerHTML = statusData.current_ph || '-';
+            } else {
+                phItem.style.display = 'none';
             }
             
             const ecMeter = statusData.settings?.usb_roles?.ec_meter;
@@ -640,6 +651,8 @@
             if (ecMeter) {
                 ecItem.style.display = 'flex';
                 document.getElementById(`ec-${device_id}`).innerHTML = statusData.current_ec || '-';
+            } else {
+                ecItem.style.display = 'none';
             }
             
             updateWaterBucket(device_id, statusData);
