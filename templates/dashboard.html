@@ -414,32 +414,31 @@
                 display: none !important;
             }
 
-            /* Show pH/EC next to badge on mobile */
+            /* Show pH/EC next to badge on mobile - 50% larger */
             .header-ph-ec {
                 display: flex !important;
                 flex-wrap: wrap;
+                font-size: 1.05em !important;
             }
 
             .header-info {
-                display: flex;
-                flex-wrap: wrap;
-                gap: 0px 8px;
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 6px;
                 width: 100%;
                 font-size: 0.7em;
-                line-height: 1.1;
             }
             .info-item {
-                display: inline-flex;
+                display: flex;
                 flex-direction: row;
-                align-items: baseline;
-                gap: 3px;
-                background: none !important;
-                border: none !important;
-                padding: 0 !important;
-                border-radius: 0 !important;
+                align-items: center;
+                gap: 4px;
+                background: rgba(51, 65, 85, 0.5) !important;
+                border: 1px solid rgba(148, 163, 184, 0.2) !important;
+                padding: 6px 10px !important;
+                border-radius: 8px !important;
                 min-width: 0;
                 margin: 0 !important;
-                height: auto;
             }
             .info-item label {
                 font-size: 1em;
@@ -461,31 +460,43 @@
                 white-space: nowrap;
             }
 
-            /* Force system and plant on same row */
+            /* Force system to first column, plant to second column */
+            .info-item[id^="system-item"] {
+                grid-column: 1;
+            }
             .info-item[id^="plant-item"] {
-                margin-left: 8px !important;
+                grid-column: 2;
+            }
+            .info-item[id^="start-date-item"] {
+                grid-column: 1;
+            }
+            .info-item[id^="weeks-item"] {
+                grid-column: 2;
             }
 
-            /* Position refresh and expand icons in corners on mobile */
+            /* Reposition wrapper to top-right corner and make it span full height */
+            .header-icons-wrapper {
+                position: absolute !important;
+                top: 0 !important;
+                right: 10px !important;
+                height: 100% !important;
+                display: flex !important;
+                flex-direction: column !important;
+                justify-content: space-between !important;
+                align-items: flex-end !important;
+                gap: 0 !important;
+                padding: 6px 0 !important;
+            }
+
+            /* Position icons within wrapper */
             .device-header .refresh-icon {
-                position: absolute;
-                top: 6px;
-                right: 10px;
+                position: static !important;
                 font-size: 1.2rem !important;
-                z-index: 10;
             }
 
             .device-header .expand-icon {
-                position: absolute;
-                bottom: 6px;
-                right: 10px;
+                position: static !important;
                 font-size: 1rem !important;
-                z-index: 10;
-            }
-
-            /* Hide the wrapper div and use absolute positioning for icons */
-            .header-icons-wrapper {
-                display: none !important;
             }
 
             /* Add padding to header-left to avoid overlap with icons */
@@ -643,13 +654,12 @@
                 font-size: 0.6em;
             }
             .header-ph-ec {
-                font-size: 0.6em !important;
+                font-size: 0.975em !important;
                 gap: 6px !important;
             }
             .header-info {
                 font-size: 0.65em;
-                gap: 0px 6px;
-                line-height: 1.1;
+                gap: 5px;
             }
             .info-item {
                 gap: 2px;
@@ -711,14 +721,23 @@
             .header-ph-ec {
                 display: none !important;
             }
-            /* Show wrapper on desktop */
+            /* Show wrapper on desktop - reset to default flex row */
             .header-icons-wrapper {
+                position: static !important;
                 display: flex !important;
+                flex-direction: row !important;
+                height: auto !important;
+                padding: 0 !important;
+                gap: 1rem !important;
             }
             /* Reset icon positioning on desktop */
             .device-header .refresh-icon,
             .device-header .expand-icon {
                 position: static !important;
+                font-size: 1.5rem !important;
+            }
+            .device-header .expand-icon {
+                font-size: 1.2em !important;
             }
             .device-header-left {
                 padding-right: 0 !important;
@@ -805,7 +824,7 @@
                                     <span id="header-ec-${device.device_id}" style="display:none;"></span>
                                 </div>
                                 <div class="header-info">
-                                    <div class="info-item">
+                                    <div class="info-item" id="system-item-${device.device_id}">
                                         <label>System:</label>
                                         <span id="system-name-${device.device_id}">Loading...</span>
                                     </div>
