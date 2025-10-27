@@ -643,7 +643,7 @@
                 phItem.style.display = 'flex';
                 document.getElementById(`ph-${device_id}`).innerHTML = statusData.current_ph || '-';
             } else {
-                phItem.style.display = 'none';
+                phItem.style.setProperty('display', 'none', 'important');
             }
             
             const ecMeter = statusData.settings?.usb_roles?.ec_meter;
@@ -655,7 +655,7 @@
                 document.getElementById(`ec-${device_id}`).innerHTML = statusData.current_ec || '-';
             } else {
                 console.log('Hiding EC for device', device_id);
-                ecItem.style.display = 'none';
+                ecItem.style.setProperty('display', 'none', 'important');
             }
             
             updateWaterBucket(device_id, statusData);
