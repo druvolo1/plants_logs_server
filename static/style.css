@@ -875,19 +875,20 @@ a:hover {
 
 .sensor-label {
     position: absolute !important;
-    right: -110px !important;
-    font-size: 0.75rem !important;
+    right: -130px !important;
+    font-size: 1.5rem !important;
     white-space: nowrap !important;
     color: var(--text-secondary) !important;
     font-weight: 600 !important;
     background: rgba(30, 41, 59, 0.8) !important;
-    padding: 0.25rem 0.5rem !important;
-    border-radius: 4px !important;
+    padding: 0.35rem 0.65rem !important;
+    border-radius: 6px !important;
 }
 
 /* Valve Controls - Modernized */
 .valve-group {
     margin-bottom: 0.75rem !important;
+    text-align: center !important;
 }
 
 .valve-group:last-child {
@@ -895,29 +896,31 @@ a:hover {
 }
 
 .valve-label {
-    font-size: 0.85rem !important;
-    margin-bottom: 0.5rem !important;
+    font-size: 1rem !important;
+    margin-bottom: 0.6rem !important;
     display: block !important;
     color: var(--text-secondary) !important;
     font-weight: 600 !important;
+    text-align: center !important;
 }
 
 .valve-buttons {
-    display: flex !important;
-    gap: 0.5rem !important;
+    display: inline-flex !important;
+    gap: 0.6rem !important;
+    justify-content: center !important;
 }
 
 .valve-buttons button {
     flex: none !important;
-    width: 45px !important;
-    padding: 0.6rem 0.5rem !important;
+    width: 55px !important;
+    padding: 0.7rem 0.6rem !important;
     border: 2px solid var(--border) !important;
     border-radius: 10px !important;
     cursor: pointer !important;
     background: linear-gradient(135deg, rgba(51, 65, 85, 0.6) 0%, rgba(30, 41, 59, 0.8) 100%) !important;
     color: var(--text-primary) !important;
     font-weight: 700 !important;
-    font-size: 0.75rem !important;
+    font-size: 0.85rem !important;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
     text-transform: uppercase !important;
     letter-spacing: 0.05em !important;
