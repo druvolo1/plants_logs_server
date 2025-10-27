@@ -407,29 +407,38 @@
                 font-size: 0.75em;
             }
             .header-info {
-                display: grid;
-                grid-template-columns: repeat(3, 1fr);
-                gap: 8px;
+                display: flex;
+                flex-wrap: wrap;
+                gap: 4px 12px;
                 width: 100%;
-                font-size: 0.75em;
+                font-size: 0.8em;
             }
             .info-item {
-                display: flex;
-                flex-direction: column;
-                gap: 2px;
+                display: inline-flex;
+                flex-direction: row;
+                align-items: baseline;
+                gap: 4px;
+                background: none !important;
+                border: none !important;
+                padding: 0 !important;
+                border-radius: 0 !important;
                 min-width: 0;
             }
             .info-item label {
-                font-size: 0.75em;
+                font-size: 1em;
                 color: #888;
                 text-transform: uppercase;
                 letter-spacing: 0.5px;
                 font-weight: 600;
+                flex-shrink: 0;
+            }
+            .info-item label::after {
+                content: ':';
             }
             .info-item span {
-                font-size: 0.9em;
+                font-size: 1em;
                 font-weight: 500;
-                color: #fff;
+                color: #10b981;
                 overflow: hidden;
                 text-overflow: ellipsis;
                 white-space: nowrap;
@@ -569,18 +578,18 @@
                 font-size: 0.7em;
             }
             .header-info {
-                font-size: 0.7em;
-                gap: 6px;
+                font-size: 0.75em;
+                gap: 3px 10px;
             }
             .info-item {
-                gap: 2px;
+                gap: 3px;
             }
             .info-item label {
-                font-size: 0.7em;
+                font-size: 1em;
                 letter-spacing: 0.3px;
             }
             .info-item span {
-                font-size: 0.85em;
+                font-size: 1em;
             }
             .card-title {
                 font-size: 0.85em;
