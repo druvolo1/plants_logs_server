@@ -373,7 +373,7 @@ async def root(request: Request):
                 if user and user.is_active:
                     # Redirect based on user type
                     if user.is_superuser:
-                        return RedirectResponse("/admin/users")
+                        return RedirectResponse("/dashboard")
                     else:
                         return RedirectResponse("/dashboard")
     except:
@@ -448,7 +448,7 @@ async def login(
         token = await strategy.write_token(user)
         
         # Redirect based on user type - admins go to users page, regular users go to dashboard
-        redirect_url = "/admin/users" if user.is_superuser else "/dashboard"
+        redirect_url = "/dashboard"
         response = RedirectResponse(redirect_url, status_code=303)
         response.set_cookie(
             key="auth_cookie",
