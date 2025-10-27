@@ -190,15 +190,15 @@
             background: #2a2a2a;
             border: 1px solid #444;
             border-radius: 8px;
-            padding: 15px;
+            padding: 10px;
         }
         .card-title {
-            font-size: 1.05em;
+            font-size: 0.95em;
             font-weight: 600;
-            margin-bottom: 15px;
+            margin-bottom: 10px;
             color: #4da6ff;
             border-bottom: 1px solid #444;
-            padding-bottom: 8px;
+            padding-bottom: 6px;
         }
         
         /* Water bucket */
@@ -206,11 +206,11 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            padding: 10px;
+            padding: 5px;
         }
         .water-bucket {
-            width: 80px;
-            height: 120px;
+            width: 70px;
+            height: 100px;
             border: 3px solid #666;
             border-top: none;
             border-radius: 0 0 10px 10px;
@@ -245,29 +245,30 @@
         
         /* Valve controls */
         .valve-group {
-            margin-bottom: 15px;
+            margin-bottom: 10px;
         }
         .valve-group:last-child {
             margin-bottom: 0;
         }
         .valve-label {
-            font-size: 0.95em;
-            margin-bottom: 8px;
+            font-size: 0.85em;
+            margin-bottom: 6px;
             display: block;
         }
         .valve-buttons {
             display: flex;
-            gap: 8px;
+            gap: 6px;
         }
         .valve-buttons button {
             flex: 1;
-            padding: 10px;
+            padding: 8px;
             border: 1px solid #555;
             border-radius: 6px;
             cursor: pointer;
             background: #333;
             color: #fff;
             font-weight: 500;
+            font-size: 0.85em;
             transition: all 0.2s;
         }
         .valve-buttons button:hover {
@@ -876,8 +877,7 @@
             const dosingControlsDiv = document.getElementById(`dosing-controls-${device_id}`);
             if (dosingControlsDiv && dosingControlsDiv.querySelector('.ph-header')) {
                 dosingControlsDiv.querySelector('.ph-header').innerHTML = `
-                    <span>Current pH: <strong>${currentPh}</strong></span>
-                    <span>Target: <strong>${phTarget}</strong></span>
+                    <span>pH: <strong>${currentPh}</strong> | Target: <strong>${phTarget}</strong></span>
                 `;
                 
                 // Update calculated amounts
