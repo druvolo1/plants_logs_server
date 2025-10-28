@@ -165,6 +165,19 @@ class CustomUserManager(IntegerIDMixin, BaseUserManager[User, int]):
     reset_password_token_secret = SECRET
     verification_token_secret = SECRET
 
+    async def create(self, user_create, safe: bool = False, request = None):
+        """Override create to ensure is_suspended is set"""
+        # Call parent create
+        user = await super().create(user_create, safe=safe, request=request)
+
+        # Explicitly ensure is_suspended is False if not already set
+        if not hasattr(user, 'is_suspended') or user.is_suspended is None:
+            await self.user_db.update(user, {"is_suspended": False})
+            await self.user_db.session.refresh(user)
+            print(f"Explicitly set is_suspended=False for user {user.id}")
+
+        return user
+
     async def on_after_register(self, user: User, request: None = None):
         print(f"User {user.id} has registered and is pending approval.")
 
@@ -273,8 +286,13 @@ class CustomUserManager(IntegerIDMixin, BaseUserManager[User, int]):
                     is_suspended=False  # Explicitly set not suspended
                 )
                 user = await self.create(user_create)
-                # Explicitly ensure is_suspended is False in database
-                await self.user_db.update(user, {"is_suspended": False})
+
+                # Refresh user from database to get all fields
+                await self.user_db.session.refresh(user)
+
+                # Debug: Check what was actually saved
+                print(f"OAuth user created: id={user.id}, is_active={user.is_active}, is_suspended={getattr(user, 'is_suspended', 'MISSING')}")
+
                 user = await self.user_db.add_oauth_account(user, oauth_account_dict)
 
         # Note: We don't check for suspended/pending here because OAuth callback
