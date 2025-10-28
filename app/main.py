@@ -174,12 +174,12 @@ class CustomUserManager(IntegerIDMixin, BaseUserManager[User, int]):
         if not hasattr(user, 'is_suspended') or user.is_suspended is None:
             await self.user_db.update(user, {"is_suspended": False})
             await self.user_db.session.refresh(user)
-            print(f"Explicitly set is_suspended=False for user {user.id}")
+            print(f"Explicitly set is_suspended=False for user {user.email}")
 
         return user
 
     async def on_after_register(self, user: User, request: None = None):
-        print(f"User {user.id} has registered and is pending approval.")
+        print(f"User {user.email} (id={user.id}) has registered and is pending approval.")
 
     async def authenticate(self, credentials: OAuth2PasswordRequestForm) -> Optional[User]:
         """
@@ -240,19 +240,23 @@ class CustomUserManager(IntegerIDMixin, BaseUserManager[User, int]):
         associate_by_email: bool = False,
         is_verified_by_default: bool = False,
     ) -> User:
-        oauth_account_dict = {
-            "oauth_name": oauth_name,
-            "access_token": access_token,
-            "account_id": account_id,
-            "account_email": account_email,
-            "expires_at": expires_at,
-            "refresh_token": refresh_token,
-        }
-
+        print(f"OAuth callback START for {account_email}")
         try:
-            user = await self.get_by_oauth_account(oauth_name, account_id)
-        except exceptions.UserNotExists:
-            user = None
+            oauth_account_dict = {
+                "oauth_name": oauth_name,
+                "access_token": access_token,
+                "account_id": account_id,
+                "account_email": account_email,
+                "expires_at": expires_at,
+                "refresh_token": refresh_token,
+            }
+
+            try:
+                user = await self.get_by_oauth_account(oauth_name, account_id)
+                print(f"Existing OAuth user found: {account_email}")
+            except exceptions.UserNotExists:
+                user = None
+                print(f"No existing OAuth user for {account_email}")
             if associate_by_email:
                 try:
                     user = await self.get_by_email(account_email)
@@ -291,14 +295,25 @@ class CustomUserManager(IntegerIDMixin, BaseUserManager[User, int]):
                 await self.user_db.session.refresh(user)
 
                 # Debug: Check what was actually saved
-                print(f"OAuth user created: id={user.id}, is_active={user.is_active}, is_suspended={getattr(user, 'is_suspended', 'MISSING')}")
+                print(f"OAuth user created: email={user.email}, is_active={user.is_active}, is_suspended={getattr(user, 'is_suspended', 'MISSING')}")
 
-                user = await self.user_db.add_oauth_account(user, oauth_account_dict)
+                try:
+                    user = await self.user_db.add_oauth_account(user, oauth_account_dict)
+                    print(f"OAuth account successfully linked for {user.email}")
+                except Exception as e:
+                    print(f"ERROR linking OAuth account for {user.email}: {e}")
+                    raise
 
-        # Note: We don't check for suspended/pending here because OAuth callback
-        # should always succeed and set the cookie. The checks happen when the user
-        # tries to access protected routes via the current_user dependency.
-        return user
+            # Note: We don't check for suspended/pending here because OAuth callback
+            # should always succeed and set the cookie. The checks happen when the user
+            # tries to access protected routes via the current_user dependency.
+            print(f"OAuth callback complete for {user.email}, is_active={user.is_active}, is_suspended={getattr(user, 'is_suspended', None)}")
+            return user
+        except Exception as e:
+            print(f"ERROR in OAuth callback for {account_email}: {type(e).__name__}: {e}")
+            import traceback
+            traceback.print_exc()
+            raise
 
 async def get_db():
     async with async_session_maker() as session:
@@ -339,7 +354,7 @@ async def current_user(user: User = Depends(_base_current_user)) -> User:
     is_active = user.is_active
 
     # Debug logging
-    print(f"current_user check for user {user.id}: is_suspended={is_suspended}, is_active={is_active}")
+    print(f"current_user check for {user.email}: is_suspended={is_suspended}, is_active={is_active}")
 
     # Normalize is_suspended to boolean (handle None, 0, 1, True, False)
     if is_suspended is None or is_suspended is False or is_suspended == 0:
@@ -348,14 +363,14 @@ async def current_user(user: User = Depends(_base_current_user)) -> User:
         is_suspended = True
 
     if is_suspended:
-        print(f"User {user.id} is SUSPENDED - showing suspended page")
+        print(f"User {user.email} is SUSPENDED - showing suspended page")
         raise HTTPException(
             status_code=403,
             detail="SUSPENDED"
         )
     # Check if user is pending approval
     if not is_active:
-        print(f"User {user.id} is PENDING - showing pending approval page")
+        print(f"User {user.email} is PENDING - showing pending approval page")
         raise HTTPException(
             status_code=403,
             detail="PENDING_APPROVAL"
@@ -524,7 +539,7 @@ async def root(request: Request):
                     is_suspended = getattr(user, 'is_suspended', None)
                     is_active = user.is_active
 
-                    print(f"Root route check for user {user.id}: is_suspended={is_suspended}, is_active={is_active}")
+                    print(f"Root route check for {user.email}: is_suspended={is_suspended}, is_active={is_active}")
 
                     # Normalize is_suspended to boolean (handle None, 0, 1, True, False)
                     if is_suspended is None or is_suspended is False or is_suspended == 0:
@@ -533,14 +548,14 @@ async def root(request: Request):
                         is_suspended = True
 
                     if is_suspended:
-                        print(f"Root route: User {user.id} is SUSPENDED - showing suspended page")
+                        print(f"Root route: {user.email} is SUSPENDED - showing suspended page")
                         response = templates.TemplateResponse("suspended.html", {"request": request}, status_code=403)
                         response.delete_cookie("auth_cookie")
                         return response
 
                     # Check if user is pending approval
                     if not is_active:
-                        print(f"Root route: User {user.id} is PENDING - showing pending approval page")
+                        print(f"Root route: {user.email} is PENDING - showing pending approval page")
                         response = templates.TemplateResponse("pending_approval.html", {"request": request}, status_code=403)
                         response.delete_cookie("auth_cookie")
                         return response
