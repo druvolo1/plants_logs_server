@@ -755,6 +755,17 @@ async def logout():
     response.delete_cookie("auth_cookie")
     return response
 
+# Get current user info API
+@app.get("/api/user/me")
+async def get_current_user_info(user: User = Depends(current_user)):
+    return {
+        "email": user.email,
+        "first_name": user.first_name,
+        "last_name": user.last_name,
+        "is_superuser": user.is_superuser,
+        "is_active": user.is_active
+    }
+
 # Dashboard
 @app.get("/dashboard", response_class=HTMLResponse)
 async def dashboard(request: Request, user: User = Depends(current_user)):
@@ -1470,6 +1481,28 @@ async def update_plant_yield(
     await session.commit()
 
     return {"status": "success", "message": "Yield updated successfully"}
+
+# Delete a plant (admin only)
+@app.delete("/admin/plants/{plant_id}", response_model=Dict[str, str])
+async def delete_plant_admin(
+    plant_id: str,
+    user: User = Depends(current_admin),
+    session: AsyncSession = Depends(get_db)
+):
+    # Get plant
+    result = await session.execute(
+        select(Plant).where(Plant.plant_id == plant_id)
+    )
+
+    plant = result.scalars().first()
+    if not plant:
+        raise HTTPException(404, "Plant not found")
+
+    # Delete plant (logs will be cascade deleted)
+    await session.delete(plant)
+    await session.commit()
+
+    return {"status": "success", "message": f"Plant '{plant.name}' and all associated logs deleted successfully"}
 
 # Log Management API Endpoints
 

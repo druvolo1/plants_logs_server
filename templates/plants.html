@@ -313,7 +313,10 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h2 id="modalPlantName"></h2>
-                <span class="close" onclick="closePlantModal()">&times;</span>
+                <div style="display: flex; gap: 1rem; align-items: center;">
+                    <button id="deletePlantBtn" onclick="deletePlant()" style="display: none; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); padding: 0.5rem 1rem; border: none; border-radius: 6px; color: white; cursor: pointer;">Delete Plant</button>
+                    <span class="close" onclick="closePlantModal()">&times;</span>
+                </div>
             </div>
 
             <div class="stats-grid" id="plantStats"></div>
@@ -344,6 +347,20 @@
         let currentPlant = null;
         let phChart = null;
         let dosingChart = null;
+        let isAdmin = false;
+
+        // Check if current user is admin
+        async function checkUserRole() {
+            try {
+                const response = await fetch('/api/user/me');
+                if (response.ok) {
+                    const user = await response.json();
+                    isAdmin = user.is_superuser || false;
+                }
+            } catch (error) {
+                console.error('Error checking user role:', error);
+            }
+        }
 
         // Fetch plants on load
         async function loadPlants() {
@@ -430,7 +447,41 @@
             document.getElementById('modalPlantName').textContent = currentPlant.name;
             document.getElementById('plantModal').style.display = 'block';
 
+            // Show delete button for admins
+            const deleteBtn = document.getElementById('deletePlantBtn');
+            if (isAdmin) {
+                deleteBtn.style.display = 'block';
+            } else {
+                deleteBtn.style.display = 'none';
+            }
+
             await loadPlantLogs(plantId);
+        }
+
+        async function deletePlant() {
+            if (!currentPlant) return;
+
+            const confirmMsg = `Are you sure you want to delete plant "${currentPlant.name}"? This will permanently delete the plant and ALL associated logs. This action cannot be undone.`;
+            if (!confirm(confirmMsg)) return;
+
+            try {
+                const response = await fetch(`/admin/plants/${currentPlant.plant_id}`, {
+                    method: 'DELETE'
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Failed to delete plant: ${response.status}`);
+                }
+
+                const data = await response.json();
+                alert(data.message || 'Plant deleted successfully');
+
+                closePlantModal();
+                await loadPlants(); // Reload the plant list
+            } catch (error) {
+                console.error('Error deleting plant:', error);
+                alert(`Failed to delete plant: ${error.message}`);
+            }
         }
 
         async function loadPlantLogs(plantId) {
@@ -551,29 +602,45 @@
                 }
             });
 
-            // Dosing Chart
+            // Dosing Chart - Aggregate by day
             const dosingCtx = document.getElementById('dosingChart').getContext('2d');
 
             if (dosingChart) dosingChart.destroy();
 
-            const upDoses = dosingLogs.filter(l => l.dose_type === 'up');
-            const downDoses = dosingLogs.filter(l => l.dose_type === 'down');
+            // Aggregate dosing events by day
+            const dosingByDay = {};
+            dosingLogs.forEach(log => {
+                const dateKey = formatDate(log.timestamp);
+                if (!dosingByDay[dateKey]) {
+                    dosingByDay[dateKey] = { up: 0, down: 0 };
+                }
+                if (log.dose_type === 'up') {
+                    dosingByDay[dateKey].up++;
+                } else if (log.dose_type === 'down') {
+                    dosingByDay[dateKey].down++;
+                }
+            });
+
+            // Sort dates chronologically
+            const sortedDates = Object.keys(dosingByDay).sort((a, b) => new Date(a) - new Date(b));
+            const upCounts = sortedDates.map(date => dosingByDay[date].up);
+            const downCounts = sortedDates.map(date => dosingByDay[date].down);
 
             dosingChart = new Chart(dosingCtx, {
                 type: 'bar',
                 data: {
-                    labels: dosingLogs.map(l => formatDateTime(l.timestamp)),
+                    labels: sortedDates,
                     datasets: [
                         {
-                            label: 'pH Up (ml)',
-                            data: dosingLogs.map(l => l.dose_type === 'up' ? l.dose_amount_ml : 0),
+                            label: 'pH Up Doses',
+                            data: upCounts,
                             backgroundColor: 'rgba(59, 130, 246, 0.6)',
                             borderColor: '#3b82f6',
                             borderWidth: 1
                         },
                         {
-                            label: 'pH Down (ml)',
-                            data: dosingLogs.map(l => l.dose_type === 'down' ? -l.dose_amount_ml : 0),
+                            label: 'pH Down Doses',
+                            data: downCounts,
                             backgroundColor: 'rgba(239, 68, 68, 0.6)',
                             borderColor: '#ef4444',
                             borderWidth: 1
@@ -589,18 +656,22 @@
                         },
                         title: {
                             display: true,
-                            text: 'Dosing Events',
+                            text: 'Daily Dosing Events',
                             color: '#e2e8f0',
                             font: { size: 16 }
                         }
                     },
                     scales: {
                         y: {
-                            ticks: { color: '#e2e8f0' },
+                            beginAtZero: true,
+                            ticks: {
+                                color: '#e2e8f0',
+                                stepSize: 1
+                            },
                             grid: { color: '#334155' },
                             title: {
                                 display: true,
-                                text: 'Dose Amount (ml)',
+                                text: 'Number of Doses',
                                 color: '#e2e8f0'
                             }
                         },
@@ -663,7 +734,8 @@
             }
         }
 
-        // Load plants on page load
+        // Load plants and check user role on page load
+        checkUserRole();
         loadPlants();
     </script>
 </body>
