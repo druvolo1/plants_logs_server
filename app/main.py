@@ -9,6 +9,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Column, Integer, String, Boolean, select, ForeignKey, DateTime, Float
 from sqlalchemy.orm import relationship, selectinload, Session
 from datetime import datetime, timedelta
+from dateutil import parser as date_parser
 from typing import List, Optional, Generator, Any, Dict
 from fastapi_users import FastAPIUsers, BaseUserManager, IntegerIDMixin
 from fastapi_users.authentication import CookieTransport, AuthenticationBackend, JWTStrategy
@@ -1390,11 +1391,10 @@ async def finish_plant_device(
 
     # Parse end_date or use current datetime
     if finish_data.end_date:
-        from dateutil import parser
         try:
-            end_date = parser.isoparse(finish_data.end_date)
-        except:
-            raise HTTPException(400, "Invalid date format. Use ISO 8601 format (YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS)")
+            end_date = date_parser.isoparse(finish_data.end_date)
+        except Exception as e:
+            raise HTTPException(400, f"Invalid date format. Use ISO 8601 format (YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS). Error: {str(e)}")
     else:
         end_date = datetime.utcnow()
 
@@ -1431,11 +1431,10 @@ async def finish_plant(
 
     # Parse end_date or use current datetime
     if finish_data.end_date:
-        from dateutil import parser
         try:
-            end_date = parser.isoparse(finish_data.end_date)
-        except:
-            raise HTTPException(400, "Invalid date format. Use ISO 8601 format (YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS)")
+            end_date = date_parser.isoparse(finish_data.end_date)
+        except Exception as e:
+            raise HTTPException(400, f"Invalid date format. Use ISO 8601 format (YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS). Error: {str(e)}")
     else:
         end_date = datetime.utcnow()
 
@@ -1555,20 +1554,20 @@ async def get_plant_logs(
 
     # Apply filters
     if start_date:
-        from dateutil import parser as date_parser
         try:
             start_dt = date_parser.isoparse(start_date)
             query = query.where(LogEntry.timestamp >= start_dt)
-        except:
-            raise HTTPException(400, "Invalid start_date format")
+        except Exception as e:
+            print(f"Error parsing start_date: {e}")
+            raise HTTPException(400, f"Invalid start_date format: {str(e)}")
 
     if end_date:
-        from dateutil import parser as date_parser
         try:
             end_dt = date_parser.isoparse(end_date)
             query = query.where(LogEntry.timestamp <= end_dt)
-        except:
-            raise HTTPException(400, "Invalid end_date format")
+        except Exception as e:
+            print(f"Error parsing end_date: {e}")
+            raise HTTPException(400, f"Invalid end_date format: {str(e)}")
 
     if event_type:
         query = query.where(LogEntry.event_type == event_type)
@@ -1576,21 +1575,29 @@ async def get_plant_logs(
     # Order by timestamp and limit
     query = query.order_by(LogEntry.timestamp.desc()).limit(limit)
 
-    result = await session.execute(query)
-    logs = result.scalars().all()
+    try:
+        result = await session.execute(query)
+        logs = result.scalars().all()
+    except Exception as e:
+        print(f"Error executing logs query: {e}")
+        raise HTTPException(500, f"Database error: {str(e)}")
 
     # Convert to response model
     logs_list = []
     for log in logs:
-        logs_list.append(LogEntryRead(
-            id=log.id,
-            event_type=log.event_type,
-            sensor_name=log.sensor_name,
-            value=log.value,
-            dose_type=log.dose_type,
-            dose_amount_ml=log.dose_amount_ml,
-            timestamp=log.timestamp
-        ))
+        try:
+            logs_list.append(LogEntryRead(
+                id=log.id,
+                event_type=log.event_type,
+                sensor_name=log.sensor_name,
+                value=log.value,
+                dose_type=log.dose_type,
+                dose_amount_ml=log.dose_amount_ml,
+                timestamp=log.timestamp
+            ))
+        except Exception as e:
+            print(f"Error converting log entry {log.id}: {e}")
+            continue
 
     return logs_list
 
