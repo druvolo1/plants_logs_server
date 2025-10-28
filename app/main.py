@@ -1501,8 +1501,7 @@ async def upload_logs(
     for log_data in logs:
         try:
             # Parse timestamp
-            from dateutil import parser
-            timestamp = parser.isoparse(log_data.timestamp)
+            timestamp = date_parser.isoparse(log_data.timestamp)
 
             # Create log entry
             log_entry = LogEntry(
