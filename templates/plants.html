@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plants - Plant Monitoring</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: #e2e8f0;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid #334155;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .nav {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .nav a, .btn {
+            padding: 0.75rem 1.5rem;
+            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+            color: #e2e8f0;
+            text-decoration: none;
+            border-radius: 8px;
+            border: 1px solid #475569;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .nav a:hover, .btn:hover {
+            background: linear-gradient(135deg, #334155 0%, #475569 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            border: none;
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #059669 0%, #047857 100%);
+        }
+
+        .plants-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .plant-card {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            border: 2px solid #10b981;
+            border-radius: 12px;
+            padding: 1.5rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .plant-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(16, 185, 129, 0.4);
+        }
+
+        .plant-card.finished {
+            border-color: #64748b;
+            opacity: 0.8;
+        }
+
+        .plant-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 1rem;
+        }
+
+        .plant-name {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #10b981;
+        }
+
+        .plant-status {
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+
+        .plant-status.active {
+            background: rgba(16, 185, 129, 0.2);
+            color: #10b981;
+        }
+
+        .plant-status.finished {
+            background: rgba(100, 116, 139, 0.2);
+            color: #94a3b8;
+        }
+
+        .plant-info {
+            margin-top: 1rem;
+        }
+
+        .plant-info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #334155;
+        }
+
+        .plant-info-row:last-child {
+            border-bottom: none;
+        }
+
+        .plant-info-label {
+            color: #94a3b8;
+            font-size: 0.875rem;
+        }
+
+        .plant-info-value {
+            color: #e2e8f0;
+            font-weight: 500;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            overflow-y: auto;
+        }
+
+        .modal-content {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            margin: 2rem auto;
+            padding: 2rem;
+            border-radius: 12px;
+            max-width: 1200px;
+            border: 2px solid #10b981;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid #334155;
+        }
+
+        .close {
+            font-size: 2rem;
+            cursor: pointer;
+            color: #94a3b8;
+        }
+
+        .close:hover {
+            color: #e2e8f0;
+        }
+
+        .chart-container {
+            background: #0f172a;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            border: 1px solid #334155;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            border: 1px solid #334155;
+            border-radius: 8px;
+            padding: 1.5rem;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #10b981;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
+            color: #94a3b8;
+            font-size: 0.875rem;
+        }
+
+        .filters {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .filter-group label {
+            color: #94a3b8;
+            font-size: 0.875rem;
+        }
+
+        .filter-group select,
+        .filter-group input {
+            padding: 0.5rem 1rem;
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 6px;
+            color: #e2e8f0;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            border: 2px solid #334155;
+            border-radius: 12px;
+        }
+
+        .empty-state h2 {
+            color: #94a3b8;
+            margin-bottom: 1rem;
+        }
+
+        canvas {
+            max-height: 400px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: #94a3b8;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🌱 My Plants</h1>
+            <div class="nav">
+                <a href="/dashboard">Dashboard</a>
+                <a href="/devices">Devices</a>
+                <a href="/plants">Plants</a>
+                <a href="/auth/logout">Logout</a>
+            </div>
+        </div>
+
+        <div class="filters">
+            <div class="filter-group">
+                <label>Filter by Status</label>
+                <select id="statusFilter">
+                    <option value="all">All Plants</option>
+                    <option value="active" selected>Active Only</option>
+                    <option value="finished">Finished Only</option>
+                </select>
+            </div>
+        </div>
+
+        <div id="plantsContainer" class="plants-grid">
+            <div class="loading">Loading plants...</div>
+        </div>
+    </div>
+
+    <!-- Plant Details Modal -->
+    <div id="plantModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalPlantName"></h2>
+                <span class="close" onclick="closePlantModal()">&times;</span>
+            </div>
+
+            <div class="stats-grid" id="plantStats"></div>
+
+            <div class="filters">
+                <div class="filter-group">
+                    <label>Time Range</label>
+                    <select id="timeRangeFilter" onchange="updateCharts()">
+                        <option value="7">Last 7 Days</option>
+                        <option value="30" selected>Last 30 Days</option>
+                        <option value="all">All Time</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <canvas id="phChart"></canvas>
+            </div>
+
+            <div class="chart-container">
+                <canvas id="dosingChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let plants = [];
+        let currentPlant = null;
+        let phChart = null;
+        let dosingChart = null;
+
+        // Fetch plants on load
+        async function loadPlants() {
+            try {
+                const statusFilter = document.getElementById('statusFilter').value;
+                const url = statusFilter === 'active' ? '/user/plants?active_only=true' : '/user/plants';
+
+                const response = await fetch(url);
+                if (!response.ok) throw new Error('Failed to load plants');
+
+                plants = await response.json();
+
+                if (statusFilter === 'finished') {
+                    plants = plants.filter(p => !p.is_active);
+                }
+
+                renderPlants();
+            } catch (error) {
+                console.error('Error loading plants:', error);
+                document.getElementById('plantsContainer').innerHTML = `
+                    <div class="empty-state">
+                        <h2>Error loading plants</h2>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        function renderPlants() {
+            const container = document.getElementById('plantsContainer');
+
+            if (plants.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <h2>No Plants Found</h2>
+                        <p>Start a new plant from your pH dosing system device.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = plants.map(plant => `
+                <div class="plant-card ${plant.is_active ? '' : 'finished'}" onclick="viewPlantDetails('${plant.plant_id}')">
+                    <div class="plant-header">
+                        <div class="plant-name">${escapeHtml(plant.name)}</div>
+                        <div class="plant-status ${plant.is_active ? 'active' : 'finished'}">
+                            ${plant.is_active ? 'Active' : 'Finished'}
+                        </div>
+                    </div>
+                    <div class="plant-info">
+                        <div class="plant-info-row">
+                            <span class="plant-info-label">System</span>
+                            <span class="plant-info-value">${escapeHtml(plant.system_id || 'N/A')}</span>
+                        </div>
+                        <div class="plant-info-row">
+                            <span class="plant-info-label">Started</span>
+                            <span class="plant-info-value">${formatDate(plant.start_date)}</span>
+                        </div>
+                        ${!plant.is_active ? `
+                            <div class="plant-info-row">
+                                <span class="plant-info-label">Finished</span>
+                                <span class="plant-info-value">${formatDate(plant.end_date)}</span>
+                            </div>
+                        ` : ''}
+                        ${plant.yield_grams ? `
+                            <div class="plant-info-row">
+                                <span class="plant-info-label">Yield</span>
+                                <span class="plant-info-value">${plant.yield_grams}g</span>
+                            </div>
+                        ` : ''}
+                        <div class="plant-info-row">
+                            <span class="plant-info-label">Age</span>
+                            <span class="plant-info-value">${calculateAge(plant.start_date, plant.end_date)}</span>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function viewPlantDetails(plantId) {
+            currentPlant = plants.find(p => p.plant_id === plantId);
+            if (!currentPlant) return;
+
+            document.getElementById('modalPlantName').textContent = currentPlant.name;
+            document.getElementById('plantModal').style.display = 'block';
+
+            await loadPlantLogs(plantId);
+        }
+
+        async function loadPlantLogs(plantId) {
+            try {
+                const timeRange = document.getElementById('timeRangeFilter').value;
+                let url = `/user/plants/${plantId}/logs?limit=10000`;
+
+                if (timeRange !== 'all') {
+                    const startDate = new Date();
+                    startDate.setDate(startDate.getDate() - parseInt(timeRange));
+                    url += `&start_date=${startDate.toISOString()}`;
+                }
+
+                const response = await fetch(url);
+                if (!response.ok) throw new Error('Failed to load logs');
+
+                const logs = await response.json();
+
+                // Reverse to show oldest first for charts
+                logs.reverse();
+
+                renderStats(logs);
+                renderCharts(logs);
+            } catch (error) {
+                console.error('Error loading logs:', error);
+            }
+        }
+
+        function renderStats(logs) {
+            const sensorLogs = logs.filter(l => l.event_type === 'sensor');
+            const dosingLogs = logs.filter(l => l.event_type === 'dosing');
+
+            const phValues = sensorLogs.map(l => l.value);
+            const avgPh = phValues.length > 0 ? (phValues.reduce((a, b) => a + b, 0) / phValues.length).toFixed(2) : 'N/A';
+            const minPh = phValues.length > 0 ? Math.min(...phValues).toFixed(2) : 'N/A';
+            const maxPh = phValues.length > 0 ? Math.max(...phValues).toFixed(2) : 'N/A';
+
+            const totalDoses = dosingLogs.length;
+            const upDoses = dosingLogs.filter(l => l.dose_type === 'up').length;
+            const downDoses = dosingLogs.filter(l => l.dose_type === 'down').length;
+
+            document.getElementById('plantStats').innerHTML = `
+                <div class="stat-card">
+                    <div class="stat-value">${avgPh}</div>
+                    <div class="stat-label">Average pH</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">${minPh} - ${maxPh}</div>
+                    <div class="stat-label">pH Range</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">${totalDoses}</div>
+                    <div class="stat-label">Total Doses</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">${upDoses} / ${downDoses}</div>
+                    <div class="stat-label">Up / Down Doses</div>
+                </div>
+            `;
+        }
+
+        function renderCharts(logs) {
+            const sensorLogs = logs.filter(l => l.event_type === 'sensor');
+            const dosingLogs = logs.filter(l => l.event_type === 'dosing');
+
+            // pH Chart
+            const phCtx = document.getElementById('phChart').getContext('2d');
+
+            if (phChart) phChart.destroy();
+
+            phChart = new Chart(phCtx, {
+                type: 'line',
+                data: {
+                    labels: sensorLogs.map(l => formatDateTime(l.timestamp)),
+                    datasets: [{
+                        label: 'pH Level',
+                        data: sensorLogs.map(l => l.value),
+                        borderColor: '#10b981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        tension: 0.4,
+                        pointRadius: 2,
+                        pointHoverRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            labels: { color: '#e2e8f0' }
+                        },
+                        title: {
+                            display: true,
+                            text: 'pH History',
+                            color: '#e2e8f0',
+                            font: { size: 16 }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            ticks: { color: '#e2e8f0' },
+                            grid: { color: '#334155' },
+                            title: {
+                                display: true,
+                                text: 'pH',
+                                color: '#e2e8f0'
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                color: '#e2e8f0',
+                                maxRotation: 45,
+                                minRotation: 45
+                            },
+                            grid: { color: '#334155' }
+                        }
+                    }
+                }
+            });
+
+            // Dosing Chart
+            const dosingCtx = document.getElementById('dosingChart').getContext('2d');
+
+            if (dosingChart) dosingChart.destroy();
+
+            const upDoses = dosingLogs.filter(l => l.dose_type === 'up');
+            const downDoses = dosingLogs.filter(l => l.dose_type === 'down');
+
+            dosingChart = new Chart(dosingCtx, {
+                type: 'bar',
+                data: {
+                    labels: dosingLogs.map(l => formatDateTime(l.timestamp)),
+                    datasets: [
+                        {
+                            label: 'pH Up (ml)',
+                            data: dosingLogs.map(l => l.dose_type === 'up' ? l.dose_amount_ml : 0),
+                            backgroundColor: 'rgba(59, 130, 246, 0.6)',
+                            borderColor: '#3b82f6',
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'pH Down (ml)',
+                            data: dosingLogs.map(l => l.dose_type === 'down' ? -l.dose_amount_ml : 0),
+                            backgroundColor: 'rgba(239, 68, 68, 0.6)',
+                            borderColor: '#ef4444',
+                            borderWidth: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            labels: { color: '#e2e8f0' }
+                        },
+                        title: {
+                            display: true,
+                            text: 'Dosing Events',
+                            color: '#e2e8f0',
+                            font: { size: 16 }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            ticks: { color: '#e2e8f0' },
+                            grid: { color: '#334155' },
+                            title: {
+                                display: true,
+                                text: 'Dose Amount (ml)',
+                                color: '#e2e8f0'
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                color: '#e2e8f0',
+                                maxRotation: 45,
+                                minRotation: 45
+                            },
+                            grid: { color: '#334155' }
+                        }
+                    }
+                }
+            });
+        }
+
+        function closePlantModal() {
+            document.getElementById('plantModal').style.display = 'none';
+            if (phChart) phChart.destroy();
+            if (dosingChart) dosingChart.destroy();
+        }
+
+        async function updateCharts() {
+            if (currentPlant) {
+                await loadPlantLogs(currentPlant.plant_id);
+            }
+        }
+
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        }
+
+        function formatDateTime(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        }
+
+        function calculateAge(startDate, endDate) {
+            const start = new Date(startDate);
+            const end = endDate ? new Date(endDate) : new Date();
+            const days = Math.floor((end - start) / (1000 * 60 * 60 * 24));
+            return `${days} days`;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Event listeners
+        document.getElementById('statusFilter').addEventListener('change', loadPlants);
+
+        // Close modal on outside click
+        window.onclick = function(event) {
+            const modal = document.getElementById('plantModal');
+            if (event.target === modal) {
+                closePlantModal();
+            }
+        }
+
+        // Load plants on page load
+        loadPlants();
+    </script>
+</body>
+</html>

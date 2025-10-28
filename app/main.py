@@ -5,7 +5,7 @@ from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, Integer, String, Boolean, select, ForeignKey, DateTime
+from sqlalchemy import Column, Integer, String, Boolean, select, ForeignKey, DateTime, Float
 from sqlalchemy.orm import relationship, selectinload, Session
 from datetime import datetime, timedelta
 from typing import List, Optional, Generator, Any, Dict
@@ -104,6 +104,39 @@ class DeviceShare(Base):
     device = relationship("Device", foreign_keys=[device_id])
     owner = relationship("User", foreign_keys=[owner_user_id])
     shared_with = relationship("User", foreign_keys=[shared_with_user_id])
+
+# Plant model
+class Plant(Base):
+    __tablename__ = "plants"
+    id = Column(Integer, primary_key=True, index=True)
+    plant_id = Column(String(64), unique=True, index=True, nullable=False)  # Timestamp-based unique ID
+    name = Column(String(255), nullable=False)  # Strain name
+    system_id = Column(String(255), nullable=True)  # e.g., "Zone1"
+    device_id = Column(Integer, ForeignKey("devices.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    start_date = Column(DateTime, nullable=False)
+    end_date = Column(DateTime, nullable=True)
+    yield_grams = Column(Float, nullable=True)  # Added after harvest
+
+    # Relationships
+    device = relationship("Device", foreign_keys=[device_id])
+    user = relationship("User", foreign_keys=[user_id])
+    logs = relationship("LogEntry", back_populates="plant", cascade="all, delete-orphan")
+
+# Log Entry model
+class LogEntry(Base):
+    __tablename__ = "log_entries"
+    id = Column(Integer, primary_key=True, index=True)
+    plant_id = Column(Integer, ForeignKey("plants.id"), nullable=False)
+    event_type = Column(String(20), nullable=False)  # 'sensor' or 'dosing'
+    sensor_name = Column(String(50), nullable=True)  # e.g., 'ph'
+    value = Column(Float, nullable=True)  # pH reading
+    dose_type = Column(String(10), nullable=True)  # 'up' or 'down'
+    dose_amount_ml = Column(Float, nullable=True)  # Dose amount
+    timestamp = Column(DateTime, nullable=False, index=True)
+
+    # Relationships
+    plant = relationship("Plant", back_populates="logs")
 
 async def create_db_and_tables():
     async with engine.begin() as conn:
@@ -720,6 +753,11 @@ async def dashboard(request: Request, user: User = Depends(current_user)):
 async def devices_page(request: Request, user: User = Depends(current_user)):
     return templates.TemplateResponse("devices.html", {"request": request, "user": user})
 
+# Plants page
+@app.get("/plants", response_class=HTMLResponse)
+async def plants_page(request: Request, user: User = Depends(current_user)):
+    return templates.TemplateResponse("plants.html", {"request": request, "user": user})
+
 # Admin: Users page
 @app.get("/admin/users", response_class=HTMLResponse)
 async def users_page(request: Request, admin: User = Depends(current_admin), session: AsyncSession = Depends(get_db)):
@@ -854,6 +892,45 @@ class ShareRead(BaseModel):
     accepted_at: Optional[datetime]
     is_active: bool
     shared_with_email: Optional[str]
+
+# Plant Pydantic models
+class PlantCreate(BaseModel):
+    name: str  # Strain name
+    system_id: Optional[str] = None
+    device_id: str  # Device UUID
+
+class PlantFinish(BaseModel):
+    end_date: Optional[str] = None  # ISO format date string, defaults to today
+
+class PlantYieldUpdate(BaseModel):
+    yield_grams: float
+
+class PlantRead(BaseModel):
+    plant_id: str
+    name: str
+    system_id: Optional[str]
+    device_id: str  # Device UUID for display
+    start_date: datetime
+    end_date: Optional[datetime]
+    yield_grams: Optional[float]
+    is_active: bool  # Computed: True if end_date is None
+
+class LogEntryCreate(BaseModel):
+    event_type: str  # 'sensor' or 'dosing'
+    sensor_name: Optional[str] = None
+    value: Optional[float] = None
+    dose_type: Optional[str] = None
+    dose_amount_ml: Optional[float] = None
+    timestamp: str  # ISO format datetime string
+
+class LogEntryRead(BaseModel):
+    id: int
+    event_type: str
+    sensor_name: Optional[str]
+    value: Optional[float]
+    dose_type: Optional[str]
+    dose_amount_ml: Optional[float]
+    timestamp: datetime
 
 @app.post("/user/devices", response_model=Dict[str, str])
 async def add_device(device: DeviceCreate, user: User = Depends(current_user), session: AsyncSession = Depends(get_db)):
@@ -1118,6 +1195,313 @@ async def update_share_permission(
     await session.commit()
 
     return {"status": "success", "permission_level": share.permission_level}
+
+# Plant Management API Endpoints
+
+# Create a new plant (start plant)
+@app.post("/user/plants", response_model=Dict[str, str])
+async def create_plant(
+    plant_data: PlantCreate,
+    user: User = Depends(current_user),
+    session: AsyncSession = Depends(get_db)
+):
+    # Verify device exists and user has access (owns or has controller permission)
+    result = await session.execute(select(Device).where(Device.device_id == plant_data.device_id))
+    device = result.scalars().first()
+
+    if not device:
+        raise HTTPException(404, "Device not found")
+
+    # Check if user owns device
+    is_owner = device.user_id == user.id
+
+    # If not owner, check if user has controller permission
+    if not is_owner:
+        result = await session.execute(
+            select(DeviceShare).where(
+                DeviceShare.device_id == device.id,
+                DeviceShare.shared_with_user_id == user.id,
+                DeviceShare.is_active == True,
+                DeviceShare.revoked_at == None,
+                DeviceShare.accepted_at != None,
+                DeviceShare.permission_level == 'controller'
+            )
+        )
+        share = result.scalars().first()
+
+        if not share:
+            raise HTTPException(403, "You don't have permission to create plants on this device")
+
+    # Generate unique plant_id using timestamp
+    from datetime import datetime
+    plant_id = str(int(datetime.utcnow().timestamp() * 1000000))  # Microsecond precision
+
+    # Create plant
+    new_plant = Plant(
+        plant_id=plant_id,
+        name=plant_data.name,
+        system_id=plant_data.system_id,
+        device_id=device.id,
+        user_id=device.user_id,  # Plant belongs to device owner
+        start_date=datetime.utcnow()
+    )
+
+    session.add(new_plant)
+    await session.commit()
+    await session.refresh(new_plant)
+
+    return {"plant_id": plant_id, "message": "Plant started successfully"}
+
+# List all plants for user (owned devices)
+@app.get("/user/plants", response_model=List[PlantRead])
+async def list_plants(
+    user: User = Depends(current_user),
+    session: AsyncSession = Depends(get_db),
+    active_only: bool = False
+):
+    # Get all plants for devices owned by user
+    query = select(Plant, Device.device_id).join(Device, Plant.device_id == Device.id).where(Device.user_id == user.id)
+
+    if active_only:
+        query = query.where(Plant.end_date == None)
+
+    result = await session.execute(query)
+
+    plants_list = []
+    for plant, device_uuid in result.all():
+        plants_list.append(PlantRead(
+            plant_id=plant.plant_id,
+            name=plant.name,
+            system_id=plant.system_id,
+            device_id=device_uuid,
+            start_date=plant.start_date,
+            end_date=plant.end_date,
+            yield_grams=plant.yield_grams,
+            is_active=(plant.end_date is None)
+        ))
+
+    return plants_list
+
+# Get a specific plant
+@app.get("/user/plants/{plant_id}", response_model=PlantRead)
+async def get_plant(
+    plant_id: str,
+    user: User = Depends(current_user),
+    session: AsyncSession = Depends(get_db)
+):
+    # Get plant with device info
+    result = await session.execute(
+        select(Plant, Device.device_id)
+        .join(Device, Plant.device_id == Device.id)
+        .where(Plant.plant_id == plant_id, Device.user_id == user.id)
+    )
+
+    row = result.first()
+    if not row:
+        raise HTTPException(404, "Plant not found")
+
+    plant, device_uuid = row
+
+    return PlantRead(
+        plant_id=plant.plant_id,
+        name=plant.name,
+        system_id=plant.system_id,
+        device_id=device_uuid,
+        start_date=plant.start_date,
+        end_date=plant.end_date,
+        yield_grams=plant.yield_grams,
+        is_active=(plant.end_date is None)
+    )
+
+# Finish a plant
+@app.post("/user/plants/{plant_id}/finish", response_model=Dict[str, str])
+async def finish_plant(
+    plant_id: str,
+    finish_data: PlantFinish,
+    user: User = Depends(current_user),
+    session: AsyncSession = Depends(get_db)
+):
+    # Get plant and verify ownership
+    result = await session.execute(
+        select(Plant, Device)
+        .join(Device, Plant.device_id == Device.id)
+        .where(Plant.plant_id == plant_id, Device.user_id == user.id)
+    )
+
+    row = result.first()
+    if not row:
+        raise HTTPException(404, "Plant not found")
+
+    plant, device = row
+
+    # Check if plant is already finished
+    if plant.end_date is not None:
+        raise HTTPException(400, "Plant is already finished")
+
+    # Parse end_date or use current datetime
+    if finish_data.end_date:
+        from dateutil import parser
+        try:
+            end_date = parser.isoparse(finish_data.end_date)
+        except:
+            raise HTTPException(400, "Invalid date format. Use ISO 8601 format (YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS)")
+    else:
+        end_date = datetime.utcnow()
+
+    # Update plant
+    plant.end_date = end_date
+    await session.commit()
+
+    return {"status": "success", "message": "Plant finished successfully"}
+
+# Update yield for finished plant
+@app.patch("/user/plants/{plant_id}/yield", response_model=Dict[str, str])
+async def update_plant_yield(
+    plant_id: str,
+    yield_data: PlantYieldUpdate,
+    user: User = Depends(current_user),
+    session: AsyncSession = Depends(get_db)
+):
+    # Get plant and verify ownership
+    result = await session.execute(
+        select(Plant, Device)
+        .join(Device, Plant.device_id == Device.id)
+        .where(Plant.plant_id == plant_id, Device.user_id == user.id)
+    )
+
+    row = result.first()
+    if not row:
+        raise HTTPException(404, "Plant not found")
+
+    plant, device = row
+
+    # Update yield
+    plant.yield_grams = yield_data.yield_grams
+    await session.commit()
+
+    return {"status": "success", "message": "Yield updated successfully"}
+
+# Log Management API Endpoints
+
+# Upload logs (from pH dosing system using API key)
+@app.post("/api/devices/{device_id}/logs", response_model=Dict[str, str])
+async def upload_logs(
+    device_id: str,
+    logs: List[LogEntryCreate],
+    api_key: str = Query(...),
+    plant_id: str = Query(...),
+    session: AsyncSession = Depends(get_db)
+):
+    # Verify device and API key
+    result = await session.execute(select(Device).where(Device.device_id == device_id, Device.api_key == api_key))
+    device = result.scalars().first()
+
+    if not device:
+        raise HTTPException(401, "Invalid device or API key")
+
+    # Verify plant exists and belongs to this device
+    result = await session.execute(select(Plant).where(Plant.plant_id == plant_id, Plant.device_id == device.id))
+    plant = result.scalars().first()
+
+    if not plant:
+        raise HTTPException(404, "Plant not found for this device")
+
+    # Insert log entries
+    log_count = 0
+    for log_data in logs:
+        try:
+            # Parse timestamp
+            from dateutil import parser
+            timestamp = parser.isoparse(log_data.timestamp)
+
+            # Create log entry
+            log_entry = LogEntry(
+                plant_id=plant.id,
+                event_type=log_data.event_type,
+                sensor_name=log_data.sensor_name,
+                value=log_data.value,
+                dose_type=log_data.dose_type,
+                dose_amount_ml=log_data.dose_amount_ml,
+                timestamp=timestamp
+            )
+
+            session.add(log_entry)
+            log_count += 1
+        except Exception as e:
+            print(f"Error inserting log entry: {e}")
+            # Continue with other log entries
+
+    await session.commit()
+
+    return {"status": "success", "message": f"Uploaded {log_count} log entries"}
+
+# Get logs for a plant
+@app.get("/user/plants/{plant_id}/logs", response_model=List[LogEntryRead])
+async def get_plant_logs(
+    plant_id: str,
+    user: User = Depends(current_user),
+    session: AsyncSession = Depends(get_db),
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    event_type: Optional[str] = None,
+    limit: int = 1000
+):
+    # Verify plant exists and user has access
+    result = await session.execute(
+        select(Plant, Device)
+        .join(Device, Plant.device_id == Device.id)
+        .where(Plant.plant_id == plant_id, Device.user_id == user.id)
+    )
+
+    row = result.first()
+    if not row:
+        raise HTTPException(404, "Plant not found")
+
+    plant, device = row
+
+    # Build query
+    query = select(LogEntry).where(LogEntry.plant_id == plant.id)
+
+    # Apply filters
+    if start_date:
+        from dateutil import parser as date_parser
+        try:
+            start_dt = date_parser.isoparse(start_date)
+            query = query.where(LogEntry.timestamp >= start_dt)
+        except:
+            raise HTTPException(400, "Invalid start_date format")
+
+    if end_date:
+        from dateutil import parser as date_parser
+        try:
+            end_dt = date_parser.isoparse(end_date)
+            query = query.where(LogEntry.timestamp <= end_dt)
+        except:
+            raise HTTPException(400, "Invalid end_date format")
+
+    if event_type:
+        query = query.where(LogEntry.event_type == event_type)
+
+    # Order by timestamp and limit
+    query = query.order_by(LogEntry.timestamp.desc()).limit(limit)
+
+    result = await session.execute(query)
+    logs = result.scalars().all()
+
+    # Convert to response model
+    logs_list = []
+    for log in logs:
+        logs_list.append(LogEntryRead(
+            id=log.id,
+            event_type=log.event_type,
+            sensor_name=log.sensor_name,
+            value=log.value,
+            dose_type=log.dose_type,
+            dose_amount_ml=log.dose_amount_ml,
+            timestamp=log.timestamp
+        ))
+
+    return logs_list
 
 # Added: Global connections for WS relay
 device_connections: Dict[str, WebSocket] = {}
