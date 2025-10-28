@@ -429,84 +429,127 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 #     tags=["auth"],
 # )
 
-# OAuth router
-app.include_router(
-    fastapi_users.get_oauth_router(google_oauth_client, auth_backend, SECRET, associate_by_email=True),
-    prefix="/auth/google",
-    tags=["auth"],
+# OAuth router - use custom route to handle pending users
+# app.include_router(
+#     fastapi_users.get_oauth_router(google_oauth_client, auth_backend, SECRET, associate_by_email=True),
+#     prefix="/auth/google",
+#     tags=["auth"],
+# )
+
+# Custom OAuth routes to handle pending user flow
+from fastapi_users.router import oauth
+
+oauth_router = oauth.get_oauth_router(
+    google_oauth_client,
+    auth_backend,
+    SECRET,
+    associate_by_email=True,
+    is_verified_by_default=False,
 )
 
-# Middleware to intercept OAuth callback and return success page or handle errors
-@app.middleware("http")
-async def oauth_redirect_middleware(request: Request, call_next):
-    try:
-        response = await call_next(request)
-
-        # If this is the OAuth callback and it returns 204, return a success page that redirects
-        if request.url.path == "/auth/google/callback" and response.status_code == 204:
-            # Return an HTML page that will redirect client-side
-            # This preserves the cookie that was set
-            html_content = """
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <meta charset="UTF-8">
-                <title>Login Successful</title>
-                <style>
-                    body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
-                    .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #3498db;
-                               border-radius: 50%; width: 40px; height: 40px;
-                               animation: spin 1s linear infinite; margin: 20px auto; }
-                    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-                </style>
-            </head>
-            <body>
-                <h1>Login Successful!</h1>
-                <div class="spinner"></div>
-                <p>Redirecting...</p>
-                <script>
-                    setTimeout(function() {
-                        window.location.href = '/';
-                    }, 500);
-                </script>
-            </body>
-            </html>
-            """
-
-            from fastapi.responses import HTMLResponse
-            html_response = HTMLResponse(content=html_content, status_code=200)
-
-            # Copy cookies from original OAuth response
-            if hasattr(response, 'headers'):
-                for key, value in response.headers.items():
-                    if key.lower() == 'set-cookie':
-                        html_response.headers.append(key, value)
-
-            if hasattr(response, 'raw_headers'):
-                for header_name, header_value in response.raw_headers:
-                    if header_name == b'set-cookie':
-                        html_response.raw_headers.append((header_name, header_value))
-
-            return html_response
-
-        return response
-    except HTTPException as e:
-        # Handle OAuth callback errors (pending approval or suspended)
-        if request.url.path == "/auth/google/callback":
-            if e.detail == "PENDING_APPROVAL":
-                return templates.TemplateResponse("pending_approval.html", {"request": request})
-            elif e.detail == "SUSPENDED":
-                return templates.TemplateResponse("suspended.html", {"request": request})
-        raise
-
-@app.get("/auth/google/authorize", response_model=dict)
-async def google_authorize(request: Request):
+# Include only the authorize route from the OAuth router
+@app.get("/auth/google/authorize")
+async def google_authorize_custom(request: Request):
     redirect_uri = request.url_for("auth:google.callback")
     return await google_oauth_client.get_authorization_url(
         str(redirect_uri),
         state=None,
         scope=["openid", "email", "profile"]
     )
+
+# Custom callback that handles pending users properly
+@app.get("/auth/google/callback", name="auth:google.callback")
+async def google_callback_custom(
+    request: Request,
+    code: str,
+    state: str = None,
+    manager: CustomUserManager = Depends(get_user_manager),
+    strategy: JWTStrategy = Depends(get_jwt_strategy),
+):
+    try:
+        # Get OAuth token
+        token = await google_oauth_client.get_access_token(code, request.url_for("auth:google.callback"))
+
+        # Get user info
+        user_info = await google_oauth_client.get_id_email(token["access_token"])
+        account_id = user_info[0]
+        account_email = user_info[1]
+
+        # Call our oauth_callback to create/get user
+        user = await manager.oauth_callback(
+            oauth_name="google",
+            access_token=token["access_token"],
+            account_id=account_id,
+            account_email=account_email,
+            expires_at=token.get("expires_at"),
+            refresh_token=token.get("refresh_token"),
+            associate_by_email=True,
+            is_verified_by_default=False,
+        )
+
+        print(f"OAuth callback returned user: {user.email}, is_active={user.is_active}, is_suspended={getattr(user, 'is_suspended', None)}")
+
+        # Check if user is suspended
+        is_suspended = getattr(user, 'is_suspended', None)
+        if is_suspended is None or is_suspended is False or is_suspended == 0:
+            is_suspended = False
+        else:
+            is_suspended = True
+
+        if is_suspended:
+            return templates.TemplateResponse("suspended.html", {"request": request})
+
+        # Check if user is pending approval
+        if not user.is_active:
+            return templates.TemplateResponse("pending_approval.html", {"request": request})
+
+        # User is active - log them in
+        token_str = await strategy.write_token(user)
+
+        html_content = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>Login Successful</title>
+            <style>
+                body {{ font-family: Arial, sans-serif; text-align: center; padding: 50px; }}
+                .spinner {{ border: 4px solid #f3f3f3; border-top: 4px solid #3498db;
+                           border-radius: 50%; width: 40px; height: 40px;
+                           animation: spin 1s linear infinite; margin: 20px auto; }}
+                @keyframes spin {{ 0% {{ transform: rotate(0deg); }} 100% {{ transform: rotate(360deg); }} }}
+            </style>
+        </head>
+        <body>
+            <h1>Login Successful!</h1>
+            <div class="spinner"></div>
+            <p>Redirecting...</p>
+            <script>
+                setTimeout(function() {{
+                    window.location.href = '/dashboard';
+                }}, 500);
+            </script>
+        </body>
+        </html>
+        """
+
+        response = HTMLResponse(content=html_content, status_code=200)
+        response.set_cookie(
+            key="auth_cookie",
+            value=token_str,
+            httponly=True,
+            max_age=3600,
+            samesite="lax"
+        )
+        return response
+
+    except Exception as e:
+        print(f"ERROR in OAuth callback endpoint: {type(e).__name__}: {e}")
+        import traceback
+        traceback.print_exc()
+        return templates.TemplateResponse("login.html", {"request": request, "error": "oauth_failed"})
+
+# Note: OAuth middleware removed - custom callback handles everything
 
 # Landing page - redirects based on authentication status and user type
 @app.get("/", response_class=HTMLResponse)
