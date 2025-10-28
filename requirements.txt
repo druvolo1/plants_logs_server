@@ -15,3 +15,4 @@ fastapi-users[sqlalchemy]==13.0.0  # Latest as of now; includes SQLAlchemy suppo
 fastapi-users-db-sqlalchemy==6.0.1
 asyncmy==0.2.9
 aiomysql==0.2.0
+python-dateutil==2.8.2  # For ISO date parsing
