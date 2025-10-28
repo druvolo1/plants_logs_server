@@ -437,14 +437,16 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 # )
 
 # Custom OAuth routes to handle pending user flow
-@app.get("/auth/google/authorize")
+@app.get("/auth/google/authorize", response_model=dict)
 async def google_authorize_custom(request: Request):
     redirect_uri = request.url_for("auth:google.callback")
-    return await google_oauth_client.get_authorization_url(
+    auth_url_data = await google_oauth_client.get_authorization_url(
         str(redirect_uri),
         state=None,
         scope=["openid", "email", "profile"]
     )
+    # Return in the format expected by the frontend
+    return {"authorization_url": auth_url_data["authorization_url"]}
 
 # Custom callback that handles pending users properly
 @app.get("/auth/google/callback", name="auth:google.callback")
