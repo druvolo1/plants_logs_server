@@ -186,15 +186,23 @@ class CustomUserManager(IntegerIDMixin, BaseUserManager[User, int]):
             return None
 
         # Check if user is suspended (handle None as False)
-        is_suspended = getattr(user, 'is_suspended', False)
-        if is_suspended is True:  # Explicitly check for True, not just truthy
+        is_suspended = getattr(user, 'is_suspended', None)
+        is_active = user.is_active
+
+        # Normalize is_suspended to boolean (handle None, 0, 1, True, False)
+        if is_suspended is None or is_suspended is False or is_suspended == 0:
+            is_suspended = False
+        else:
+            is_suspended = True
+
+        if is_suspended:
             raise HTTPException(
                 status_code=403,
                 detail="SUSPENDED"
             )
 
         # Check if user is pending approval
-        if not user.is_active:
+        if not is_active:
             raise HTTPException(
                 status_code=403,
                 detail="PENDING_APPROVAL"
@@ -265,6 +273,8 @@ class CustomUserManager(IntegerIDMixin, BaseUserManager[User, int]):
                     is_suspended=False  # Explicitly set not suspended
                 )
                 user = await self.create(user_create)
+                # Explicitly ensure is_suspended is False in database
+                await self.user_db.update(user, {"is_suspended": False})
                 user = await self.user_db.add_oauth_account(user, oauth_account_dict)
 
         # Note: We don't check for suspended/pending here because OAuth callback
@@ -307,14 +317,27 @@ _base_current_admin = fastapi_users.current_user(active=False, superuser=True)  
 async def current_user(user: User = Depends(_base_current_user)) -> User:
     """Check if user is suspended or pending before allowing access"""
     # Check if user is suspended (handle None as False)
-    is_suspended = getattr(user, 'is_suspended', False)
-    if is_suspended is True:  # Explicitly check for True, not just truthy
+    is_suspended = getattr(user, 'is_suspended', None)
+    is_active = user.is_active
+
+    # Debug logging
+    print(f"current_user check for user {user.id}: is_suspended={is_suspended}, is_active={is_active}")
+
+    # Normalize is_suspended to boolean (handle None, 0, 1, True, False)
+    if is_suspended is None or is_suspended is False or is_suspended == 0:
+        is_suspended = False
+    else:
+        is_suspended = True
+
+    if is_suspended:
+        print(f"User {user.id} is SUSPENDED - showing suspended page")
         raise HTTPException(
             status_code=403,
             detail="SUSPENDED"
         )
     # Check if user is pending approval
-    if not user.is_active:
+    if not is_active:
+        print(f"User {user.id} is PENDING - showing pending approval page")
         raise HTTPException(
             status_code=403,
             detail="PENDING_APPROVAL"
@@ -324,14 +347,22 @@ async def current_user(user: User = Depends(_base_current_user)) -> User:
 async def current_admin(user: User = Depends(_base_current_admin)) -> User:
     """Check if admin is suspended or pending before allowing access"""
     # Check if user is suspended (handle None as False)
-    is_suspended = getattr(user, 'is_suspended', False)
-    if is_suspended is True:  # Explicitly check for True, not just truthy
+    is_suspended = getattr(user, 'is_suspended', None)
+    is_active = user.is_active
+
+    # Normalize is_suspended to boolean (handle None, 0, 1, True, False)
+    if is_suspended is None or is_suspended is False or is_suspended == 0:
+        is_suspended = False
+    else:
+        is_suspended = True
+
+    if is_suspended:
         raise HTTPException(
             status_code=403,
             detail="SUSPENDED"
         )
     # Check if user is pending approval
-    if not user.is_active:
+    if not is_active:
         raise HTTPException(
             status_code=403,
             detail="PENDING_APPROVAL"
@@ -472,14 +503,26 @@ async def root(request: Request):
 
                 if user:
                     # Check if user is suspended (handle None as False)
-                    is_suspended = getattr(user, 'is_suspended', False)
-                    if is_suspended is True:  # Explicitly check for True, not just truthy
+                    is_suspended = getattr(user, 'is_suspended', None)
+                    is_active = user.is_active
+
+                    print(f"Root route check for user {user.id}: is_suspended={is_suspended}, is_active={is_active}")
+
+                    # Normalize is_suspended to boolean (handle None, 0, 1, True, False)
+                    if is_suspended is None or is_suspended is False or is_suspended == 0:
+                        is_suspended = False
+                    else:
+                        is_suspended = True
+
+                    if is_suspended:
+                        print(f"Root route: User {user.id} is SUSPENDED - showing suspended page")
                         response = templates.TemplateResponse("suspended.html", {"request": request}, status_code=403)
                         response.delete_cookie("auth_cookie")
                         return response
 
                     # Check if user is pending approval
-                    if not user.is_active:
+                    if not is_active:
+                        print(f"Root route: User {user.id} is PENDING - showing pending approval page")
                         response = templates.TemplateResponse("pending_approval.html", {"request": request}, status_code=403)
                         response.delete_cookie("auth_cookie")
                         return response
