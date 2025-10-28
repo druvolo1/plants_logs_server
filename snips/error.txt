@@ -1,27 +1,6 @@
-
-================================================================================
-✓ Database initialization complete!
-================================================================================
-
-Tables created or already exist.
-Admin already exists.
-INFO:     Application startup complete.
-INFO:     Uvicorn running on http://0.0.0.0:9000 (Press CTRL+C to quit)
-INFO:     172.16.1.150:48164 - "GET /admin/users HTTP/1.1" 200 OK
-INFO:     172.16.1.150:54256 - "DELETE /admin/users/25 HTTP/1.1" 200 OK
-INFO:     ('172.16.1.150', 54258) - "WebSocket /ws/devices/1aba9e83-cda4-40fc-9466-7ddec92f5603?api_key=90fd05581de3b26f79539617cff97cc1c08ab105c70b07bda652227d02d01350" [accepted]
-Device connected: 1aba9e83-cda4-40fc-9466-7ddec92f5603 with api_key 90fd05581de3b26f79539617cff97cc1c08ab105c70b07bda652227d02d01350
-INFO:     connection open
-Invalid device/auth for 1aba9e83-cda4-40fc-9466-7ddec92f5603
-INFO:     connection closed
-INFO:     172.16.1.150:54264 - "GET /admin/users HTTP/1.1" 200 OK
-INFO:     172.16.1.150:54278 - "GET /dashboard HTTP/1.1" 401 Unauthorized
-INFO:     172.16.1.150:54290 - "GET /login HTTP/1.1" 200 OK
-INFO:     172.16.1.150:54302 - "GET /auth/google/authorize HTTP/1.1" 200 OK
-User 26 has registered and is pending approval.
-INFO:     172.16.1.150:54312 - "GET /auth/google/callback?state=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJmYXN0YXBpLXVzZXJzOm9hdXRoLXN0YXRlIiwiZXhwIjoxNzYxNjEzMzM5fQ.5w-GkPRFqfR57nOkO-LX-aLw_t8CAELi8heLRa6g324&code=4%2F0Ab32j92Ys4M4oZ383VNeLRP8Iv7azqGtouHTiaTlOJrY4cLtjBQlhZuZG4FGg1Cyk_H6wA&scope=email+profile+https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.email+https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.profile+openid&authuser=0&prompt=none HTTP/1.1" 400 Bad Request
-INFO:     ('172.16.1.150', 52668) - "WebSocket /ws/devices/1aba9e83-cda4-40fc-9466-7ddec92f5603?api_key=90fd05581de3b26f79539617cff97cc1c08ab105c70b07bda652227d02d01350" [accepted]
-Device connected: 1aba9e83-cda4-40fc-9466-7ddec92f5603 with api_key 90fd05581de3b26f79539617cff97cc1c08ab105c70b07bda652227d02d01350
-INFO:     connection open
-Invalid device/auth for 1aba9e83-cda4-40fc-9466-7ddec92f5603
-INFO:     connection closed
+plant_info:180 [Violation] 'submit' handler took 1743ms
+plant_info:214  POST https://garden.ruvolo.loseyourip.com/user/plants 401 (Unauthorized)
+(anonymous) @ plant_info:214
+plant_info:253 Error starting plant: Error: Server error: 401
+    at HTMLFormElement.<anonymous> (plant_info:225:17)
+(anonymous) @ plant_info:253

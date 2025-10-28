@@ -1209,7 +1209,42 @@ async def update_share_permission(
 
 # Plant Management API Endpoints
 
-# Create a new plant (start plant)
+# Create a new plant (start plant) - for devices using API key
+@app.post("/api/devices/{device_id}/plants", response_model=Dict[str, str])
+async def create_plant_device(
+    device_id: str,
+    plant_data: PlantCreate,
+    api_key: str = Query(...),
+    session: AsyncSession = Depends(get_db)
+):
+    # Verify device and API key
+    result = await session.execute(select(Device).where(Device.device_id == device_id, Device.api_key == api_key))
+    device = result.scalars().first()
+
+    if not device:
+        raise HTTPException(401, "Invalid device or API key")
+
+    # Generate unique plant_id using timestamp
+    from datetime import datetime
+    plant_id = str(int(datetime.utcnow().timestamp() * 1000000))  # Microsecond precision
+
+    # Create plant
+    new_plant = Plant(
+        plant_id=plant_id,
+        name=plant_data.name,
+        system_id=plant_data.system_id,
+        device_id=device.id,
+        user_id=device.user_id,  # Plant belongs to device owner
+        start_date=datetime.utcnow()
+    )
+
+    session.add(new_plant)
+    await session.commit()
+    await session.refresh(new_plant)
+
+    return {"plant_id": plant_id, "message": "Plant started successfully"}
+
+# Create a new plant (start plant) - for logged-in users
 @app.post("/user/plants", response_model=Dict[str, str])
 async def create_plant(
     plant_data: PlantCreate,
@@ -1324,7 +1359,52 @@ async def get_plant(
         is_active=(plant.end_date is None)
     )
 
-# Finish a plant
+# Finish a plant - for devices using API key
+@app.post("/api/devices/{device_id}/plants/{plant_id}/finish", response_model=Dict[str, str])
+async def finish_plant_device(
+    device_id: str,
+    plant_id: str,
+    finish_data: PlantFinish,
+    api_key: str = Query(...),
+    session: AsyncSession = Depends(get_db)
+):
+    # Verify device and API key
+    result = await session.execute(select(Device).where(Device.device_id == device_id, Device.api_key == api_key))
+    device = result.scalars().first()
+
+    if not device:
+        raise HTTPException(401, "Invalid device or API key")
+
+    # Get plant and verify it belongs to this device
+    result = await session.execute(
+        select(Plant).where(Plant.plant_id == plant_id, Plant.device_id == device.id)
+    )
+
+    plant = result.scalars().first()
+    if not plant:
+        raise HTTPException(404, "Plant not found for this device")
+
+    # Check if plant is already finished
+    if plant.end_date is not None:
+        raise HTTPException(400, "Plant is already finished")
+
+    # Parse end_date or use current datetime
+    if finish_data.end_date:
+        from dateutil import parser
+        try:
+            end_date = parser.isoparse(finish_data.end_date)
+        except:
+            raise HTTPException(400, "Invalid date format. Use ISO 8601 format (YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS)")
+    else:
+        end_date = datetime.utcnow()
+
+    # Update plant
+    plant.end_date = end_date
+    await session.commit()
+
+    return {"status": "success", "message": "Plant finished successfully"}
+
+# Finish a plant - for logged-in users
 @app.post("/user/plants/{plant_id}/finish", response_model=Dict[str, str])
 async def finish_plant(
     plant_id: str,
