@@ -437,17 +437,6 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 # )
 
 # Custom OAuth routes to handle pending user flow
-from fastapi_users.router import oauth
-
-oauth_router = oauth.get_oauth_router(
-    google_oauth_client,
-    auth_backend,
-    SECRET,
-    associate_by_email=True,
-    is_verified_by_default=False,
-)
-
-# Include only the authorize route from the OAuth router
 @app.get("/auth/google/authorize")
 async def google_authorize_custom(request: Request):
     redirect_uri = request.url_for("auth:google.callback")
