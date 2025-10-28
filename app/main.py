@@ -3,6 +3,7 @@ from fastapi import FastAPI, Depends, HTTPException, Request, Form, Response, st
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Column, Integer, String, Boolean, select, ForeignKey, DateTime, Float
@@ -445,6 +446,16 @@ async def current_admin(user: User = Depends(_base_current_admin)) -> User:
     return user
 
 app = FastAPI()
+
+# Add CORS middleware to allow cross-origin requests from pH dosing systems
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allow all origins (pH dosing systems can be on any local network)
+    allow_credentials=True,
+    allow_methods=["*"],  # Allow all methods (GET, POST, etc.)
+    allow_headers=["*"],  # Allow all headers
+)
+
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
