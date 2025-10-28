@@ -254,29 +254,38 @@ class CustomUserManager(IntegerIDMixin, BaseUserManager[User, int]):
             try:
                 user = await self.get_by_oauth_account(oauth_name, account_id)
                 print(f"Existing OAuth user found: {account_email}")
+                # User already has this OAuth account linked, just return them
             except exceptions.UserNotExists:
                 user = None
                 print(f"No existing OAuth user for {account_email}")
-            if associate_by_email:
-                try:
-                    user = await self.get_by_email(account_email)
-                    if user:
-                        # Eagerly load oauth_accounts to avoid lazy load in the check
-                        stmt = (
-                            select(User)
-                            .options(selectinload(User.oauth_accounts))
-                            .where(User.email == account_email)
-                        )
-                        result = await self.user_db.session.execute(stmt)
-                        user = result.scalars().one_or_none()
 
-                        for existing_oauth_account in user.oauth_accounts:
-                            if existing_oauth_account.oauth_name == oauth_name:
-                                raise exceptions.UserAlreadyHasAccount()
+                # Try to find user by email and link OAuth account
+                if associate_by_email:
+                    try:
+                        user = await self.get_by_email(account_email)
+                        if user:
+                            # Eagerly load oauth_accounts to avoid lazy load in the check
+                            stmt = (
+                                select(User)
+                                .options(selectinload(User.oauth_accounts))
+                                .where(User.email == account_email)
+                            )
+                            result = await self.user_db.session.execute(stmt)
+                            user = result.scalars().one_or_none()
 
-                        user = await self.user_db.add_oauth_account(user, oauth_account_dict)
-                except exceptions.UserNotExists:
-                    pass
+                            # Check if user already has this OAuth account
+                            has_oauth = False
+                            for existing_oauth_account in user.oauth_accounts:
+                                if existing_oauth_account.oauth_name == oauth_name:
+                                    has_oauth = True
+                                    break
+
+                            # Only add OAuth account if not already linked
+                            if not has_oauth:
+                                user = await self.user_db.add_oauth_account(user, oauth_account_dict)
+                                print(f"OAuth account linked to existing user {account_email}")
+                    except exceptions.UserNotExists:
+                        pass
 
             if not user:
                 # Google OAuth users also require approval (is_active=False)
