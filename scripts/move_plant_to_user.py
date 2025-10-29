@@ -7,17 +7,21 @@ Usage: python move_plant_to_user.py <plant_id> <target_device_id> [--execute]
 import sys
 import os
 import asyncio
+from dotenv import load_dotenv
 
-# Add parent directory to path to import app modules
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+# Load environment variables from .env file
+env_path = os.path.join(os.path.dirname(__file__), '..', '.env')
+load_dotenv(env_path)
 
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import select, Column, Integer, String, Boolean, DateTime, Float, ForeignKey, Text
 from sqlalchemy.orm import declarative_base, relationship
 
-# Import database URL function
-from app.database import get_database_url
+# Load database URL from environment
+DATABASE_URL = os.getenv("DATABASE_URL")
+if DATABASE_URL:
+    DATABASE_URL = DATABASE_URL.replace("mariadb+mariadbconnector", "mariadb+aiomysql")
 
 # Define models directly to avoid importing main.py which initializes the FastAPI app
 Base = declarative_base()
@@ -62,9 +66,12 @@ class LogEntry(Base):
 async def move_plant(plant_id: str, target_device_id: str, execute: bool = False):
     """Move a plant to a different device."""
 
+    if not DATABASE_URL:
+        print("❌ DATABASE_URL not found in environment variables")
+        return False
+
     # Create database engine
-    database_url = get_database_url()
-    engine = create_async_engine(database_url, echo=False)
+    engine = create_async_engine(DATABASE_URL, echo=False)
     async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
     async with async_session() as session:
@@ -135,8 +142,11 @@ async def move_plant(plant_id: str, target_device_id: str, execute: bool = False
 async def list_all_plants():
     """List all plants in the database with their owners."""
 
-    database_url = get_database_url()
-    engine = create_async_engine(database_url, echo=False)
+    if not DATABASE_URL:
+        print("❌ DATABASE_URL not found in environment variables")
+        return
+
+    engine = create_async_engine(DATABASE_URL, echo=False)
     async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
     async with async_session() as session:
@@ -182,8 +192,11 @@ async def list_all_plants():
 async def list_all_devices():
     """List all devices in the database."""
 
-    database_url = get_database_url()
-    engine = create_async_engine(database_url, echo=False)
+    if not DATABASE_URL:
+        print("❌ DATABASE_URL not found in environment variables")
+        return
+
+    engine = create_async_engine(DATABASE_URL, echo=False)
     async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
     async with async_session() as session:
