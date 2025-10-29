@@ -41,12 +41,67 @@
             background-clip: text;
         }
 
+        .navbar-menu {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        .navbar-link {
+            padding: 0.75rem 1.25rem;
+            color: rgba(255, 255, 255, 0.9);
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.2s;
+            border-radius: 6px;
+            border: 1px solid transparent;
+        }
+
+        .navbar-link:hover {
+            background: rgba(16, 185, 129, 0.1);
+            border-color: #10b981;
+        }
+
+        .navbar-link.active {
+            background: rgba(16, 185, 129, 0.15);
+            border-color: #10b981;
+            color: #10b981;
+        }
+
+        .navbar-user {
+            padding: 0.75rem 1.25rem;
+            color: rgba(148, 163, 184, 0.9);
+            font-size: 0.9rem;
+            border-left: 1px solid rgba(148, 163, 184, 0.2);
+        }
+
+        .navbar-logout {
+            padding: 0.5rem 1rem;
+            margin-left: 0.5rem;
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+        }
+
+        .navbar-logout:hover {
+            background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(239, 68, 68, 0.3);
+        }
+
         .nav {
             display: flex;
             gap: 1rem;
         }
 
-        .nav a, .btn {
+        .btn {
             padding: 0.75rem 1.5rem;
             background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
             color: #e2e8f0;
@@ -57,7 +112,7 @@
             cursor: pointer;
         }
 
-        .nav a:hover, .btn:hover {
+        .btn:hover {
             background: linear-gradient(135deg, #334155 0%, #475569 100%);
             transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
@@ -284,11 +339,12 @@
     <div class="container">
         <div class="header">
             <h1>🌱 My Plants</h1>
-            <div class="nav">
-                <a href="/dashboard">Dashboard</a>
-                <a href="/devices">Devices</a>
-                <a href="/plants">Plants</a>
-                <a href="/auth/logout">Logout</a>
+            <div class="navbar-menu">
+                <a href="/dashboard" class="navbar-link">Dashboard</a>
+                <a href="/devices" class="navbar-link">Devices</a>
+                <a href="/plants" class="navbar-link active">Plants</a>
+                <span class="navbar-user" id="userEmail">Loading...</span>
+                <a href="/auth/logout" class="navbar-logout">Logout</a>
             </div>
         </div>
 
@@ -349,13 +405,31 @@
         let dosingChart = null;
         let isAdmin = false;
 
-        // Check if current user is admin
+        // Check if current user is admin and set up navigation
         async function checkUserRole() {
             try {
                 const response = await fetch('/api/user/me');
                 if (response.ok) {
                     const user = await response.json();
                     isAdmin = user.is_superuser || false;
+
+                    // Update user email in nav
+                    document.getElementById('userEmail').textContent = user.email;
+
+                    // Add Users link for admins
+                    if (isAdmin) {
+                        const navbarMenu = document.querySelector('.navbar-menu');
+                        const plantsLink = document.querySelector('.navbar-link.active');
+
+                        // Create Users link
+                        const usersLink = document.createElement('a');
+                        usersLink.href = '/admin/users';
+                        usersLink.className = 'navbar-link';
+                        usersLink.textContent = 'Users';
+
+                        // Insert after Plants link
+                        plantsLink.parentNode.insertBefore(usersLink, plantsLink.nextSibling);
+                    }
                 }
             } catch (error) {
                 console.error('Error checking user role:', error);
