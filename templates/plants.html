@@ -18,27 +18,38 @@
             min-height: 100vh;
         }
 
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 2rem;
+        .navbar {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            padding: 0;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            border-bottom: 2px solid #10b981;
         }
 
-        .header {
+        .navbar-container {
+            max-width: 1400px;
+            margin: 0 auto;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 2rem;
-            padding-bottom: 1rem;
-            border-bottom: 2px solid #334155;
+            padding: 0 1.5rem;
         }
 
-        h1 {
-            font-size: 2.5rem;
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+        .navbar-brand {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 1rem 0;
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #10b981;
+            text-decoration: none;
+        }
+
+        .navbar-brand:hover {
+            color: #34d399;
         }
 
         .navbar-menu {
@@ -51,28 +62,27 @@
         }
 
         .navbar-link {
-            padding: 0.75rem 1.25rem;
+            padding: 1rem 1.25rem;
             color: rgba(255, 255, 255, 0.9);
             text-decoration: none;
             font-weight: 500;
             transition: all 0.2s;
-            border-radius: 6px;
-            border: 1px solid transparent;
+            border-bottom: 3px solid transparent;
         }
 
         .navbar-link:hover {
             background: rgba(16, 185, 129, 0.1);
-            border-color: #10b981;
+            border-bottom-color: #10b981;
         }
 
         .navbar-link.active {
             background: rgba(16, 185, 129, 0.15);
-            border-color: #10b981;
+            border-bottom-color: #10b981;
             color: #10b981;
         }
 
         .navbar-user {
-            padding: 0.75rem 1.25rem;
+            padding: 1rem 1.25rem;
             color: rgba(148, 163, 184, 0.9);
             font-size: 0.9rem;
             border-left: 1px solid rgba(148, 163, 184, 0.2);
@@ -94,6 +104,12 @@
             background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
             transform: translateY(-1px);
             box-shadow: 0 4px 8px rgba(239, 68, 68, 0.3);
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
         }
 
         .nav {
@@ -336,10 +352,13 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>🌱 My Plants</h1>
-            <div class="navbar-menu">
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+        <div class="navbar-container">
+            <a href="/dashboard" class="navbar-brand">
+                🌱 Plant Monitor
+            </a>
+            <div class="navbar-menu" id="navbar-menu">
                 <a href="/dashboard" class="navbar-link">Dashboard</a>
                 <a href="/devices" class="navbar-link">Devices</a>
                 <a href="/plants" class="navbar-link active">Plants</a>
@@ -347,7 +366,9 @@
                 <a href="/auth/logout" class="navbar-logout">Logout</a>
             </div>
         </div>
+    </nav>
 
+    <div class="container">
         <div class="filters">
             <div class="filter-group">
                 <label>Filter by Status</label>
@@ -418,8 +439,8 @@
 
                     // Add Users link for admins
                     if (isAdmin) {
-                        const navbarMenu = document.querySelector('.navbar-menu');
                         const plantsLink = document.querySelector('.navbar-link.active');
+                        const userEmailSpan = document.getElementById('userEmail');
 
                         // Create Users link
                         const usersLink = document.createElement('a');
@@ -427,8 +448,8 @@
                         usersLink.className = 'navbar-link';
                         usersLink.textContent = 'Users';
 
-                        // Insert after Plants link
-                        plantsLink.parentNode.insertBefore(usersLink, plantsLink.nextSibling);
+                        // Insert after Plants link and before user email
+                        plantsLink.parentNode.insertBefore(usersLink, userEmailSpan);
                     }
                 }
             } catch (error) {
