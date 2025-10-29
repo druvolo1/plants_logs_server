@@ -1,5 +1,3 @@
-api/plant_info/upload_log/dosing_log.jsonl:1  Failed to load resource: the server responded with a status of 500 (INTERNAL SERVER ERROR)
-logs:1 The file at 'http://zone1.dr:8000/api/logs/download/dosing_log.jsonl' was loaded over an insecure connection. This file should be served over HTTPS.
-logs:1 The file at 'http://zone1.dr:8000/api/logs/download/sensor_log.jsonl' was loaded over an insecure connection. This file should be served over HTTPS.
-logs:1 The file at 'http://zone1.dr:8000/api/logs/download/ph_log.jsonl' was loaded over an insecure connection. This file should be served over HTTPS.
-api/plant_info/upload_log/ph_log.jsonl:1  Failed to load resource: the server responded with a status of 500 (INTERNAL SERVER ERROR)
+logs:135 [Violation] 'click' handler took 1450ms
+logs:150  POST http://zone1.dr:8000/api/plant_info/upload_log/dosing_log.jsonl 500 (INTERNAL SERVER ERROR)
+(anonymous) @ logs:150
