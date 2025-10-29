@@ -157,6 +157,14 @@ async def init_database():
                 "is_suspended BOOLEAN NOT NULL DEFAULT FALSE AFTER is_verified"
             )
 
+            # Add dashboard_preferences column if it doesn't exist
+            await check_and_add_column(
+                conn,
+                'users',
+                'dashboard_preferences',
+                "dashboard_preferences TEXT NULL AFTER is_suspended"
+            )
+
             # Update is_active default to FALSE for new users (pending approval)
             # Note: This won't affect existing users, only new ones
             await check_and_modify_column_default(
