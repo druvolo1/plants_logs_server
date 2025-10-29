@@ -13,9 +13,50 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy import select
-from app.main import User, Device, Plant, LogEntry
+from sqlalchemy import select, Column, Integer, String, Boolean, DateTime, Float, ForeignKey, Text
+from sqlalchemy.orm import declarative_base, relationship
+
+# Import database URL function
 from app.database import get_database_url
+
+# Define models directly to avoid importing main.py which initializes the FastAPI app
+Base = declarative_base()
+
+class User(Base):
+    __tablename__ = "users"
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String(255), unique=True, index=True, nullable=False)
+    hashed_password = Column(String(255), nullable=False)
+    is_superuser = Column(Boolean, default=False)
+
+class Device(Base):
+    __tablename__ = "devices"
+    id = Column(Integer, primary_key=True, index=True)
+    device_id = Column(String(255), unique=True, index=True, nullable=False)
+    device_name = Column(String(255), nullable=False)
+    api_key = Column(String(255), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+
+class Plant(Base):
+    __tablename__ = "plants"
+    id = Column(Integer, primary_key=True, index=True)
+    plant_id = Column(String(255), unique=True, index=True, nullable=False)
+    device_id = Column(Integer, ForeignKey("devices.id"), nullable=False)
+    name = Column(String(255), nullable=False)
+    strain = Column(String(255))
+    start_date = Column(String(50))
+    end_date = Column(String(50), nullable=True)
+
+class LogEntry(Base):
+    __tablename__ = "log_entries"
+    id = Column(Integer, primary_key=True, index=True)
+    plant_id = Column(Integer, ForeignKey("plants.id", ondelete="CASCADE"), nullable=False, index=True)
+    event_type = Column(String(50), nullable=False)
+    sensor_name = Column(String(50))
+    value = Column(Float)
+    dose_type = Column(String(50))
+    dose_amount_ml = Column(Float)
+    timestamp = Column(DateTime, nullable=False, index=True)
 
 
 async def move_plant(plant_id: str, target_device_id: str, execute: bool = False):

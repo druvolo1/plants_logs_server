@@ -1,13 +1,12 @@
-
-[2025-10-29 19:30:41 -0400] [3307392] [DEBUG] GET /logs
-[2025-10-29 19:30:41 -0400] [3307392] [DEBUG] GET /static/style.css
-[2025-10-29 19:30:41 -0400] [3307392] [DEBUG] GET /api/logs/list
-[2025-10-29 19:30:41 -0400] [3307392] [DEBUG] GET /api/settings/
-[2025-10-29 19:30:45 -0400] [3307392] [DEBUG] POST /api/plant_info/upload_log/ph_log.jsonl
-Failed to upload batch from ph_log.jsonl: 404
-[ERROR] Failed to upload ph_log.jsonl
-
-
-logs:135 [Violation] 'click' handler took 1834ms
-logs:150  POST http://test1.local:8000/api/plant_info/upload_log/ph_log.jsonl 500 (INTERNAL SERVER ERROR)
-(anonymous) @ logs:150
+(venv) dave@Garden1:~/plants_logs_server/scripts $ python move_plant_to_user.py
+Loaded DATABASE_URL from .env: mariadb+mariadbconnector://app_user:testpass123@172.16.1.150:3306/plant_logs
+Modified DATABASE_URL for async: mariadb+aiomysql://app_user:testpass123@172.16.1.150:3306/plant_logs
+Traceback (most recent call last):
+  File "/home/dave/plants_logs_server/scripts/move_plant_to_user.py", line 17, in <module>
+    from app.main import User, Device, Plant, LogEntry
+  File "/home/dave/plants_logs_server/scripts/../app/main.py", line 462, in <module>
+    app.mount("/static", StaticFiles(directory="static"), name="static")
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/starlette/staticfiles.py", line 56, in __init__
+    raise RuntimeError(f"Directory '{directory}' does not exist")
+RuntimeError: Directory 'static' does not exist
