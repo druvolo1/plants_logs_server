@@ -1,139 +1,16 @@
-(venv) dave@Garden1:~/plants_logs_server/scripts $ python move_plant_to_user.py --list-plants
-
-================================================================================
-All Plants in Database:
-================================================================================
-
-Traceback (most recent call last):
-  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
-    self.dialect.do_execute(
-  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/sqlalchemy/engine/default.py", line 941, in do_execute
-    cursor.execute(statement, parameters)
-  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/sqlalchemy/dialects/mysql/aiomysql.py", line 95, in execute
-    return self.await_(self._execute_async(operation, parameters))
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/sqlalchemy/util/_concurrency_py3k.py", line 132, in await_only
-    return current.parent.switch(awaitable)  # type: ignore[no-any-return,attr-defined] # noqa: E501
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/sqlalchemy/util/_concurrency_py3k.py", line 196, in greenlet_spawn
-    value = await result
-            ^^^^^^^^^^^^
-  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/sqlalchemy/dialects/mysql/aiomysql.py", line 104, in _execute_async
-    result = await self._cursor.execute(operation, parameters)
-             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/aiomysql/cursors.py", line 239, in execute
-    await self._query(query)
-  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/aiomysql/cursors.py", line 457, in _query
-    await conn.query(q)
-  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/aiomysql/connection.py", line 469, in query
-    await self._read_query_result(unbuffered=unbuffered)
-  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/aiomysql/connection.py", line 683, in _read_query_result
-    await result.read()
-  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/aiomysql/connection.py", line 1164, in read
-    first_packet = await self.connection._read_packet()
-                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/aiomysql/connection.py", line 652, in _read_packet
-    packet.raise_for_error()
-  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/pymysql/protocol.py", line 219, in raise_for_error
-    err.raise_mysql_exception(self._data)
-  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/pymysql/err.py", line 150, in raise_mysql_exception
-    raise errorclass(errno, errval)
-pymysql.err.OperationalError: (1054, "Unknown column 'devices.device_name' in 'SELECT'")
-
-The above exception was the direct cause of the following exception:
-
-Traceback (most recent call last):
-  File "/home/dave/plants_logs_server/scripts/move_plant_to_user.py", line 258, in <module>
-    main()
-  File "/home/dave/plants_logs_server/scripts/move_plant_to_user.py", line 241, in main
-    asyncio.run(list_all_plants())
-  File "/usr/lib/python3.11/asyncio/runners.py", line 190, in run
-    return runner.run(main)
-           ^^^^^^^^^^^^^^^^
-  File "/usr/lib/python3.11/asyncio/runners.py", line 118, in run
-    return self._loop.run_until_complete(task)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/usr/lib/python3.11/asyncio/base_events.py", line 653, in run_until_complete
-    return future.result()
-           ^^^^^^^^^^^^^^^
-  File "/home/dave/plants_logs_server/scripts/move_plant_to_user.py", line 168, in list_all_plants
-    result = await session.execute(select(Device).where(Device.id == plant.device_id))
-             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/sqlalchemy/ext/asyncio/session.py", line 461, in execute
-    result = await greenlet_spawn(
-             ^^^^^^^^^^^^^^^^^^^^^
-  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/sqlalchemy/util/_concurrency_py3k.py", line 201, in greenlet_spawn
-    result = context.throw(*sys.exc_info())
-             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/sqlalchemy/orm/session.py", line 2362, in execute
-    return self._execute_internal(
-           ^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/sqlalchemy/orm/session.py", line 2247, in _execute_internal
-    result: Result[Any] = compile_state_cls.orm_execute_statement(
-                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/sqlalchemy/orm/context.py", line 305, in orm_execute_statement
-    result = conn.execute(
-             ^^^^^^^^^^^^^
-  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1418, in execute
-    return meth(
-           ^^^^^
-  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/sqlalchemy/sql/elements.py", line 515, in _execute_on_connection
-    return connection._execute_clauseelement(
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1640, in _execute_clauseelement
-    ret = self._execute_context(
-          ^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1846, in _execute_context
-    return self._exec_single_context(
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1986, in _exec_single_context
-    self._handle_dbapi_exception(
-  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 2355, in _handle_dbapi_exception
-    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
-  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
-    self.dialect.do_execute(
-  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/sqlalchemy/engine/default.py", line 941, in do_execute
-    cursor.execute(statement, parameters)
-  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/sqlalchemy/dialects/mysql/aiomysql.py", line 95, in execute
-    return self.await_(self._execute_async(operation, parameters))
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/sqlalchemy/util/_concurrency_py3k.py", line 132, in await_only
-    return current.parent.switch(awaitable)  # type: ignore[no-any-return,attr-defined] # noqa: E501
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/sqlalchemy/util/_concurrency_py3k.py", line 196, in greenlet_spawn
-    value = await result
-            ^^^^^^^^^^^^
-  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/sqlalchemy/dialects/mysql/aiomysql.py", line 104, in _execute_async
-    result = await self._cursor.execute(operation, parameters)
-             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/aiomysql/cursors.py", line 239, in execute
-    await self._query(query)
-  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/aiomysql/cursors.py", line 457, in _query
-    await conn.query(q)
-  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/aiomysql/connection.py", line 469, in query
-    await self._read_query_result(unbuffered=unbuffered)
-  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/aiomysql/connection.py", line 683, in _read_query_result
-    await result.read()
-  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/aiomysql/connection.py", line 1164, in read
-    first_packet = await self.connection._read_packet()
-                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/aiomysql/connection.py", line 652, in _read_packet
-    packet.raise_for_error()
-  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/pymysql/protocol.py", line 219, in raise_for_error
-    err.raise_mysql_exception(self._data)
-  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/pymysql/err.py", line 150, in raise_mysql_exception
-    raise errorclass(errno, errval)
-sqlalchemy.exc.OperationalError: (pymysql.err.OperationalError) (1054, "Unknown column 'devices.device_name' in 'SELECT'")
-[SQL: SELECT devices.id, devices.device_id, devices.device_name, devices.api_key, devices.user_id
-FROM devices
-WHERE devices.id = %s]
-[parameters: (15,)]
-(Background on this error at: https://sqlalche.me/e/20/e3q8)
-Exception ignored in: <function Connection.__del__ at 0x7fb028ee80>
-Traceback (most recent call last):
-  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/aiomysql/connection.py", line 1131, in __del__
-  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/aiomysql/connection.py", line 339, in close
-  File "/usr/lib/python3.11/asyncio/selector_events.py", line 839, in close
-  File "/usr/lib/python3.11/asyncio/base_events.py", line 761, in call_soon
-  File "/usr/lib/python3.11/asyncio/base_events.py", line 519, in _check_closed
-RuntimeError: Event loop is closed
+plant_info:324 Uploading pending logs...
+plant_info:289 [Violation] 'click' handler took 2696ms
+plant_info:372  POST http://test1.local:8000/api/plant_info/upload_logs 500 (INTERNAL SERVER ERROR)
+uploadPendingLogs @ plant_info:372
+(anonymous) @ plant_info:325
+plant_info:384 Error uploading logs: Error: Upload failed
+    at uploadPendingLogs (plant_info:377:17)
+    at async HTMLButtonElement.<anonymous> (plant_info:325:9)
+uploadPendingLogs @ plant_info:384
+await in uploadPendingLogs
+(anonymous) @ plant_info:325
+plant_info:328  POST https://garden.ruvolo.loseyourip.com/api/devices/6072daae-2e9a-4798-99a7-6fb9feb80d7a/plants/1761617795751274/finish?api_key=4f013c92df57eed17f75c5f7008f1b791638640658208b526fc98e5b810f1819 404 (Not Found)
+(anonymous) @ plant_info:328
+plant_info:364 Error finishing plant: Error: Server error: 404
+    at HTMLButtonElement.<anonymous> (plant_info:337:17)
+(anonymous) @ plant_info:364
