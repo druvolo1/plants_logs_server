@@ -1,8 +1,9 @@
-
-
-
-
 (venv) dave@Garden1:~/plants_logs_server/scripts $ python move_plant_to_user.py --list-plants
+
+================================================================================
+All Plants in Database:
+================================================================================
+
 Traceback (most recent call last):
   File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
     self.dialect.do_execute(
@@ -37,14 +38,14 @@ Traceback (most recent call last):
     err.raise_mysql_exception(self._data)
   File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/pymysql/err.py", line 150, in raise_mysql_exception
     raise errorclass(errno, errval)
-pymysql.err.OperationalError: (1054, "Unknown column 'plants.strain' in 'SELECT'")
+pymysql.err.OperationalError: (1054, "Unknown column 'devices.device_name' in 'SELECT'")
 
 The above exception was the direct cause of the following exception:
 
 Traceback (most recent call last):
-  File "/home/dave/plants_logs_server/scripts/move_plant_to_user.py", line 255, in <module>
+  File "/home/dave/plants_logs_server/scripts/move_plant_to_user.py", line 258, in <module>
     main()
-  File "/home/dave/plants_logs_server/scripts/move_plant_to_user.py", line 238, in main
+  File "/home/dave/plants_logs_server/scripts/move_plant_to_user.py", line 241, in main
     asyncio.run(list_all_plants())
   File "/usr/lib/python3.11/asyncio/runners.py", line 190, in run
     return runner.run(main)
@@ -55,9 +56,9 @@ Traceback (most recent call last):
   File "/usr/lib/python3.11/asyncio/base_events.py", line 653, in run_until_complete
     return future.result()
            ^^^^^^^^^^^^^^^
-  File "/home/dave/plants_logs_server/scripts/move_plant_to_user.py", line 153, in list_all_plants
-    result = await session.execute(select(Plant))
-             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dave/plants_logs_server/scripts/move_plant_to_user.py", line 168, in list_all_plants
+    result = await session.execute(select(Device).where(Device.id == plant.device_id))
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/sqlalchemy/ext/asyncio/session.py", line 461, in execute
     result = await greenlet_spawn(
              ^^^^^^^^^^^^^^^^^^^^^
@@ -122,11 +123,13 @@ Traceback (most recent call last):
     err.raise_mysql_exception(self._data)
   File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/pymysql/err.py", line 150, in raise_mysql_exception
     raise errorclass(errno, errval)
-sqlalchemy.exc.OperationalError: (pymysql.err.OperationalError) (1054, "Unknown column 'plants.strain' in 'SELECT'")
-[SQL: SELECT plants.id, plants.plant_id, plants.device_id, plants.name, plants.strain, plants.start_date, plants.end_date
-FROM plants]
+sqlalchemy.exc.OperationalError: (pymysql.err.OperationalError) (1054, "Unknown column 'devices.device_name' in 'SELECT'")
+[SQL: SELECT devices.id, devices.device_id, devices.device_name, devices.api_key, devices.user_id
+FROM devices
+WHERE devices.id = %s]
+[parameters: (15,)]
 (Background on this error at: https://sqlalche.me/e/20/e3q8)
-Exception ignored in: <function Connection.__del__ at 0x7fb112eb60>
+Exception ignored in: <function Connection.__del__ at 0x7fb028ee80>
 Traceback (most recent call last):
   File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/aiomysql/connection.py", line 1131, in __del__
   File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/aiomysql/connection.py", line 339, in close

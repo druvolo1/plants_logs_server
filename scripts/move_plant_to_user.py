@@ -36,10 +36,11 @@ class User(Base):
 class Device(Base):
     __tablename__ = "devices"
     id = Column(Integer, primary_key=True, index=True)
-    device_id = Column(String(255), unique=True, index=True, nullable=False)
-    device_name = Column(String(255), nullable=False)
-    api_key = Column(String(255), nullable=False)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    device_id = Column(String(36), unique=True, index=True)
+    api_key = Column(String(64))
+    name = Column(String(255), nullable=True)
+    is_online = Column(Boolean, default=False)
+    user_id = Column(Integer, ForeignKey("users.id"))
 
 class Plant(Base):
     __tablename__ = "plants"
@@ -96,7 +97,7 @@ async def move_plant(plant_id: str, target_device_id: str, execute: bool = False
             current_user = result.scalars().first()
             print(f"\n📍 Current ownership:")
             print(f"   Plant: {plant.name} (ID: {plant.plant_id})")
-            print(f"   Device: {current_device.device_name} (ID: {current_device.device_id})")
+            print(f"   Device: {current_device.name} (ID: {current_device.device_id})")
             print(f"   User: {current_user.email if current_user else 'Unknown'}")
 
         # Find target device
@@ -112,7 +113,7 @@ async def move_plant(plant_id: str, target_device_id: str, execute: bool = False
         target_user = result.scalars().first()
 
         print(f"\n🎯 Target ownership:")
-        print(f"   Device: {target_device.device_name} (ID: {target_device.device_id})")
+        print(f"   Device: {target_device.name} (ID: {target_device.device_id})")
         print(f"   User: {target_user.email if target_user else 'Unknown'}")
 
         # Count logs
@@ -134,7 +135,7 @@ async def move_plant(plant_id: str, target_device_id: str, execute: bool = False
             plant.user_id = target_device.user_id
             await session.commit()
             print(f"✅ Plant successfully moved!")
-            print(f"   {plant.name} now belongs to device {target_device.device_name} (user: {target_user.email})")
+            print(f"   {plant.name} now belongs to device {target_device.name} (user: {target_user.email})")
             return True
         else:
             print(f"\n⚠️  DRY RUN MODE - No changes made")
@@ -184,7 +185,7 @@ async def list_all_plants():
 
             print(f"🌱 {plant.name}")
             print(f"   Plant ID: {plant.plant_id}")
-            print(f"   Device: {device.device_name if device else 'None'} ({device.device_id if device else 'N/A'})")
+            print(f"   Device: {device.name if device else 'None'} ({device.device_id if device else 'N/A'})")
             print(f"   User: {user_email}")
             print(f"   Logs: {log_count}")
             print(f"   Started: {plant.start_date}")
@@ -218,7 +219,7 @@ async def list_all_devices():
             result = await session.execute(select(User).where(User.id == device.user_id))
             user = result.scalars().first()
 
-            print(f"🖥️  {device.device_name}")
+            print(f"🖥️  {device.name or 'Unnamed Device'}")
             print(f"   Device ID: {device.device_id}")
             print(f"   User: {user.email if user else 'Unknown'}")
             print()
