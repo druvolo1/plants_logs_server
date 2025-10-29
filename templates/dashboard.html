@@ -97,8 +97,23 @@
             background: #1a1a1a;
             overflow: hidden;
             transition: all 0.3s ease;
+            cursor: grab;
         }
-        
+
+        .device-section:active {
+            cursor: grabbing;
+        }
+
+        .device-section.dragging {
+            opacity: 0.5;
+            cursor: grabbing;
+        }
+
+        .device-section.drag-over {
+            border-top: 3px solid #10b981;
+            margin-top: 15px;
+        }
+
         /* Collapsible header - always visible */
         .device-header {
             display: flex;
@@ -899,6 +914,7 @@
                 devices.forEach(device => {
                     const deviceSection = document.createElement('div');
                     deviceSection.classList.add('device-section');
+                    deviceSection.dataset.deviceId = device.device_id; // Store device ID for reordering
 
                     // Set header color based on ownership/permission
                     let headerBgColor = '#1e293b'; // Default (owner)
@@ -1026,7 +1042,131 @@
 
                     connectToDevice(device.device_id);
                 });
+
+                // Apply saved device order
+                await applySavedDeviceOrder();
+
+                // Set up drag and drop for reordering
+                setupDragAndDrop();
             }
+        }
+
+        // Load and apply saved device order
+        async function applySavedDeviceOrder() {
+            try {
+                const response = await fetch('/api/user/dashboard-preferences');
+                if (response.ok) {
+                    const preferences = await response.json();
+                    const deviceOrder = preferences.device_order;
+
+                    if (deviceOrder && Array.isArray(deviceOrder)) {
+                        const statusDiv = document.getElementById('devices-status');
+                        const deviceSections = Array.from(statusDiv.querySelectorAll('.device-section'));
+
+                        // Create a map of device_id to section element
+                        const deviceMap = new Map();
+                        deviceSections.forEach(section => {
+                            if (section.dataset.deviceId) {
+                                deviceMap.set(section.dataset.deviceId, section);
+                            }
+                        });
+
+                        // Reorder based on saved order
+                        deviceOrder.forEach(deviceId => {
+                            const section = deviceMap.get(deviceId);
+                            if (section) {
+                                statusDiv.appendChild(section);
+                            }
+                        });
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading device order:', error);
+            }
+        }
+
+        // Save current device order
+        async function saveDeviceOrder() {
+            try {
+                const statusDiv = document.getElementById('devices-status');
+                const deviceSections = statusDiv.querySelectorAll('.device-section');
+                const deviceOrder = [];
+
+                deviceSections.forEach(section => {
+                    if (section.dataset.deviceId) {
+                        deviceOrder.push(section.dataset.deviceId);
+                    }
+                });
+
+                const response = await fetch('/api/user/dashboard-preferences', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ device_order: deviceOrder })
+                });
+
+                if (response.ok) {
+                    console.log('Device order saved');
+                }
+            } catch (error) {
+                console.error('Error saving device order:', error);
+            }
+        }
+
+        // Set up drag and drop functionality
+        function setupDragAndDrop() {
+            const statusDiv = document.getElementById('devices-status');
+            const deviceSections = statusDiv.querySelectorAll('.device-section');
+
+            deviceSections.forEach(section => {
+                section.draggable = true;
+
+                section.addEventListener('dragstart', (e) => {
+                    section.classList.add('dragging');
+                    e.dataTransfer.effectAllowed = 'move';
+                    e.dataTransfer.setData('text/html', section.innerHTML);
+                });
+
+                section.addEventListener('dragend', (e) => {
+                    section.classList.remove('dragging');
+                    // Remove drag-over class from all sections
+                    deviceSections.forEach(s => s.classList.remove('drag-over'));
+                    // Save the new order
+                    saveDeviceOrder();
+                });
+
+                section.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    const draggingElement = statusDiv.querySelector('.dragging');
+                    if (draggingElement && draggingElement !== section) {
+                        // Remove drag-over from all other sections
+                        deviceSections.forEach(s => {
+                            if (s !== section) s.classList.remove('drag-over');
+                        });
+                        section.classList.add('drag-over');
+
+                        // Get bounding rect to determine if we should insert before or after
+                        const rect = section.getBoundingClientRect();
+                        const midpoint = rect.top + rect.height / 2;
+
+                        if (e.clientY < midpoint) {
+                            statusDiv.insertBefore(draggingElement, section);
+                        } else {
+                            statusDiv.insertBefore(draggingElement, section.nextSibling);
+                        }
+                    }
+                });
+
+                section.addEventListener('dragleave', (e) => {
+                    if (e.target === section) {
+                        section.classList.remove('drag-over');
+                    }
+                });
+
+                section.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    section.classList.remove('drag-over');
+                });
+            });
         }
 
         function toggleDevice(device_id) {

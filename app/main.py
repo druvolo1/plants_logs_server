@@ -6,7 +6,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, Integer, String, Boolean, select, ForeignKey, DateTime, Float
+from sqlalchemy import Column, Integer, String, Boolean, select, ForeignKey, DateTime, Float, Text
 from sqlalchemy.orm import relationship, selectinload, Session
 from datetime import datetime, timedelta
 from dateutil import parser as date_parser
@@ -73,6 +73,7 @@ class User(Base):
     is_superuser = Column(Boolean, default=False)  # For admin
     is_verified = Column(Boolean, default=False)
     is_suspended = Column(Boolean, default=False)  # Added for suspended users
+    dashboard_preferences = Column(Text, nullable=True)  # JSON string for dashboard settings (device order, etc.)
     oauth_accounts = relationship("OAuthAccount", back_populates="user", cascade="all, delete-orphan")
     devices = relationship("Device", back_populates="user", cascade="all, delete-orphan")  # Added backref
 
@@ -86,6 +87,7 @@ class Device(Base):
     is_online = Column(Boolean, default=False)
     user_id = Column(Integer, ForeignKey("users.id"))
     user = relationship("User", back_populates="devices")
+    plants = relationship("Plant", foreign_keys="Plant.device_id", cascade="all, delete-orphan", passive_deletes=False)
 
 # Device Sharing model
 class DeviceShare(Base):
@@ -121,7 +123,7 @@ class Plant(Base):
     yield_grams = Column(Float, nullable=True)  # Added after harvest
 
     # Relationships
-    device = relationship("Device", foreign_keys=[device_id])
+    device = relationship("Device", foreign_keys=[device_id], back_populates="plants")
     user = relationship("User", foreign_keys=[user_id])
     logs = relationship("LogEntry", back_populates="plant", cascade="all, delete-orphan")
 
@@ -766,6 +768,46 @@ async def get_current_user_info(user: User = Depends(current_user)):
         "is_active": user.is_active
     }
 
+# Get dashboard preferences
+@app.get("/api/user/dashboard-preferences")
+async def get_dashboard_preferences(
+    user: User = Depends(current_user),
+    session: AsyncSession = Depends(get_db)
+):
+    # Refresh user from database to get latest preferences
+    result = await session.execute(select(User).where(User.id == user.id))
+    db_user = result.scalars().first()
+
+    if db_user and db_user.dashboard_preferences:
+        try:
+            import json
+            return json.loads(db_user.dashboard_preferences)
+        except:
+            return {}
+    return {}
+
+# Save dashboard preferences
+@app.post("/api/user/dashboard-preferences")
+async def save_dashboard_preferences(
+    preferences: Dict[str, Any],
+    user: User = Depends(current_user),
+    session: AsyncSession = Depends(get_db)
+):
+    import json
+
+    # Get user from database
+    result = await session.execute(select(User).where(User.id == user.id))
+    db_user = result.scalars().first()
+
+    if not db_user:
+        raise HTTPException(404, "User not found")
+
+    # Save preferences as JSON string
+    db_user.dashboard_preferences = json.dumps(preferences)
+    await session.commit()
+
+    return {"status": "success", "message": "Preferences saved"}
+
 # Dashboard
 @app.get("/dashboard", response_class=HTMLResponse)
 async def dashboard(request: Request, user: User = Depends(current_user)):
@@ -1020,10 +1062,22 @@ async def list_devices(user: User = Depends(current_user), session: AsyncSession
 # Added: Delete device
 @app.delete("/user/devices/{device_id}")
 async def delete_device(device_id: str, user: User = Depends(current_user), session: AsyncSession = Depends(get_db)):
-    result = await session.execute(select(Device).where(Device.device_id == device_id, Device.user_id == user.id))
+    # Load device with its related plants to allow proper cascade deletion
+    result = await session.execute(
+        select(Device)
+        .options(selectinload(Device.plants))
+        .where(Device.device_id == device_id, Device.user_id == user.id)
+    )
     device = result.scalars().first()
     if not device:
         raise HTTPException(404, "Device not found")
+
+    # Delete all associated plants first (which will cascade delete logs)
+    if device.plants:
+        for plant in device.plants:
+            await session.delete(plant)
+
+    # Now delete the device
     await session.delete(device)
     await session.commit()
     return {"status": "success"}
