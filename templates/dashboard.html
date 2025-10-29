@@ -114,6 +114,24 @@
             margin-top: 15px;
         }
 
+        /* Drag handle icon */
+        .drag-handle {
+            cursor: grab;
+            font-size: 1.5rem;
+            color: #6b7280;
+            transition: color 0.2s;
+            user-select: none;
+            padding: 0 0.25rem;
+        }
+
+        .drag-handle:hover {
+            color: #10b981;
+        }
+
+        .drag-handle:active {
+            cursor: grabbing;
+        }
+
         /* Collapsible header - always visible */
         .device-header {
             display: flex;
@@ -976,6 +994,7 @@
                                 </div>
                             </div>
                             <div class="header-icons-wrapper" style="display: flex; align-items: center; gap: 1rem;">
+                                <div class="drag-handle" title="Drag to reorder">⋮⋮</div>
                                 <div class="refresh-icon" id="refresh-icon-${device.device_id}" style="cursor: pointer; font-size: 1.5rem; color: #4da6ff; transition: transform 0.3s;" title="Refresh">🔄</div>
                                 <div class="expand-icon" id="expand-icon-${device.device_id}">▼</div>
                             </div>
@@ -1119,6 +1138,25 @@
 
             deviceSections.forEach(section => {
                 section.draggable = true;
+
+                // Prevent dragging when clicking on interactive elements
+                const header = section.querySelector('.device-header');
+                const dragHandle = section.querySelector('.drag-handle');
+
+                header.addEventListener('mousedown', (e) => {
+                    // Only allow dragging if clicking on the drag handle or empty header space
+                    const isDragHandle = e.target.classList.contains('drag-handle');
+                    const isInteractive = e.target.classList.contains('refresh-icon') ||
+                                        e.target.classList.contains('expand-icon') ||
+                                        e.target.closest('.refresh-icon') ||
+                                        e.target.closest('.expand-icon');
+
+                    if (isInteractive) {
+                        section.draggable = false;
+                    } else {
+                        section.draggable = true;
+                    }
+                });
 
                 section.addEventListener('dragstart', (e) => {
                     section.classList.add('dragging');

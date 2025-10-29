@@ -28,12 +28,12 @@ async def check_and_add_column(connection, table_name: str, column_name: str, co
             AND COLUMN_NAME = '{column_name}'
         """))
         row = result.fetchone()
-        
+
         if row[0] == 0:
             # Column doesn't exist, add it
             print(f"  Adding column '{column_name}' to table '{table_name}'...")
             await connection.execute(text(f"ALTER TABLE {table_name} ADD COLUMN {column_definition}"))
-            await connection.commit()
+            # Don't commit here - let the context manager handle it
             print(f"  ✓ Column '{column_name}' added successfully")
             return True
         else:
@@ -71,7 +71,7 @@ async def check_and_modify_column_default(connection, table_name: str, column_na
                     ALTER TABLE {table_name}
                     MODIFY COLUMN {column_name} {column_type} {is_nullable} DEFAULT {new_default}
                 """))
-                await connection.commit()
+                # Don't commit here - let the context manager handle it
                 print(f"  ✓ Default value for '{column_name}' updated to {new_default}")
                 return True
             else:
@@ -101,7 +101,7 @@ async def check_and_create_table(connection, table_name: str, create_sql: str):
             # Table doesn't exist, create it
             print(f"  Creating table '{table_name}'...")
             await connection.execute(text(create_sql))
-            await connection.commit()
+            # Don't commit here - let the context manager handle it
             print(f"  ✓ Table '{table_name}' created successfully")
             return True
         else:
