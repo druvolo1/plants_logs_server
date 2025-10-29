@@ -44,12 +44,14 @@ class Device(Base):
 class Plant(Base):
     __tablename__ = "plants"
     id = Column(Integer, primary_key=True, index=True)
-    plant_id = Column(String(255), unique=True, index=True, nullable=False)
-    device_id = Column(Integer, ForeignKey("devices.id"), nullable=False)
+    plant_id = Column(String(64), unique=True, index=True, nullable=False)
     name = Column(String(255), nullable=False)
-    strain = Column(String(255))
-    start_date = Column(String(50))
-    end_date = Column(String(50), nullable=True)
+    system_id = Column(String(255), nullable=True)
+    device_id = Column(Integer, ForeignKey("devices.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    start_date = Column(DateTime, nullable=False)
+    end_date = Column(DateTime, nullable=True)
+    yield_grams = Column(Float, nullable=True)
 
 class LogEntry(Base):
     __tablename__ = "log_entries"
@@ -122,13 +124,14 @@ async def move_plant(plant_id: str, target_device_id: str, execute: bool = False
 
         print(f"\n📊 Plant has {log_count} log entries")
 
-        if current_device and plant.device_id == target_device.id:
+        if current_device and plant.device_id == target_device.id and plant.user_id == target_device.user_id:
             print(f"\n✅ Plant is already owned by the target device!")
             return True
 
         if execute:
             print(f"\n🔄 Moving plant to new device...")
             plant.device_id = target_device.id
+            plant.user_id = target_device.user_id
             await session.commit()
             print(f"✅ Plant successfully moved!")
             print(f"   {plant.name} now belongs to device {target_device.device_name} (user: {target_user.email})")
