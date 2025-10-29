@@ -1581,7 +1581,15 @@ async def upload_logs(
     plant = result.scalars().first()
 
     if not plant:
-        raise HTTPException(404, "Plant not found for this device")
+        print(f"[LOG UPLOAD ERROR] Plant not found: plant_id={plant_id}, device.id={device.id}, device.device_id={device_id}")
+        # Check if plant exists at all
+        check_result = await session.execute(select(Plant).where(Plant.plant_id == plant_id))
+        check_plant = check_result.scalars().first()
+        if check_plant:
+            print(f"[LOG UPLOAD ERROR] Plant {plant_id} exists but belongs to device.id={check_plant.device_id}, not {device.id}")
+        else:
+            print(f"[LOG UPLOAD ERROR] Plant {plant_id} does not exist in database at all")
+        raise HTTPException(404, f"Plant {plant_id} not found for device {device_id}")
 
     # Insert log entries
     log_count = 0

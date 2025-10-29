@@ -1,6 +1,13 @@
-plant_info:180 [Violation] 'submit' handler took 1743ms
-plant_info:214  POST https://garden.ruvolo.loseyourip.com/user/plants 401 (Unauthorized)
-(anonymous) @ plant_info:214
-plant_info:253 Error starting plant: Error: Server error: 401
-    at HTMLFormElement.<anonymous> (plant_info:225:17)
-(anonymous) @ plant_info:253
+
+[2025-10-29 19:30:41 -0400] [3307392] [DEBUG] GET /logs
+[2025-10-29 19:30:41 -0400] [3307392] [DEBUG] GET /static/style.css
+[2025-10-29 19:30:41 -0400] [3307392] [DEBUG] GET /api/logs/list
+[2025-10-29 19:30:41 -0400] [3307392] [DEBUG] GET /api/settings/
+[2025-10-29 19:30:45 -0400] [3307392] [DEBUG] POST /api/plant_info/upload_log/ph_log.jsonl
+Failed to upload batch from ph_log.jsonl: 404
+[ERROR] Failed to upload ph_log.jsonl
+
+
+logs:135 [Violation] 'click' handler took 1834ms
+logs:150  POST http://test1.local:8000/api/plant_info/upload_log/ph_log.jsonl 500 (INTERNAL SERVER ERROR)
+(anonymous) @ logs:150

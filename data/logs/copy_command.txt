@@ -1,0 +1,6 @@
+Run this command from a Windows Command Prompt or PowerShell window (NOT from SSH):
+
+pscp -r "C:\Users\Dave\Documents\Programming\Garden\ph_dosing_system\data\logs\*" dave@172.16.1.152:/garden/data/logs/
+
+This will copy all files from the ph_dosing_system logs folder to the remote system at 172.16.1.152
+You'll be prompted for dave's password.
