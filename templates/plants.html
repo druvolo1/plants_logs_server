@@ -702,19 +702,19 @@
 
             if (dosingChart) dosingChart.destroy();
 
-            // Aggregate dosing events by day with timestamps
+            // Aggregate dosing events by day with timestamps and amounts
             const dosingByDay = {};
             dosingLogs.forEach(log => {
                 const dateKey = formatDate(log.timestamp);
                 if (!dosingByDay[dateKey]) {
-                    dosingByDay[dateKey] = { up: 0, down: 0, upTimes: [], downTimes: [] };
+                    dosingByDay[dateKey] = { up: 0, down: 0, upDoses: [], downDoses: [] };
                 }
                 if (log.dose_type === 'up') {
                     dosingByDay[dateKey].up++;
-                    dosingByDay[dateKey].upTimes.push(log.timestamp);
+                    dosingByDay[dateKey].upDoses.push({ time: log.timestamp, amount: log.dose_amount_ml });
                 } else if (log.dose_type === 'down') {
                     dosingByDay[dateKey].down++;
-                    dosingByDay[dateKey].downTimes.push(log.timestamp);
+                    dosingByDay[dateKey].downDoses.push({ time: log.timestamp, amount: log.dose_amount_ml });
                 }
             });
 
@@ -766,16 +766,17 @@
                                 afterLabel: function(context) {
                                     const date = sortedDates[context.dataIndex];
                                     const isUpDose = context.datasetIndex === 0;
-                                    const times = isUpDose ? dosingByDay[date].upTimes : dosingByDay[date].downTimes;
+                                    const doses = isUpDose ? dosingByDay[date].upDoses : dosingByDay[date].downDoses;
 
-                                    if (times.length === 0) return '';
+                                    if (doses.length === 0) return '';
 
-                                    const timeStrings = times.map(t => {
-                                        const d = new Date(t);
-                                        return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+                                    const doseStrings = doses.map(dose => {
+                                        const d = new Date(dose.time);
+                                        const timeStr = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+                                        return `${timeStr} - ${dose.amount.toFixed(2)} ml`;
                                     });
 
-                                    return '\nTimes:\n' + timeStrings.join('\n');
+                                    return '\nDoses:\n' + doseStrings.join('\n');
                                 }
                             }
                         }
