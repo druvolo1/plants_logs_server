@@ -348,6 +348,87 @@
             padding: 2rem;
             color: #94a3b8;
         }
+
+        .menu-container {
+            position: relative;
+            display: inline-block;
+        }
+
+        .menu-button {
+            background: none;
+            border: none;
+            color: #94a3b8;
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: color 0.2s;
+        }
+
+        .menu-button:hover {
+            color: #e2e8f0;
+        }
+
+        .menu-dropdown {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 6px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            min-width: 180px;
+            z-index: 1000;
+            margin-top: 0.5rem;
+        }
+
+        .menu-dropdown.show {
+            display: block;
+        }
+
+        .menu-item {
+            padding: 0.75rem 1rem;
+            color: #e2e8f0;
+            cursor: pointer;
+            transition: background 0.2s;
+            border: none;
+            background: none;
+            width: 100%;
+            text-align: left;
+            font-size: 0.875rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .menu-item:hover {
+            background: #334155;
+        }
+
+        .menu-item:first-child {
+            border-radius: 6px 6px 0 0;
+        }
+
+        .menu-item:last-child {
+            border-radius: 0 0 6px 6px;
+        }
+
+        .menu-item.danger {
+            color: #ef4444;
+        }
+
+        .menu-item.danger:hover {
+            background: rgba(239, 68, 68, 0.1);
+        }
+
+        .menu-divider {
+            height: 1px;
+            background: #334155;
+            margin: 0.25rem 0;
+        }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -391,13 +472,19 @@
     <div id="plantModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2 id="modalPlantName"></h2>
-                <div style="display: flex; gap: 1rem; align-items: center;">
-                    <button onclick="exportToHTML()" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); padding: 0.5rem 1rem; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: 600;">Export HTML</button>
-                    <button onclick="exportToPDF()" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 0.5rem 1rem; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: 600;">Export PDF</button>
-                    <button id="deletePlantBtn" onclick="deletePlant()" style="display: none; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); padding: 0.5rem 1rem; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: 600;">Delete Plant</button>
-                    <span class="close" onclick="closePlantModal()">&times;</span>
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <div class="menu-container">
+                        <button class="menu-button" onclick="togglePlantMenu(event)">☰</button>
+                        <div class="menu-dropdown" id="plantMenu">
+                            <button class="menu-item" onclick="exportToHTML()">📄 Export HTML</button>
+                            <button class="menu-item" onclick="exportToPDF()">📑 Export PDF</button>
+                            <div class="menu-divider" id="menuDivider" style="display: none;"></div>
+                            <button class="menu-item danger" id="deleteMenuItem" onclick="deletePlant()" style="display: none;">🗑️ Delete Plant</button>
+                        </div>
+                    </div>
+                    <h2 id="modalPlantName"></h2>
                 </div>
+                <span class="close" onclick="closePlantModal()">&times;</span>
             </div>
 
             <div class="stats-grid" id="plantStats"></div>
@@ -554,22 +641,49 @@
             document.getElementById('modalPlantId').textContent = currentPlant.plant_id;
             document.getElementById('plantModal').style.display = 'block';
 
-            // Show delete button for admins or plant owners
-            const deleteBtn = document.getElementById('deletePlantBtn');
+            // Show delete menu item for admins or plant owners
+            const deleteMenuItem = document.getElementById('deleteMenuItem');
+            const menuDivider = document.getElementById('menuDivider');
             if (isAdmin || currentPlant.user_id === currentUserId) {
-                deleteBtn.style.display = 'block';
+                deleteMenuItem.style.display = 'flex';
+                menuDivider.style.display = 'block';
             } else {
-                deleteBtn.style.display = 'none';
+                deleteMenuItem.style.display = 'none';
+                menuDivider.style.display = 'none';
             }
 
             await loadPlantLogs(plantId);
         }
 
+        function togglePlantMenu(event) {
+            event.stopPropagation();
+            const menu = document.getElementById('plantMenu');
+            menu.classList.toggle('show');
+        }
+
+        // Close menu when clicking outside
+        document.addEventListener('click', function(event) {
+            const menu = document.getElementById('plantMenu');
+            const menuContainer = event.target.closest('.menu-container');
+            if (!menuContainer && menu) {
+                menu.classList.remove('show');
+            }
+        });
+
         async function deletePlant() {
             if (!currentPlant) return;
 
-            const confirmMsg = `Are you sure you want to delete plant "${currentPlant.name}"? This will permanently delete the plant and ALL associated logs. This action cannot be undone.`;
-            if (!confirm(confirmMsg)) return;
+            // Close the menu
+            const menu = document.getElementById('plantMenu');
+            menu.classList.remove('show');
+
+            // First confirmation
+            const firstConfirm = confirm(`Are you sure?`);
+            if (!firstConfirm) return;
+
+            // Second confirmation
+            const secondConfirm = confirm(`Are you absolutely sure? This can't be undone and your plant data will be deleted from our database.`);
+            if (!secondConfirm) return;
 
             try {
                 const response = await fetch(`/user/plants/${currentPlant.plant_id}`, {
@@ -841,6 +955,10 @@
                 return;
             }
 
+            // Close the menu
+            const menu = document.getElementById('plantMenu');
+            menu.classList.remove('show');
+
             const sensorLogs = currentLogs.filter(l => l.event_type === 'sensor');
             const dosingLogs = currentLogs.filter(l => l.event_type === 'dosing');
 
@@ -1089,6 +1207,10 @@
                 alert('No plant data to export');
                 return;
             }
+
+            // Close the menu
+            const menu = document.getElementById('plantMenu');
+            menu.classList.remove('show');
 
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF('p', 'mm', 'a4');
