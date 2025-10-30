@@ -939,8 +939,12 @@
 
     <script>
         // Decode base64-encoded data
-        const sensorLogs = JSON.parse(atob('` + sensorLogsB64 + `'));
-        const dosingLogs = JSON.parse(atob('` + dosingLogsB64 + `'));
+        const sensorLogs = JSON.parse(atob('` +
+            sensorLogsB64 +
+            `'));
+        const dosingLogs = JSON.parse(atob('` +
+            dosingLogsB64 +
+            `'));
 
         // Render stats
         const phValues = sensorLogs.map(l => l.value);
