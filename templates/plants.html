@@ -848,6 +848,10 @@
             const plantId = escapeHtml(currentPlant.plant_id);
             const exportTime = new Date().toLocaleString();
 
+            // Base64 encode the data to safely embed in HTML
+            const sensorLogsB64 = btoa(JSON.stringify(sensorLogs));
+            const dosingLogsB64 = btoa(JSON.stringify(dosingLogs));
+
             const htmlContent = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -934,8 +938,9 @@
     </div>
 
     <script>
-        const sensorLogs = JSON.parse(` + JSON.stringify(JSON.stringify(sensorLogs)) + `);
-        const dosingLogs = JSON.parse(` + JSON.stringify(JSON.stringify(dosingLogs)) + `);
+        // Decode base64-encoded data
+        const sensorLogs = JSON.parse(atob('` + sensorLogsB64 + `'));
+        const dosingLogs = JSON.parse(atob('` + dosingLogsB64 + `'));
 
         // Render stats
         const phValues = sensorLogs.map(l => l.value);
