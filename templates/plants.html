@@ -934,8 +934,8 @@
     </div>
 
     <script>
-        const sensorLogs = ` + JSON.stringify(sensorLogs).replace(/</g, '\\u003c').replace(/>/g, '\\u003e') + `;
-        const dosingLogs = ` + JSON.stringify(dosingLogs).replace(/</g, '\\u003c').replace(/>/g, '\\u003e') + `;
+        const sensorLogs = JSON.parse(` + JSON.stringify(JSON.stringify(sensorLogs)) + `);
+        const dosingLogs = JSON.parse(` + JSON.stringify(JSON.stringify(dosingLogs)) + `);
 
         // Render stats
         const phValues = sensorLogs.map(l => l.value);
