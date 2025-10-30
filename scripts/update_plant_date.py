@@ -25,6 +25,16 @@ if DATABASE_URL:
 
 Base = declarative_base()
 
+class User(Base):
+    __tablename__ = "users"
+    id = Column(Integer, primary_key=True)
+    email = Column(String(255))
+
+class Device(Base):
+    __tablename__ = "devices"
+    id = Column(Integer, primary_key=True)
+    device_id = Column(String(36))
+
 class Plant(Base):
     __tablename__ = "plants"
     id = Column(Integer, primary_key=True)
