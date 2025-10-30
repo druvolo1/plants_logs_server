@@ -934,8 +934,8 @@
     </div>
 
     <script>
-        const sensorLogs = ` + JSON.stringify(sensorLogs) + `;
-        const dosingLogs = ` + JSON.stringify(dosingLogs) + `;
+        const sensorLogs = ` + JSON.stringify(sensorLogs).replace(/</g, '\\u003c').replace(/>/g, '\\u003e') + `;
+        const dosingLogs = ` + JSON.stringify(dosingLogs).replace(/</g, '\\u003c').replace(/>/g, '\\u003e') + `;
 
         // Render stats
         const phValues = sensorLogs.map(l => l.value);
@@ -1144,11 +1144,52 @@
             doc.text(`pH Range: ${minPh} - ${maxPh}`, 14, 53);
             doc.text(`Total Doses: ${totalDoses} (Up: ${upDoses}, Down: ${downDoses})`, 14, 58);
 
-            // pH Chart as image
+            // Create temporary canvas for PDF-optimized charts (white background, black text)
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = 800;
+            tempCanvas.height = 400;
+            const tempCtx = tempCanvas.getContext('2d');
+
+            // pH Chart with PDF-friendly colors
             let yPos = 68;
-            if (phChart) {
-                const phChartImg = phChart.toBase64Image();
+            if (sensorLogs.length > 0) {
+                const tempPhChart = new Chart(tempCtx, {
+                    type: 'line',
+                    data: {
+                        labels: sensorLogs.map(l => formatDateTime(l.timestamp)),
+                        datasets: [{
+                            label: 'pH Level',
+                            data: sensorLogs.map(l => l.value),
+                            borderColor: '#10b981',
+                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                            tension: 0.4,
+                            pointRadius: 2
+                        }]
+                    },
+                    options: {
+                        responsive: false,
+                        animation: false,
+                        plugins: {
+                            legend: { labels: { color: '#000000', font: { size: 14 } } },
+                            title: { display: true, text: 'pH History', color: '#000000', font: { size: 18, weight: 'bold' } }
+                        },
+                        scales: {
+                            y: {
+                                ticks: { color: '#000000', font: { size: 12 } },
+                                grid: { color: '#cccccc' },
+                                title: { display: true, text: 'pH', color: '#000000', font: { size: 14 } }
+                            },
+                            x: {
+                                ticks: { color: '#000000', maxRotation: 45, minRotation: 45, font: { size: 10 } },
+                                grid: { color: '#cccccc' }
+                            }
+                        }
+                    }
+                });
+
+                const phChartImg = tempCanvas.toDataURL('image/png');
                 doc.addImage(phChartImg, 'PNG', 14, yPos, 180, 80);
+                tempPhChart.destroy();
                 yPos += 85;
             }
 
@@ -1158,10 +1199,75 @@
                 yPos = 20;
             }
 
-            // Dosing Chart as image
-            if (dosingChart) {
-                const dosingChartImg = dosingChart.toBase64Image();
+            // Dosing Chart with PDF-friendly colors
+            if (dosingLogs.length > 0) {
+                const dosingByDay = {};
+                dosingLogs.forEach(log => {
+                    const dateKey = formatDate(log.timestamp);
+                    if (!dosingByDay[dateKey]) {
+                        dosingByDay[dateKey] = { up: 0, down: 0 };
+                    }
+                    if (log.dose_type === 'up') {
+                        dosingByDay[dateKey].up++;
+                    } else if (log.dose_type === 'down') {
+                        dosingByDay[dateKey].down++;
+                    }
+                });
+
+                const sortedDates = Object.keys(dosingByDay).sort((a, b) => new Date(a) - new Date(b));
+                const upCounts = sortedDates.map(date => dosingByDay[date].up);
+                const downCounts = sortedDates.map(date => dosingByDay[date].down);
+
+                const tempDosingChart = new Chart(tempCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: sortedDates,
+                        datasets: [
+                            {
+                                label: 'pH Up Doses',
+                                data: upCounts,
+                                backgroundColor: 'rgba(59, 130, 246, 0.7)',
+                                borderColor: '#3b82f6',
+                                borderWidth: 1,
+                                barPercentage: 0.9,
+                                categoryPercentage: 0.3
+                            },
+                            {
+                                label: 'pH Down Doses',
+                                data: downCounts,
+                                backgroundColor: 'rgba(239, 68, 68, 0.7)',
+                                borderColor: '#ef4444',
+                                borderWidth: 1,
+                                barPercentage: 0.9,
+                                categoryPercentage: 0.3
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: false,
+                        animation: false,
+                        plugins: {
+                            legend: { labels: { color: '#000000', font: { size: 14 } } },
+                            title: { display: true, text: 'Daily Dosing Events', color: '#000000', font: { size: 18, weight: 'bold' } }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: { color: '#000000', stepSize: 1, font: { size: 12 } },
+                                grid: { color: '#cccccc' },
+                                title: { display: true, text: 'Number of Doses', color: '#000000', font: { size: 14 } }
+                            },
+                            x: {
+                                ticks: { color: '#000000', maxRotation: 45, minRotation: 45, font: { size: 10 } },
+                                grid: { color: '#cccccc' }
+                            }
+                        }
+                    }
+                });
+
+                const dosingChartImg = tempCanvas.toDataURL('image/png');
                 doc.addImage(dosingChartImg, 'PNG', 14, yPos, 180, 80);
+                tempDosingChart.destroy();
                 yPos += 85;
             }
 
