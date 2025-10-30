@@ -1591,12 +1591,27 @@ async def upload_logs(
             print(f"[LOG UPLOAD ERROR] Plant {plant_id} does not exist in database at all")
         raise HTTPException(404, f"Plant {plant_id} not found for device {device_id}")
 
-    # Insert log entries
+    # Insert log entries (skip duplicates)
     log_count = 0
+    skipped_count = 0
     for log_data in logs:
         try:
             # Parse timestamp
             timestamp = date_parser.isoparse(log_data.timestamp)
+
+            # Check if this log entry already exists (duplicate detection)
+            duplicate_check = await session.execute(
+                select(LogEntry).where(
+                    LogEntry.plant_id == plant.id,
+                    LogEntry.timestamp == timestamp,
+                    LogEntry.event_type == log_data.event_type
+                )
+            )
+            existing_entry = duplicate_check.scalars().first()
+
+            if existing_entry:
+                skipped_count += 1
+                continue  # Skip this duplicate entry
 
             # Create log entry
             log_entry = LogEntry(
@@ -1617,7 +1632,10 @@ async def upload_logs(
 
     await session.commit()
 
-    return {"status": "success", "message": f"Uploaded {log_count} log entries"}
+    message = f"Uploaded {log_count} log entries"
+    if skipped_count > 0:
+        message += f", skipped {skipped_count} duplicates"
+    return {"status": "success", "message": message}
 
 # Get logs for a plant
 @app.get("/user/plants/{plant_id}/logs", response_model=List[LogEntryRead])
