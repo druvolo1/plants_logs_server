@@ -848,258 +848,229 @@
             const plantId = escapeHtml(currentPlant.plant_id);
             const exportTime = new Date().toLocaleString();
 
-            // Base64 encode the data to safely embed in HTML
-            const sensorLogsB64 = btoa(JSON.stringify(sensorLogs));
-            const dosingLogsB64 = btoa(JSON.stringify(dosingLogs));
-
-            const htmlContent = `<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>` + plantName + ` - Plant Report</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"><\/script>
-    <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-            color: #e2e8f0;
-            padding: 2rem;
-            margin: 0;
-        }
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-        h1 {
-            color: #10b981;
-            margin-bottom: 2rem;
-        }
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1rem;
-            margin-bottom: 2rem;
-        }
-        .stat-card {
-            background: #1e293b;
-            border: 1px solid #334155;
-            border-radius: 8px;
-            padding: 1.5rem;
-            text-align: center;
-        }
-        .stat-value {
-            font-size: 2rem;
-            font-weight: bold;
-            color: #10b981;
-            margin-bottom: 0.5rem;
-        }
-        .stat-label {
-            color: #94a3b8;
-            font-size: 0.875rem;
-        }
-        .chart-container {
-            background: #0f172a;
-            border-radius: 8px;
-            padding: 1.5rem;
-            margin-bottom: 1.5rem;
-            border: 1px solid #334155;
-        }
-        canvas {
-            max-height: 400px;
-        }
-        .info {
-            color: #64748b;
-            font-size: 0.875rem;
-            text-align: center;
-            margin-top: 2rem;
-            padding: 1rem;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>` + plantName + `</h1>
-
-        <div class="stats-grid" id="stats"></div>
-
-        <div class="chart-container">
-            <canvas id="phChart"></canvas>
-        </div>
-
-        <div class="chart-container">
-            <canvas id="dosingChart"></canvas>
-        </div>
-
-        <div class="info">
-            <div>Plant ID: ` + plantId + `</div>
-            <div>Exported: ` + exportTime + `</div>
-        </div>
-    </div>
-
-    <script>
-        // Decode base64-encoded data
-        const sensorLogs = JSON.parse(atob('` +
-            sensorLogsB64 +
-            `'));
-        const dosingLogs = JSON.parse(atob('` +
-            dosingLogsB64 +
-            `'));
-
-        // Render stats
-        const phValues = sensorLogs.map(l => l.value);
-        const avgPh = phValues.length > 0 ? (phValues.reduce((a, b) => a + b, 0) / phValues.length).toFixed(2) : 'N/A';
-        const minPh = phValues.length > 0 ? Math.min(...phValues).toFixed(2) : 'N/A';
-        const maxPh = phValues.length > 0 ? Math.max(...phValues).toFixed(2) : 'N/A';
-        const totalDoses = dosingLogs.length;
-        const upDoses = dosingLogs.filter(l => l.dose_type === 'up').length;
-        const downDoses = dosingLogs.filter(l => l.dose_type === 'down').length;
-
-        document.getElementById('stats').innerHTML = \\\`
-            <div class="stat-card">
-                <div class="stat-value">\\\${avgPh}</div>
-                <div class="stat-label">Average pH</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-value">\\\${minPh} - \\\${maxPh}</div>
-                <div class="stat-label">pH Range</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-value">\\\${totalDoses}</div>
-                <div class="stat-label">Total Doses</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-value">\\\${upDoses} / \\\${downDoses}</div>
-                <div class="stat-label">Up / Down Doses</div>
-            </div>
-        \\\`;
-
-        // pH Chart
-        const phCtx = document.getElementById('phChart').getContext('2d');
-        new Chart(phCtx, {
-            type: 'line',
-            data: {
-                labels: sensorLogs.map(l => new Date(l.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })),
-                datasets: [{
-                    label: 'pH Level',
-                    data: sensorLogs.map(l => l.value),
-                    borderColor: '#10b981',
-                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                    tension: 0.4,
-                    pointRadius: 2,
-                    pointHoverRadius: 6
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: true,
-                plugins: {
-                    legend: { labels: { color: '#e2e8f0' } },
-                    title: { display: true, text: 'pH History', color: '#e2e8f0', font: { size: 16 } }
-                },
-                scales: {
-                    y: {
-                        ticks: { color: '#e2e8f0' },
-                        grid: { color: '#334155' },
-                        title: { display: true, text: 'pH', color: '#e2e8f0' }
-                    },
-                    x: {
-                        ticks: { color: '#e2e8f0', maxRotation: 45, minRotation: 45 },
-                        grid: { color: '#334155' }
-                    }
-                }
-            }
-        });
-
-        // Dosing Chart
-        const dosingByDay = {};
-        dosingLogs.forEach(log => {
-            const dateKey = new Date(log.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-            if (!dosingByDay[dateKey]) {
-                dosingByDay[dateKey] = { up: 0, down: 0, upDoses: [], downDoses: [] };
-            }
-            if (log.dose_type === 'up') {
-                dosingByDay[dateKey].up++;
-                dosingByDay[dateKey].upDoses.push({ time: log.timestamp, amount: log.dose_amount_ml });
-            } else if (log.dose_type === 'down') {
-                dosingByDay[dateKey].down++;
-                dosingByDay[dateKey].downDoses.push({ time: log.timestamp, amount: log.dose_amount_ml });
-            }
-        });
-
-        const sortedDates = Object.keys(dosingByDay).sort((a, b) => new Date(a) - new Date(b));
-        const upCounts = sortedDates.map(date => dosingByDay[date].up);
-        const downCounts = sortedDates.map(date => dosingByDay[date].down);
-
-        const dosingCtx = document.getElementById('dosingChart').getContext('2d');
-        new Chart(dosingCtx, {
-            type: 'bar',
-            data: {
-                labels: sortedDates,
-                datasets: [
-                    {
-                        label: 'pH Up Doses',
-                        data: upCounts,
-                        backgroundColor: 'rgba(59, 130, 246, 0.7)',
-                        borderColor: '#3b82f6',
-                        borderWidth: 1,
-                        barPercentage: 0.9,
-                        categoryPercentage: 0.3
-                    },
-                    {
-                        label: 'pH Down Doses',
-                        data: downCounts,
-                        backgroundColor: 'rgba(239, 68, 68, 0.7)',
-                        borderColor: '#ef4444',
-                        borderWidth: 1,
-                        barPercentage: 0.9,
-                        categoryPercentage: 0.3
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: true,
-                plugins: {
-                    legend: { labels: { color: '#e2e8f0' } },
-                    title: { display: true, text: 'Daily Dosing Events', color: '#e2e8f0', font: { size: 16 } },
-                    tooltip: {
-                        callbacks: {
-                            afterLabel: function(context) {
-                                const date = sortedDates[context.dataIndex];
-                                const isUpDose = context.datasetIndex === 0;
-                                const doses = isUpDose ? dosingByDay[date].upDoses : dosingByDay[date].downDoses;
-
-                                if (doses.length === 0) return '';
-
-                                const doseStrings = doses.map(dose => {
-                                    const d = new Date(dose.time);
-                                    const timeStr = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-                                    return \\\`\\\${timeStr} - \\\${dose.amount.toFixed(2)} ml\\\`;
-                                });
-
-                                return '\\\\nDoses:\\\\n' + doseStrings.join('\\\\n');
-                            }
-                        }
-                    }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        ticks: { color: '#e2e8f0', stepSize: 1 },
-                        grid: { color: '#334155' },
-                        title: { display: true, text: 'Number of Doses', color: '#e2e8f0' }
-                    },
-                    x: {
-                        ticks: { color: '#e2e8f0', maxRotation: 45, minRotation: 45 },
-                        grid: { color: '#334155' }
-                    }
-                }
-            }
-        });
-    <\/script>
-</body>
-</html>`;
+            // Create HTML parts
+            const htmlContent = '<!DOCTYPE html>' + '\n' +
+'<html lang="en">' + '\n' +
+'<head>' + '\n' +
+'    <meta charset="UTF-8">' + '\n' +
+'    <meta name="viewport" content="width=device-width, initial-scale=1.0">' + '\n' +
+'    <title>' + plantName + ' - Plant Report</title>' + '\n' +
+'    <script src="https://cdn.jsdelivr.net/npm/chart.js"><' + '/script>' + '\n' +
+'    <style>' + '\n' +
+'        body {' + '\n' +
+'            font-family: \'Segoe UI\', Tahoma, Geneva, Verdana, sans-serif;' + '\n' +
+'            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);' + '\n' +
+'            color: #e2e8f0;' + '\n' +
+'            padding: 2rem;' + '\n' +
+'            margin: 0;' + '\n' +
+'        }' + '\n' +
+'        .container {' + '\n' +
+'            max-width: 1200px;' + '\n' +
+'            margin: 0 auto;' + '\n' +
+'        }' + '\n' +
+'        h1 {' + '\n' +
+'            color: #10b981;' + '\n' +
+'            margin-bottom: 2rem;' + '\n' +
+'        }' + '\n' +
+'        .stats-grid {' + '\n' +
+'            display: grid;' + '\n' +
+'            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));' + '\n' +
+'            gap: 1rem;' + '\n' +
+'            margin-bottom: 2rem;' + '\n' +
+'        }' + '\n' +
+'        .stat-card {' + '\n' +
+'            background: #1e293b;' + '\n' +
+'            border: 1px solid #334155;' + '\n' +
+'            border-radius: 8px;' + '\n' +
+'            padding: 1.5rem;' + '\n' +
+'            text-align: center;' + '\n' +
+'        }' + '\n' +
+'        .stat-value {' + '\n' +
+'            font-size: 2rem;' + '\n' +
+'            font-weight: bold;' + '\n' +
+'            color: #10b981;' + '\n' +
+'            margin-bottom: 0.5rem;' + '\n' +
+'        }' + '\n' +
+'        .stat-label {' + '\n' +
+'            color: #94a3b8;' + '\n' +
+'            font-size: 0.875rem;' + '\n' +
+'        }' + '\n' +
+'        .chart-container {' + '\n' +
+'            background: #0f172a;' + '\n' +
+'            border-radius: 8px;' + '\n' +
+'            padding: 1.5rem;' + '\n' +
+'            margin-bottom: 1.5rem;' + '\n' +
+'            border: 1px solid #334155;' + '\n' +
+'        }' + '\n' +
+'        canvas {' + '\n' +
+'            max-height: 400px;' + '\n' +
+'        }' + '\n' +
+'        .info {' + '\n' +
+'            color: #64748b;' + '\n' +
+'            font-size: 0.875rem;' + '\n' +
+'            text-align: center;' + '\n' +
+'            margin-top: 2rem;' + '\n' +
+'            padding: 1rem;' + '\n' +
+'        }' + '\n' +
+'    </style>' + '\n' +
+'</head>' + '\n' +
+'<body>' + '\n' +
+'    <div class="container">' + '\n' +
+'        <h1>' + plantName + '</h1>' + '\n' +
+'        <div class="stats-grid" id="stats"></div>' + '\n' +
+'        <div class="chart-container">' + '\n' +
+'            <canvas id="phChart"></canvas>' + '\n' +
+'        </div>' + '\n' +
+'        <div class="chart-container">' + '\n' +
+'            <canvas id="dosingChart"></canvas>' + '\n' +
+'        </div>' + '\n' +
+'        <div class="info">' + '\n' +
+'            <div>Plant ID: ' + plantId + '</div>' + '\n' +
+'            <div>Exported: ' + exportTime + '</div>' + '\n' +
+'        </div>' + '\n' +
+'    </div>' + '\n' +
+'    <script>' + '\n' +
+'        var sensorLogs = ' + JSON.stringify(sensorLogs) + ';' + '\n' +
+'        var dosingLogs = ' + JSON.stringify(dosingLogs) + ';' + '\n' +
+'' + '\n' +
+'        // Render stats' + '\n' +
+'        var phValues = sensorLogs.map(function(l) { return l.value; });' + '\n' +
+'        var avgPh = phValues.length > 0 ? (phValues.reduce(function(a, b) { return a + b; }, 0) / phValues.length).toFixed(2) : "N/A";' + '\n' +
+'        var minPh = phValues.length > 0 ? Math.min.apply(Math, phValues).toFixed(2) : "N/A";' + '\n' +
+'        var maxPh = phValues.length > 0 ? Math.max.apply(Math, phValues).toFixed(2) : "N/A";' + '\n' +
+'        var totalDoses = dosingLogs.length;' + '\n' +
+'        var upDoses = dosingLogs.filter(function(l) { return l.dose_type === "up"; }).length;' + '\n' +
+'        var downDoses = dosingLogs.filter(function(l) { return l.dose_type === "down"; }).length;' + '\n' +
+'' + '\n' +
+'        document.getElementById("stats").innerHTML = ' + '\n' +
+'            "<div class=\\"stat-card\\"><div class=\\"stat-value\\">" + avgPh + "</div><div class=\\"stat-label\\">Average pH</div></div>" +' + '\n' +
+'            "<div class=\\"stat-card\\"><div class=\\"stat-value\\">" + minPh + " - " + maxPh + "</div><div class=\\"stat-label\\">pH Range</div></div>" +' + '\n' +
+'            "<div class=\\"stat-card\\"><div class=\\"stat-value\\">" + totalDoses + "</div><div class=\\"stat-label\\">Total Doses</div></div>" +' + '\n' +
+'            "<div class=\\"stat-card\\"><div class=\\"stat-value\\">" + upDoses + " / " + downDoses + "</div><div class=\\"stat-label\\">Up / Down Doses</div></div>";' + '\n' +
+'' + '\n' +
+'        // pH Chart' + '\n' +
+'        var phCtx = document.getElementById("phChart").getContext("2d");' + '\n' +
+'        new Chart(phCtx, {' + '\n' +
+'            type: "line",' + '\n' +
+'            data: {' + '\n' +
+'                labels: sensorLogs.map(function(l) { return new Date(l.timestamp).toLocaleDateString("en-US", { month: "short", day: "numeric" }); }),' + '\n' +
+'                datasets: [{' + '\n' +
+'                    label: "pH Level",' + '\n' +
+'                    data: sensorLogs.map(function(l) { return l.value; }),' + '\n' +
+'                    borderColor: "#10b981",' + '\n' +
+'                    backgroundColor: "rgba(16, 185, 129, 0.1)",' + '\n' +
+'                    tension: 0.4,' + '\n' +
+'                    pointRadius: 2,' + '\n' +
+'                    pointHoverRadius: 6' + '\n' +
+'                }]' + '\n' +
+'            },' + '\n' +
+'            options: {' + '\n' +
+'                responsive: true,' + '\n' +
+'                maintainAspectRatio: true,' + '\n' +
+'                plugins: {' + '\n' +
+'                    legend: { labels: { color: "#e2e8f0" } },' + '\n' +
+'                    title: { display: true, text: "pH History", color: "#e2e8f0", font: { size: 16 } }' + '\n' +
+'                },' + '\n' +
+'                scales: {' + '\n' +
+'                    y: {' + '\n' +
+'                        ticks: { color: "#e2e8f0" },' + '\n' +
+'                        grid: { color: "#334155" },' + '\n' +
+'                        title: { display: true, text: "pH", color: "#e2e8f0" }' + '\n' +
+'                    },' + '\n' +
+'                    x: {' + '\n' +
+'                        ticks: { color: "#e2e8f0", maxRotation: 45, minRotation: 45 },' + '\n' +
+'                        grid: { color: "#334155" }' + '\n' +
+'                    }' + '\n' +
+'                }' + '\n' +
+'            }' + '\n' +
+'        });' + '\n' +
+'' + '\n' +
+'        // Dosing Chart' + '\n' +
+'        var dosingByDay = {};' + '\n' +
+'        dosingLogs.forEach(function(log) {' + '\n' +
+'            var dateKey = new Date(log.timestamp).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });' + '\n' +
+'            if (!dosingByDay[dateKey]) {' + '\n' +
+'                dosingByDay[dateKey] = { up: 0, down: 0, upDoses: [], downDoses: [] };' + '\n' +
+'            }' + '\n' +
+'            if (log.dose_type === "up") {' + '\n' +
+'                dosingByDay[dateKey].up++;' + '\n' +
+'                dosingByDay[dateKey].upDoses.push({ time: log.timestamp, amount: log.dose_amount_ml });' + '\n' +
+'            } else if (log.dose_type === "down") {' + '\n' +
+'                dosingByDay[dateKey].down++;' + '\n' +
+'                dosingByDay[dateKey].downDoses.push({ time: log.timestamp, amount: log.dose_amount_ml });' + '\n' +
+'            }' + '\n' +
+'        });' + '\n' +
+'' + '\n' +
+'        var sortedDates = Object.keys(dosingByDay).sort(function(a, b) { return new Date(a) - new Date(b); });' + '\n' +
+'        var upCounts = sortedDates.map(function(date) { return dosingByDay[date].up; });' + '\n' +
+'        var downCounts = sortedDates.map(function(date) { return dosingByDay[date].down; });' + '\n' +
+'' + '\n' +
+'        var dosingCtx = document.getElementById("dosingChart").getContext("2d");' + '\n' +
+'        new Chart(dosingCtx, {' + '\n' +
+'            type: "bar",' + '\n' +
+'            data: {' + '\n' +
+'                labels: sortedDates,' + '\n' +
+'                datasets: [' + '\n' +
+'                    {' + '\n' +
+'                        label: "pH Up Doses",' + '\n' +
+'                        data: upCounts,' + '\n' +
+'                        backgroundColor: "rgba(59, 130, 246, 0.7)",' + '\n' +
+'                        borderColor: "#3b82f6",' + '\n' +
+'                        borderWidth: 1,' + '\n' +
+'                        barPercentage: 0.9,' + '\n' +
+'                        categoryPercentage: 0.3' + '\n' +
+'                    },' + '\n' +
+'                    {' + '\n' +
+'                        label: "pH Down Doses",' + '\n' +
+'                        data: downCounts,' + '\n' +
+'                        backgroundColor: "rgba(239, 68, 68, 0.7)",' + '\n' +
+'                        borderColor: "#ef4444",' + '\n' +
+'                        borderWidth: 1,' + '\n' +
+'                        barPercentage: 0.9,' + '\n' +
+'                        categoryPercentage: 0.3' + '\n' +
+'                    }' + '\n' +
+'                ]' + '\n' +
+'            },' + '\n' +
+'            options: {' + '\n' +
+'                responsive: true,' + '\n' +
+'                maintainAspectRatio: true,' + '\n' +
+'                plugins: {' + '\n' +
+'                    legend: { labels: { color: "#e2e8f0" } },' + '\n' +
+'                    title: { display: true, text: "Daily Dosing Events", color: "#e2e8f0", font: { size: 16 } },' + '\n' +
+'                    tooltip: {' + '\n' +
+'                        callbacks: {' + '\n' +
+'                            afterLabel: function(context) {' + '\n' +
+'                                var date = sortedDates[context.dataIndex];' + '\n' +
+'                                var isUpDose = context.datasetIndex === 0;' + '\n' +
+'                                var doses = isUpDose ? dosingByDay[date].upDoses : dosingByDay[date].downDoses;' + '\n' +
+'                                if (doses.length === 0) return "";' + '\n' +
+'                                var doseStrings = doses.map(function(dose) {' + '\n' +
+'                                    var d = new Date(dose.time);' + '\n' +
+'                                    var timeStr = d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });' + '\n' +
+'                                    return timeStr + " - " + dose.amount.toFixed(2) + " ml";' + '\n' +
+'                                });' + '\n' +
+'                                return "\\nDoses:\\n" + doseStrings.join("\\n");' + '\n' +
+'                            }' + '\n' +
+'                        }' + '\n' +
+'                    }' + '\n' +
+'                },' + '\n' +
+'                scales: {' + '\n' +
+'                    y: {' + '\n' +
+'                        beginAtZero: true,' + '\n' +
+'                        ticks: { color: "#e2e8f0", stepSize: 1 },' + '\n' +
+'                        grid: { color: "#334155" },' + '\n' +
+'                        title: { display: true, text: "Number of Doses", color: "#e2e8f0" }' + '\n' +
+'                    },' + '\n' +
+'                    x: {' + '\n' +
+'                        ticks: { color: "#e2e8f0", maxRotation: 45, minRotation: 45 },' + '\n' +
+'                        grid: { color: "#334155" }' + '\n' +
+'                    }' + '\n' +
+'                }' + '\n' +
+'            }' + '\n' +
+'        });' + '\n' +
+'    <' + '/script>' + '\n' +
+'</body>' + '\n' +
+'</html>';
 
             // Download the HTML file
             const blob = new Blob([htmlContent], { type: 'text/html' });
