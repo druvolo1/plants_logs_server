@@ -702,17 +702,19 @@
 
             if (dosingChart) dosingChart.destroy();
 
-            // Aggregate dosing events by day
+            // Aggregate dosing events by day with timestamps
             const dosingByDay = {};
             dosingLogs.forEach(log => {
                 const dateKey = formatDate(log.timestamp);
                 if (!dosingByDay[dateKey]) {
-                    dosingByDay[dateKey] = { up: 0, down: 0 };
+                    dosingByDay[dateKey] = { up: 0, down: 0, upTimes: [], downTimes: [] };
                 }
                 if (log.dose_type === 'up') {
                     dosingByDay[dateKey].up++;
+                    dosingByDay[dateKey].upTimes.push(log.timestamp);
                 } else if (log.dose_type === 'down') {
                     dosingByDay[dateKey].down++;
+                    dosingByDay[dateKey].downTimes.push(log.timestamp);
                 }
             });
 
@@ -758,6 +760,24 @@
                             text: 'Daily Dosing Events',
                             color: '#e2e8f0',
                             font: { size: 16 }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                afterLabel: function(context) {
+                                    const date = sortedDates[context.dataIndex];
+                                    const isUpDose = context.datasetIndex === 0;
+                                    const times = isUpDose ? dosingByDay[date].upTimes : dosingByDay[date].downTimes;
+
+                                    if (times.length === 0) return '';
+
+                                    const timeStrings = times.map(t => {
+                                        const d = new Date(t);
+                                        return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+                                    });
+
+                                    return '\nTimes:\n' + timeStrings.join('\n');
+                                }
+                            }
                         }
                     },
                     scales: {
