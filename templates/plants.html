@@ -350,6 +350,8 @@
         }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
 </head>
 <body>
     <!-- Navigation Bar -->
@@ -391,7 +393,9 @@
             <div class="modal-header">
                 <h2 id="modalPlantName"></h2>
                 <div style="display: flex; gap: 1rem; align-items: center;">
-                    <button id="deletePlantBtn" onclick="deletePlant()" style="display: none; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); padding: 0.5rem 1rem; border: none; border-radius: 6px; color: white; cursor: pointer;">Delete Plant</button>
+                    <button onclick="exportToHTML()" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); padding: 0.5rem 1rem; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: 600;">Export HTML</button>
+                    <button onclick="exportToPDF()" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 0.5rem 1rem; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: 600;">Export PDF</button>
+                    <button id="deletePlantBtn" onclick="deletePlant()" style="display: none; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); padding: 0.5rem 1rem; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: 600;">Delete Plant</button>
                     <span class="close" onclick="closePlantModal()">&times;</span>
                 </div>
             </div>
@@ -426,6 +430,7 @@
     <script>
         let plants = [];
         let currentPlant = null;
+        let currentLogs = [];
         let phChart = null;
         let dosingChart = null;
         let isAdmin = false;
@@ -604,6 +609,9 @@
 
                 // Reverse to show oldest first for charts
                 logs.reverse();
+
+                // Store logs globally for export
+                currentLogs = logs;
 
                 renderStats(logs);
                 renderCharts(logs);
@@ -825,6 +833,390 @@
             if (currentPlant) {
                 await loadPlantLogs(currentPlant.plant_id);
             }
+        }
+
+        function exportToHTML() {
+            if (!currentPlant || !currentLogs) {
+                alert('No plant data to export');
+                return;
+            }
+
+            const sensorLogs = currentLogs.filter(l => l.event_type === 'sensor');
+            const dosingLogs = currentLogs.filter(l => l.event_type === 'dosing');
+
+            const htmlContent = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${escapeHtml(currentPlant.name)} - Plant Report</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: #e2e8f0;
+            padding: 2rem;
+            margin: 0;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #10b981;
+            margin-bottom: 2rem;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        .stat-card {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            padding: 1.5rem;
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #10b981;
+            margin-bottom: 0.5rem;
+        }
+        .stat-label {
+            color: #94a3b8;
+            font-size: 0.875rem;
+        }
+        .chart-container {
+            background: #0f172a;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            border: 1px solid #334155;
+        }
+        canvas {
+            max-height: 400px;
+        }
+        .info {
+            color: #64748b;
+            font-size: 0.875rem;
+            text-align: center;
+            margin-top: 2rem;
+            padding: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>${escapeHtml(currentPlant.name)}</h1>
+
+        <div class="stats-grid" id="stats"></div>
+
+        <div class="chart-container">
+            <canvas id="phChart"></canvas>
+        </div>
+
+        <div class="chart-container">
+            <canvas id="dosingChart"></canvas>
+        </div>
+
+        <div class="info">
+            <div>Plant ID: ${escapeHtml(currentPlant.plant_id)}</div>
+            <div>Exported: ${new Date().toLocaleString()}</div>
+        </div>
+    </div>
+
+    <script>
+        const sensorLogs = ${JSON.stringify(sensorLogs)};
+        const dosingLogs = ${JSON.stringify(dosingLogs)};
+
+        // Render stats
+        const phValues = sensorLogs.map(l => l.value);
+        const avgPh = phValues.length > 0 ? (phValues.reduce((a, b) => a + b, 0) / phValues.length).toFixed(2) : 'N/A';
+        const minPh = phValues.length > 0 ? Math.min(...phValues).toFixed(2) : 'N/A';
+        const maxPh = phValues.length > 0 ? Math.max(...phValues).toFixed(2) : 'N/A';
+        const totalDoses = dosingLogs.length;
+        const upDoses = dosingLogs.filter(l => l.dose_type === 'up').length;
+        const downDoses = dosingLogs.filter(l => l.dose_type === 'down').length;
+
+        document.getElementById('stats').innerHTML = \`
+            <div class="stat-card">
+                <div class="stat-value">\${avgPh}</div>
+                <div class="stat-label">Average pH</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">\${minPh} - \${maxPh}</div>
+                <div class="stat-label">pH Range</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">\${totalDoses}</div>
+                <div class="stat-label">Total Doses</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">\${upDoses} / \${downDoses}</div>
+                <div class="stat-label">Up / Down Doses</div>
+            </div>
+        \`;
+
+        // pH Chart
+        const phCtx = document.getElementById('phChart').getContext('2d');
+        new Chart(phCtx, {
+            type: 'line',
+            data: {
+                labels: sensorLogs.map(l => new Date(l.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })),
+                datasets: [{
+                    label: 'pH Level',
+                    data: sensorLogs.map(l => l.value),
+                    borderColor: '#10b981',
+                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                    tension: 0.4,
+                    pointRadius: 2,
+                    pointHoverRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: { labels: { color: '#e2e8f0' } },
+                    title: { display: true, text: 'pH History', color: '#e2e8f0', font: { size: 16 } }
+                },
+                scales: {
+                    y: {
+                        ticks: { color: '#e2e8f0' },
+                        grid: { color: '#334155' },
+                        title: { display: true, text: 'pH', color: '#e2e8f0' }
+                    },
+                    x: {
+                        ticks: { color: '#e2e8f0', maxRotation: 45, minRotation: 45 },
+                        grid: { color: '#334155' }
+                    }
+                }
+            }
+        });
+
+        // Dosing Chart
+        const dosingByDay = {};
+        dosingLogs.forEach(log => {
+            const dateKey = new Date(log.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+            if (!dosingByDay[dateKey]) {
+                dosingByDay[dateKey] = { up: 0, down: 0, upDoses: [], downDoses: [] };
+            }
+            if (log.dose_type === 'up') {
+                dosingByDay[dateKey].up++;
+                dosingByDay[dateKey].upDoses.push({ time: log.timestamp, amount: log.dose_amount_ml });
+            } else if (log.dose_type === 'down') {
+                dosingByDay[dateKey].down++;
+                dosingByDay[dateKey].downDoses.push({ time: log.timestamp, amount: log.dose_amount_ml });
+            }
+        });
+
+        const sortedDates = Object.keys(dosingByDay).sort((a, b) => new Date(a) - new Date(b));
+        const upCounts = sortedDates.map(date => dosingByDay[date].up);
+        const downCounts = sortedDates.map(date => dosingByDay[date].down);
+
+        const dosingCtx = document.getElementById('dosingChart').getContext('2d');
+        new Chart(dosingCtx, {
+            type: 'bar',
+            data: {
+                labels: sortedDates,
+                datasets: [
+                    {
+                        label: 'pH Up Doses',
+                        data: upCounts,
+                        backgroundColor: 'rgba(59, 130, 246, 0.7)',
+                        borderColor: '#3b82f6',
+                        borderWidth: 1,
+                        barPercentage: 0.9,
+                        categoryPercentage: 0.3
+                    },
+                    {
+                        label: 'pH Down Doses',
+                        data: downCounts,
+                        backgroundColor: 'rgba(239, 68, 68, 0.7)',
+                        borderColor: '#ef4444',
+                        borderWidth: 1,
+                        barPercentage: 0.9,
+                        categoryPercentage: 0.3
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: { labels: { color: '#e2e8f0' } },
+                    title: { display: true, text: 'Daily Dosing Events', color: '#e2e8f0', font: { size: 16 } },
+                    tooltip: {
+                        callbacks: {
+                            afterLabel: function(context) {
+                                const date = sortedDates[context.dataIndex];
+                                const isUpDose = context.datasetIndex === 0;
+                                const doses = isUpDose ? dosingByDay[date].upDoses : dosingByDay[date].downDoses;
+
+                                if (doses.length === 0) return '';
+
+                                const doseStrings = doses.map(dose => {
+                                    const d = new Date(dose.time);
+                                    const timeStr = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+                                    return \`\${timeStr} - \${dose.amount.toFixed(2)} ml\`;
+                                });
+
+                                return '\\nDoses:\\n' + doseStrings.join('\\n');
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { color: '#e2e8f0', stepSize: 1 },
+                        grid: { color: '#334155' },
+                        title: { display: true, text: 'Number of Doses', color: '#e2e8f0' }
+                    },
+                    x: {
+                        ticks: { color: '#e2e8f0', maxRotation: 45, minRotation: 45 },
+                        grid: { color: '#334155' }
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>`;
+
+            // Download the HTML file
+            const blob = new Blob([htmlContent], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${currentPlant.name.replace(/[^a-z0-9]/gi, '_')}_report.html`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        async function exportToPDF() {
+            if (!currentPlant || !currentLogs) {
+                alert('No plant data to export');
+                return;
+            }
+
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF('p', 'mm', 'a4');
+
+            const sensorLogs = currentLogs.filter(l => l.event_type === 'sensor');
+            const dosingLogs = currentLogs.filter(l => l.event_type === 'dosing');
+
+            // Title
+            doc.setFontSize(20);
+            doc.setTextColor(16, 185, 129);
+            doc.text(currentPlant.name, 14, 20);
+
+            // Plant info
+            doc.setFontSize(10);
+            doc.setTextColor(100, 116, 139);
+            doc.text(`Plant ID: ${currentPlant.plant_id}`, 14, 28);
+            doc.text(`Exported: ${new Date().toLocaleString()}`, 14, 33);
+
+            // Stats summary
+            const phValues = sensorLogs.map(l => l.value);
+            const avgPh = phValues.length > 0 ? (phValues.reduce((a, b) => a + b, 0) / phValues.length).toFixed(2) : 'N/A';
+            const minPh = phValues.length > 0 ? Math.min(...phValues).toFixed(2) : 'N/A';
+            const maxPh = phValues.length > 0 ? Math.max(...phValues).toFixed(2) : 'N/A';
+            const totalDoses = dosingLogs.length;
+            const upDoses = dosingLogs.filter(l => l.dose_type === 'up').length;
+            const downDoses = dosingLogs.filter(l => l.dose_type === 'down').length;
+
+            doc.setFontSize(12);
+            doc.setTextColor(0, 0, 0);
+            doc.text('Summary Statistics', 14, 42);
+            doc.setFontSize(10);
+            doc.text(`Average pH: ${avgPh}`, 14, 48);
+            doc.text(`pH Range: ${minPh} - ${maxPh}`, 14, 53);
+            doc.text(`Total Doses: ${totalDoses} (Up: ${upDoses}, Down: ${downDoses})`, 14, 58);
+
+            // pH Chart as image
+            let yPos = 68;
+            if (phChart) {
+                const phChartImg = phChart.toBase64Image();
+                doc.addImage(phChartImg, 'PNG', 14, yPos, 180, 80);
+                yPos += 85;
+            }
+
+            // Add new page if needed
+            if (yPos > 200) {
+                doc.addPage();
+                yPos = 20;
+            }
+
+            // Dosing Chart as image
+            if (dosingChart) {
+                const dosingChartImg = dosingChart.toBase64Image();
+                doc.addImage(dosingChartImg, 'PNG', 14, yPos, 180, 80);
+                yPos += 85;
+            }
+
+            // Add new page for data tables
+            doc.addPage();
+            yPos = 20;
+
+            // pH Readings Table
+            doc.setFontSize(12);
+            doc.setTextColor(0, 0, 0);
+            doc.text('pH Readings', 14, yPos);
+            yPos += 5;
+
+            const phTableData = sensorLogs.map(log => [
+                new Date(log.timestamp).toLocaleString(),
+                log.value.toFixed(2)
+            ]);
+
+            doc.autoTable({
+                startY: yPos,
+                head: [['Timestamp', 'pH Value']],
+                body: phTableData,
+                theme: 'grid',
+                headStyles: { fillColor: [16, 185, 129] },
+                styles: { fontSize: 8 },
+                margin: { left: 14 }
+            });
+
+            yPos = doc.lastAutoTable.finalY + 10;
+
+            // Dosing Events Table
+            if (yPos > 250) {
+                doc.addPage();
+                yPos = 20;
+            }
+
+            doc.setFontSize(12);
+            doc.text('Dosing Events', 14, yPos);
+            yPos += 5;
+
+            const dosingTableData = dosingLogs.map(log => [
+                new Date(log.timestamp).toLocaleString(),
+                log.dose_type === 'up' ? 'pH Up' : 'pH Down',
+                log.dose_amount_ml.toFixed(2) + ' ml',
+                log.value ? log.value.toFixed(2) : 'N/A'
+            ]);
+
+            doc.autoTable({
+                startY: yPos,
+                head: [['Timestamp', 'Type', 'Amount', 'pH at Dose']],
+                body: dosingTableData,
+                theme: 'grid',
+                headStyles: { fillColor: [16, 185, 129] },
+                styles: { fontSize: 8 },
+                margin: { left: 14 }
+            });
+
+            // Save the PDF
+            doc.save(`${currentPlant.name.replace(/[^a-z0-9]/gi, '_')}_report.pdf`);
         }
 
         function formatDate(dateString) {
