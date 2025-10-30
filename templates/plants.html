@@ -697,48 +697,51 @@
                 }
             });
 
-            // Dosing Chart - Aggregate by day
+            // Dosing Chart - Cumulative doses over time
             const dosingCtx = document.getElementById('dosingChart').getContext('2d');
 
             if (dosingChart) dosingChart.destroy();
 
-            // Aggregate dosing events by day
-            const dosingByDay = {};
-            dosingLogs.forEach(log => {
-                const dateKey = formatDate(log.timestamp);
-                if (!dosingByDay[dateKey]) {
-                    dosingByDay[dateKey] = { up: 0, down: 0 };
-                }
+            // Calculate cumulative doses
+            let cumulativeUp = 0;
+            let cumulativeDown = 0;
+            const cumulativeData = dosingLogs.map(log => {
                 if (log.dose_type === 'up') {
-                    dosingByDay[dateKey].up++;
+                    cumulativeUp++;
                 } else if (log.dose_type === 'down') {
-                    dosingByDay[dateKey].down++;
+                    cumulativeDown++;
                 }
+                return {
+                    timestamp: log.timestamp,
+                    up: cumulativeUp,
+                    down: cumulativeDown
+                };
             });
 
-            // Sort dates chronologically
-            const sortedDates = Object.keys(dosingByDay).sort((a, b) => new Date(a) - new Date(b));
-            const upCounts = sortedDates.map(date => dosingByDay[date].up);
-            const downCounts = sortedDates.map(date => dosingByDay[date].down);
-
             dosingChart = new Chart(dosingCtx, {
-                type: 'bar',
+                type: 'line',
                 data: {
-                    labels: sortedDates,
+                    labels: cumulativeData.map(d => formatDateTime(d.timestamp)),
                     datasets: [
                         {
-                            label: 'pH Up Doses',
-                            data: upCounts,
-                            backgroundColor: 'rgba(59, 130, 246, 0.6)',
+                            label: 'Total pH Up Doses',
+                            data: cumulativeData.map(d => d.up),
                             borderColor: '#3b82f6',
-                            borderWidth: 1
+                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                            tension: 0.1,
+                            pointRadius: 0,
+                            pointHoverRadius: 6,
+                            borderWidth: 2
                         },
                         {
-                            label: 'pH Down Doses',
-                            data: downCounts,
-                            backgroundColor: 'rgba(239, 68, 68, 0.6)',
+                            label: 'Total pH Down Doses',
+                            data: cumulativeData.map(d => d.down),
                             borderColor: '#ef4444',
-                            borderWidth: 1
+                            backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                            tension: 0.1,
+                            pointRadius: 0,
+                            pointHoverRadius: 6,
+                            borderWidth: 2
                         }
                     ]
                 },
@@ -751,7 +754,7 @@
                         },
                         title: {
                             display: true,
-                            text: 'Daily Dosing Events',
+                            text: 'Cumulative Dosing Events',
                             color: '#e2e8f0',
                             font: { size: 16 }
                         }
@@ -760,13 +763,12 @@
                         y: {
                             beginAtZero: true,
                             ticks: {
-                                color: '#e2e8f0',
-                                stepSize: 1
+                                color: '#e2e8f0'
                             },
                             grid: { color: '#334155' },
                             title: {
                                 display: true,
-                                text: 'Number of Doses',
+                                text: 'Total Doses',
                                 color: '#e2e8f0'
                             }
                         },
