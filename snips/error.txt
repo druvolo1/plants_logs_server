@@ -1,92 +1,55 @@
+settings:1035  POST http://test1.local:8000/api/settings/assign_usb 500 (INTERNAL SERVER ERROR)
+saveUsbAssignment @ settings:1035
+(anonymous) @ settings:1069
+settings:1049 Error assigning ph_probe: SyntaxError: Unexpected token '<', "<!doctype "... is not valid JSON
+(anonymous) @ settings:1049
+Promise.catch
+saveUsbAssignment @ settings:1049
+(anonymous) @ settings:1069
 
-(venv) dave@Garden1:~/plants_logs_server $ python scripts/update_plant_date.py 1761797746542490 2025-08-15 --execute
 
-🌱 Plant: strain 1
-   Current start date: 2025-10-30 00:15:46
-   New start date: 2025-08-15 00:00:00
 
+[2025-10-29 21:43:04 -0400] [3310310] [DEBUG] POST /api/settings/assign_usb
+[2025-10-29 21:43:04,415] ERROR in app: Exception on /api/settings/assign_usb [POST]
 Traceback (most recent call last):
-  File "/home/dave/plants_logs_server/scripts/update_plant_date.py", line 140, in <module>
-    main()
-  File "/home/dave/plants_logs_server/scripts/update_plant_date.py", line 136, in main
-    asyncio.run(update_plant_date(plant_id, new_start_date, execute))
-  File "/usr/lib/python3.11/asyncio/runners.py", line 190, in run
-    return runner.run(main)
-           ^^^^^^^^^^^^^^^^
-  File "/usr/lib/python3.11/asyncio/runners.py", line 118, in run
-    return self._loop.run_until_complete(task)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/usr/lib/python3.11/asyncio/base_events.py", line 653, in run_until_complete
-    return future.result()
-           ^^^^^^^^^^^^^^^
-  File "/home/dave/plants_logs_server/scripts/update_plant_date.py", line 104, in update_plant_date
-    await session.commit()
-  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/sqlalchemy/ext/asyncio/session.py", line 1009, in commit
-    await greenlet_spawn(self.sync_session.commit)
-  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/sqlalchemy/util/_concurrency_py3k.py", line 203, in greenlet_spawn
-    result = context.switch(value)
-             ^^^^^^^^^^^^^^^^^^^^^
-  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/sqlalchemy/orm/session.py", line 2028, in commit
-    trans.commit(_to_root=True)
-  File "<string>", line 2, in commit
-  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/sqlalchemy/orm/state_changes.py", line 139, in _go
-    ret_value = fn(self, *arg, **kw)
-                ^^^^^^^^^^^^^^^^^^^^
-  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/sqlalchemy/orm/session.py", line 1313, in commit
-    self._prepare_impl()
-  File "<string>", line 2, in _prepare_impl
-  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/sqlalchemy/orm/state_changes.py", line 139, in _go
-    ret_value = fn(self, *arg, **kw)
-                ^^^^^^^^^^^^^^^^^^^^
-  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/sqlalchemy/orm/session.py", line 1288, in _prepare_impl
-    self.session.flush()
-  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/sqlalchemy/orm/session.py", line 4352, in flush
-    self._flush(objects)
-  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/sqlalchemy/orm/session.py", line 4487, in _flush
-    with util.safe_reraise():
-  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/sqlalchemy/util/langhelpers.py", line 146, in __exit__
-    raise exc_value.with_traceback(exc_tb)
-  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/sqlalchemy/orm/session.py", line 4448, in _flush
-    flush_context.execute()
-  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/sqlalchemy/orm/unitofwork.py", line 466, in execute
-    rec.execute(self)
-  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/sqlalchemy/orm/unitofwork.py", line 642, in execute
-    util.preloaded.orm_persistence.save_obj(
-  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/sqlalchemy/orm/persistence.py", line 76, in save_obj
-    for table, mapper in base_mapper._sorted_tables.items():
-                         ^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/sqlalchemy/util/langhelpers.py", line 1253, in __get__
-    obj.__dict__[self.__name__] = result = self.fget(obj)
-                                           ^^^^^^^^^^^^^^
-  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/sqlalchemy/orm/mapper.py", line 4050, in _sorted_tables
-    sorted_ = sql_util.sort_tables(
-              ^^^^^^^^^^^^^^^^^^^^^
-  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/sqlalchemy/sql/ddl.py", line 1252, in sort_tables
-    for (t, fkcs) in sort_tables_and_constraints(
-                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/sqlalchemy/sql/ddl.py", line 1322, in sort_tables_and_constraints
-    filtered = filter_fn(fkc)
-               ^^^^^^^^^^^^^^
-  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/sqlalchemy/sql/ddl.py", line 1242, in _skip_fn
-    if fixed_skip_fn(fk):
-       ^^^^^^^^^^^^^^^^^
-  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/sqlalchemy/orm/mapper.py", line 4033, in skip
-    dep = table_to_mapper.get(fk.column.table)
-                              ^^^^^^^^^
-  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/sqlalchemy/util/langhelpers.py", line 1141, in __get__
-    obj.__dict__[self.__name__] = result = self.fget(obj)
-                                           ^^^^^^^^^^^^^^
-  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/sqlalchemy/sql/schema.py", line 3170, in column
-    return self._resolve_column()
-           ^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/sqlalchemy/sql/schema.py", line 3193, in _resolve_column
-    raise exc.NoReferencedTableError(
-sqlalchemy.exc.NoReferencedTableError: Foreign key associated with column 'plants.user_id' could not find table 'users' with which to generate a foreign key to target column 'id'
-Exception ignored in: <function Connection.__del__ at 0x7f94ec8b80>
+  File "/home/dave/garden/venv/lib/python3.11/site-packages/flask/app.py", line 1511, in wsgi_app
+    response = self.full_dispatch_request()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dave/garden/venv/lib/python3.11/site-packages/flask/app.py", line 919, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dave/garden/venv/lib/python3.11/site-packages/flask_cors/extension.py", line 194, in wrapped_function
+    return cors_after_request(app.make_response(f(*args, **kwargs)))
+                                                ^^^^^^^^^^^^^^^^^^
+  File "/home/dave/garden/venv/lib/python3.11/site-packages/flask/app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dave/garden/venv/lib/python3.11/site-packages/flask/app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dave/garden/api/settings.py", line 357, in assign_usb_device
+    reinitialize_relay_service()
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^
+NameError: name 'reinitialize_relay_service' is not defined
+[2025-10-29 21:43:17 -0400] [3310310] [DEBUG] POST /api/settings/assign_usb
+[2025-10-29 21:43:17,885] ERROR in app: Exception on /api/settings/assign_usb [POST]
 Traceback (most recent call last):
-  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/aiomysql/connection.py", line 1131, in __del__
-  File "/home/dave/plants_logs_server/venv/lib/python3.11/site-packages/aiomysql/connection.py", line 339, in close
-  File "/usr/lib/python3.11/asyncio/selector_events.py", line 839, in close
-  File "/usr/lib/python3.11/asyncio/base_events.py", line 761, in call_soon
-  File "/usr/lib/python3.11/asyncio/base_events.py", line 519, in _check_closed
-RuntimeError: Event loop is closed
+  File "/home/dave/garden/venv/lib/python3.11/site-packages/flask/app.py", line 1511, in wsgi_app
+    response = self.full_dispatch_request()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dave/garden/venv/lib/python3.11/site-packages/flask/app.py", line 919, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dave/garden/venv/lib/python3.11/site-packages/flask_cors/extension.py", line 194, in wrapped_function
+    return cors_after_request(app.make_response(f(*args, **kwargs)))
+                                                ^^^^^^^^^^^^^^^^^^
+  File "/home/dave/garden/venv/lib/python3.11/site-packages/flask/app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dave/garden/venv/lib/python3.11/site-packages/flask/app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dave/garden/api/settings.py", line 357, in assign_usb_device
+    reinitialize_relay_service()
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^
+NameError: name 'reinitialize_relay_service' is not defined

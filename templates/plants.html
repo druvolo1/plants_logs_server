@@ -844,13 +844,17 @@
             const sensorLogs = currentLogs.filter(l => l.event_type === 'sensor');
             const dosingLogs = currentLogs.filter(l => l.event_type === 'dosing');
 
+            const plantName = escapeHtml(currentPlant.name);
+            const plantId = escapeHtml(currentPlant.plant_id);
+            const exportTime = new Date().toLocaleString();
+
             const htmlContent = `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>${escapeHtml(currentPlant.name)} - Plant Report</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <title>` + plantName + ` - Plant Report</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"><\/script>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -911,7 +915,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>${escapeHtml(currentPlant.name)}</h1>
+        <h1>` + plantName + `</h1>
 
         <div class="stats-grid" id="stats"></div>
 
@@ -924,14 +928,14 @@
         </div>
 
         <div class="info">
-            <div>Plant ID: ${escapeHtml(currentPlant.plant_id)}</div>
-            <div>Exported: ${new Date().toLocaleString()}</div>
+            <div>Plant ID: ` + plantId + `</div>
+            <div>Exported: ` + exportTime + `</div>
         </div>
     </div>
 
     <script>
-        const sensorLogs = ${JSON.stringify(sensorLogs)};
-        const dosingLogs = ${JSON.stringify(dosingLogs)};
+        const sensorLogs = ` + JSON.stringify(sensorLogs) + `;
+        const dosingLogs = ` + JSON.stringify(dosingLogs) + `;
 
         // Render stats
         const phValues = sensorLogs.map(l => l.value);
@@ -942,24 +946,24 @@
         const upDoses = dosingLogs.filter(l => l.dose_type === 'up').length;
         const downDoses = dosingLogs.filter(l => l.dose_type === 'down').length;
 
-        document.getElementById('stats').innerHTML = \`
+        document.getElementById('stats').innerHTML = \\\`
             <div class="stat-card">
-                <div class="stat-value">\${avgPh}</div>
+                <div class="stat-value">\\\${avgPh}</div>
                 <div class="stat-label">Average pH</div>
             </div>
             <div class="stat-card">
-                <div class="stat-value">\${minPh} - \${maxPh}</div>
+                <div class="stat-value">\\\${minPh} - \\\${maxPh}</div>
                 <div class="stat-label">pH Range</div>
             </div>
             <div class="stat-card">
-                <div class="stat-value">\${totalDoses}</div>
+                <div class="stat-value">\\\${totalDoses}</div>
                 <div class="stat-label">Total Doses</div>
             </div>
             <div class="stat-card">
-                <div class="stat-value">\${upDoses} / \${downDoses}</div>
+                <div class="stat-value">\\\${upDoses} / \\\${downDoses}</div>
                 <div class="stat-label">Up / Down Doses</div>
             </div>
-        \`;
+        \\\`;
 
         // pH Chart
         const phCtx = document.getElementById('phChart').getContext('2d');
@@ -1062,10 +1066,10 @@
                                 const doseStrings = doses.map(dose => {
                                     const d = new Date(dose.time);
                                     const timeStr = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-                                    return \`\${timeStr} - \${dose.amount.toFixed(2)} ml\`;
+                                    return \\\`\\\${timeStr} - \\\${dose.amount.toFixed(2)} ml\\\`;
                                 });
 
-                                return '\\nDoses:\\n' + doseStrings.join('\\n');
+                                return '\\\\nDoses:\\\\n' + doseStrings.join('\\\\n');
                             }
                         }
                     }
@@ -1084,7 +1088,7 @@
                 }
             }
         });
-    </script>
+    <\/script>
 </body>
 </html>`;
 
