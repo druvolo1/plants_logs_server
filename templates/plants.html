@@ -425,6 +425,7 @@
         let phChart = null;
         let dosingChart = null;
         let isAdmin = false;
+        let currentUserId = null;
 
         // Check if current user is admin and set up navigation
         async function checkUserRole() {
@@ -433,6 +434,7 @@
                 if (response.ok) {
                     const user = await response.json();
                     isAdmin = user.is_superuser || false;
+                    currentUserId = user.id;
 
                     // Update user email in nav
                     document.getElementById('userEmail').textContent = user.email;
@@ -542,9 +544,9 @@
             document.getElementById('modalPlantName').textContent = currentPlant.name;
             document.getElementById('plantModal').style.display = 'block';
 
-            // Show delete button for admins
+            // Show delete button for admins or plant owners
             const deleteBtn = document.getElementById('deletePlantBtn');
-            if (isAdmin) {
+            if (isAdmin || currentPlant.user_id === currentUserId) {
                 deleteBtn.style.display = 'block';
             } else {
                 deleteBtn.style.display = 'none';
@@ -560,7 +562,7 @@
             if (!confirm(confirmMsg)) return;
 
             try {
-                const response = await fetch(`/admin/plants/${currentPlant.plant_id}`, {
+                const response = await fetch(`/user/plants/${currentPlant.plant_id}`, {
                     method: 'DELETE'
                 });
 

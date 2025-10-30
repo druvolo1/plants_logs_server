@@ -1537,6 +1537,31 @@ async def update_plant_yield(
     return {"status": "success", "message": "Yield updated successfully"}
 
 # Delete a plant (admin only)
+@app.delete("/user/plants/{plant_id}", response_model=Dict[str, str])
+async def delete_plant_user(
+    plant_id: str,
+    user: User = Depends(current_user),
+    session: AsyncSession = Depends(get_db)
+):
+    # Get plant
+    result = await session.execute(
+        select(Plant).where(Plant.plant_id == plant_id)
+    )
+
+    plant = result.scalars().first()
+    if not plant:
+        raise HTTPException(404, "Plant not found")
+
+    # Check if user owns this plant
+    if plant.user_id != user.id:
+        raise HTTPException(403, "You don't have permission to delete this plant")
+
+    # Delete plant (logs will be cascade deleted)
+    await session.delete(plant)
+    await session.commit()
+
+    return {"status": "success", "message": f"Plant '{plant.name}' and all associated logs deleted successfully"}
+
 @app.delete("/admin/plants/{plant_id}", response_model=Dict[str, str])
 async def delete_plant_admin(
     plant_id: str,
