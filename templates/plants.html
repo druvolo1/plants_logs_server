@@ -416,6 +416,10 @@
             <div class="chart-container">
                 <canvas id="dosingChart"></canvas>
             </div>
+
+            <div style="margin-top: 1rem; padding: 1rem; text-align: center; color: #64748b; font-size: 0.875rem;">
+                Plant ID: <span id="modalPlantId" style="font-family: monospace; color: #94a3b8;"></span>
+            </div>
         </div>
     </div>
 
@@ -542,6 +546,7 @@
             if (!currentPlant) return;
 
             document.getElementById('modalPlantName').textContent = currentPlant.name;
+            document.getElementById('modalPlantId').textContent = currentPlant.plant_id;
             document.getElementById('plantModal').style.display = 'block';
 
             // Show delete button for admins or plant owners
