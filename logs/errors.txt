@@ -1,3 +1,0 @@
-logs:135 [Violation] 'click' handler took 1450ms
-logs:150  POST http://zone1.dr:8000/api/plant_info/upload_log/dosing_log.jsonl 500 (INTERNAL SERVER ERROR)
-(anonymous) @ logs:150
