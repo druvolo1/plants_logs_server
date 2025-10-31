@@ -1,5 +1,5 @@
 # app/main.py - Full app with FastAPI-Users (async SQLAlchemy)
-from fastapi import FastAPI, Depends, HTTPException, Request, Form, Response, status
+from fastapi import FastAPI, Depends, HTTPException, Request, Form, Response, status, Body
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
@@ -121,6 +121,7 @@ class Plant(Base):
     start_date = Column(DateTime, nullable=False)
     end_date = Column(DateTime, nullable=True)
     yield_grams = Column(Float, nullable=True)  # Added after harvest
+    display_order = Column(Integer, nullable=True, default=0)  # For user-defined ordering
 
     # Relationships
     device = relationship("Device", foreign_keys=[device_id], back_populates="plants")
@@ -1371,8 +1372,8 @@ async def list_plants(
     session: AsyncSession = Depends(get_db),
     active_only: bool = False
 ):
-    # Get all plants for devices owned by user
-    query = select(Plant, Device.device_id).join(Device, Plant.device_id == Device.id).where(Device.user_id == user.id)
+    # Get all plants for devices owned by user, ordered by display_order
+    query = select(Plant, Device.device_id).join(Device, Plant.device_id == Device.id).where(Device.user_id == user.id).order_by(Plant.display_order, Plant.id)
 
     if active_only:
         query = query.where(Plant.end_date == None)
@@ -1561,6 +1562,34 @@ async def delete_plant_user(
     await session.commit()
 
     return {"status": "success", "message": f"Plant '{plant.name}' and all associated logs deleted successfully"}
+
+# Reorder plants
+@app.put("/user/plants/reorder")
+async def reorder_plants(
+    plant_order: List[str] = Body(...),  # List of plant_ids in desired order
+    user: User = Depends(current_user),
+    session: AsyncSession = Depends(get_db)
+):
+    """Update the display order of plants for the current user"""
+    # Verify all plants belong to user's devices
+    result = await session.execute(
+        select(Plant).join(Device, Plant.device_id == Device.id).where(
+            Device.user_id == user.id,
+            Plant.plant_id.in_(plant_order)
+        )
+    )
+    plants = {plant.plant_id: plant for plant in result.scalars().all()}
+
+    if len(plants) != len(plant_order):
+        raise HTTPException(400, "Some plant IDs not found or not owned by user")
+
+    # Update display_order for each plant
+    for index, plant_id in enumerate(plant_order):
+        plants[plant_id].display_order = index
+
+    await session.commit()
+
+    return {"status": "success", "message": f"Reordered {len(plant_order)} plants"}
 
 @app.delete("/admin/plants/{plant_id}", response_model=Dict[str, str])
 async def delete_plant_admin(

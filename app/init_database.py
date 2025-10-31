@@ -174,6 +174,16 @@ async def init_database():
                 '0'  # FALSE in MySQL/MariaDB
             )
 
+            print("\nChecking 'plants' table schema...")
+
+            # Add display_order column if it doesn't exist
+            await check_and_add_column(
+                conn,
+                'plants',
+                'display_order',
+                "display_order INT NULL DEFAULT 0 AFTER yield_grams"
+            )
+
             print("\nChecking 'device_shares' table...")
 
             # Create device_shares table if it doesn't exist

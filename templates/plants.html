@@ -157,6 +157,7 @@
             padding: 1.5rem;
             cursor: pointer;
             transition: all 0.3s ease;
+            position: relative;
         }
 
         .plant-card:hover {
@@ -167,6 +168,42 @@
         .plant-card.finished {
             border-color: #64748b;
             opacity: 0.8;
+        }
+
+        .plant-card.dragging {
+            opacity: 0.5;
+        }
+
+        .plant-drag-handle {
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: grab;
+            color: #6b7280;
+            font-size: 1.25rem;
+            background: rgba(0, 0, 0, 0.2);
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+            border-top-left-radius: 12px;
+            border-bottom-left-radius: 12px;
+            transition: all 0.2s;
+        }
+
+        .plant-drag-handle:hover {
+            color: #10b981;
+            background: rgba(16, 185, 129, 0.1);
+        }
+
+        .plant-drag-handle:active {
+            cursor: grabbing;
+        }
+
+        .plant-card-content {
+            margin-left: 2rem;
         }
 
         .plant-header {
@@ -596,41 +633,47 @@
             }
 
             container.innerHTML = plants.map(plant => `
-                <div class="plant-card ${plant.is_active ? '' : 'finished'}" onclick="viewPlantDetails('${plant.plant_id}')">
-                    <div class="plant-header">
-                        <div class="plant-name">${escapeHtml(plant.name)}</div>
-                        <div class="plant-status ${plant.is_active ? 'active' : 'finished'}">
-                            ${plant.is_active ? 'Active' : 'Finished'}
-                        </div>
-                    </div>
-                    <div class="plant-info">
-                        <div class="plant-info-row">
-                            <span class="plant-info-label">System</span>
-                            <span class="plant-info-value">${escapeHtml(plant.system_id || 'N/A')}</span>
-                        </div>
-                        <div class="plant-info-row">
-                            <span class="plant-info-label">Started</span>
-                            <span class="plant-info-value">${formatDate(plant.start_date)}</span>
-                        </div>
-                        ${!plant.is_active ? `
-                            <div class="plant-info-row">
-                                <span class="plant-info-label">Finished</span>
-                                <span class="plant-info-value">${formatDate(plant.end_date)}</span>
+                <div class="plant-card ${plant.is_active ? '' : 'finished'}" data-plant-id="${plant.plant_id}" draggable="true">
+                    <div class="plant-drag-handle" title="Drag to reorder">⋮⋮</div>
+                    <div class="plant-card-content" onclick="viewPlantDetails('${plant.plant_id}')">
+                        <div class="plant-header">
+                            <div class="plant-name">${escapeHtml(plant.name)}</div>
+                            <div class="plant-status ${plant.is_active ? 'active' : 'finished'}">
+                                ${plant.is_active ? 'Active' : 'Finished'}
                             </div>
-                        ` : ''}
-                        ${plant.yield_grams ? `
+                        </div>
+                        <div class="plant-info">
                             <div class="plant-info-row">
-                                <span class="plant-info-label">Yield</span>
-                                <span class="plant-info-value">${plant.yield_grams}g</span>
+                                <span class="plant-info-label">System</span>
+                                <span class="plant-info-value">${escapeHtml(plant.system_id || 'N/A')}</span>
                             </div>
-                        ` : ''}
-                        <div class="plant-info-row">
-                            <span class="plant-info-label">Age</span>
-                            <span class="plant-info-value">${calculateAge(plant.start_date, plant.end_date)}</span>
+                            <div class="plant-info-row">
+                                <span class="plant-info-label">Started</span>
+                                <span class="plant-info-value">${formatDate(plant.start_date)}</span>
+                            </div>
+                            ${!plant.is_active ? `
+                                <div class="plant-info-row">
+                                    <span class="plant-info-label">Finished</span>
+                                    <span class="plant-info-value">${formatDate(plant.end_date)}</span>
+                                </div>
+                            ` : ''}
+                            ${plant.yield_grams ? `
+                                <div class="plant-info-row">
+                                    <span class="plant-info-label">Yield</span>
+                                    <span class="plant-info-value">${plant.yield_grams}g</span>
+                                </div>
+                            ` : ''}
+                            <div class="plant-info-row">
+                                <span class="plant-info-label">Age</span>
+                                <span class="plant-info-value">${calculateAge(plant.start_date, plant.end_date)}</span>
+                            </div>
                         </div>
                     </div>
                 </div>
             `).join('');
+
+            // Initialize drag and drop after rendering
+            initializePlantDragAndDrop();
         }
 
         async function viewPlantDetails(plantId) {
@@ -702,6 +745,87 @@
             } catch (error) {
                 console.error('Error deleting plant:', error);
                 alert(`Failed to delete plant: ${error.message}`);
+            }
+        }
+
+        function initializePlantDragAndDrop() {
+            const plantCards = document.querySelectorAll('.plant-card');
+            let draggedElement = null;
+
+            plantCards.forEach(card => {
+                // Prevent card click from firing when clicking drag handle
+                const dragHandle = card.querySelector('.plant-drag-handle');
+                if (dragHandle) {
+                    dragHandle.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                    });
+                }
+
+                card.addEventListener('dragstart', (e) => {
+                    draggedElement = card;
+                    card.classList.add('dragging');
+                    e.dataTransfer.effectAllowed = 'move';
+                });
+
+                card.addEventListener('dragend', (e) => {
+                    card.classList.remove('dragging');
+                });
+
+                card.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    const afterElement = getDragAfterElement(e.clientY);
+                    const container = document.querySelector('.plants-grid');
+                    if (afterElement == null) {
+                        container.appendChild(draggedElement);
+                    } else {
+                        container.insertBefore(draggedElement, afterElement);
+                    }
+                });
+
+                card.addEventListener('drop', async (e) => {
+                    e.preventDefault();
+                    await savePlantOrder();
+                });
+            });
+
+            function getDragAfterElement(y) {
+                const draggableElements = [...document.querySelectorAll('.plant-card:not(.dragging)')];
+
+                return draggableElements.reduce((closest, child) => {
+                    const box = child.getBoundingClientRect();
+                    const offset = y - box.top - box.height / 2;
+
+                    if (offset < 0 && offset > closest.offset) {
+                        return { offset: offset, element: child };
+                    } else {
+                        return closest;
+                    }
+                }, { offset: Number.NEGATIVE_INFINITY }).element;
+            }
+        }
+
+        async function savePlantOrder() {
+            const plantCards = document.querySelectorAll('.plant-card');
+            const plantOrder = Array.from(plantCards).map(card => card.getAttribute('data-plant-id'));
+
+            try {
+                const response = await fetch('/user/plants/reorder', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(plantOrder)
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to save plant order');
+                }
+
+                console.log('Plant order saved successfully');
+            } catch (error) {
+                console.error('Error saving plant order:', error);
+                alert('Failed to save plant order. Please try again.');
+                await loadPlants(); // Reload to reset order
             }
         }
 
