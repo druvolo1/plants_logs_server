@@ -452,7 +452,26 @@
             transform: scale(1.02);
         }
 
-        /* Mobile Responsive Styles */
+        /* Tablet Responsive Styles (768px - 1024px) */
+        @media (max-width: 1024px) and (min-width: 769px) {
+            /* Header info: 2x2 grid, hide drag handles */
+            .header-info {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 8px;
+            }
+
+            .info-item {
+                padding: 8px 12px;
+            }
+
+            /* Hide drag handles on tablet */
+            .info-item-drag-handle {
+                display: none !important;
+            }
+        }
+
+        /* Phone Responsive Styles (< 768px) */
         @media (max-width: 768px) {
             /* Navbar mobile adjustments */
             .navbar-container {
@@ -501,22 +520,23 @@
             .device-header {
                 flex-direction: column;
                 align-items: stretch;
-                gap: 2px;
-                padding: 6px 10px;
+                gap: 8px;
+                padding: 10px 12px;
                 position: relative;
             }
             .device-header-left {
                 flex-direction: row;
                 align-items: center;
-                gap: 6px;
+                gap: 8px;
                 flex-wrap: wrap;
+                padding-right: 40px;
             }
             .device-name {
-                font-size: 0.95em;
+                font-size: 1rem;
             }
             .status-badge {
-                padding: 2px 6px;
-                font-size: 0.65em;
+                padding: 4px 8px;
+                font-size: 0.75em;
             }
 
             /* Hide pH and EC from header-info on mobile, will show next to badge */
@@ -525,104 +545,70 @@
                 display: none !important;
             }
 
-            /* Show pH/EC next to badge on mobile - 50% larger */
+            /* Show pH/EC next to badge on mobile */
             .header-ph-ec {
                 display: flex !important;
                 flex-wrap: wrap;
-                font-size: 1.05em !important;
+                gap: 8px;
+                font-size: 0.95em !important;
             }
 
+            /* Header info: vertical stack on phone for clarity */
             .header-info {
-                display: grid !important;
-                grid-template-columns: 1fr 1fr !important;
-                grid-template-rows: auto auto !important;
-                gap: 4px !important;
-                width: 100% !important;
-                font-size: 0.65em !important;
-                overflow: visible !important;
-            }
-            .info-item {
                 display: flex !important;
                 flex-direction: column !important;
-                align-items: flex-start !important;
-                justify-content: center !important;
-                gap: 2px !important;
+                gap: 8px !important;
+                width: 100% !important;
+            }
+
+            .info-item {
+                display: flex !important;
+                flex-direction: row !important;
+                align-items: center !important;
+                justify-content: space-between !important;
+                gap: 8px !important;
                 background: rgba(51, 65, 85, 0.5) !important;
                 border: 1px solid rgba(148, 163, 184, 0.2) !important;
-                padding: 6px 8px !important;
+                padding: 10px 12px !important;
                 border-radius: 6px !important;
                 margin: 0 !important;
                 box-sizing: border-box !important;
-                overflow: visible !important;
             }
 
-            /* Hide drag handles on mobile for info items */
+            /* HIDE drag handles completely on phone */
             .info-item-drag-handle {
                 display: none !important;
             }
+
             .info-item label {
-                display: inline !important;
-                font-size: 1em !important;
+                font-size: 0.85em !important;
                 color: #888 !important;
                 text-transform: uppercase !important;
-                letter-spacing: 0.3px !important;
+                letter-spacing: 0.5px !important;
                 font-weight: 600 !important;
-                flex-shrink: 0 !important;
                 white-space: nowrap !important;
             }
-            .info-item label::after {
-                content: '';
-            }
+
             .info-item span {
-                display: block !important;
-                font-size: 1em !important;
+                font-size: 0.9em !important;
                 font-weight: 500 !important;
                 color: #10b981 !important;
-                white-space: normal !important;
-                overflow: visible !important;
-                line-height: 1.3 !important;
-                word-wrap: break-word !important;
+                text-align: right !important;
+                white-space: nowrap !important;
+                overflow: hidden !important;
+                text-overflow: ellipsis !important;
             }
 
-            /* Force positioning in grid - ensure 2x2 layout */
-            .info-item[id^="system-item"] {
-                grid-column: 1 !important;
-                grid-row: 1 !important;
-            }
-            .info-item[id^="plant-item"] {
-                grid-column: 2 !important;
-                grid-row: 1 !important;
-            }
-            .info-item[id^="start-date-item"] {
-                grid-column: 1 !important;
-                grid-row: 2 !important;
-            }
+            /* Reset any grid positioning */
+            .info-item[id^="system-item"],
+            .info-item[id^="plant-item"],
+            .info-item[id^="start-date-item"],
             .info-item[id^="weeks-item"] {
-                grid-column: 2 !important;
-                grid-row: 2 !important;
+                grid-column: unset !important;
+                grid-row: unset !important;
             }
 
-            /* Force span visibility inside each info item */
-            .info-item span[id^="system-name-"],
-            .info-item span[id^="plant-name-"],
-            .info-item span[id^="start-date-"],
-            .info-item span[id^="weeks-"] {
-                display: inline !important;
-                visibility: visible !important;
-                opacity: 1 !important;
-            }
-
-            /* Ensure items don't overflow grid */
-            .info-item {
-                max-width: 100% !important;
-                width: 100% !important;
-            }
-            .info-item span {
-                max-width: 100% !important;
-                width: 100% !important;
-            }
-
-            /* Reposition wrapper to top-right corner and make it span full height */
+            /* Reposition wrapper to top-right corner */
             .header-icons-wrapper {
                 position: absolute !important;
                 top: 0 !important;
@@ -633,23 +619,18 @@
                 justify-content: space-between !important;
                 align-items: flex-end !important;
                 gap: 0 !important;
-                padding: 6px 0 !important;
+                padding: 10px 0 !important;
             }
 
             /* Position icons within wrapper */
             .device-header .refresh-icon {
                 position: static !important;
-                font-size: 1.2rem !important;
+                font-size: 1.3rem !important;
             }
 
             .device-header .expand-icon {
                 position: static !important;
-                font-size: 1rem !important;
-            }
-
-            /* Add padding to header-left to avoid overlap with icons */
-            .device-header-left {
-                padding-right: 30px;
+                font-size: 1.1rem !important;
             }
 
             /* Cards grid mobile */
@@ -789,103 +770,7 @@
             }
         }
 
-        /* Extra small devices */
-        @media (max-width: 480px) {
-            .navbar-brand {
-                font-size: 0.9rem;
-            }
-            .device-name {
-                font-size: 0.85em;
-            }
-            .status-badge {
-                padding: 2px 5px;
-                font-size: 0.6em;
-            }
-            .header-ph-ec {
-                font-size: 0.9em !important;
-                gap: 4px !important;
-            }
-            .header-info {
-                font-size: 0.6em !important;
-                gap: 3px !important;
-            }
-            .info-item {
-                gap: 1px !important;
-                padding: 5px 6px !important;
-                min-height: auto !important;
-            }
-            .info-item label {
-                font-size: 0.95em !important;
-                letter-spacing: 0px !important;
-            }
-            .info-item span {
-                font-size: 0.95em !important;
-                display: block !important;
-                white-space: normal !important;
-                word-wrap: break-word !important;
-                overflow-wrap: break-word !important;
-                hyphens: auto !important;
-            }
-
-            /* Even smaller water level on phones */
-            .sensor-label {
-                font-size: 0.85rem !important;
-            }
-
-            .sensor-label span {
-                font-size: 16px !important;
-                width: 16px !important;
-                height: 16px !important;
-            }
-
-            [id^="water-level-card"] .card-title {
-                font-size: 0.75rem !important;
-            }
-
-            .card-title {
-                font-size: 0.85em;
-            }
-            button {
-                padding: 0.6rem 0.8rem !important;
-                font-size: 0.85rem !important;
-            }
-
-            /* Even smaller valve buttons on phones */
-            [id^="all-valves-controls-"] .valve-buttons button {
-                width: 35px !important;
-                min-width: 35px !important;
-                max-width: 35px !important;
-                padding: 0.25rem 0.1rem !important;
-                font-size: 0.65rem !important;
-            }
-
-            [id^="all-valves-controls-"] table {
-                font-size: 0.7rem !important;
-            }
-        }
-
-        /* Very small screens - single column for header info */
-        @media (max-width: 360px) {
-            .header-info {
-                grid-template-columns: 1fr !important;
-                grid-template-rows: auto !important;
-                font-size: 0.7em !important;
-                gap: 4px !important;
-            }
-            .info-item {
-                padding: 6px 8px !important;
-            }
-            /* Reset grid positioning for single column */
-            .info-item[id^="system-item"],
-            .info-item[id^="plant-item"],
-            .info-item[id^="start-date-item"],
-            .info-item[id^="weeks-item"] {
-                grid-column: 1 !important;
-                grid-row: auto !important;
-            }
-        }
-
-        /* Hide hamburger on desktop */
+        /* Desktop - show proper menu and icons */
         @media (min-width: 769px) {
             .navbar-toggle {
                 display: none;
