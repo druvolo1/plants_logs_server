@@ -235,9 +235,49 @@
         .card {
             background: #2a2a2a;
             border: 1px solid #444;
+            position: relative;
             border-radius: 8px;
             padding: 10px;
+            cursor: grab;
         }
+
+        .card.dragging {
+            opacity: 0.5;
+            cursor: grabbing;
+        }
+
+        .card-drag-handle {
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: grab;
+            color: #6b7280;
+            font-size: 1rem;
+            background: rgba(0, 0, 0, 0.3);
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+            border-top-left-radius: 8px;
+            border-bottom-left-radius: 8px;
+            transition: all 0.2s;
+        }
+
+        .card-drag-handle:hover {
+            color: #10b981;
+            background: rgba(16, 185, 129, 0.2);
+        }
+
+        .card-drag-handle:active {
+            cursor: grabbing;
+        }
+
+        .card-content {
+            margin-left: 1.5rem;
+        }
+
         .card-title {
             font-size: 0.95em;
             font-weight: 600;
@@ -1014,11 +1054,13 @@
                         
                         <div class="device-content" id="device-content-${device.device_id}" data-device-id="${device.device_id}">
                             <div class="device-content-inner">
-                                <div class="cards-grid">
+                                <div class="cards-grid" data-device-id="${device.device_id}">
                                     <!-- Water Level Card -->
-                                    <div class="card" id="water-level-card-${device.device_id}">
-                                        <div class="card-title">💧 Water Level</div>
-                                        <div class="bucket-container">
+                                    <div class="card" id="water-level-card-${device.device_id}" data-card-type="water-level" draggable="true">
+                                        <div class="card-drag-handle" title="Drag to reorder">⋮⋮</div>
+                                        <div class="card-content">
+                                            <div class="card-title">💧 Water Level</div>
+                                            <div class="bucket-container">
                                             <div class="water-bucket">
                                                 <div class="water-level" id="water-level-${device.device_id}"></div>
                                                 <div class="sensor-marker sensor-full">
@@ -1032,27 +1074,37 @@
                                                 </div>
                                             </div>
                                         </div>
+                                        </div>
                                     </div>
 
                                     <!-- Valves Card -->
-                                    <div class="card" id="valves-card-${device.device_id}" style="display:none;">
-                                        <div class="card-title">🚰 Valve Controls</div>
-                                        <div id="valve-controls-${device.device_id}"></div>
+                                    <div class="card" id="valves-card-${device.device_id}" data-card-type="valves" draggable="true" style="display:none;">
+                                        <div class="card-drag-handle" title="Drag to reorder">⋮⋮</div>
+                                        <div class="card-content">
+                                            <div class="card-title">🚰 Valve Controls</div>
+                                            <div id="valve-controls-${device.device_id}"></div>
+                                        </div>
                                     </div>
 
                                     <!-- pH Dosing Card (inline with others) -->
-                                    <div class="card" id="dosing-card-${device.device_id}" style="display:none;">
-                                        <div class="card-title">
-                                            <span>⚗️ pH Dosing</span>
-                                            <span id="ph-title-${device.device_id}" style="float: right; font-size: 0.8rem; color: var(--text-secondary);"></span>
+                                    <div class="card" id="dosing-card-${device.device_id}" data-card-type="dosing" draggable="true" style="display:none;">
+                                        <div class="card-drag-handle" title="Drag to reorder">⋮⋮</div>
+                                        <div class="card-content">
+                                            <div class="card-title">
+                                                <span>⚗️ pH Dosing</span>
+                                                <span id="ph-title-${device.device_id}" style="float: right; font-size: 0.8rem; color: var(--text-secondary);"></span>
+                                            </div>
+                                            <div id="dosing-controls-${device.device_id}"></div>
                                         </div>
-                                        <div id="dosing-controls-${device.device_id}"></div>
                                     </div>
 
                                     <!-- All Valves Card -->
-                                    <div class="card" id="all-valves-card-${device.device_id}" style="display:none;">
-                                        <div class="card-title">🎛️ All Valves</div>
-                                        <div id="all-valves-controls-${device.device_id}"></div>
+                                    <div class="card" id="all-valves-card-${device.device_id}" data-card-type="all-valves" draggable="true" style="display:none;">
+                                        <div class="card-drag-handle" title="Drag to reorder">⋮⋮</div>
+                                        <div class="card-content">
+                                            <div class="card-title">🎛️ All Valves</div>
+                                            <div id="all-valves-controls-${device.device_id}"></div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -1079,6 +1131,10 @@
 
                 // Set up drag and drop for reordering
                 setupDragAndDrop();
+
+                // Apply saved card orders and set up card drag and drop
+                await applySavedCardOrders();
+                setupCardDragAndDrop();
             }
         }
 
@@ -1224,6 +1280,115 @@
                     section.classList.remove('drag-over');
                 });
             });
+        }
+
+        function setupCardDragAndDrop() {
+            const cardsGrids = document.querySelectorAll('.cards-grid');
+
+            cardsGrids.forEach(grid => {
+                const cards = grid.querySelectorAll('.card');
+
+                cards.forEach(card => {
+                    const dragHandle = card.querySelector('.card-drag-handle');
+                    if (dragHandle) {
+                        dragHandle.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                        });
+                    }
+
+                    card.addEventListener('dragstart', (e) => {
+                        card.classList.add('dragging');
+                        e.dataTransfer.effectAllowed = 'move';
+                    });
+
+                    card.addEventListener('dragend', (e) => {
+                        card.classList.remove('dragging');
+                        saveCardOrder(grid.dataset.deviceId);
+                    });
+
+                    card.addEventListener('dragover', (e) => {
+                        e.preventDefault();
+                        const draggingCard = grid.querySelector('.dragging');
+                        if (draggingCard && draggingCard !== card) {
+                            const rect = card.getBoundingClientRect();
+                            const midpoint = rect.top + rect.height / 2;
+
+                            if (e.clientY < midpoint) {
+                                grid.insertBefore(draggingCard, card);
+                            } else {
+                                grid.insertBefore(draggingCard, card.nextSibling);
+                            }
+                        }
+                    });
+
+                    card.addEventListener('drop', (e) => {
+                        e.preventDefault();
+                    });
+                });
+            });
+        }
+
+        async function saveCardOrder(deviceId) {
+            try {
+                const grid = document.querySelector(`.cards-grid[data-device-id="${deviceId}"]`);
+                const cards = grid.querySelectorAll('.card');
+                const cardOrder = Array.from(cards).map(card => card.dataset.cardType);
+
+                const response = await fetch('/api/user/dashboard-preferences');
+                let preferences = {};
+                if (response.ok) {
+                    preferences = await response.json();
+                }
+
+                if (!preferences.card_orders) {
+                    preferences.card_orders = {};
+                }
+
+                preferences.card_orders[deviceId] = cardOrder;
+
+                await fetch('/api/user/dashboard-preferences', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(preferences)
+                });
+
+                console.log('Card order saved for device:', deviceId);
+            } catch (error) {
+                console.error('Error saving card order:', error);
+            }
+        }
+
+        async function applySavedCardOrders() {
+            try {
+                const response = await fetch('/api/user/dashboard-preferences');
+                if (response.ok) {
+                    const preferences = await response.json();
+                    const cardOrders = preferences.card_orders || {};
+
+                    for (const [deviceId, order] of Object.entries(cardOrders)) {
+                        const grid = document.querySelector(`.cards-grid[data-device-id="${deviceId}"]`);
+                        if (grid && Array.isArray(order)) {
+                            const cardMap = new Map();
+                            const cards = grid.querySelectorAll('.card');
+
+                            cards.forEach(card => {
+                                if (card.dataset.cardType) {
+                                    cardMap.set(card.dataset.cardType, card);
+                                }
+                            });
+
+                            order.forEach(cardType => {
+                                const card = cardMap.get(cardType);
+                                if (card) {
+                                    grid.appendChild(card);
+                                }
+                            });
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('Error applying saved card orders:', error);
+            }
         }
 
         function toggleDevice(device_id) {
