@@ -830,6 +830,13 @@ a:hover {
     justify-content: center !important;
     align-items: center !important;
     padding: 0.5rem !important;
+    width: 100% !important;
+}
+
+.water-bucket-wrapper {
+    position: relative !important;
+    display: inline-block !important;
+    min-width: 240px !important;
 }
 
 .water-bucket {
