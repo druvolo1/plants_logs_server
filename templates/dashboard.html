@@ -193,7 +193,33 @@
             align-items: baseline;
             gap: 6px;
             font-size: 0.95em;
+            position: relative;
+            cursor: grab;
+            padding: 4px 8px;
+            border-radius: 4px;
+            transition: all 0.2s;
         }
+
+        .info-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .info-item.dragging {
+            opacity: 0.5;
+            cursor: grabbing;
+        }
+
+        .info-item-drag-handle {
+            color: #6b7280;
+            font-size: 0.8rem;
+            margin-right: 4px;
+            cursor: grab;
+        }
+
+        .info-item-drag-handle:hover {
+            color: #10b981;
+        }
+
         .info-item label {
             color: #999;
         }
@@ -1019,28 +1045,34 @@
                                     <span id="header-ph-${device.device_id}" style="display:none;"></span>
                                     <span id="header-ec-${device.device_id}" style="display:none;"></span>
                                 </div>
-                                <div class="header-info">
-                                    <div class="info-item" id="system-item-${device.device_id}">
+                                <div class="header-info" data-device-id="${device.device_id}">
+                                    <div class="info-item" id="system-item-${device.device_id}" data-info-type="system" draggable="true">
+                                        <span class="info-item-drag-handle" title="Drag to reorder">⋮</span>
                                         <label>System:</label>
                                         <span id="system-name-${device.device_id}">Loading...</span>
                                     </div>
-                                    <div class="info-item" id="plant-item-${device.device_id}" style="display:none;">
+                                    <div class="info-item" id="plant-item-${device.device_id}" data-info-type="plant" draggable="true" style="display:none;">
+                                        <span class="info-item-drag-handle" title="Drag to reorder">⋮</span>
                                         <label>Plant:</label>
                                         <span id="plant-name-${device.device_id}">-</span>
                                     </div>
-                                    <div class="info-item" id="start-date-item-${device.device_id}" style="display:none;">
+                                    <div class="info-item" id="start-date-item-${device.device_id}" data-info-type="start-date" draggable="true" style="display:none;">
+                                        <span class="info-item-drag-handle" title="Drag to reorder">⋮</span>
                                         <label>Started:</label>
                                         <span id="start-date-${device.device_id}">-</span>
                                     </div>
-                                    <div class="info-item" id="weeks-item-${device.device_id}" style="display:none;">
+                                    <div class="info-item" id="weeks-item-${device.device_id}" data-info-type="weeks" draggable="true" style="display:none;">
+                                        <span class="info-item-drag-handle" title="Drag to reorder">⋮</span>
                                         <label>Week:</label>
                                         <span id="weeks-${device.device_id}">-</span>
                                     </div>
-                                    <div class="info-item" id="ph-item-${device.device_id}" data-key="ph" style="display:none;">
+                                    <div class="info-item" id="ph-item-${device.device_id}" data-info-type="ph" data-key="ph" draggable="true" style="display:none;">
+                                        <span class="info-item-drag-handle" title="Drag to reorder">⋮</span>
                                         <label>pH:</label>
                                         <span id="ph-${device.device_id}">-</span>
                                     </div>
-                                    <div class="info-item" id="ec-item-${device.device_id}" data-key="ec" style="display:none;">
+                                    <div class="info-item" id="ec-item-${device.device_id}" data-info-type="ec" data-key="ec" draggable="true" style="display:none;">
+                                        <span class="info-item-drag-handle" title="Drag to reorder">⋮</span>
                                         <label>EC:</label>
                                         <span id="ec-${device.device_id}">-</span>
                                     </div>
@@ -1135,6 +1167,10 @@
                 // Apply saved card orders and set up card drag and drop
                 await applySavedCardOrders();
                 setupCardDragAndDrop();
+
+                // Apply saved info item orders and set up info item drag and drop
+                await applySavedInfoItemOrders();
+                setupInfoItemDragAndDrop();
             }
         }
 
@@ -1388,6 +1424,108 @@
                 }
             } catch (error) {
                 console.error('Error applying saved card orders:', error);
+            }
+        }
+
+        function setupInfoItemDragAndDrop() {
+            const headerInfos = document.querySelectorAll('.header-info');
+
+            headerInfos.forEach(headerInfo => {
+                const infoItems = headerInfo.querySelectorAll('.info-item');
+
+                infoItems.forEach(item => {
+                    item.addEventListener('dragstart', (e) => {
+                        item.classList.add('dragging');
+                        e.dataTransfer.effectAllowed = 'move';
+                    });
+
+                    item.addEventListener('dragend', (e) => {
+                        item.classList.remove('dragging');
+                        saveInfoItemOrder(headerInfo.dataset.deviceId);
+                    });
+
+                    item.addEventListener('dragover', (e) => {
+                        e.preventDefault();
+                        const draggingItem = headerInfo.querySelector('.dragging');
+                        if (draggingItem && draggingItem !== item) {
+                            const rect = item.getBoundingClientRect();
+                            const midpoint = rect.left + rect.width / 2;
+
+                            if (e.clientX < midpoint) {
+                                headerInfo.insertBefore(draggingItem, item);
+                            } else {
+                                headerInfo.insertBefore(draggingItem, item.nextSibling);
+                            }
+                        }
+                    });
+
+                    item.addEventListener('drop', (e) => {
+                        e.preventDefault();
+                    });
+                });
+            });
+        }
+
+        async function saveInfoItemOrder(deviceId) {
+            try {
+                const headerInfo = document.querySelector(`.header-info[data-device-id="${deviceId}"]`);
+                const infoItems = headerInfo.querySelectorAll('.info-item');
+                const infoOrder = Array.from(infoItems).map(item => item.dataset.infoType);
+
+                const response = await fetch('/api/user/dashboard-preferences');
+                let preferences = {};
+                if (response.ok) {
+                    preferences = await response.json();
+                }
+
+                if (!preferences.info_item_orders) {
+                    preferences.info_item_orders = {};
+                }
+
+                preferences.info_item_orders[deviceId] = infoOrder;
+
+                await fetch('/api/user/dashboard-preferences', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(preferences)
+                });
+
+                console.log('Info item order saved for device:', deviceId);
+            } catch (error) {
+                console.error('Error saving info item order:', error);
+            }
+        }
+
+        async function applySavedInfoItemOrders() {
+            try {
+                const response = await fetch('/api/user/dashboard-preferences');
+                if (response.ok) {
+                    const preferences = await response.json();
+                    const infoItemOrders = preferences.info_item_orders || {};
+
+                    for (const [deviceId, order] of Object.entries(infoItemOrders)) {
+                        const headerInfo = document.querySelector(`.header-info[data-device-id="${deviceId}"]`);
+                        if (headerInfo && Array.isArray(order)) {
+                            const infoItemMap = new Map();
+                            const infoItems = headerInfo.querySelectorAll('.info-item');
+
+                            infoItems.forEach(item => {
+                                if (item.dataset.infoType) {
+                                    infoItemMap.set(item.dataset.infoType, item);
+                                }
+                            });
+
+                            order.forEach(infoType => {
+                                const item = infoItemMap.get(infoType);
+                                if (item) {
+                                    headerInfo.appendChild(item);
+                                }
+                            });
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('Error applying saved info item orders:', error);
             }
         }
 
