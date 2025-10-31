@@ -752,22 +752,49 @@
         function addPlantTouchSupport(element, container, onDragEnd) {
             let touchStartY = 0;
             let isDragging = false;
+            let dragTimer = null;
 
             element.addEventListener('touchstart', (e) => {
+                // Only start drag from drag handle
+                const isDragHandle = e.target.closest('.plant-drag-handle');
+                if (!isDragHandle) return;
+
                 const touch = e.touches[0];
                 touchStartY = touch.clientY;
 
-                setTimeout(() => {
+                // Add immediate visual feedback
+                element.style.transition = 'opacity 0.15s ease';
+
+                dragTimer = setTimeout(() => {
                     isDragging = true;
                     element.classList.add('dragging');
-                }, 100);
-            }, { passive: true });
+                    element.style.opacity = '0.8';
+
+                    if (navigator.vibrate) {
+                        navigator.vibrate(50);
+                    }
+                }, 150);
+            });
 
             element.addEventListener('touchmove', (e) => {
-                if (!isDragging) return;
-
                 const touch = e.touches[0];
                 const currentY = touch.clientY;
+
+                // Check if moved enough to be a drag
+                const deltaY = Math.abs(currentY - touchStartY);
+
+                if (!isDragging && deltaY > 10) {
+                    clearTimeout(dragTimer);
+                    isDragging = true;
+                    element.classList.add('dragging');
+                    element.style.opacity = '0.8';
+
+                    if (navigator.vibrate) {
+                        navigator.vibrate(50);
+                    }
+                }
+
+                if (!isDragging) return;
 
                 // Hide the element temporarily to get element underneath
                 element.style.visibility = 'hidden';
@@ -795,10 +822,14 @@
             });
 
             element.addEventListener('touchend', (e) => {
+                clearTimeout(dragTimer);
+
                 if (!isDragging) return;
 
                 isDragging = false;
                 element.classList.remove('dragging');
+                element.style.opacity = '';
+                element.style.transition = '';
 
                 if (onDragEnd) {
                     onDragEnd();
@@ -806,8 +837,11 @@
             });
 
             element.addEventListener('touchcancel', (e) => {
+                clearTimeout(dragTimer);
                 isDragging = false;
                 element.classList.remove('dragging');
+                element.style.opacity = '';
+                element.style.transition = '';
             });
         }
 

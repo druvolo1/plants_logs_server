@@ -536,9 +536,9 @@
                 display: grid !important;
                 grid-template-columns: 1fr 1fr !important;
                 grid-template-rows: auto auto !important;
-                gap: 6px !important;
+                gap: 4px !important;
                 width: 100% !important;
-                font-size: 0.7em !important;
+                font-size: 0.65em !important;
                 overflow: visible !important;
             }
             .info-item {
@@ -546,14 +546,19 @@
                 flex-direction: column !important;
                 align-items: flex-start !important;
                 justify-content: center !important;
-                gap: 3px !important;
+                gap: 2px !important;
                 background: rgba(51, 65, 85, 0.5) !important;
                 border: 1px solid rgba(148, 163, 184, 0.2) !important;
-                padding: 10px 12px !important;
-                border-radius: 8px !important;
+                padding: 6px 8px !important;
+                border-radius: 6px !important;
                 margin: 0 !important;
                 box-sizing: border-box !important;
                 overflow: visible !important;
+            }
+
+            /* Hide drag handles on mobile for info items */
+            .info-item-drag-handle {
+                display: none !important;
             }
             .info-item label {
                 display: inline !important;
@@ -797,27 +802,29 @@
                 font-size: 0.6em;
             }
             .header-ph-ec {
-                font-size: 0.975em !important;
-                gap: 6px !important;
+                font-size: 0.9em !important;
+                gap: 4px !important;
             }
             .header-info {
-                font-size: 0.65em !important;
-                gap: 5px !important;
+                font-size: 0.6em !important;
+                gap: 3px !important;
             }
             .info-item {
-                gap: 2px !important;
-                padding: 8px 10px !important;
+                gap: 1px !important;
+                padding: 5px 6px !important;
                 min-height: auto !important;
             }
             .info-item label {
-                font-size: 1em !important;
-                letter-spacing: 0.2px !important;
+                font-size: 0.95em !important;
+                letter-spacing: 0px !important;
             }
             .info-item span {
-                font-size: 1em !important;
+                font-size: 0.95em !important;
                 display: block !important;
                 white-space: normal !important;
                 word-wrap: break-word !important;
+                overflow-wrap: break-word !important;
+                hyphens: auto !important;
             }
 
             /* Even smaller water level on phones */
@@ -854,6 +861,27 @@
 
             [id^="all-valves-controls-"] table {
                 font-size: 0.7rem !important;
+            }
+        }
+
+        /* Very small screens - single column for header info */
+        @media (max-width: 360px) {
+            .header-info {
+                grid-template-columns: 1fr !important;
+                grid-template-rows: auto !important;
+                font-size: 0.7em !important;
+                gap: 4px !important;
+            }
+            .info-item {
+                padding: 6px 8px !important;
+            }
+            /* Reset grid positioning for single column */
+            .info-item[id^="system-item"],
+            .info-item[id^="plant-item"],
+            .info-item[id^="start-date-item"],
+            .info-item[id^="weeks-item"] {
+                grid-column: 1 !important;
+                grid-row: auto !important;
             }
         }
 
@@ -1242,24 +1270,59 @@
             let touchStartY = 0;
             let touchStartX = 0;
             let isDragging = false;
+            let dragTimer = null;
 
             element.addEventListener('touchstart', (e) => {
+                // Only start drag from drag handle for cards
+                const isDragHandle = e.target.closest('.card-drag-handle') ||
+                                   e.target.closest('.plant-drag-handle') ||
+                                   e.target.closest('.drag-handle') ||
+                                   e.target.closest('.info-item-drag-handle');
+
+                if (element.classList.contains('card') && !isDragHandle) {
+                    return; // Don't drag cards unless using the handle
+                }
+
                 const touch = e.touches[0];
                 touchStartY = touch.clientY;
                 touchStartX = touch.clientX;
 
-                setTimeout(() => {
+                // Add immediate visual feedback
+                element.style.transition = 'opacity 0.15s ease';
+
+                dragTimer = setTimeout(() => {
                     isDragging = true;
                     element.classList.add('dragging');
-                }, 100);
-            }, { passive: true });
+                    element.style.opacity = '0.8';
+
+                    // Haptic feedback if available
+                    if (navigator.vibrate) {
+                        navigator.vibrate(50);
+                    }
+                }, 150);
+            });
 
             element.addEventListener('touchmove', (e) => {
-                if (!isDragging) return;
-
                 const touch = e.touches[0];
                 const currentY = touch.clientY;
                 const currentX = touch.clientX;
+
+                // Check if moved enough to be a drag (not a tap)
+                const deltaY = Math.abs(currentY - touchStartY);
+                const deltaX = Math.abs(currentX - touchStartX);
+
+                if (!isDragging && (deltaY > 10 || deltaX > 10)) {
+                    clearTimeout(dragTimer);
+                    isDragging = true;
+                    element.classList.add('dragging');
+                    element.style.opacity = '0.8';
+
+                    if (navigator.vibrate) {
+                        navigator.vibrate(50);
+                    }
+                }
+
+                if (!isDragging) return;
 
                 // Hide the element temporarily to get element underneath
                 element.style.visibility = 'hidden';
@@ -1303,10 +1366,14 @@
             });
 
             element.addEventListener('touchend', (e) => {
+                clearTimeout(dragTimer);
+
                 if (!isDragging) return;
 
                 isDragging = false;
                 element.classList.remove('dragging');
+                element.style.opacity = '';
+                element.style.transition = '';
 
                 if (onDragEnd) {
                     onDragEnd();
@@ -1314,8 +1381,11 @@
             });
 
             element.addEventListener('touchcancel', (e) => {
+                clearTimeout(dragTimer);
                 isDragging = false;
                 element.classList.remove('dragging');
+                element.style.opacity = '';
+                element.style.transition = '';
             });
         }
 
