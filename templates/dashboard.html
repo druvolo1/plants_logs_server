@@ -1237,6 +1237,88 @@
             }
         }
 
+        // Add touch support for mobile dragging
+        function addTouchSupport(element, container, onDragEnd) {
+            let touchStartY = 0;
+            let touchStartX = 0;
+            let isDragging = false;
+
+            element.addEventListener('touchstart', (e) => {
+                const touch = e.touches[0];
+                touchStartY = touch.clientY;
+                touchStartX = touch.clientX;
+
+                setTimeout(() => {
+                    isDragging = true;
+                    element.classList.add('dragging');
+                }, 100);
+            }, { passive: true });
+
+            element.addEventListener('touchmove', (e) => {
+                if (!isDragging) return;
+
+                const touch = e.touches[0];
+                const currentY = touch.clientY;
+                const currentX = touch.clientX;
+
+                // Hide the element temporarily to get element underneath
+                element.style.visibility = 'hidden';
+                const elementsAtPoint = document.elementsFromPoint(currentX, currentY);
+                element.style.visibility = 'visible';
+
+                const targetElement = elementsAtPoint.find(el =>
+                    el !== element &&
+                    el.classList &&
+                    (el.classList.contains('device-section') ||
+                     el.classList.contains('card') ||
+                     el.classList.contains('info-item') ||
+                     el.classList.contains('plant-card'))
+                );
+
+                if (targetElement && container) {
+                    const rect = targetElement.getBoundingClientRect();
+                    const isVertical = element.classList.contains('device-section') ||
+                                     element.classList.contains('card') ||
+                                     element.classList.contains('plant-card');
+
+                    if (isVertical) {
+                        const midpoint = rect.top + rect.height / 2;
+                        if (currentY < midpoint) {
+                            container.insertBefore(element, targetElement);
+                        } else {
+                            container.insertBefore(element, targetElement.nextSibling);
+                        }
+                    } else {
+                        // Horizontal (info-items)
+                        const midpoint = rect.left + rect.width / 2;
+                        if (currentX < midpoint) {
+                            container.insertBefore(element, targetElement);
+                        } else {
+                            container.insertBefore(element, targetElement.nextSibling);
+                        }
+                    }
+                }
+
+                e.preventDefault();
+            });
+
+            element.addEventListener('touchend', (e) => {
+                if (!isDragging) return;
+
+                isDragging = false;
+                element.classList.remove('dragging');
+
+                if (onDragEnd) {
+                    onDragEnd();
+                }
+            });
+
+            element.addEventListener('touchcancel', (e) => {
+                isDragging = false;
+                element.classList.remove('dragging');
+            });
+        }
+
         // Set up drag and drop functionality
         function setupDragAndDrop() {
             const statusDiv = document.getElementById('devices-status');
@@ -1244,6 +1326,9 @@
 
             deviceSections.forEach(section => {
                 section.draggable = true;
+
+                // Add touch support for mobile
+                addTouchSupport(section, statusDiv, saveDeviceOrder);
 
                 // Prevent dragging when clicking on interactive elements
                 const header = section.querySelector('.device-header');
@@ -1327,6 +1412,9 @@
                 const cards = grid.querySelectorAll('.card');
 
                 cards.forEach(card => {
+                    // Add touch support for mobile
+                    addTouchSupport(card, grid, () => saveCardOrder(grid.dataset.deviceId));
+
                     const dragHandle = card.querySelector('.card-drag-handle');
                     if (dragHandle) {
                         dragHandle.addEventListener('click', (e) => {
@@ -1436,6 +1524,9 @@
                 const infoItems = headerInfo.querySelectorAll('.info-item');
 
                 infoItems.forEach(item => {
+                    // Add touch support for mobile
+                    addTouchSupport(item, headerInfo, () => saveInfoItemOrder(headerInfo.dataset.deviceId));
+
                     item.addEventListener('dragstart', (e) => {
                         item.classList.add('dragging');
                         e.dataTransfer.effectAllowed = 'move';

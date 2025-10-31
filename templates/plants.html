@@ -748,11 +748,78 @@
             }
         }
 
+        // Add touch support for mobile dragging
+        function addPlantTouchSupport(element, container, onDragEnd) {
+            let touchStartY = 0;
+            let isDragging = false;
+
+            element.addEventListener('touchstart', (e) => {
+                const touch = e.touches[0];
+                touchStartY = touch.clientY;
+
+                setTimeout(() => {
+                    isDragging = true;
+                    element.classList.add('dragging');
+                }, 100);
+            }, { passive: true });
+
+            element.addEventListener('touchmove', (e) => {
+                if (!isDragging) return;
+
+                const touch = e.touches[0];
+                const currentY = touch.clientY;
+
+                // Hide the element temporarily to get element underneath
+                element.style.visibility = 'hidden';
+                const elementsAtPoint = document.elementsFromPoint(touch.clientX, currentY);
+                element.style.visibility = 'visible';
+
+                const targetCard = elementsAtPoint.find(el =>
+                    el !== element &&
+                    el.classList &&
+                    el.classList.contains('plant-card')
+                );
+
+                if (targetCard && container) {
+                    const rect = targetCard.getBoundingClientRect();
+                    const midpoint = rect.top + rect.height / 2;
+
+                    if (currentY < midpoint) {
+                        container.insertBefore(element, targetCard);
+                    } else {
+                        container.insertBefore(element, targetCard.nextSibling);
+                    }
+                }
+
+                e.preventDefault();
+            });
+
+            element.addEventListener('touchend', (e) => {
+                if (!isDragging) return;
+
+                isDragging = false;
+                element.classList.remove('dragging');
+
+                if (onDragEnd) {
+                    onDragEnd();
+                }
+            });
+
+            element.addEventListener('touchcancel', (e) => {
+                isDragging = false;
+                element.classList.remove('dragging');
+            });
+        }
+
         function initializePlantDragAndDrop() {
             const plantCards = document.querySelectorAll('.plant-card');
+            const container = document.querySelector('.plants-grid');
             let draggedElement = null;
 
             plantCards.forEach(card => {
+                // Add touch support for mobile
+                addPlantTouchSupport(card, container, savePlantOrder);
+
                 // Prevent card click from firing when clicking drag handle
                 const dragHandle = card.querySelector('.plant-drag-handle');
                 if (dragHandle) {
