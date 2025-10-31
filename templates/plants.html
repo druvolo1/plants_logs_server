@@ -751,6 +751,7 @@
         // Add touch support for mobile dragging
         function addPlantTouchSupport(element, container, onDragEnd) {
             let touchStartY = 0;
+            let touchStartX = 0;
             let isDragging = false;
             let dragTimer = null;
 
@@ -761,6 +762,7 @@
 
                 const touch = e.touches[0];
                 touchStartY = touch.clientY;
+                touchStartX = touch.clientX;
 
                 // Add immediate visual feedback
                 element.style.transition = 'opacity 0.15s ease';
@@ -779,11 +781,21 @@
             element.addEventListener('touchmove', (e) => {
                 const touch = e.touches[0];
                 const currentY = touch.clientY;
+                const currentX = touch.clientX;
 
                 // Check if moved enough to be a drag
                 const deltaY = Math.abs(currentY - touchStartY);
+                const deltaX = Math.abs(currentX - touchStartX);
 
-                if (!isDragging && deltaY > 10) {
+                // If user is scrolling (vertical movement dominates), cancel drag
+                if (!isDragging && deltaY > 15 && deltaY > deltaX * 1.5) {
+                    clearTimeout(dragTimer);
+                    isDragging = false;
+                    element.style.transition = '';
+                    return; // Allow normal scrolling
+                }
+
+                if (!isDragging && deltaY > 15) {
                     clearTimeout(dragTimer);
                     isDragging = true;
                     element.classList.add('dragging');
@@ -794,7 +806,11 @@
                     }
                 }
 
+                // Only prevent scrolling if we're actively dragging
                 if (!isDragging) return;
+
+                // Prevent scrolling while dragging
+                e.preventDefault();
 
                 // Hide the element temporarily to get element underneath
                 element.style.visibility = 'hidden';
@@ -817,8 +833,6 @@
                         container.insertBefore(element, targetCard.nextSibling);
                     }
                 }
-
-                e.preventDefault();
             });
 
             element.addEventListener('touchend', (e) => {
