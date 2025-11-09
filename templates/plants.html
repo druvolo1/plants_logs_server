@@ -156,8 +156,14 @@
             border-radius: 12px;
             padding: 1.5rem;
             cursor: pointer;
-            transition: all 0.3s ease;
+            transition: transform 0.3s ease, opacity 0.3s ease;
             position: relative;
+        }
+
+        /* Drag placeholder styling */
+        .drag-placeholder {
+            background: rgba(16, 185, 129, 0.2) !important;
+            border: 2px dashed #10b981 !important;
         }
 
         .plant-card:hover {
@@ -754,6 +760,8 @@
             let touchStartX = 0;
             let isDragging = false;
             let dragTimer = null;
+            let initialRect = null;
+            let placeholder = null;
 
             element.addEventListener('touchstart', (e) => {
                 // Only start drag from drag handle
@@ -763,6 +771,7 @@
                 const touch = e.touches[0];
                 touchStartY = touch.clientY;
                 touchStartX = touch.clientX;
+                initialRect = element.getBoundingClientRect();
 
                 // Add immediate visual feedback
                 element.style.transition = 'opacity 0.15s ease';
@@ -770,7 +779,25 @@
                 dragTimer = setTimeout(() => {
                     isDragging = true;
                     element.classList.add('dragging');
-                    element.style.opacity = '0.8';
+
+                    // Create visual placeholder
+                    placeholder = element.cloneNode(false);
+                    placeholder.style.opacity = '0.3';
+                    placeholder.style.pointerEvents = 'none';
+                    placeholder.classList.add('drag-placeholder');
+                    element.parentNode.insertBefore(placeholder, element);
+
+                    // Make element float
+                    element.style.position = 'fixed';
+                    element.style.left = initialRect.left + 'px';
+                    element.style.top = initialRect.top + 'px';
+                    element.style.width = initialRect.width + 'px';
+                    element.style.height = initialRect.height + 'px';
+                    element.style.zIndex = '1000';
+                    element.style.opacity = '0.9';
+                    element.style.transform = 'scale(1.05)';
+                    element.style.transition = 'transform 0.2s ease, opacity 0.2s ease';
+                    element.style.boxShadow = '0 8px 16px rgba(0,0,0,0.4)';
 
                     if (navigator.vibrate) {
                         navigator.vibrate(50);
@@ -799,7 +826,25 @@
                     clearTimeout(dragTimer);
                     isDragging = true;
                     element.classList.add('dragging');
-                    element.style.opacity = '0.8';
+
+                    // Create visual placeholder
+                    placeholder = element.cloneNode(false);
+                    placeholder.style.opacity = '0.3';
+                    placeholder.style.pointerEvents = 'none';
+                    placeholder.classList.add('drag-placeholder');
+                    element.parentNode.insertBefore(placeholder, element);
+
+                    // Make element float
+                    element.style.position = 'fixed';
+                    element.style.left = initialRect.left + 'px';
+                    element.style.top = initialRect.top + 'px';
+                    element.style.width = initialRect.width + 'px';
+                    element.style.height = initialRect.height + 'px';
+                    element.style.zIndex = '1000';
+                    element.style.opacity = '0.9';
+                    element.style.transform = 'scale(1.05)';
+                    element.style.transition = 'none';
+                    element.style.boxShadow = '0 8px 16px rgba(0,0,0,0.4)';
 
                     if (navigator.vibrate) {
                         navigator.vibrate(50);
@@ -812,25 +857,30 @@
                 // Prevent scrolling while dragging
                 e.preventDefault();
 
-                // Hide the element temporarily to get element underneath
-                element.style.visibility = 'hidden';
-                const elementsAtPoint = document.elementsFromPoint(touch.clientX, currentY);
-                element.style.visibility = 'visible';
+                // Move the element with the finger
+                const offsetY = currentY - touchStartY;
+                const offsetX = currentX - touchStartX;
+                element.style.left = (initialRect.left + offsetX) + 'px';
+                element.style.top = (initialRect.top + offsetY) + 'px';
 
+                // Find element underneath (excluding the dragged element and placeholder)
+                const elementsAtPoint = document.elementsFromPoint(touch.clientX, currentY);
                 const targetCard = elementsAtPoint.find(el =>
                     el !== element &&
+                    el !== placeholder &&
+                    !el.classList.contains('drag-placeholder') &&
                     el.classList &&
                     el.classList.contains('plant-card')
                 );
 
-                if (targetCard && container) {
+                if (targetCard && placeholder && container) {
                     const rect = targetCard.getBoundingClientRect();
                     const midpoint = rect.top + rect.height / 2;
 
                     if (currentY < midpoint) {
-                        container.insertBefore(element, targetCard);
+                        container.insertBefore(placeholder, targetCard);
                     } else {
-                        container.insertBefore(element, targetCard.nextSibling);
+                        container.insertBefore(placeholder, targetCard.nextSibling);
                     }
                 }
             });
@@ -840,22 +890,80 @@
 
                 if (!isDragging) return;
 
-                isDragging = false;
-                element.classList.remove('dragging');
-                element.style.opacity = '';
-                element.style.transition = '';
+                // Animate element to placeholder position
+                if (placeholder && placeholder.parentNode) {
+                    const placeholderRect = placeholder.getBoundingClientRect();
 
-                if (onDragEnd) {
-                    onDragEnd();
+                    // Enable transitions for smooth animation
+                    element.style.transition = 'all 0.3s ease';
+                    element.style.left = placeholderRect.left + 'px';
+                    element.style.top = placeholderRect.top + 'px';
+                    element.style.transform = 'scale(1)';
+                    element.style.opacity = '1';
+
+                    // After animation, put element back in document flow
+                    setTimeout(() => {
+                        if (placeholder && placeholder.parentNode) {
+                            placeholder.parentNode.insertBefore(element, placeholder);
+                            placeholder.remove();
+                        }
+
+                        // Reset all styles
+                        element.style.position = '';
+                        element.style.left = '';
+                        element.style.top = '';
+                        element.style.width = '';
+                        element.style.height = '';
+                        element.style.zIndex = '';
+                        element.style.transform = '';
+                        element.style.transition = '';
+                        element.style.boxShadow = '';
+                        element.style.opacity = '';
+                        element.classList.remove('dragging');
+
+                        if (onDragEnd) {
+                            onDragEnd();
+                        }
+                    }, 300);
+                } else {
+                    // Fallback if no placeholder
+                    element.style.position = '';
+                    element.style.left = '';
+                    element.style.top = '';
+                    element.style.width = '';
+                    element.style.height = '';
+                    element.style.zIndex = '';
+                    element.style.transform = '';
+                    element.style.transition = '';
+                    element.style.boxShadow = '';
+                    element.style.opacity = '';
+                    element.classList.remove('dragging');
                 }
+
+                isDragging = false;
             });
 
             element.addEventListener('touchcancel', (e) => {
                 clearTimeout(dragTimer);
-                isDragging = false;
-                element.classList.remove('dragging');
-                element.style.opacity = '';
+
+                if (placeholder && placeholder.parentNode) {
+                    placeholder.remove();
+                }
+
+                // Reset all styles
+                element.style.position = '';
+                element.style.left = '';
+                element.style.top = '';
+                element.style.width = '';
+                element.style.height = '';
+                element.style.zIndex = '';
+                element.style.transform = '';
                 element.style.transition = '';
+                element.style.boxShadow = '';
+                element.style.opacity = '';
+                element.classList.remove('dragging');
+
+                isDragging = false;
             });
         }
 

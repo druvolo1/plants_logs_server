@@ -85,9 +85,11 @@ class Device(Base):
     api_key = Column(String(64))
     name = Column(String(255), nullable=True)
     is_online = Column(Boolean, default=False)
+    device_type = Column(String(50), nullable=True, default='feeding_system')  # 'feeding_system', 'curing_monitor', 'environmental'
     user_id = Column(Integer, ForeignKey("users.id"))
     user = relationship("User", back_populates="devices")
     plants = relationship("Plant", foreign_keys="Plant.device_id", cascade="all, delete-orphan", passive_deletes=False)
+    device_assignments = relationship("DeviceAssignment", back_populates="device", cascade="all, delete-orphan")
 
 # Device Sharing model
 class DeviceShare(Base):
@@ -109,24 +111,46 @@ class DeviceShare(Base):
     owner = relationship("User", foreign_keys=[owner_user_id])
     shared_with = relationship("User", foreign_keys=[shared_with_user_id])
 
+# Device Assignment model - tracks which device is monitoring which plant and during which phase
+class DeviceAssignment(Base):
+    __tablename__ = "device_assignments"
+    id = Column(Integer, primary_key=True, index=True)
+    plant_id = Column(Integer, ForeignKey("plants.id"), nullable=False)
+    device_id = Column(Integer, ForeignKey("devices.id"), nullable=False)
+    phase = Column(String(50), nullable=False)  # 'feeding', 'curing', etc.
+    assigned_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    removed_at = Column(DateTime, nullable=True)  # NULL if still assigned
+
+    # Relationships
+    plant = relationship("Plant", back_populates="device_assignments")
+    device = relationship("Device", back_populates="device_assignments")
+
 # Plant model
 class Plant(Base):
     __tablename__ = "plants"
     id = Column(Integer, primary_key=True, index=True)
     plant_id = Column(String(64), unique=True, index=True, nullable=False)  # Timestamp-based unique ID
     name = Column(String(255), nullable=False)  # Strain name
-    system_id = Column(String(255), nullable=True)  # e.g., "Zone1"
-    device_id = Column(Integer, ForeignKey("devices.id"), nullable=False)
+    system_id = Column(String(255), nullable=True)  # e.g., "Zone1" - legacy field, use device_assignments for new plants
+    device_id = Column(Integer, ForeignKey("devices.id"), nullable=True)  # Made nullable - legacy field for backward compatibility
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     start_date = Column(DateTime, nullable=False)
     end_date = Column(DateTime, nullable=True)
     yield_grams = Column(Float, nullable=True)  # Added after harvest
     display_order = Column(Integer, nullable=True, default=0)  # For user-defined ordering
 
+    # New lifecycle fields
+    status = Column(String(50), nullable=False, default='created')  # 'created', 'feeding', 'harvested', 'curing', 'finished'
+    current_phase = Column(String(50), nullable=True)  # Current phase name, e.g., 'feeding', 'curing'
+    harvest_date = Column(DateTime, nullable=True)  # When plant was harvested from feeding
+    cure_start_date = Column(DateTime, nullable=True)  # When curing phase started
+    cure_end_date = Column(DateTime, nullable=True)  # When curing phase completed
+
     # Relationships
     device = relationship("Device", foreign_keys=[device_id], back_populates="plants")
     user = relationship("User", foreign_keys=[user_id])
     logs = relationship("LogEntry", back_populates="plant", cascade="all, delete-orphan")
+    device_assignments = relationship("DeviceAssignment", back_populates="plant", cascade="all, delete-orphan")
 
 # Log Entry model
 class LogEntry(Base):
@@ -134,11 +158,12 @@ class LogEntry(Base):
     id = Column(Integer, primary_key=True, index=True)
     plant_id = Column(Integer, ForeignKey("plants.id"), nullable=False)
     event_type = Column(String(20), nullable=False)  # 'sensor' or 'dosing'
-    sensor_name = Column(String(50), nullable=True)  # e.g., 'ph'
-    value = Column(Float, nullable=True)  # pH reading
+    sensor_name = Column(String(50), nullable=True)  # e.g., 'ph', 'ec', 'humidity', 'temperature'
+    value = Column(Float, nullable=True)  # pH reading, humidity %, temp, etc.
     dose_type = Column(String(10), nullable=True)  # 'up' or 'down'
     dose_amount_ml = Column(Float, nullable=True)  # Dose amount
     timestamp = Column(DateTime, nullable=False, index=True)
+    phase = Column(String(50), nullable=True)  # 'feeding', 'curing', etc. - which phase this log is from
 
     # Relationships
     plant = relationship("Plant", back_populates="logs")
@@ -965,6 +990,16 @@ class PlantCreate(BaseModel):
     system_id: Optional[str] = None
     device_id: str  # Device UUID
 
+class PlantCreateNew(BaseModel):
+    """New plant creation without device assignment"""
+    name: str  # Strain name
+    start_date: Optional[str] = None  # ISO format, defaults to now
+
+class DeviceAssignmentCreate(BaseModel):
+    """Assign a device to a plant for a specific phase"""
+    device_id: str  # Device UUID
+    phase: str  # 'feeding', 'curing', etc.
+
 class PlantFinish(BaseModel):
     end_date: Optional[str] = None  # ISO format date string, defaults to today
 
@@ -975,11 +1010,24 @@ class PlantRead(BaseModel):
     plant_id: str
     name: str
     system_id: Optional[str]
-    device_id: str  # Device UUID for display
+    device_id: Optional[str]  # Device UUID for display (legacy, may be None for new plants)
     start_date: datetime
     end_date: Optional[datetime]
     yield_grams: Optional[float]
     is_active: bool  # Computed: True if end_date is None
+    status: str  # 'created', 'feeding', 'harvested', 'curing', 'finished'
+    current_phase: Optional[str]  # Current phase name
+    harvest_date: Optional[datetime]
+    cure_start_date: Optional[datetime]
+    cure_end_date: Optional[datetime]
+
+class DeviceAssignmentRead(BaseModel):
+    id: int
+    device_id: str  # Device UUID
+    device_name: Optional[str]
+    phase: str
+    assigned_at: datetime
+    removed_at: Optional[datetime]
 
 class LogEntryCreate(BaseModel):
     event_type: str  # 'sensor' or 'dosing'
@@ -1365,18 +1413,197 @@ async def create_plant(
 
     return {"plant_id": plant_id, "message": "Plant started successfully"}
 
-# List all plants for user (owned devices)
+# NEW: Create a plant without device assignment - server-side creation
+@app.post("/user/plants/new", response_model=Dict[str, str])
+async def create_plant_new(
+    plant_data: PlantCreateNew,
+    user: User = Depends(current_user),
+    session: AsyncSession = Depends(get_db)
+):
+    """Create a new plant on the server without assigning it to a device yet"""
+    from datetime import datetime
+
+    # Generate unique plant_id using timestamp
+    plant_id = str(int(datetime.utcnow().timestamp() * 1000000))  # Microsecond precision
+
+    # Parse start_date if provided, otherwise use current time
+    if plant_data.start_date:
+        try:
+            start_date = date_parser.parse(plant_data.start_date)
+        except:
+            raise HTTPException(400, "Invalid start_date format. Use ISO format.")
+    else:
+        start_date = datetime.utcnow()
+
+    # Create plant with status='created', no device assignment yet
+    new_plant = Plant(
+        plant_id=plant_id,
+        name=plant_data.name,
+        user_id=user.id,
+        start_date=start_date,
+        status='created',  # Not assigned to any device yet
+        device_id=None,  # No device initially
+        system_id=None
+    )
+
+    session.add(new_plant)
+    await session.commit()
+    await session.refresh(new_plant)
+
+    return {"plant_id": plant_id, "message": "Plant created successfully. Assign it to a device to start monitoring."}
+
+# NEW: Assign a device to a plant for a specific phase
+@app.post("/user/plants/{plant_id}/assign", response_model=Dict[str, str])
+async def assign_device_to_plant(
+    plant_id: str,
+    assignment_data: DeviceAssignmentCreate,
+    user: User = Depends(current_user),
+    session: AsyncSession = Depends(get_db)
+):
+    """Assign a device to monitor a plant during a specific phase"""
+    from datetime import datetime
+
+    # Get the plant
+    result = await session.execute(select(Plant).where(Plant.plant_id == plant_id))
+    plant = result.scalars().first()
+
+    if not plant:
+        raise HTTPException(404, "Plant not found")
+
+    # Verify user owns the plant
+    if plant.user_id != user.id:
+        raise HTTPException(403, "You don't have permission to modify this plant")
+
+    # Get the device
+    result = await session.execute(select(Device).where(Device.device_id == assignment_data.device_id))
+    device = result.scalars().first()
+
+    if not device:
+        raise HTTPException(404, "Device not found")
+
+    # Verify user owns or has controller access to the device
+    is_owner = device.user_id == user.id
+
+    if not is_owner:
+        result = await session.execute(
+            select(DeviceShare).where(
+                DeviceShare.device_id == device.id,
+                DeviceShare.shared_with_user_id == user.id,
+                DeviceShare.is_active == True,
+                DeviceShare.revoked_at == None,
+                DeviceShare.accepted_at != None,
+                DeviceShare.permission_level == 'controller'
+            )
+        )
+        share = result.scalars().first()
+
+        if not share:
+            raise HTTPException(403, "You don't have permission to use this device")
+
+    # Check if there's already an active assignment for this plant and phase
+    result = await session.execute(
+        select(DeviceAssignment).where(
+            DeviceAssignment.plant_id == plant.id,
+            DeviceAssignment.phase == assignment_data.phase,
+            DeviceAssignment.removed_at == None
+        )
+    )
+    existing_assignment = result.scalars().first()
+
+    if existing_assignment:
+        raise HTTPException(400, f"Plant already has an active assignment for phase '{assignment_data.phase}'")
+
+    # Create the assignment
+    new_assignment = DeviceAssignment(
+        plant_id=plant.id,
+        device_id=device.id,
+        phase=assignment_data.phase,
+        assigned_at=datetime.utcnow()
+    )
+
+    session.add(new_assignment)
+
+    # Update plant status and phase
+    plant.current_phase = assignment_data.phase
+
+    # Update status based on phase
+    if assignment_data.phase == 'feeding':
+        plant.status = 'feeding'
+    elif assignment_data.phase == 'curing':
+        plant.status = 'curing'
+        if not plant.cure_start_date:
+            plant.cure_start_date = datetime.utcnow()
+
+    await session.commit()
+
+    return {"message": f"Device assigned to plant for {assignment_data.phase} phase"}
+
+# NEW: Unassign a device from a plant (end a phase)
+@app.post("/user/plants/{plant_id}/unassign", response_model=Dict[str, str])
+async def unassign_device_from_plant(
+    plant_id: str,
+    phase: str = Body(..., embed=True),
+    user: User = Depends(current_user),
+    session: AsyncSession = Depends(get_db)
+):
+    """Remove a device assignment from a plant (end a monitoring phase)"""
+    from datetime import datetime
+
+    # Get the plant
+    result = await session.execute(select(Plant).where(Plant.plant_id == plant_id))
+    plant = result.scalars().first()
+
+    if not plant:
+        raise HTTPException(404, "Plant not found")
+
+    # Verify user owns the plant
+    if plant.user_id != user.id:
+        raise HTTPException(403, "You don't have permission to modify this plant")
+
+    # Find the active assignment for this phase
+    result = await session.execute(
+        select(DeviceAssignment).where(
+            DeviceAssignment.plant_id == plant.id,
+            DeviceAssignment.phase == phase,
+            DeviceAssignment.removed_at == None
+        )
+    )
+    assignment = result.scalars().first()
+
+    if not assignment:
+        raise HTTPException(404, f"No active assignment found for phase '{phase}'")
+
+    # Mark the assignment as removed
+    assignment.removed_at = datetime.utcnow()
+
+    # Update plant status based on what phase ended
+    if phase == 'feeding':
+        plant.status = 'harvested'
+        plant.harvest_date = datetime.utcnow()
+        plant.current_phase = None
+    elif phase == 'curing':
+        plant.status = 'finished'
+        plant.cure_end_date = datetime.utcnow()
+        plant.current_phase = None
+        plant.end_date = datetime.utcnow()  # Final completion
+
+    await session.commit()
+
+    return {"message": f"Device unassigned from plant, {phase} phase ended"}
+
+# List all plants for user (owned or device-assigned)
 @app.get("/user/plants", response_model=List[PlantRead])
 async def list_plants(
     user: User = Depends(current_user),
     session: AsyncSession = Depends(get_db),
     active_only: bool = False
 ):
-    # Get all plants for devices owned by user, ordered by display_order
-    query = select(Plant, Device.device_id).join(Device, Plant.device_id == Device.id).where(Device.user_id == user.id).order_by(Plant.display_order, Plant.id)
+    # Get all plants owned by user (both legacy device-owned and new server-created plants)
+    # Use outer join since device_id can be None for new plants
+    query = select(Plant, Device.device_id).outerjoin(Device, Plant.device_id == Device.id).where(Plant.user_id == user.id).order_by(Plant.display_order, Plant.id)
 
     if active_only:
-        query = query.where(Plant.end_date == None)
+        query = query.where(Plant.status.in_(['created', 'feeding', 'harvested', 'curing']))  # Not finished
 
     result = await session.execute(query)
 
@@ -1386,11 +1613,16 @@ async def list_plants(
             plant_id=plant.plant_id,
             name=plant.name,
             system_id=plant.system_id,
-            device_id=device_uuid,
+            device_id=device_uuid,  # May be None for new plants
             start_date=plant.start_date,
             end_date=plant.end_date,
             yield_grams=plant.yield_grams,
-            is_active=(plant.end_date is None)
+            is_active=(plant.end_date is None),
+            status=plant.status,
+            current_phase=plant.current_phase,
+            harvest_date=plant.harvest_date,
+            cure_start_date=plant.cure_start_date,
+            cure_end_date=plant.cure_end_date
         ))
 
     return plants_list
@@ -1402,11 +1634,11 @@ async def get_plant(
     user: User = Depends(current_user),
     session: AsyncSession = Depends(get_db)
 ):
-    # Get plant with device info
+    # Get plant with device info (use outer join since device_id can be None)
     result = await session.execute(
         select(Plant, Device.device_id)
-        .join(Device, Plant.device_id == Device.id)
-        .where(Plant.plant_id == plant_id, Device.user_id == user.id)
+        .outerjoin(Device, Plant.device_id == Device.id)
+        .where(Plant.plant_id == plant_id, Plant.user_id == user.id)
     )
 
     row = result.first()
@@ -1423,7 +1655,12 @@ async def get_plant(
         start_date=plant.start_date,
         end_date=plant.end_date,
         yield_grams=plant.yield_grams,
-        is_active=(plant.end_date is None)
+        is_active=(plant.end_date is None),
+        status=plant.status,
+        current_phase=plant.current_phase,
+        harvest_date=plant.harvest_date,
+        cure_start_date=plant.cure_start_date,
+        cure_end_date=plant.cure_end_date
     )
 
 # Finish a plant - for devices using API key
