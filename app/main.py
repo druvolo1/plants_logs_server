@@ -2095,15 +2095,36 @@ user_connections: Dict[str, List[WebSocket]] = defaultdict(list)
 async def device_websocket(websocket: WebSocket, device_id: str, api_key: str = Query(...), session: AsyncSession = Depends(get_db)):
     await websocket.accept()
     print(f"Device connected: {device_id} with api_key {api_key}")  # Log connection accept
-    result = await session.execute(select(Device).where(Device.device_id == device_id, Device.api_key == api_key))
-    if not result.scalars().first():
+
+    # Get device and verify auth
+    result = await session.execute(
+        select(Device, User)
+        .join(User, Device.user_id == User.id)
+        .where(Device.device_id == device_id, Device.api_key == api_key)
+    )
+    row = result.first()
+    if not row:
         print(f"Invalid device/auth for {device_id}")  # Log invalid auth
         await websocket.close()
         return
+
+    device, user = row
+
     await session.execute(update(Device).where(Device.device_id == device_id).values(is_online=True))
     await session.commit()
     print(f"Set {device_id} online in DB")  # Log DB update
     device_connections[device_id] = websocket
+
+    # Send owner info to device
+    try:
+        await websocket.send_json({
+            "command": "server_info",
+            "owner_email": user.email,
+            "owner_name": user.email.split('@')[0]  # Use email prefix as name
+        })
+        print(f"Sent owner info to device {device_id}: {user.email}")
+    except Exception as e:
+        print(f"Failed to send owner info to device {device_id}: {e}")
 
     # Notify all connected users that the device is online
     for user_ws in user_connections[device_id]:
