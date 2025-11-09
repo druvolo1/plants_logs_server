@@ -6,7 +6,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, Integer, String, Boolean, select, ForeignKey, DateTime, Float, Text
+from sqlalchemy import Column, Integer, String, Boolean, select, ForeignKey, DateTime, Float, Text, func
 from sqlalchemy.orm import relationship, selectinload, Session
 from datetime import datetime, timedelta
 from dateutil import parser as date_parser
@@ -848,6 +848,86 @@ async def devices_page(request: Request, user: User = Depends(current_user)):
 @app.get("/plants", response_class=HTMLResponse)
 async def plants_page(request: Request, user: User = Depends(current_user)):
     return templates.TemplateResponse("plants.html", {"request": request, "user": user})
+
+# Admin: Overview page
+@app.get("/admin/overview", response_class=HTMLResponse)
+async def admin_overview_page(request: Request, admin: User = Depends(current_admin)):
+    return templates.TemplateResponse("admin_overview.html", {"request": request, "user": admin})
+
+# Admin: Get all devices
+@app.get("/admin/all-devices")
+async def get_all_devices(admin: User = Depends(current_admin), session: AsyncSession = Depends(get_db)):
+    result = await session.execute(
+        select(Device, User.email)
+        .join(User, Device.user_id == User.id)
+        .order_by(Device.id.desc())
+    )
+
+    devices_list = []
+    for device, owner_email in result.all():
+        # Check for active plant assignment
+        assignment_result = await session.execute(
+            select(DeviceAssignment, Plant)
+            .join(Plant, DeviceAssignment.plant_id == Plant.id)
+            .where(
+                DeviceAssignment.device_id == device.id,
+                DeviceAssignment.removed_at == None
+            )
+        )
+        assignment_row = assignment_result.first()
+
+        active_plant_name = None
+        active_phase = None
+
+        if assignment_row:
+            assignment, plant = assignment_row
+            active_plant_name = plant.name
+            active_phase = assignment.phase
+
+        devices_list.append({
+            "device_id": device.device_id,
+            "name": device.name,
+            "owner_email": owner_email,
+            "device_type": device.device_type,
+            "is_online": device.is_online,
+            "active_plant_name": active_plant_name,
+            "active_phase": active_phase
+        })
+
+    return devices_list
+
+# Admin: Get all plants
+@app.get("/admin/all-plants")
+async def get_all_plants(admin: User = Depends(current_admin), session: AsyncSession = Depends(get_db)):
+    result = await session.execute(
+        select(Plant, User.email, Device.device_id)
+        .join(User, Plant.user_id == User.id)
+        .outerjoin(Device, Plant.device_id == Device.id)
+        .order_by(Plant.id.desc())
+    )
+
+    plants_list = []
+    for plant, owner_email, device_uuid in result.all():
+        plants_list.append({
+            "plant_id": plant.plant_id,
+            "name": plant.name,
+            "owner_email": owner_email,
+            "device_id": device_uuid,
+            "status": plant.status,
+            "current_phase": plant.current_phase,
+            "start_date": plant.start_date.isoformat() if plant.start_date else None,
+            "end_date": plant.end_date.isoformat() if plant.end_date else None,
+            "is_active": plant.end_date is None
+        })
+
+    return plants_list
+
+# Admin: Get user count
+@app.get("/admin/user-count")
+async def get_user_count(admin: User = Depends(current_admin), session: AsyncSession = Depends(get_db)):
+    result = await session.execute(select(func.count(User.id)))
+    count = result.scalar()
+    return {"count": count}
 
 # Admin: Users page
 @app.get("/admin/users", response_class=HTMLResponse)

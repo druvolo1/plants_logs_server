@@ -617,10 +617,16 @@
                     // Update user email in nav
                     document.getElementById('userEmail').textContent = user.email;
 
-                    // Add Users link for admins
+                    // Add admin links for admins
                     if (isAdmin) {
                         const plantsLink = document.querySelector('.navbar-link.active');
                         const userEmailSpan = document.getElementById('userEmail');
+
+                        // Create Admin Overview link
+                        const overviewLink = document.createElement('a');
+                        overviewLink.href = '/admin/overview';
+                        overviewLink.className = 'navbar-link';
+                        overviewLink.textContent = 'Admin Overview';
 
                         // Create Users link
                         const usersLink = document.createElement('a');
@@ -629,6 +635,7 @@
                         usersLink.textContent = 'Users';
 
                         // Insert after Plants link and before user email
+                        plantsLink.parentNode.insertBefore(overviewLink, userEmailSpan);
                         plantsLink.parentNode.insertBefore(usersLink, userEmailSpan);
                     }
                 }

@@ -828,6 +828,7 @@
                 <a href="/devices" class="navbar-link">Devices</a>
                 <a href="/plants" class="navbar-link">Plants</a>
                 {% if user.is_superuser %}
+                <a href="/admin/overview" class="navbar-link">Admin Overview</a>
                 <a href="/admin/users" class="navbar-link">Users</a>
                 {% endif %}
                 <span class="navbar-user">{{ user.email }}</span>
