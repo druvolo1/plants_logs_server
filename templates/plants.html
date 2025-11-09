@@ -504,10 +504,49 @@
                     <option value="finished">Finished Only</option>
                 </select>
             </div>
+            <button id="createPlantBtn" style="background: #10b981; color: white; padding: 0.75rem 1.5rem; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; transition: all 0.2s;">
+                + Create New Plant
+            </button>
         </div>
 
         <div id="plantsContainer" class="plants-grid">
             <div class="loading">Loading plants...</div>
+        </div>
+    </div>
+
+    <!-- Create Plant Modal -->
+    <div id="createPlantModal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h2>Create New Plant</h2>
+                <button class="modal-close" onclick="closeCreatePlantModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="createPlantForm">
+                    <div style="margin-bottom: 1rem;">
+                        <label for="newPlantName" style="display: block; margin-bottom: 0.5rem; color: #e0e0e0;">Plant Name (Strain)</label>
+                        <input type="text" id="newPlantName" required style="width: 100%; padding: 0.75rem; border: 1px solid #444; border-radius: 6px; background: #2d3748; color: #e0e0e0; font-size: 1rem;">
+                    </div>
+                    <div style="margin-bottom: 1rem;">
+                        <label for="assignDevice" style="display: block; margin-bottom: 0.5rem; color: #e0e0e0;">Assign to Device (Optional)</label>
+                        <select id="assignDevice" style="width: 100%; padding: 0.75rem; border: 1px solid #444; border-radius: 6px; background: #2d3748; color: #e0e0e0; font-size: 1rem;">
+                            <option value="">-- Don't assign yet --</option>
+                        </select>
+                    </div>
+                    <div style="margin-bottom: 1rem;">
+                        <label for="assignPhase" style="display: block; margin-bottom: 0.5rem; color: #e0e0e0;">Growth Phase</label>
+                        <select id="assignPhase" style="width: 100%; padding: 0.75rem; border: 1px solid #444; border-radius: 6px; background: #2d3748; color: #e0e0e0; font-size: 1rem;">
+                            <option value="veg">Vegetative</option>
+                            <option value="flower" selected>Flower</option>
+                        </select>
+                    </div>
+                    <div id="createPlantStatus" style="margin-bottom: 1rem; color: #10b981;"></div>
+                    <div style="display: flex; gap: 1rem;">
+                        <button type="submit" style="flex: 1; background: #10b981; color: white; padding: 0.75rem; border: none; border-radius: 6px; font-weight: 600; cursor: pointer;">Create Plant</button>
+                        <button type="button" onclick="closeCreatePlantModal()" style="flex: 1; background: #64748b; color: white; padding: 0.75rem; border: none; border-radius: 6px; font-weight: 600; cursor: pointer;">Cancel</button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 
@@ -1816,6 +1855,110 @@
                 closePlantModal();
             }
         }
+
+        // Create Plant Modal Functions
+        let availableDevices = [];
+
+        async function loadAvailableDevices() {
+            try {
+                const response = await fetch('/user/devices');
+                if (response.ok) {
+                    const devices = await response.json();
+                    // Filter to only available devices (not assigned to a plant)
+                    availableDevices = devices.filter(d => !d.active_plant_name && d.is_online);
+
+                    const select = document.getElementById('assignDevice');
+                    select.innerHTML = '<option value="">-- Don\'t assign yet --</option>';
+
+                    availableDevices.forEach(device => {
+                        const option = document.createElement('option');
+                        option.value = device.device_id;
+                        option.textContent = `${device.name || device.device_id} ${device.is_owner ? '' : '(Shared)'}`;
+                        select.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading devices:', error);
+            }
+        }
+
+        function openCreatePlantModal() {
+            document.getElementById('createPlantModal').style.display = 'block';
+            loadAvailableDevices();
+            document.getElementById('newPlantName').value = '';
+            document.getElementById('assignDevice').value = '';
+            document.getElementById('assignPhase').value = 'flower';
+            document.getElementById('createPlantStatus').textContent = '';
+        }
+
+        function closeCreatePlantModal() {
+            document.getElementById('createPlantModal').style.display = 'none';
+        }
+
+        document.getElementById('createPlantBtn').addEventListener('click', openCreatePlantModal);
+
+        document.getElementById('createPlantForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const plantName = document.getElementById('newPlantName').value.trim();
+            const deviceId = document.getElementById('assignDevice').value;
+            const phase = document.getElementById('assignPhase').value;
+            const statusDiv = document.getElementById('createPlantStatus');
+
+            if (!plantName) {
+                statusDiv.textContent = 'Please enter a plant name';
+                statusDiv.style.color = '#ef4444';
+                return;
+            }
+
+            try {
+                statusDiv.textContent = 'Creating plant...';
+                statusDiv.style.color = '#10b981';
+
+                // Create the plant
+                const createResponse = await fetch('/user/plants/new', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: plantName })
+                });
+
+                if (!createResponse.ok) {
+                    throw new Error('Failed to create plant');
+                }
+
+                const createData = await createResponse.json();
+                const plantId = createData.plant_id;
+
+                // If device selected, assign it
+                if (deviceId) {
+                    statusDiv.textContent = 'Assigning device...';
+
+                    const assignResponse = await fetch(`/user/plants/${plantId}/assign`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ device_id: deviceId, phase: phase })
+                    });
+
+                    if (!assignResponse.ok) {
+                        throw new Error('Plant created but failed to assign device');
+                    }
+
+                    statusDiv.textContent = 'Plant created and assigned successfully!';
+                } else {
+                    statusDiv.textContent = 'Plant created successfully!';
+                }
+
+                setTimeout(() => {
+                    closeCreatePlantModal();
+                    loadPlants();
+                }, 1500);
+
+            } catch (error) {
+                console.error('Error creating plant:', error);
+                statusDiv.textContent = `Error: ${error.message}`;
+                statusDiv.style.color = '#ef4444';
+            }
+        });
 
         // Load plants and check user role on page load
         checkUserRole();

@@ -962,6 +962,9 @@ class DeviceRead(BaseModel):
     is_owner: Optional[bool] = True  # Whether current user owns the device
     permission_level: Optional[str] = None  # 'viewer', 'controller', or None if owner
     shared_by_email: Optional[str] = None  # Email of owner if shared device
+    active_plant_name: Optional[str] = None  # Name of currently assigned plant
+    active_plant_id: Optional[str] = None  # ID of currently assigned plant
+    active_phase: Optional[str] = None  # Current phase (veg, flower, drying)
 
 # Device Sharing Pydantic models
 class ShareCreate(BaseModel):
@@ -1074,13 +1077,37 @@ async def list_devices(user: User = Depends(current_user), session: AsyncSession
     # Get owned devices
     owned_result = await session.execute(select(Device).where(Device.user_id == user.id))
     for device in owned_result.scalars().all():
+        # Check for active plant assignment
+        assignment_result = await session.execute(
+            select(DeviceAssignment, Plant)
+            .join(Plant, DeviceAssignment.plant_id == Plant.id)
+            .where(
+                DeviceAssignment.device_id == device.id,
+                DeviceAssignment.removed_at == None
+            )
+        )
+        assignment_row = assignment_result.first()
+
+        active_plant_name = None
+        active_plant_id = None
+        active_phase = None
+
+        if assignment_row:
+            assignment, plant = assignment_row
+            active_plant_name = plant.name
+            active_plant_id = plant.plant_id
+            active_phase = assignment.phase
+
         devices_list.append(DeviceRead(
             device_id=device.device_id,
             name=device.name,
             is_online=device.is_online,
             is_owner=True,
             permission_level=None,
-            shared_by_email=None
+            shared_by_email=None,
+            active_plant_name=active_plant_name,
+            active_plant_id=active_plant_id,
+            active_phase=active_phase
         ))
 
     # Get shared devices
@@ -1097,13 +1124,37 @@ async def list_devices(user: User = Depends(current_user), session: AsyncSession
     )
 
     for device, share, owner_email in shared_result.all():
+        # Check for active plant assignment
+        assignment_result = await session.execute(
+            select(DeviceAssignment, Plant)
+            .join(Plant, DeviceAssignment.plant_id == Plant.id)
+            .where(
+                DeviceAssignment.device_id == device.id,
+                DeviceAssignment.removed_at == None
+            )
+        )
+        assignment_row = assignment_result.first()
+
+        active_plant_name = None
+        active_plant_id = None
+        active_phase = None
+
+        if assignment_row:
+            assignment, plant = assignment_row
+            active_plant_name = plant.name
+            active_plant_id = plant.plant_id
+            active_phase = assignment.phase
+
         devices_list.append(DeviceRead(
             device_id=device.device_id,
             name=device.name,
             is_online=device.is_online,
             is_owner=False,
             permission_level=share.permission_level,
-            shared_by_email=owner_email
+            shared_by_email=owner_email,
+            active_plant_name=active_plant_name,
+            active_plant_id=active_plant_id,
+            active_phase=active_phase
         ))
 
     return devices_list
@@ -1527,14 +1578,30 @@ async def assign_device_to_plant(
     plant.current_phase = assignment_data.phase
 
     # Update status based on phase
-    if assignment_data.phase == 'feeding':
-        plant.status = 'feeding'
-    elif assignment_data.phase == 'curing':
-        plant.status = 'curing'
+    if assignment_data.phase == 'veg':
+        plant.status = 'veg'
+    elif assignment_data.phase == 'flower':
+        plant.status = 'flower'
+    elif assignment_data.phase == 'drying':
+        plant.status = 'drying'
         if not plant.cure_start_date:
             plant.cure_start_date = datetime.utcnow()
 
     await session.commit()
+
+    # Send websocket notification to device
+    if assignment_data.device_id in device_connections:
+        try:
+            await device_connections[assignment_data.device_id].send_json({
+                "command": "assign_plant",
+                "plant_id": plant.plant_id,
+                "plant_name": plant.name,
+                "phase": assignment_data.phase,
+                "system_id": plant.system_id or f"Zone{plant.plant_id[-1]}"  # Fallback system_id
+            })
+            print(f"[WS] Sent assign_plant to device {assignment_data.device_id}")
+        except Exception as e:
+            print(f"[WS] Failed to send assign_plant to device: {e}")
 
     return {"message": f"Device assigned to plant for {assignment_data.phase} phase"}
 
@@ -1573,21 +1640,36 @@ async def unassign_device_from_plant(
     if not assignment:
         raise HTTPException(404, f"No active assignment found for phase '{phase}'")
 
+    # Get device info before marking removed
+    result = await session.execute(select(Device).where(Device.id == assignment.device_id))
+    device = result.scalars().first()
+
     # Mark the assignment as removed
     assignment.removed_at = datetime.utcnow()
 
     # Update plant status based on what phase ended
-    if phase == 'feeding':
+    if phase in ['veg', 'flower']:
         plant.status = 'harvested'
         plant.harvest_date = datetime.utcnow()
         plant.current_phase = None
-    elif phase == 'curing':
+    elif phase == 'drying':
         plant.status = 'finished'
         plant.cure_end_date = datetime.utcnow()
         plant.current_phase = None
         plant.end_date = datetime.utcnow()  # Final completion
 
     await session.commit()
+
+    # Send websocket notification to device
+    if device and device.device_id in device_connections:
+        try:
+            await device_connections[device.device_id].send_json({
+                "command": "unassign_plant",
+                "plant_id": plant.plant_id
+            })
+            print(f"[WS] Sent unassign_plant to device {device.device_id}")
+        except Exception as e:
+            print(f"[WS] Failed to send unassign_plant to device: {e}")
 
     return {"message": f"Device unassigned from plant, {phase} phase ended"}
 

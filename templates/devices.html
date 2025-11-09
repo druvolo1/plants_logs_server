@@ -243,48 +243,93 @@
                 const devices = await response.json();
                 const listDiv = document.getElementById('devices-list');
                 listDiv.innerHTML = '';
-                devices.forEach(device => {
-                    const deviceDiv = document.createElement('div');
-                    deviceDiv.style.marginBottom = '1.5rem';
-                    deviceDiv.style.padding = '1rem';
-                    deviceDiv.style.border = '1px solid #ccc';
-                    deviceDiv.style.borderRadius = '8px';
 
-                    // Show ownership info
-                    const ownershipInfo = device.is_owner
-                        ? '<p style="color: #10b981; font-size: 0.9rem;">✓ You own this device</p>'
-                        : `<p style="color: #f59e0b; font-size: 0.9rem;">🔗 Shared by ${device.shared_by_email} (${device.permission_level})</p>`;
+                // Separate devices into In Use and Available
+                const inUseDevices = devices.filter(d => d.active_plant_name);
+                const availableDevices = devices.filter(d => !d.active_plant_name);
 
-                    // Only owners can share and delete
-                    const shareButton = device.is_owner
-                        ? `<button onclick="openShareModal('${device.device_id}')" style="background: #8b5cf6;">Share</button>`
-                        : '';
+                // Render In Use section
+                if (inUseDevices.length > 0) {
+                    const inUseHeader = document.createElement('h4');
+                    inUseHeader.textContent = 'In Use';
+                    inUseHeader.style.color = '#10b981';
+                    inUseHeader.style.marginTop = '1.5rem';
+                    inUseHeader.style.marginBottom = '1rem';
+                    listDiv.appendChild(inUseHeader);
 
-                    const deleteButton = device.is_owner
-                        ? `<button onclick="deleteDevice('${device.device_id}')">Delete</button>`
-                        : '';
+                    inUseDevices.forEach(device => {
+                        listDiv.appendChild(createDeviceCard(device));
+                    });
+                }
 
-                    deviceDiv.innerHTML = `
-                        ${ownershipInfo}
-                        <p><strong>System Name:</strong> <span id="name-${device.device_id}">${device.name || 'Loading...'}</span></p>
-                        <p><strong>Device ID:</strong> ${device.device_id}</p>
-                        <p><strong>Version:</strong> <span id="version-${device.device_id}">Loading...</span></p>
-                        <p><strong>Online:</strong> <span id="online-${device.device_id}">${device.is_online ? 'Yes' : 'No'}</span></p>
-                        <button onclick="updateDevice('${device.device_id}')" id="update-btn-${device.device_id}">Update Software</button>
-                        <button onclick="restartService('${device.device_id}')" id="restart-btn-${device.device_id}">Restart Service</button>
-                        <button onclick="rebootSystem('${device.device_id}')" id="reboot-btn-${device.device_id}" style="background: #dc2626;">Reboot System</button>
-                        ${shareButton}
-                        ${deleteButton}
-                        <div id="update-status-${device.device_id}" style="margin-top: 0.5rem; color: #10b981;"></div>
-                    `;
-                    listDiv.appendChild(deviceDiv);
+                // Render Available section
+                if (availableDevices.length > 0) {
+                    const availableHeader = document.createElement('h4');
+                    availableHeader.textContent = 'Available';
+                    availableHeader.style.color = '#64748b';
+                    availableHeader.style.marginTop = '2rem';
+                    availableHeader.style.marginBottom = '1rem';
+                    listDiv.appendChild(availableHeader);
 
-                    // Auto-connect to WebSocket for status updates
-                    if (device.is_online) {
-                        connectToDevice(device.device_id);
-                    }
-                });
+                    availableDevices.forEach(device => {
+                        listDiv.appendChild(createDeviceCard(device));
+                    });
+                }
+
+                if (devices.length === 0) {
+                    listDiv.innerHTML = '<p style="color: #888;">No devices found</p>';
+                }
             }
+        }
+
+        function createDeviceCard(device) {
+            const deviceDiv = document.createElement('div');
+            deviceDiv.style.marginBottom = '1.5rem';
+            deviceDiv.style.padding = '1rem';
+            deviceDiv.style.border = device.active_plant_name ? '2px solid #10b981' : '1px solid #ccc';
+            deviceDiv.style.borderRadius = '8px';
+            deviceDiv.style.background = device.active_plant_name ? 'rgba(16, 185, 129, 0.05)' : 'transparent';
+
+            // Show ownership info
+            const ownershipInfo = device.is_owner
+                ? '<p style="color: #10b981; font-size: 0.9rem;">✓ You own this device</p>'
+                : `<p style="color: #f59e0b; font-size: 0.9rem;">🔗 Shared by ${device.shared_by_email} (${device.permission_level})</p>`;
+
+            // Show active plant info if in use
+            const plantInfo = device.active_plant_name
+                ? `<p style="color: #10b981; font-weight: bold; font-size: 1rem; margin: 0.5rem 0;">🌱 Monitoring: ${device.active_plant_name} (${device.active_phase})</p>`
+                : '';
+
+            // Only owners can share and delete
+            const shareButton = device.is_owner
+                ? `<button onclick="openShareModal('${device.device_id}')" style="background: #8b5cf6;">Share</button>`
+                : '';
+
+            const deleteButton = device.is_owner
+                ? `<button onclick="deleteDevice('${device.device_id}')">Delete</button>`
+                : '';
+
+            deviceDiv.innerHTML = `
+                ${ownershipInfo}
+                ${plantInfo}
+                <p><strong>System Name:</strong> <span id="name-${device.device_id}">${device.name || 'Loading...'}</span></p>
+                <p><strong>Device ID:</strong> ${device.device_id}</p>
+                <p><strong>Version:</strong> <span id="version-${device.device_id}">Loading...</span></p>
+                <p><strong>Online:</strong> <span id="online-${device.device_id}">${device.is_online ? 'Yes' : 'No'}</span></p>
+                <button onclick="updateDevice('${device.device_id}')" id="update-btn-${device.device_id}">Update Software</button>
+                <button onclick="restartService('${device.device_id}')" id="restart-btn-${device.device_id}">Restart Service</button>
+                <button onclick="rebootSystem('${device.device_id}')" id="reboot-btn-${device.device_id}" style="background: #dc2626;">Reboot System</button>
+                ${shareButton}
+                ${deleteButton}
+                <div id="update-status-${device.device_id}" style="margin-top: 0.5rem; color: #10b981;"></div>
+            `;
+
+            // Auto-connect to WebSocket for status updates
+            if (device.is_online) {
+                connectToDevice(device.device_id);
+            }
+
+            return deviceDiv;
         }
 
         // Share Management Functions
