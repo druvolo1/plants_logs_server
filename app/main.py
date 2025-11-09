@@ -1765,7 +1765,7 @@ async def list_plants(
     query = select(Plant, Device.device_id).outerjoin(Device, Plant.device_id == Device.id).where(Plant.user_id == user.id).order_by(Plant.display_order, Plant.id)
 
     if active_only:
-        query = query.where(Plant.status.in_(['created', 'feeding', 'harvested', 'curing']))  # Not finished
+        query = query.where(Plant.status.in_(['created', 'veg', 'flower', 'drying', 'harvested', 'feeding', 'curing']))  # Not finished
 
     result = await session.execute(query)
 
