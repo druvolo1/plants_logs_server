@@ -1583,6 +1583,47 @@ async def create_plant_new(
 
     return {"plant_id": plant_id, "message": "Plant created successfully. Assign it to a device to start monitoring."}
 
+# Get assignments for a plant
+@app.get("/user/plants/{plant_id}/assignments")
+async def get_plant_assignments(
+    plant_id: str,
+    user: User = Depends(current_user),
+    session: AsyncSession = Depends(get_db)
+):
+    """Get all device assignments for a plant"""
+    # Get the plant
+    result = await session.execute(select(Plant).where(Plant.plant_id == plant_id))
+    plant = result.scalars().first()
+
+    if not plant:
+        raise HTTPException(404, "Plant not found")
+
+    # Verify user owns the plant
+    if plant.user_id != user.id:
+        raise HTTPException(403, "You don't have permission to view this plant")
+
+    # Get active assignments
+    result = await session.execute(
+        select(DeviceAssignment, Device)
+        .join(Device, DeviceAssignment.device_id == Device.id)
+        .where(
+            DeviceAssignment.plant_id == plant.id,
+            DeviceAssignment.removed_at == None
+        )
+        .order_by(DeviceAssignment.assigned_at.desc())
+    )
+
+    assignments_list = []
+    for assignment, device in result.all():
+        assignments_list.append({
+            "device_id": device.device_id,
+            "device_name": device.name,
+            "phase": assignment.phase,
+            "assigned_at": assignment.assigned_at.isoformat()
+        })
+
+    return assignments_list
+
 # NEW: Assign a device to a plant for a specific phase
 @app.post("/user/plants/{plant_id}/assign", response_model=Dict[str, str])
 async def assign_device_to_plant(

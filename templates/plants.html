@@ -560,6 +560,8 @@
                         <div class="menu-dropdown" id="plantMenu">
                             <button class="menu-item" onclick="exportToHTML()">📄 Export HTML</button>
                             <button class="menu-item" onclick="exportToPDF()">📑 Export PDF</button>
+                            <div class="menu-divider"></div>
+                            <button class="menu-item" id="manageAssignmentsMenuItem" onclick="openAssignmentsModal()">🔧 Manage Assignments</button>
                             <div class="menu-divider" id="menuDivider" style="display: none;"></div>
                             <button class="menu-item danger" id="deleteMenuItem" onclick="deletePlant()" style="display: none;">🗑️ Delete Plant</button>
                         </div>
@@ -592,6 +594,54 @@
 
             <div style="margin-top: 1rem; padding: 1rem; text-align: center; color: #64748b; font-size: 0.875rem;">
                 Plant ID: <span id="modalPlantId" style="font-family: monospace; color: #94a3b8;"></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Manage Assignments Modal -->
+    <div id="assignmentsModal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 700px;">
+            <div class="modal-header">
+                <h2>Manage Device Assignments</h2>
+                <span class="close" onclick="closeAssignmentsModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div style="margin-bottom: 1.5rem;">
+                    <h3 style="color: #10b981; margin-bottom: 0.5rem;">Plant: <span id="assignmentPlantName"></span></h3>
+                    <p style="color: #64748b; font-size: 0.9rem;">Status: <span id="assignmentPlantStatus"></span></p>
+                </div>
+
+                <!-- Current Assignments -->
+                <div id="currentAssignments" style="margin-bottom: 2rem;">
+                    <h4 style="margin-bottom: 1rem;">Current Assignments</h4>
+                    <div id="assignmentsList" style="display: flex; flex-direction: column; gap: 0.75rem;">
+                        <p style="color: #64748b;">Loading...</p>
+                    </div>
+                </div>
+
+                <!-- Add New Assignment -->
+                <div id="addAssignmentSection">
+                    <h4 style="margin-bottom: 1rem;">Add New Assignment</h4>
+                    <form id="addAssignmentForm" style="display: flex; flex-direction: column; gap: 1rem;">
+                        <div>
+                            <label>Device</label>
+                            <select id="assignmentDeviceSelect" style="width: 100%; padding: 0.5rem; background: #1e293b; border: 1px solid #334155; border-radius: 4px; color: #e2e8f0;">
+                                <option value="">Select a device...</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label>Phase</label>
+                            <select id="assignmentPhaseSelect" style="width: 100%; padding: 0.5rem; background: #1e293b; border: 1px solid #334155; border-radius: 4px; color: #e2e8f0;">
+                                <option value="veg">Vegetative</option>
+                                <option value="flower" selected>Flower</option>
+                                <option value="drying">Drying</option>
+                            </select>
+                        </div>
+                        <button type="submit" style="background: #10b981; color: white; padding: 0.75rem; border: none; border-radius: 6px; font-weight: 600; cursor: pointer;">Assign Device</button>
+                    </form>
+                </div>
+
+                <div id="assignmentStatus" style="margin-top: 1rem; padding: 0.75rem; border-radius: 4px; display: none;"></div>
             </div>
         </div>
     </div>
@@ -1963,6 +2013,185 @@
             } catch (error) {
                 console.error('Error creating plant:', error);
                 statusDiv.textContent = `Error: ${error.message}`;
+                statusDiv.style.color = '#ef4444';
+            }
+        });
+
+        // Assignment Management Functions
+        async function openAssignmentsModal() {
+            if (!currentPlant) return;
+
+            // Close the plant menu
+            const menu = document.getElementById('plantMenu');
+            menu.classList.remove('show');
+
+            // Set plant info
+            document.getElementById('assignmentPlantName').textContent = currentPlant.name;
+            document.getElementById('assignmentPlantStatus').textContent = currentPlant.status || 'Unknown';
+
+            // Load current assignments and available devices
+            await loadPlantAssignments();
+            await loadAvailableDevicesForAssignment();
+
+            // Show modal
+            document.getElementById('assignmentsModal').style.display = 'block';
+        }
+
+        function closeAssignmentsModal() {
+            document.getElementById('assignmentsModal').style.display = 'none';
+        }
+
+        async function loadPlantAssignments() {
+            const listDiv = document.getElementById('assignmentsList');
+            listDiv.innerHTML = '<p style="color: #64748b;">Loading...</p>';
+
+            try {
+                const response = await fetch(`/user/plants/${currentPlant.plant_id}/assignments`);
+                if (!response.ok) throw new Error('Failed to load assignments');
+
+                const assignments = await response.json();
+
+                if (assignments.length === 0) {
+                    listDiv.innerHTML = '<p style="color: #64748b;">No active assignments</p>';
+                    return;
+                }
+
+                listDiv.innerHTML = assignments.map(assignment => `
+                    <div style="padding: 1rem; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 6px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                            <div>
+                                <strong style="color: #10b981;">${assignment.device_name || assignment.device_id}</strong>
+                                <span style="margin-left: 0.5rem; padding: 0.25rem 0.5rem; background: rgba(59, 130, 246, 0.2); color: #3b82f6; border-radius: 4px; font-size: 0.85rem;">${assignment.phase}</span>
+                            </div>
+                            <button onclick="removeAssignment('${assignment.phase}')" style="background: #ef4444; color: white; padding: 0.5rem 1rem; border: none; border-radius: 4px; cursor: pointer; font-size: 0.85rem;">Remove</button>
+                        </div>
+                        <div style="font-size: 0.85rem; color: #94a3b8;">
+                            Assigned: ${new Date(assignment.assigned_at).toLocaleDateString()}
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('Error loading assignments:', error);
+                listDiv.innerHTML = '<p style="color: #ef4444;">Failed to load assignments</p>';
+            }
+        }
+
+        async function loadAvailableDevicesForAssignment() {
+            try {
+                const response = await fetch('/user/devices');
+                if (!response.ok) throw new Error('Failed to load devices');
+
+                const devices = await response.json();
+                const availableDevices = devices.filter(d => !d.active_plant_name && d.is_online);
+
+                const select = document.getElementById('assignmentDeviceSelect');
+                select.innerHTML = '<option value="">Select a device...</option>';
+
+                availableDevices.forEach(device => {
+                    const option = document.createElement('option');
+                    option.value = device.device_id;
+                    option.textContent = `${device.name || device.device_id} ${device.is_owner ? '' : '(Shared)'}`;
+                    select.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Error loading devices:', error);
+            }
+        }
+
+        async function removeAssignment(phase) {
+            if (!currentPlant) return;
+
+            if (!confirm(`Are you sure you want to remove the ${phase} phase assignment?`)) return;
+
+            const statusDiv = document.getElementById('assignmentStatus');
+
+            try {
+                statusDiv.textContent = 'Removing assignment...';
+                statusDiv.style.background = 'rgba(59, 130, 246, 0.1)';
+                statusDiv.style.color = '#3b82f6';
+                statusDiv.style.display = 'block';
+
+                const response = await fetch(`/user/plants/${currentPlant.plant_id}/unassign`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phase: phase })
+                });
+
+                if (!response.ok) throw new Error('Failed to remove assignment');
+
+                statusDiv.textContent = 'Assignment removed successfully!';
+                statusDiv.style.background = 'rgba(16, 185, 129, 0.1)';
+                statusDiv.style.color = '#10b981';
+
+                // Reload assignments and available devices
+                await loadPlantAssignments();
+                await loadAvailableDevicesForAssignment();
+                await loadPlants(); // Refresh main plant list
+
+                setTimeout(() => {
+                    statusDiv.style.display = 'none';
+                }, 3000);
+
+            } catch (error) {
+                console.error('Error removing assignment:', error);
+                statusDiv.textContent = `Error: ${error.message}`;
+                statusDiv.style.background = 'rgba(239, 68, 68, 0.1)';
+                statusDiv.style.color = '#ef4444';
+            }
+        }
+
+        // Handle add assignment form submission
+        document.getElementById('addAssignmentForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            if (!currentPlant) return;
+
+            const deviceId = document.getElementById('assignmentDeviceSelect').value;
+            const phase = document.getElementById('assignmentPhaseSelect').value;
+            const statusDiv = document.getElementById('assignmentStatus');
+
+            if (!deviceId) {
+                statusDiv.textContent = 'Please select a device';
+                statusDiv.style.background = 'rgba(239, 68, 68, 0.1)';
+                statusDiv.style.color = '#ef4444';
+                statusDiv.style.display = 'block';
+                return;
+            }
+
+            try {
+                statusDiv.textContent = 'Assigning device...';
+                statusDiv.style.background = 'rgba(59, 130, 246, 0.1)';
+                statusDiv.style.color = '#3b82f6';
+                statusDiv.style.display = 'block';
+
+                const response = await fetch(`/user/plants/${currentPlant.plant_id}/assign`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ device_id: deviceId, phase: phase })
+                });
+
+                if (!response.ok) throw new Error('Failed to assign device');
+
+                statusDiv.textContent = 'Device assigned successfully!';
+                statusDiv.style.background = 'rgba(16, 185, 129, 0.1)';
+                statusDiv.style.color = '#10b981';
+
+                // Reset form
+                document.getElementById('assignmentDeviceSelect').value = '';
+
+                // Reload assignments and available devices
+                await loadPlantAssignments();
+                await loadAvailableDevicesForAssignment();
+                await loadPlants(); // Refresh main plant list
+
+                setTimeout(() => {
+                    statusDiv.style.display = 'none';
+                }, 3000);
+
+            } catch (error) {
+                console.error('Error assigning device:', error);
+                statusDiv.textContent = `Error: ${error.message}`;
+                statusDiv.style.background = 'rgba(239, 68, 68, 0.1)';
                 statusDiv.style.color = '#ef4444';
             }
         });
