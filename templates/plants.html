@@ -738,6 +738,15 @@
         let isAdmin = false;
         let currentUserId = null;
 
+        // Helper function to format device names
+        function formatDeviceName(device_name, device_id) {
+            if (device_name && device_name.trim()) {
+                return device_name;
+            }
+            // Show last 8 characters of UUID for friendlier display
+            return `Device ${device_id.slice(-8)}`;
+        }
+
         // Check if current user is admin and set up navigation
         async function checkUserRole() {
             try {
@@ -2290,7 +2299,7 @@
                         <div id="assignment-${index}" style="padding: 1rem; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 6px;">
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
                                 <div>
-                                    <strong style="color: #10b981;">${assignment.device_name || assignment.device_id}</strong>
+                                    <strong style="color: #10b981;">${formatDeviceName(assignment.device_name, assignment.device_id)}</strong>
                                     <span id="phase-display-${index}" style="margin-left: 0.5rem; padding: 0.25rem 0.5rem; background: rgba(59, 130, 246, 0.2); color: #3b82f6; border-radius: 4px; font-size: 0.85rem;">${assignment.phase}</span>
                                     <select id="phase-edit-${index}" style="display: none; margin-left: 0.5rem; padding: 0.25rem 0.5rem; background: #1e293b; border: 1px solid #334155; border-radius: 4px; color: #e2e8f0; font-size: 0.85rem;">
                                         <option value="veg" ${assignment.phase === 'veg' ? 'selected' : ''}>Veg</option>
@@ -2325,7 +2334,7 @@
                             <div style="padding: 1rem; background: rgba(100, 116, 139, 0.1); border: 1px solid rgba(100, 116, 139, 0.3); border-radius: 6px;">
                                 <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.5rem;">
                                     <div>
-                                        <strong style="color: #94a3b8;">${assignment.device_name || assignment.device_id}</strong>
+                                        <strong style="color: #94a3b8;">${formatDeviceName(assignment.device_name, assignment.device_id)}</strong>
                                         <span style="margin-left: 0.5rem; padding: 0.25rem 0.5rem; background: rgba(100, 116, 139, 0.2); color: #94a3b8; border-radius: 4px; font-size: 0.85rem;">${assignment.phase}</span>
                                     </div>
                                     <div style="text-align: right; font-size: 0.85rem; color: #64748b;">
@@ -2583,7 +2592,7 @@
                         <div style="padding: 1rem; background: ${bgColor}; border: 1px solid ${borderColor}; border-radius: 6px;">
                             <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.5rem;">
                                 <div>
-                                    <strong style="color: ${textColor};">${assignment.device_name || assignment.device_id}</strong>
+                                    <strong style="color: ${textColor};">${formatDeviceName(assignment.device_name, assignment.device_id)}</strong>
                                     <span style="margin-left: 0.5rem; padding: 0.25rem 0.5rem; background: rgba(59, 130, 246, 0.2); color: #3b82f6; border-radius: 4px; font-size: 0.85rem;">${assignment.phase}</span>
                                     ${isActive ? '<span style="margin-left: 0.5rem; padding: 0.25rem 0.5rem; background: rgba(16, 185, 129, 0.2); color: #10b981; border-radius: 4px; font-size: 0.85rem;">Active</span>' : ''}
                                 </div>
