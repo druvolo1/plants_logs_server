@@ -586,7 +586,9 @@
                             <button class="menu-item" onclick="exportToHTML()">📄 Export HTML</button>
                             <button class="menu-item" onclick="exportToPDF()">📑 Export PDF</button>
                             <div class="menu-divider"></div>
-                            <button class="menu-item" id="manageAssignmentsMenuItem" onclick="openAssignmentsModal()">🔧 Manage Assignments</button>
+                            <button class="menu-item" id="manageAssignmentsMenuItem" onclick="openAssignmentsModal()">🔧 Manage Plant</button>
+                            <button class="menu-item" id="markCompleteMenuItem" onclick="openMarkCompleteModal()" style="display: none;">✓ Mark Complete</button>
+                            <button class="menu-item" id="editCompletionMenuItem" onclick="openEditCompletionModal()" style="display: none;">📅 Edit Completion Date</button>
                             <div class="menu-divider" id="menuDivider" style="display: none;"></div>
                             <button class="menu-item danger" id="deleteMenuItem" onclick="deletePlant()" style="display: none;">🗑️ Delete Plant</button>
                         </div>
@@ -617,8 +619,22 @@
                 <canvas id="dosingChart"></canvas>
             </div>
 
+            <!-- Plant Assignment History -->
+            <div style="margin-top: 2rem; padding: 1.5rem; background: rgba(16, 185, 129, 0.05); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 8px;">
+                <h3 style="margin-bottom: 1rem; color: #10b981;">Assignment History</h3>
+                <div id="plantReportHistory" style="display: flex; flex-direction: column; gap: 0.75rem;">
+                    <p style="color: #64748b;">Loading assignment history...</p>
+                </div>
+            </div>
+
             <div style="margin-top: 1rem; padding: 1rem; text-align: center; color: #64748b; font-size: 0.875rem;">
-                Plant ID: <span id="modalPlantId" style="font-family: monospace; color: #94a3b8;"></span>
+                <div>Plant ID: <span id="modalPlantId" style="font-family: monospace; color: #94a3b8;"></span></div>
+                <div style="margin-top: 0.5rem;">
+                    <span>Started: <span id="modalPlantStartDate" style="color: #94a3b8;"></span></span>
+                    <span id="modalPlantEndDateContainer" style="display: none; margin-left: 1rem;">
+                        | Completed: <span id="modalPlantEndDate" style="color: #94a3b8;"></span>
+                    </span>
+                </div>
             </div>
         </div>
     </div>
@@ -685,6 +701,30 @@
                 </div>
 
                 <div id="assignmentStatus" style="margin-top: 1rem; padding: 0.75rem; border-radius: 4px; display: none;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mark Complete Modal -->
+    <div id="markCompleteModal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h2>Mark Plant Complete</h2>
+                <span class="close" onclick="closeMarkCompleteModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p style="margin-bottom: 1rem; color: #e2e8f0;">
+                    Mark <strong id="completePlantName"></strong> as complete?
+                </p>
+                <div style="margin-bottom: 1.5rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; color: #94a3b8;">Completion Date</label>
+                    <input type="date" id="completionDateInput" style="width: 100%; padding: 0.75rem; background: #1e293b; border: 1px solid #334155; border-radius: 6px; color: #e2e8f0; font-size: 1rem;">
+                </div>
+                <div style="display: flex; gap: 1rem;">
+                    <button onclick="markPlantComplete()" style="flex: 1; background: #10b981; color: white; padding: 0.75rem; border: none; border-radius: 6px; font-weight: 600; cursor: pointer;">Mark Complete</button>
+                    <button onclick="closeMarkCompleteModal()" style="flex: 1; background: #64748b; color: white; padding: 0.75rem; border: none; border-radius: 6px; font-weight: 600; cursor: pointer;">Cancel</button>
+                </div>
+                <div id="completeStatus" style="margin-top: 1rem; padding: 0.75rem; border-radius: 4px; display: none;"></div>
             </div>
         </div>
     </div>
@@ -828,18 +868,47 @@
 
             document.getElementById('modalPlantName').textContent = currentPlant.name;
             document.getElementById('modalPlantId').textContent = currentPlant.plant_id;
+
+            // Set start and end dates
+            document.getElementById('modalPlantStartDate').textContent = formatDate(currentPlant.start_date);
+            if (currentPlant.end_date) {
+                document.getElementById('modalPlantEndDate').textContent = formatDate(currentPlant.end_date);
+                document.getElementById('modalPlantEndDateContainer').style.display = 'inline';
+            } else {
+                document.getElementById('modalPlantEndDateContainer').style.display = 'none';
+            }
+
             document.getElementById('plantModal').style.display = 'block';
 
-            // Show delete menu item for admins or plant owners
+            // Show/hide menu items based on plant status
             const deleteMenuItem = document.getElementById('deleteMenuItem');
             const menuDivider = document.getElementById('menuDivider');
+            const markCompleteMenuItem = document.getElementById('markCompleteMenuItem');
+            const editCompletionMenuItem = document.getElementById('editCompletionMenuItem');
+
+            const isPlantActive = currentPlant.is_active;
+
             if (isAdmin || currentPlant.user_id === currentUserId) {
                 deleteMenuItem.style.display = 'flex';
                 menuDivider.style.display = 'block';
+
+                // Show "Mark Complete" if plant is active, "Edit Completion" if finished
+                if (isPlantActive) {
+                    markCompleteMenuItem.style.display = 'flex';
+                    editCompletionMenuItem.style.display = 'none';
+                } else {
+                    markCompleteMenuItem.style.display = 'none';
+                    editCompletionMenuItem.style.display = 'flex';
+                }
             } else {
                 deleteMenuItem.style.display = 'none';
                 menuDivider.style.display = 'none';
+                markCompleteMenuItem.style.display = 'none';
+                editCompletionMenuItem.style.display = 'none';
             }
+
+            // Load assignment history
+            await loadPlantReportHistory(plantId);
 
             await loadPlantLogs(plantId);
         }
@@ -1212,6 +1281,14 @@
 
                 if (filterStartDate) {
                     url += `&start_date=${filterStartDate.toISOString()}`;
+                }
+
+                // If plant is complete, also filter by end date
+                if (currentPlant.end_date) {
+                    const endDate = new Date(currentPlant.end_date);
+                    // Add one day to include logs from the completion date
+                    endDate.setDate(endDate.getDate() + 1);
+                    url += `&end_date=${endDate.toISOString()}`;
                 }
 
                 const response = await fetch(url);
@@ -2462,6 +2539,169 @@
                 statusDiv.style.color = '#ef4444';
             }
         });
+
+        // Load plant report history
+        async function loadPlantReportHistory(plantId) {
+            const historyDiv = document.getElementById('plantReportHistory');
+            historyDiv.innerHTML = '<p style="color: #64748b;">Loading...</p>';
+
+            try {
+                const response = await fetch(`/user/plants/${plantId}/assignments`);
+                if (!response.ok) throw new Error('Failed to load history');
+
+                const data = await response.json();
+                const allAssignments = [...(data.active || []), ...(data.history || [])];
+
+                if (allAssignments.length === 0) {
+                    historyDiv.innerHTML = '<p style="color: #64748b;">No assignment history</p>';
+                    return;
+                }
+
+                // Sort by assigned_at descending (most recent first)
+                allAssignments.sort((a, b) => new Date(b.assigned_at) - new Date(a.assigned_at));
+
+                historyDiv.innerHTML = allAssignments.map(assignment => {
+                    const startDate = new Date(assignment.assigned_at);
+                    const endDate = assignment.removed_at ? new Date(assignment.removed_at) : null;
+                    const isActive = assignment.is_active;
+
+                    let duration = '';
+                    if (endDate) {
+                        const days = Math.floor((endDate - startDate) / (1000 * 60 * 60 * 24));
+                        duration = `${days} day${days !== 1 ? 's' : ''}`;
+                    } else {
+                        const now = new Date();
+                        const days = Math.floor((now - startDate) / (1000 * 60 * 60 * 24));
+                        duration = `${days} day${days !== 1 ? 's' : ''} (ongoing)`;
+                    }
+
+                    const bgColor = isActive ? 'rgba(16, 185, 129, 0.1)' : 'rgba(100, 116, 139, 0.1)';
+                    const borderColor = isActive ? 'rgba(16, 185, 129, 0.3)' : 'rgba(100, 116, 139, 0.3)';
+                    const textColor = isActive ? '#10b981' : '#94a3b8';
+
+                    return `
+                        <div style="padding: 1rem; background: ${bgColor}; border: 1px solid ${borderColor}; border-radius: 6px;">
+                            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.5rem;">
+                                <div>
+                                    <strong style="color: ${textColor};">${assignment.device_name || assignment.device_id}</strong>
+                                    <span style="margin-left: 0.5rem; padding: 0.25rem 0.5rem; background: rgba(59, 130, 246, 0.2); color: #3b82f6; border-radius: 4px; font-size: 0.85rem;">${assignment.phase}</span>
+                                    ${isActive ? '<span style="margin-left: 0.5rem; padding: 0.25rem 0.5rem; background: rgba(16, 185, 129, 0.2); color: #10b981; border-radius: 4px; font-size: 0.85rem;">Active</span>' : ''}
+                                </div>
+                                <div style="text-align: right; font-size: 0.85rem; color: #64748b;">
+                                    ${duration}
+                                </div>
+                            </div>
+                            <div style="font-size: 0.85rem; color: #64748b;">
+                                ${startDate.toLocaleDateString()} ${endDate ? `→ ${endDate.toLocaleDateString()}` : '→ Present'}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+            } catch (error) {
+                console.error('Error loading plant report history:', error);
+                historyDiv.innerHTML = '<p style="color: #ef4444;">Failed to load history</p>';
+            }
+        }
+
+        // Mark Complete Modal Functions
+        function openMarkCompleteModal() {
+            if (!currentPlant) return;
+
+            // Close the plant menu
+            const menu = document.getElementById('plantMenu');
+            menu.classList.remove('show');
+
+            document.getElementById('completePlantName').textContent = currentPlant.name;
+
+            // Set default date to today
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('completionDateInput').value = today;
+
+            document.getElementById('markCompleteModal').style.display = 'block';
+        }
+
+        function closeMarkCompleteModal() {
+            document.getElementById('markCompleteModal').style.display = 'none';
+        }
+
+        function openEditCompletionModal() {
+            if (!currentPlant) return;
+
+            // Close the plant menu
+            const menu = document.getElementById('plantMenu');
+            menu.classList.remove('show');
+
+            document.getElementById('completePlantName').textContent = currentPlant.name;
+
+            // Set current end date
+            if (currentPlant.end_date) {
+                const endDate = new Date(currentPlant.end_date).toISOString().split('T')[0];
+                document.getElementById('completionDateInput').value = endDate;
+            }
+
+            document.getElementById('markCompleteModal').style.display = 'block';
+        }
+
+        async function markPlantComplete() {
+            if (!currentPlant) return;
+
+            const completionDate = document.getElementById('completionDateInput').value;
+            const statusDiv = document.getElementById('completeStatus');
+
+            if (!completionDate) {
+                statusDiv.textContent = 'Please select a completion date';
+                statusDiv.style.background = 'rgba(239, 68, 68, 0.1)';
+                statusDiv.style.color = '#ef4444';
+                statusDiv.style.display = 'block';
+                return;
+            }
+
+            try {
+                statusDiv.textContent = 'Marking plant complete...';
+                statusDiv.style.background = 'rgba(59, 130, 246, 0.1)';
+                statusDiv.style.color = '#3b82f6';
+                statusDiv.style.display = 'block';
+
+                const response = await fetch(`/user/plants/${currentPlant.plant_id}/finish`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ end_date: completionDate })
+                });
+
+                if (!response.ok) throw new Error('Failed to mark plant complete');
+
+                statusDiv.textContent = 'Plant marked complete!';
+                statusDiv.style.background = 'rgba(16, 185, 129, 0.1)';
+                statusDiv.style.color = '#10b981';
+
+                // Update local plant object
+                currentPlant.end_date = completionDate;
+                currentPlant.is_active = false;
+
+                // Reload plants list
+                await loadPlants();
+
+                // Update the modal to show completion date
+                document.getElementById('modalPlantEndDate').textContent = formatDate(completionDate);
+                document.getElementById('modalPlantEndDateContainer').style.display = 'inline';
+
+                // Update menu items
+                document.getElementById('markCompleteMenuItem').style.display = 'none';
+                document.getElementById('editCompletionMenuItem').style.display = 'flex';
+
+                setTimeout(() => {
+                    closeMarkCompleteModal();
+                    statusDiv.style.display = 'none';
+                }, 2000);
+
+            } catch (error) {
+                console.error('Error marking plant complete:', error);
+                statusDiv.textContent = `Error: ${error.message}`;
+                statusDiv.style.background = 'rgba(239, 68, 68, 0.1)';
+                statusDiv.style.color = '#ef4444';
+            }
+        }
 
         // Load plants and check user role on page load
         checkUserRole();
