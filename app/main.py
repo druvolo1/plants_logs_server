@@ -1343,7 +1343,7 @@ async def get_device_plants(
             "name": plant.name,
             "current_phase": plant.current_phase,
             "status": plant.status,
-            "is_active": plant.is_active,
+            "is_active": plant.end_date is None,  # Active if no end_date
             "assigned_at": assignment.assigned_at.isoformat()
         })
 
