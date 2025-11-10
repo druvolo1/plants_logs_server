@@ -785,11 +785,11 @@
 
         // Helper function to format device names
         function formatDeviceName(device_name, device_id) {
-            if (device_name && device_name.trim()) {
-                return device_name;
+            // If no name provided, or if name is the same as device_id (UUID), show formatted version
+            if (!device_name || !device_name.trim() || device_name === device_id) {
+                return `Device ${device_id.slice(-8)}`;
             }
-            // Show last 8 characters of UUID for friendlier display
-            return `Device ${device_id.slice(-8)}`;
+            return device_name;
         }
 
         // Check if current user is admin and set up navigation
