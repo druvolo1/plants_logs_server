@@ -1583,14 +1583,14 @@ async def create_plant_new(
 
     return {"plant_id": plant_id, "message": "Plant created successfully. Assign it to a device to start monitoring."}
 
-# Get assignments for a plant
+# Get assignments for a plant (both active and historical)
 @app.get("/user/plants/{plant_id}/assignments")
 async def get_plant_assignments(
     plant_id: str,
     user: User = Depends(current_user),
     session: AsyncSession = Depends(get_db)
 ):
-    """Get all device assignments for a plant"""
+    """Get all device assignments for a plant (active and historical)"""
     # Get the plant
     result = await session.execute(select(Plant).where(Plant.plant_id == plant_id))
     plant = result.scalars().first()
@@ -1603,7 +1603,7 @@ async def get_plant_assignments(
         raise HTTPException(403, "You don't have permission to view this plant")
 
     # Get active assignments
-    result = await session.execute(
+    active_result = await session.execute(
         select(DeviceAssignment, Device)
         .join(Device, DeviceAssignment.device_id == Device.id)
         .where(
@@ -1613,16 +1613,43 @@ async def get_plant_assignments(
         .order_by(DeviceAssignment.assigned_at.desc())
     )
 
-    assignments_list = []
-    for assignment, device in result.all():
-        assignments_list.append({
+    active_assignments = []
+    for assignment, device in active_result.all():
+        active_assignments.append({
             "device_id": device.device_id,
             "device_name": device.name,
             "phase": assignment.phase,
-            "assigned_at": assignment.assigned_at.isoformat()
+            "assigned_at": assignment.assigned_at.isoformat(),
+            "removed_at": None,
+            "is_active": True
         })
 
-    return assignments_list
+    # Get historical assignments
+    history_result = await session.execute(
+        select(DeviceAssignment, Device)
+        .join(Device, DeviceAssignment.device_id == Device.id)
+        .where(
+            DeviceAssignment.plant_id == plant.id,
+            DeviceAssignment.removed_at != None
+        )
+        .order_by(DeviceAssignment.removed_at.desc())
+    )
+
+    historical_assignments = []
+    for assignment, device in history_result.all():
+        historical_assignments.append({
+            "device_id": device.device_id,
+            "device_name": device.name,
+            "phase": assignment.phase,
+            "assigned_at": assignment.assigned_at.isoformat(),
+            "removed_at": assignment.removed_at.isoformat(),
+            "is_active": False
+        })
+
+    return {
+        "active": active_assignments,
+        "history": historical_assignments
+    }
 
 # NEW: Assign a device to a plant for a specific phase
 @app.post("/user/plants/{plant_id}/assign", response_model=Dict[str, str])

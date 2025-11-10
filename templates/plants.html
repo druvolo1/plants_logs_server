@@ -666,6 +666,14 @@
                     </form>
                 </div>
 
+                <!-- Assignment History -->
+                <div id="assignmentHistory" style="margin-top: 2rem; padding-top: 2rem; border-top: 1px solid #334155;">
+                    <h4 style="margin-bottom: 1rem;">Assignment History</h4>
+                    <div id="historyList" style="display: flex; flex-direction: column; gap: 0.75rem;">
+                        <p style="color: #64748b;">No historical assignments</p>
+                    </div>
+                </div>
+
                 <div id="assignmentStatus" style="margin-top: 1rem; padding: 0.75rem; border-radius: 4px; display: none;"></div>
             </div>
         </div>
@@ -2086,46 +2094,80 @@
 
         async function loadPlantAssignments() {
             const listDiv = document.getElementById('assignmentsList');
+            const historyDiv = document.getElementById('historyList');
             listDiv.innerHTML = '<p style="color: #64748b;">Loading...</p>';
+            historyDiv.innerHTML = '<p style="color: #64748b;">Loading...</p>';
 
             try {
                 const response = await fetch(`/user/plants/${currentPlant.plant_id}/assignments`);
                 if (!response.ok) throw new Error('Failed to load assignments');
 
-                const assignments = await response.json();
+                const data = await response.json();
+                const activeAssignments = data.active || [];
+                const historyAssignments = data.history || [];
 
-                if (assignments.length === 0) {
+                // Render active assignments
+                if (activeAssignments.length === 0) {
                     listDiv.innerHTML = '<p style="color: #64748b;">No active assignments</p>';
-                    return;
+                } else {
+                    listDiv.innerHTML = activeAssignments.map((assignment, index) => `
+                        <div id="assignment-${index}" style="padding: 1rem; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 6px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                                <div>
+                                    <strong style="color: #10b981;">${assignment.device_name || assignment.device_id}</strong>
+                                    <span id="phase-display-${index}" style="margin-left: 0.5rem; padding: 0.25rem 0.5rem; background: rgba(59, 130, 246, 0.2); color: #3b82f6; border-radius: 4px; font-size: 0.85rem;">${assignment.phase}</span>
+                                    <select id="phase-edit-${index}" style="display: none; margin-left: 0.5rem; padding: 0.25rem 0.5rem; background: #1e293b; border: 1px solid #334155; border-radius: 4px; color: #e2e8f0; font-size: 0.85rem;">
+                                        <option value="veg" ${assignment.phase === 'veg' ? 'selected' : ''}>Veg</option>
+                                        <option value="flower" ${assignment.phase === 'flower' ? 'selected' : ''}>Flower</option>
+                                        <option value="drying" ${assignment.phase === 'drying' ? 'selected' : ''}>Drying</option>
+                                    </select>
+                                </div>
+                                <div style="display: flex; gap: 0.5rem;">
+                                    <button id="edit-btn-${index}" onclick="startEditPhase(${index}, '${assignment.device_id}', '${assignment.phase}')" style="background: #3b82f6; color: white; padding: 0.5rem 1rem; border: none; border-radius: 4px; cursor: pointer; font-size: 0.85rem;">Edit</button>
+                                    <button id="save-btn-${index}" onclick="savePhaseEdit(${index}, '${assignment.device_id}', '${assignment.phase}')" style="display: none; background: #10b981; color: white; padding: 0.5rem 1rem; border: none; border-radius: 4px; cursor: pointer; font-size: 0.85rem;">Save</button>
+                                    <button id="cancel-btn-${index}" onclick="cancelEditPhase(${index})" style="display: none; background: #64748b; color: white; padding: 0.5rem 1rem; border: none; border-radius: 4px; cursor: pointer; font-size: 0.85rem;">Cancel</button>
+                                    <button id="remove-btn-${index}" onclick="removeAssignment('${assignment.phase}')" style="background: #ef4444; color: white; padding: 0.5rem 1rem; border: none; border-radius: 4px; cursor: pointer; font-size: 0.85rem;">Remove</button>
+                                </div>
+                            </div>
+                            <div style="font-size: 0.85rem; color: #94a3b8;">
+                                Assigned: ${new Date(assignment.assigned_at).toLocaleDateString()}
+                            </div>
+                        </div>
+                    `).join('');
                 }
 
-                listDiv.innerHTML = assignments.map((assignment, index) => `
-                    <div id="assignment-${index}" style="padding: 1rem; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 6px;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-                            <div>
-                                <strong style="color: #10b981;">${assignment.device_name || assignment.device_id}</strong>
-                                <span id="phase-display-${index}" style="margin-left: 0.5rem; padding: 0.25rem 0.5rem; background: rgba(59, 130, 246, 0.2); color: #3b82f6; border-radius: 4px; font-size: 0.85rem;">${assignment.phase}</span>
-                                <select id="phase-edit-${index}" style="display: none; margin-left: 0.5rem; padding: 0.25rem 0.5rem; background: #1e293b; border: 1px solid #334155; border-radius: 4px; color: #e2e8f0; font-size: 0.85rem;">
-                                    <option value="veg" ${assignment.phase === 'veg' ? 'selected' : ''}>Veg</option>
-                                    <option value="flower" ${assignment.phase === 'flower' ? 'selected' : ''}>Flower</option>
-                                    <option value="drying" ${assignment.phase === 'drying' ? 'selected' : ''}>Drying</option>
-                                </select>
+                // Render historical assignments
+                if (historyAssignments.length === 0) {
+                    historyDiv.innerHTML = '<p style="color: #64748b;">No historical assignments</p>';
+                } else {
+                    historyDiv.innerHTML = historyAssignments.map(assignment => {
+                        const startDate = new Date(assignment.assigned_at);
+                        const endDate = new Date(assignment.removed_at);
+                        const duration = Math.floor((endDate - startDate) / (1000 * 60 * 60 * 24));
+
+                        return `
+                            <div style="padding: 1rem; background: rgba(100, 116, 139, 0.1); border: 1px solid rgba(100, 116, 139, 0.3); border-radius: 6px;">
+                                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.5rem;">
+                                    <div>
+                                        <strong style="color: #94a3b8;">${assignment.device_name || assignment.device_id}</strong>
+                                        <span style="margin-left: 0.5rem; padding: 0.25rem 0.5rem; background: rgba(100, 116, 139, 0.2); color: #94a3b8; border-radius: 4px; font-size: 0.85rem;">${assignment.phase}</span>
+                                    </div>
+                                    <div style="text-align: right; font-size: 0.85rem; color: #64748b;">
+                                        ${duration} day${duration !== 1 ? 's' : ''}
+                                    </div>
+                                </div>
+                                <div style="font-size: 0.85rem; color: #64748b;">
+                                    ${startDate.toLocaleDateString()} → ${endDate.toLocaleDateString()}
+                                </div>
                             </div>
-                            <div style="display: flex; gap: 0.5rem;">
-                                <button id="edit-btn-${index}" onclick="startEditPhase(${index}, '${assignment.device_id}', '${assignment.phase}')" style="background: #3b82f6; color: white; padding: 0.5rem 1rem; border: none; border-radius: 4px; cursor: pointer; font-size: 0.85rem;">Edit</button>
-                                <button id="save-btn-${index}" onclick="savePhaseEdit(${index}, '${assignment.device_id}', '${assignment.phase}')" style="display: none; background: #10b981; color: white; padding: 0.5rem 1rem; border: none; border-radius: 4px; cursor: pointer; font-size: 0.85rem;">Save</button>
-                                <button id="cancel-btn-${index}" onclick="cancelEditPhase(${index})" style="display: none; background: #64748b; color: white; padding: 0.5rem 1rem; border: none; border-radius: 4px; cursor: pointer; font-size: 0.85rem;">Cancel</button>
-                                <button id="remove-btn-${index}" onclick="removeAssignment('${assignment.phase}')" style="background: #ef4444; color: white; padding: 0.5rem 1rem; border: none; border-radius: 4px; cursor: pointer; font-size: 0.85rem;">Remove</button>
-                            </div>
-                        </div>
-                        <div style="font-size: 0.85rem; color: #94a3b8;">
-                            Assigned: ${new Date(assignment.assigned_at).toLocaleDateString()}
-                        </div>
-                    </div>
-                `).join('');
+                        `;
+                    }).join('');
+                }
+
             } catch (error) {
                 console.error('Error loading assignments:', error);
                 listDiv.innerHTML = '<p style="color: #ef4444;">Failed to load assignments</p>';
+                historyDiv.innerHTML = '<p style="color: #ef4444;">Failed to load history</p>';
             }
         }
 
