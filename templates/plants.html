@@ -784,12 +784,18 @@
         let currentUserId = null;
 
         // Helper function to format device names
-        function formatDeviceName(device_name, device_id) {
-            // If no name provided, or if name is the same as device_id (UUID), show formatted version
-            if (!device_name || !device_name.trim() || device_name === device_id) {
-                return `Device ${device_id.slice(-8)}`;
+        // Priority: 1) Custom name, 2) System name, 3) Formatted UUID
+        function formatDeviceName(device_name, device_id, system_name) {
+            // First try custom name (user-set)
+            if (device_name && device_name.trim() && device_name !== device_id) {
+                return device_name;
             }
-            return device_name;
+            // Then try system_name (device's self-reported name)
+            if (system_name && system_name.trim()) {
+                return system_name;
+            }
+            // Fallback to formatted UUID
+            return `Device ${device_id.slice(-8)}`;
         }
 
         // Check if current user is admin and set up navigation
@@ -2380,15 +2386,30 @@
                     showChangeBtn.style.display = 'block';
 
                     const assignment = activeAssignments[0];
+                    const otherPlants = assignment.other_plants || [];
+                    const otherPlantsHTML = otherPlants.length > 0 ? `
+                        <div style="margin-top: 0.75rem; padding: 0.75rem; background: rgba(59, 130, 246, 0.05); border: 1px solid rgba(59, 130, 246, 0.2); border-radius: 4px;">
+                            <div style="font-size: 0.85rem; color: #94a3b8; margin-bottom: 0.5rem;">
+                                <strong>${otherPlants.length} other plant${otherPlants.length > 1 ? 's' : ''} on this device:</strong>
+                            </div>
+                            ${otherPlants.map(p => `
+                                <div style="font-size: 0.85rem; color: #e2e8f0; margin-left: 0.5rem;">
+                                    • ${p.name} <span style="color: #3b82f6; text-transform: capitalize;">(${p.current_phase || 'unknown'})</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    ` : '';
+
                     document.getElementById('currentDeviceDisplay').innerHTML = `
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <div>
-                                <strong style="color: #10b981; font-size: 1.1rem;">${formatDeviceName(assignment.device_name, assignment.device_id)}</strong>
+                        <div style="display: flex; justify-content: space-between; align-items: start;">
+                            <div style="flex: 1;">
+                                <strong style="color: #10b981; font-size: 1.1rem;">${formatDeviceName(assignment.device_name, assignment.device_id, assignment.system_name)}</strong>
                                 <div style="font-size: 0.85rem; color: #64748b; margin-top: 0.25rem;">
                                     Assigned: ${new Date(assignment.assigned_at).toLocaleDateString()}
                                 </div>
+                                ${otherPlantsHTML}
                             </div>
-                            <button onclick="removeDeviceAssignment()" style="background: #ef4444; color: white; padding: 0.5rem 1rem; border: none; border-radius: 4px; cursor: pointer; font-size: 0.85rem;">Remove</button>
+                            <button onclick="removeDeviceAssignment()" style="background: #ef4444; color: white; padding: 0.5rem 1rem; border: none; border-radius: 4px; cursor: pointer; font-size: 0.85rem; flex-shrink: 0;">Remove</button>
                         </div>
                     `;
                 } else {
@@ -2415,7 +2436,7 @@
                         return `
                             <div style="padding: 0.75rem; background: rgba(100, 116, 139, 0.1); border-left: 3px solid #64748b; border-radius: 4px;">
                                 <div style="color: #e2e8f0; font-weight: 600; margin-bottom: 0.25rem;">
-                                    ${formatDeviceName(assignment.device_name, assignment.device_id)}
+                                    ${formatDeviceName(assignment.device_name, assignment.device_id, assignment.system_name)}
                                 </div>
                                 <div style="font-size: 0.85rem; color: #94a3b8;">
                                     ${startDate.toLocaleDateString()} → ${endDate.toLocaleDateString()} (${duration} day${duration !== 1 ? 's' : ''})
@@ -2488,6 +2509,37 @@
         async function savePhase() {
             const newPhase = document.getElementById('phaseChangeSelect').value;
 
+            // Check if plant is assigned to a device with other plants
+            try {
+                const assignmentResponse = await fetch(`/user/plants/${currentPlant.plant_id}/assignments`);
+                if (assignmentResponse.ok) {
+                    const assignmentData = await assignmentResponse.json();
+                    const activeAssignments = assignmentData.active || [];
+
+                    if (activeAssignments.length > 0) {
+                        const otherPlants = activeAssignments[0].other_plants || [];
+                        const differentPhases = otherPlants.filter(p => p.current_phase !== newPhase);
+
+                        if (differentPhases.length > 0) {
+                            const phaseList = differentPhases.map(p => `${p.name} (${p.current_phase})`).join(', ');
+                            const confirmed = confirm(
+                                `⚠️ Warning: Changing to ${newPhase} phase\n\n` +
+                                `${differentPhases.length} other plant${differentPhases.length > 1 ? 's' : ''} on this device ${differentPhases.length > 1 ? 'are' : 'is'} in different phase${differentPhases.length > 1 ? 's' : ''}:\n` +
+                                `${phaseList}\n\n` +
+                                `Continue anyway?`
+                            );
+                            if (!confirmed) {
+                                cancelEditPhase();
+                                return;
+                            }
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('Error checking assignments:', error);
+                // Continue anyway
+            }
+
             try {
                 const response = await fetch(`/user/plants/${currentPlant.plant_id}/change-phase`, {
                     method: 'POST',
@@ -2503,8 +2555,9 @@
                 document.getElementById('currentPhaseDisplay').textContent = newPhase;
                 cancelEditPhase();
 
-                // Reload phase history and main plant list
+                // Reload phase history, assignments (to update other plants list), and main plant list
                 await loadPhaseHistory();
+                await loadPlantAssignments();
                 await loadPlants();
 
                 showStatus('Phase changed successfully', 'success');
@@ -2568,14 +2621,33 @@
                 const select = document.getElementById('deviceSelect');
                 select.innerHTML = '<option value="">Select a device...</option>';
 
-                userDevices.forEach(device => {
+                // Fetch plant info for each device
+                for (const device of userDevices) {
+                    const plantsResponse = await fetch(`/user/devices/${device.device_id}/plants`);
+                    let plantCount = 0;
+                    let plantPhases = [];
+
+                    if (plantsResponse.ok) {
+                        const plantsData = await plantsResponse.json();
+                        plantCount = plantsData.count || 0;
+                        plantPhases = plantsData.plants?.map(p => p.current_phase) || [];
+                    }
+
                     const option = document.createElement('option');
                     option.value = device.device_id;
+                    option.dataset.plantCount = plantCount;
+                    option.dataset.phases = plantPhases.join(',');
+
                     const statusText = device.is_online ? '🟢' : '🔴';
-                    const plantText = device.active_plant_name ? ` (${device.active_plant_name})` : '';
-                    option.textContent = `${statusText} ${formatDeviceName(device.name, device.device_id)}${plantText}`;
+                    let infoText = '';
+                    if (plantCount > 0) {
+                        const uniquePhases = [...new Set(plantPhases)];
+                        infoText = ` (${plantCount} plant${plantCount > 1 ? 's' : ''}: ${uniquePhases.join(', ')})`;
+                    }
+
+                    option.textContent = `${statusText} ${formatDeviceName(device.name, device.device_id, device.system_name)}${infoText}`;
                     select.appendChild(option);
-                });
+                }
             } catch (error) {
                 console.error('Error loading devices:', error);
             }
@@ -2713,6 +2785,30 @@
                 return;
             }
 
+            // Check if device has plants in different phases - warn user
+            const selectedOption = document.querySelector(`#deviceSelect option[value="${deviceId}"]`);
+            const plantCount = parseInt(selectedOption?.dataset.plantCount || '0');
+            const phases = selectedOption?.dataset.phases?.split(',').filter(p => p) || [];
+
+            if (plantCount > 0) {
+                const currentPhase = currentPlant.current_phase || 'clone';
+                const differentPhases = phases.filter(p => p !== currentPhase);
+
+                if (differentPhases.length > 0) {
+                    const uniqueDifferentPhases = [...new Set(differentPhases)];
+                    const confirmed = confirm(
+                        `⚠️ Warning: Assigning to device with plants in different phase${uniqueDifferentPhases.length > 1 ? 's' : ''}\n\n` +
+                        `This plant is in ${currentPhase} phase\n` +
+                        `Device has ${plantCount} plant${plantCount > 1 ? 's' : ''} in: ${uniqueDifferentPhases.join(', ')}\n\n` +
+                        `Continue anyway?`
+                    );
+
+                    if (!confirmed) {
+                        return;
+                    }
+                }
+            }
+
             try {
                 statusDiv.textContent = 'Assigning device...';
                 statusDiv.style.background = 'rgba(59, 130, 246, 0.1)';
@@ -2795,7 +2891,7 @@
                         <div style="padding: 1rem; background: ${bgColor}; border: 1px solid ${borderColor}; border-radius: 6px;">
                             <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.5rem;">
                                 <div>
-                                    <strong style="color: ${textColor};">${formatDeviceName(assignment.device_name, assignment.device_id)}</strong>
+                                    <strong style="color: ${textColor};">${formatDeviceName(assignment.device_name, assignment.device_id, assignment.system_name)}</strong>
                                     <span style="margin-left: 0.5rem; padding: 0.25rem 0.5rem; background: rgba(59, 130, 246, 0.2); color: #3b82f6; border-radius: 4px; font-size: 0.85rem;">${assignment.phase}</span>
                                     ${isActive ? '<span style="margin-left: 0.5rem; padding: 0.25rem 0.5rem; background: rgba(16, 185, 129, 0.2); color: #10b981; border-radius: 4px; font-size: 0.85rem;">Active</span>' : ''}
                                 </div>

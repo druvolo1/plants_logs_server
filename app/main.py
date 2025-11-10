@@ -83,7 +83,8 @@ class Device(Base):
     id = Column(Integer, primary_key=True, index=True)
     device_id = Column(String(36), unique=True, index=True)
     api_key = Column(String(64))
-    name = Column(String(255), nullable=True)
+    name = Column(String(255), nullable=True)  # User-set custom name
+    system_name = Column(String(255), nullable=True)  # Device's self-reported name
     is_online = Column(Boolean, default=False)
     device_type = Column(String(50), nullable=True, default='feeding_system')  # 'feeding_system', 'curing_monitor', 'environmental'
     user_id = Column(Integer, ForeignKey("users.id"))
@@ -1047,16 +1048,25 @@ class DeviceCreate(BaseModel):
     device_id: str
     name: Optional[str] = None
 
+class AssignedPlantInfo(BaseModel):
+    plant_id: str
+    name: str
+    current_phase: Optional[str]
+
 class DeviceRead(BaseModel):
     device_id: str
-    name: Optional[str]
+    name: Optional[str]  # User-set custom name
+    system_name: Optional[str]  # Device's self-reported name
     is_online: bool
     is_owner: Optional[bool] = True  # Whether current user owns the device
     permission_level: Optional[str] = None  # 'viewer', 'controller', or None if owner
     shared_by_email: Optional[str] = None  # Email of owner if shared device
-    active_plant_name: Optional[str] = None  # Name of currently assigned plant
-    active_plant_id: Optional[str] = None  # ID of currently assigned plant
-    active_phase: Optional[str] = None  # Current phase (veg, flower, drying)
+    assigned_plants: List[AssignedPlantInfo] = []  # All plants currently assigned to device
+    assigned_plant_count: int = 0  # Count of assigned plants
+    # Legacy fields (kept for backward compatibility)
+    active_plant_name: Optional[str] = None  # Name of first assigned plant
+    active_plant_id: Optional[str] = None  # ID of first assigned plant
+    active_phase: Optional[str] = None  # Phase of first assigned plant
 
 # Device Sharing Pydantic models
 class ShareCreate(BaseModel):
@@ -1169,34 +1179,39 @@ async def list_devices(user: User = Depends(current_user), session: AsyncSession
     # Get owned devices
     owned_result = await session.execute(select(Device).where(Device.user_id == user.id))
     for device in owned_result.scalars().all():
-        # Check for active plant assignment
+        # Get ALL active plant assignments (not just first one)
         assignment_result = await session.execute(
-            select(DeviceAssignment, Plant)
-            .join(Plant, DeviceAssignment.plant_id == Plant.id)
+            select(Plant)
+            .join(DeviceAssignment, DeviceAssignment.plant_id == Plant.id)
             .where(
                 DeviceAssignment.device_id == device.id,
                 DeviceAssignment.removed_at == None
             )
+            .order_by(Plant.name)
         )
-        assignment_row = assignment_result.first()
+        assigned_plants_list = []
+        for plant in assignment_result.scalars().all():
+            assigned_plants_list.append(AssignedPlantInfo(
+                plant_id=plant.plant_id,
+                name=plant.name,
+                current_phase=plant.current_phase
+            ))
 
-        active_plant_name = None
-        active_plant_id = None
-        active_phase = None
-
-        if assignment_row:
-            assignment, plant = assignment_row
-            active_plant_name = plant.name
-            active_plant_id = plant.plant_id
-            active_phase = assignment.phase
+        # Legacy fields - use first plant if any
+        active_plant_name = assigned_plants_list[0].name if assigned_plants_list else None
+        active_plant_id = assigned_plants_list[0].plant_id if assigned_plants_list else None
+        active_phase = assigned_plants_list[0].current_phase if assigned_plants_list else None
 
         devices_list.append(DeviceRead(
             device_id=device.device_id,
             name=device.name,
+            system_name=device.system_name,
             is_online=device.is_online,
             is_owner=True,
             permission_level=None,
             shared_by_email=None,
+            assigned_plants=assigned_plants_list,
+            assigned_plant_count=len(assigned_plants_list),
             active_plant_name=active_plant_name,
             active_plant_id=active_plant_id,
             active_phase=active_phase
@@ -1216,34 +1231,39 @@ async def list_devices(user: User = Depends(current_user), session: AsyncSession
     )
 
     for device, share, owner_email in shared_result.all():
-        # Check for active plant assignment
+        # Get ALL active plant assignments (not just first one)
         assignment_result = await session.execute(
-            select(DeviceAssignment, Plant)
-            .join(Plant, DeviceAssignment.plant_id == Plant.id)
+            select(Plant)
+            .join(DeviceAssignment, DeviceAssignment.plant_id == Plant.id)
             .where(
                 DeviceAssignment.device_id == device.id,
                 DeviceAssignment.removed_at == None
             )
+            .order_by(Plant.name)
         )
-        assignment_row = assignment_result.first()
+        assigned_plants_list = []
+        for plant in assignment_result.scalars().all():
+            assigned_plants_list.append(AssignedPlantInfo(
+                plant_id=plant.plant_id,
+                name=plant.name,
+                current_phase=plant.current_phase
+            ))
 
-        active_plant_name = None
-        active_plant_id = None
-        active_phase = None
-
-        if assignment_row:
-            assignment, plant = assignment_row
-            active_plant_name = plant.name
-            active_plant_id = plant.plant_id
-            active_phase = assignment.phase
+        # Legacy fields - use first plant if any
+        active_plant_name = assigned_plants_list[0].name if assigned_plants_list else None
+        active_plant_id = assigned_plants_list[0].plant_id if assigned_plants_list else None
+        active_phase = assigned_plants_list[0].current_phase if assigned_plants_list else None
 
         devices_list.append(DeviceRead(
             device_id=device.device_id,
             name=device.name,
+            system_name=device.system_name,
             is_online=device.is_online,
             is_owner=False,
             permission_level=share.permission_level,
             shared_by_email=owner_email,
+            assigned_plants=assigned_plants_list,
+            assigned_plant_count=len(assigned_plants_list),
             active_plant_name=active_plant_name,
             active_plant_id=active_plant_id,
             active_phase=active_phase
@@ -1273,6 +1293,61 @@ async def delete_device(device_id: str, user: User = Depends(current_user), sess
     await session.delete(device)
     await session.commit()
     return {"status": "success"}
+
+# Get all plants assigned to a device
+@app.get("/user/devices/{device_id}/plants")
+async def get_device_plants(
+    device_id: str,
+    user: User = Depends(current_user),
+    session: AsyncSession = Depends(get_db)
+):
+    """Get all plants currently assigned to a device with phase information"""
+    # Verify device exists and user has access
+    result = await session.execute(select(Device).where(Device.device_id == device_id))
+    device = result.scalars().first()
+
+    if not device:
+        raise HTTPException(404, "Device not found")
+
+    # Check if user owns device or has controller access
+    is_owner = device.user_id == user.id
+    if not is_owner:
+        result = await session.execute(
+            select(DeviceShare).where(
+                DeviceShare.device_id == device.id,
+                DeviceShare.shared_with_user_id == user.id,
+                DeviceShare.is_active == True,
+                DeviceShare.revoked_at == None,
+                DeviceShare.accepted_at != None
+            )
+        )
+        share = result.scalars().first()
+        if not share:
+            raise HTTPException(403, "You don't have permission to view this device")
+
+    # Get all plants assigned to this device
+    result = await session.execute(
+        select(Plant, DeviceAssignment)
+        .join(DeviceAssignment, DeviceAssignment.plant_id == Plant.id)
+        .where(
+            DeviceAssignment.device_id == device.id,
+            DeviceAssignment.removed_at == None
+        )
+        .order_by(Plant.name)
+    )
+
+    plants = []
+    for plant, assignment in result.all():
+        plants.append({
+            "plant_id": plant.plant_id,
+            "name": plant.name,
+            "current_phase": plant.current_phase,
+            "status": plant.status,
+            "is_active": plant.is_active,
+            "assigned_at": assignment.assigned_at.isoformat()
+        })
+
+    return {"plants": plants, "count": len(plants)}
 
 # Helper function to generate unique share code
 async def generate_share_code(session: AsyncSession) -> str:
@@ -1641,12 +1716,34 @@ async def get_plant_assignments(
 
     active_assignments = []
     for assignment, device in active_result.all():
+        # Get other plants on the same device
+        other_plants_result = await session.execute(
+            select(Plant, DeviceAssignment)
+            .join(DeviceAssignment, DeviceAssignment.plant_id == Plant.id)
+            .where(
+                DeviceAssignment.device_id == device.id,
+                DeviceAssignment.removed_at == None,
+                Plant.id != plant.id  # Exclude current plant
+            )
+            .order_by(Plant.name)
+        )
+
+        other_plants = []
+        for other_plant, other_assignment in other_plants_result.all():
+            other_plants.append({
+                "plant_id": other_plant.plant_id,
+                "name": other_plant.name,
+                "current_phase": other_plant.current_phase
+            })
+
         active_assignments.append({
             "device_id": device.device_id,
             "device_name": device.name,
+            "system_name": device.system_name,
             "assigned_at": assignment.assigned_at.isoformat(),
             "removed_at": None,
-            "is_active": True
+            "is_active": True,
+            "other_plants": other_plants  # Other plants on the same device
         })
 
     # Get historical assignments
@@ -1665,6 +1762,7 @@ async def get_plant_assignments(
         historical_assignments.append({
             "device_id": device.device_id,
             "device_name": device.name,
+            "system_name": device.system_name,
             "assigned_at": assignment.assigned_at.isoformat(),
             "removed_at": assignment.removed_at.isoformat(),
             "is_active": False
@@ -2244,7 +2342,7 @@ async def upload_logs(
     device_id: str,
     logs: List[LogEntryCreate],
     api_key: str = Query(...),
-    plant_id: str = Query(...),
+    plant_id: Optional[str] = Query(None),  # Now optional - if not provided, logs for ALL assigned plants
     session: AsyncSession = Depends(get_db)
 ):
     # Verify device and API key
@@ -2254,63 +2352,84 @@ async def upload_logs(
     if not device:
         raise HTTPException(401, "Invalid device or API key")
 
-    # Verify plant exists and belongs to this device
-    result = await session.execute(select(Plant).where(Plant.plant_id == plant_id, Plant.device_id == device.id))
-    plant = result.scalars().first()
+    # Get target plants - either specific plant or all assigned plants
+    target_plants = []
 
-    if not plant:
-        print(f"[LOG UPLOAD ERROR] Plant not found: plant_id={plant_id}, device.id={device.id}, device.device_id={device_id}")
-        # Check if plant exists at all
-        check_result = await session.execute(select(Plant).where(Plant.plant_id == plant_id))
-        check_plant = check_result.scalars().first()
-        if check_plant:
-            print(f"[LOG UPLOAD ERROR] Plant {plant_id} exists but belongs to device.id={check_plant.device_id}, not {device.id}")
-        else:
-            print(f"[LOG UPLOAD ERROR] Plant {plant_id} does not exist in database at all")
-        raise HTTPException(404, f"Plant {plant_id} not found for device {device_id}")
+    if plant_id:
+        # Legacy mode: specific plant_id provided (backward compatibility)
+        result = await session.execute(select(Plant).where(Plant.plant_id == plant_id, Plant.device_id == device.id))
+        plant = result.scalars().first()
 
-    # Insert log entries (skip duplicates)
+        if not plant:
+            print(f"[LOG UPLOAD ERROR] Plant not found: plant_id={plant_id}, device.id={device.id}")
+            raise HTTPException(404, f"Plant {plant_id} not found for device {device_id}")
+
+        target_plants = [plant]
+    else:
+        # New mode: log for ALL plants currently assigned to this device
+        result = await session.execute(
+            select(Plant)
+            .join(DeviceAssignment, DeviceAssignment.plant_id == Plant.id)
+            .where(
+                DeviceAssignment.device_id == device.id,
+                DeviceAssignment.removed_at == None,
+                Plant.is_active == True  # Only log for active plants
+            )
+        )
+        target_plants = result.scalars().all()
+
+        if not target_plants:
+            print(f"[LOG UPLOAD] No active plants assigned to device {device_id}")
+            return {"status": "success", "message": "No active plants to log for"}
+
+    # Insert log entries for each target plant (skip duplicates)
     log_count = 0
     skipped_count = 0
+
     for log_data in logs:
         try:
             # Parse timestamp
             timestamp = date_parser.isoparse(log_data.timestamp)
 
-            # Check if this log entry already exists (duplicate detection)
-            duplicate_check = await session.execute(
-                select(LogEntry).where(
-                    LogEntry.plant_id == plant.id,
-                    LogEntry.timestamp == timestamp,
-                    LogEntry.event_type == log_data.event_type
+            # Create log entry for each target plant
+            for plant in target_plants:
+                # Check if this log entry already exists (duplicate detection)
+                duplicate_check = await session.execute(
+                    select(LogEntry).where(
+                        LogEntry.plant_id == plant.id,
+                        LogEntry.timestamp == timestamp,
+                        LogEntry.event_type == log_data.event_type
+                    )
                 )
-            )
-            existing_entry = duplicate_check.scalars().first()
+                existing_entry = duplicate_check.scalars().first()
 
-            if existing_entry:
-                skipped_count += 1
-                continue  # Skip this duplicate entry
+                if existing_entry:
+                    skipped_count += 1
+                    continue  # Skip this duplicate entry
 
-            # Create log entry
-            log_entry = LogEntry(
-                plant_id=plant.id,
-                event_type=log_data.event_type,
-                sensor_name=log_data.sensor_name,
-                value=log_data.value,
-                dose_type=log_data.dose_type,
-                dose_amount_ml=log_data.dose_amount_ml,
-                timestamp=timestamp
-            )
+                # Create log entry
+                log_entry = LogEntry(
+                    plant_id=plant.id,
+                    event_type=log_data.event_type,
+                    sensor_name=log_data.sensor_name,
+                    value=log_data.value,
+                    dose_type=log_data.dose_type,
+                    dose_amount_ml=log_data.dose_amount_ml,
+                    timestamp=timestamp,
+                    phase=plant.current_phase  # Store the plant's current phase
+                )
 
-            session.add(log_entry)
-            log_count += 1
+                session.add(log_entry)
+                log_count += 1
+
         except Exception as e:
             print(f"Error inserting log entry: {e}")
             # Continue with other log entries
 
     await session.commit()
 
-    message = f"Uploaded {log_count} log entries"
+    plants_count = len(target_plants)
+    message = f"Uploaded {log_count} log entries for {plants_count} plant(s)"
     if skipped_count > 0:
         message += f", skipped {skipped_count} duplicates"
     return {"status": "success", "message": message}
@@ -2442,6 +2561,22 @@ async def device_websocket(websocket: WebSocket, device_id: str, api_key: str = 
         while True:
             data = await websocket.receive_json()
             print(f"Received from device {device_id}: {json.dumps(data)}")  # Log incoming data
+
+            # Extract and save system_name if present in the payload
+            if data.get('type') == 'full_sync' or 'data' in data:
+                payload = data.get('data', data)
+                if 'settings' in payload:
+                    system_name = payload['settings'].get('system_name')
+                    if system_name and device.system_name != system_name:
+                        await session.execute(
+                            update(Device)
+                            .where(Device.device_id == device_id)
+                            .values(system_name=system_name)
+                        )
+                        await session.commit()
+                        device.system_name = system_name
+                        print(f"Updated system_name for {device_id}: {system_name}")
+
             # Relay to connected users
             for user_ws in user_connections[device_id]:
                 await user_ws.send_json(data)
