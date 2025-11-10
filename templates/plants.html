@@ -1402,7 +1402,17 @@
                             ticks: {
                                 color: '#e2e8f0',
                                 maxRotation: 45,
-                                minRotation: 45
+                                minRotation: 45,
+                                autoSkip: true,
+                                maxTicksLimit: 15,
+                                callback: function(value, index, ticks) {
+                                    const label = this.getLabelForValue(value);
+                                    // Only show the date part, not the time
+                                    if (label && label.includes(',')) {
+                                        return label.split(',')[0];
+                                    }
+                                    return label;
+                                }
                             },
                             grid: { color: '#334155' }
                         }
