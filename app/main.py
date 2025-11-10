@@ -111,19 +111,30 @@ class DeviceShare(Base):
     owner = relationship("User", foreign_keys=[owner_user_id])
     shared_with = relationship("User", foreign_keys=[shared_with_user_id])
 
-# Device Assignment model - tracks which device is monitoring which plant and during which phase
+# Device Assignment model - tracks which device is monitoring which plant
 class DeviceAssignment(Base):
     __tablename__ = "device_assignments"
     id = Column(Integer, primary_key=True, index=True)
     plant_id = Column(Integer, ForeignKey("plants.id"), nullable=False)
     device_id = Column(Integer, ForeignKey("devices.id"), nullable=False)
-    phase = Column(String(50), nullable=False)  # 'feeding', 'curing', etc.
     assigned_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     removed_at = Column(DateTime, nullable=True)  # NULL if still assigned
 
     # Relationships
     plant = relationship("Plant", back_populates="device_assignments")
     device = relationship("Device", back_populates="device_assignments")
+
+# Phase History model - tracks phase changes independently of device assignments
+class PhaseHistory(Base):
+    __tablename__ = "phase_history"
+    id = Column(Integer, primary_key=True, index=True)
+    plant_id = Column(Integer, ForeignKey("plants.id"), nullable=False)
+    phase = Column(String(50), nullable=False)  # 'clone', 'veg', 'flower', 'drying'
+    started_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    ended_at = Column(DateTime, nullable=True)  # NULL if current phase
+
+    # Relationships
+    plant = relationship("Plant", back_populates="phase_history")
 
 # Plant model
 class Plant(Base):
@@ -151,6 +162,7 @@ class Plant(Base):
     user = relationship("User", foreign_keys=[user_id])
     logs = relationship("LogEntry", back_populates="plant", cascade="all, delete-orphan")
     device_assignments = relationship("DeviceAssignment", back_populates="plant", cascade="all, delete-orphan")
+    phase_history = relationship("PhaseHistory", back_populates="plant", cascade="all, delete-orphan")
 
 # Log Entry model
 class LogEntry(Base):
@@ -1077,11 +1089,11 @@ class PlantCreateNew(BaseModel):
     """New plant creation without device assignment"""
     name: str  # Strain name
     start_date: Optional[str] = None  # ISO format, defaults to now
+    phase: Optional[str] = 'clone'  # Initial phase: 'clone', 'veg', 'flower', 'drying'
 
 class DeviceAssignmentCreate(BaseModel):
-    """Assign a device to a plant for a specific phase"""
+    """Assign a device to a plant (phase is tracked separately on the plant)"""
     device_id: str  # Device UUID
-    phase: str  # 'feeding', 'curing', etc.
 
 class PlantFinish(BaseModel):
     end_date: Optional[str] = None  # ISO format date string, defaults to today
@@ -1566,13 +1578,17 @@ async def create_plant_new(
     else:
         start_date = datetime.utcnow()
 
-    # Create plant with status='created', no device assignment yet
+    # Determine initial phase (default to 'clone' if not specified)
+    initial_phase = plant_data.phase if hasattr(plant_data, 'phase') and plant_data.phase else 'clone'
+
+    # Create plant with initial phase
     new_plant = Plant(
         plant_id=plant_id,
         name=plant_data.name,
         user_id=user.id,
         start_date=start_date,
-        status='created',  # Not assigned to any device yet
+        status=initial_phase,
+        current_phase=initial_phase,
         device_id=None,  # No device initially
         system_id=None
     )
@@ -1580,6 +1596,16 @@ async def create_plant_new(
     session.add(new_plant)
     await session.commit()
     await session.refresh(new_plant)
+
+    # Create initial phase history record
+    initial_phase_record = PhaseHistory(
+        plant_id=new_plant.id,
+        phase=initial_phase,
+        started_at=start_date,
+        ended_at=None
+    )
+    session.add(initial_phase_record)
+    await session.commit()
 
     return {"plant_id": plant_id, "message": "Plant created successfully. Assign it to a device to start monitoring."}
 
@@ -1618,7 +1644,6 @@ async def get_plant_assignments(
         active_assignments.append({
             "device_id": device.device_id,
             "device_name": device.name,
-            "phase": assignment.phase,
             "assigned_at": assignment.assigned_at.isoformat(),
             "removed_at": None,
             "is_active": True
@@ -1640,7 +1665,6 @@ async def get_plant_assignments(
         historical_assignments.append({
             "device_id": device.device_id,
             "device_name": device.name,
-            "phase": assignment.phase,
             "assigned_at": assignment.assigned_at.isoformat(),
             "removed_at": assignment.removed_at.isoformat(),
             "is_active": False
@@ -1699,42 +1723,27 @@ async def assign_device_to_plant(
         if not share:
             raise HTTPException(403, "You don't have permission to use this device")
 
-    # Check if there's already an active assignment for this plant and phase
+    # Check if this plant is already assigned to this device
     result = await session.execute(
         select(DeviceAssignment).where(
             DeviceAssignment.plant_id == plant.id,
-            DeviceAssignment.phase == assignment_data.phase,
+            DeviceAssignment.device_id == device.id,
             DeviceAssignment.removed_at == None
         )
     )
     existing_assignment = result.scalars().first()
 
     if existing_assignment:
-        raise HTTPException(400, f"Plant already has an active assignment for phase '{assignment_data.phase}'")
+        raise HTTPException(400, f"Plant is already assigned to this device")
 
-    # Create the assignment
+    # Create the assignment (no phase needed - that's tracked separately)
     new_assignment = DeviceAssignment(
         plant_id=plant.id,
         device_id=device.id,
-        phase=assignment_data.phase,
         assigned_at=datetime.utcnow()
     )
 
     session.add(new_assignment)
-
-    # Update plant status and phase
-    plant.current_phase = assignment_data.phase
-
-    # Update status based on phase
-    if assignment_data.phase == 'veg':
-        plant.status = 'veg'
-    elif assignment_data.phase == 'flower':
-        plant.status = 'flower'
-    elif assignment_data.phase == 'drying':
-        plant.status = 'drying'
-        if not plant.cure_start_date:
-            plant.cure_start_date = datetime.utcnow()
-
     await session.commit()
 
     # Send websocket notification to device
@@ -1744,27 +1753,30 @@ async def assign_device_to_plant(
                 "command": "assign_plant",
                 "plant_id": plant.plant_id,
                 "plant_name": plant.name,
-                "phase": assignment_data.phase,
+                "phase": plant.current_phase or 'veg',  # Use plant's current phase
                 "system_id": plant.system_id or f"Zone{plant.plant_id[-1]}"  # Fallback system_id
             })
             print(f"[WS] Sent assign_plant to device {assignment_data.device_id}")
         except Exception as e:
             print(f"[WS] Failed to send assign_plant to device: {e}")
 
-    return {"message": f"Device assigned to plant for {assignment_data.phase} phase"}
+    return {"message": f"Device assigned to plant"}
 
 # NEW: Update phase of an existing assignment
-@app.post("/user/plants/{plant_id}/update-phase", response_model=Dict[str, str])
-async def update_assignment_phase(
+@app.post("/user/plants/{plant_id}/change-phase", response_model=Dict[str, str])
+async def change_plant_phase(
     plant_id: str,
-    device_id: str = Body(...),
-    old_phase: str = Body(...),
-    new_phase: str = Body(...),
+    new_phase: str = Body(..., embed=True),
     user: User = Depends(current_user),
     session: AsyncSession = Depends(get_db)
 ):
-    """Update the phase of an existing device assignment"""
+    """Change the phase of a plant independently of device assignments"""
     from datetime import datetime
+
+    # Validate phase
+    valid_phases = ['clone', 'veg', 'flower', 'drying']
+    if new_phase not in valid_phases:
+        raise HTTPException(400, f"Invalid phase. Must be one of: {', '.join(valid_phases)}")
 
     # Get the plant
     result = await session.execute(select(Plant).where(Plant.plant_id == plant_id))
@@ -1777,60 +1789,100 @@ async def update_assignment_phase(
     if plant.user_id != user.id:
         raise HTTPException(403, "You don't have permission to modify this plant")
 
-    # Get the device
-    result = await session.execute(select(Device).where(Device.device_id == device_id))
-    device = result.scalars().first()
+    old_phase = plant.current_phase
 
-    if not device:
-        raise HTTPException(404, "Device not found")
+    # If changing from same phase, do nothing
+    if old_phase == new_phase:
+        return {"message": f"Plant is already in '{new_phase}' phase"}
 
-    # Find the active assignment for this device and old phase
-    result = await session.execute(
-        select(DeviceAssignment).where(
-            DeviceAssignment.plant_id == plant.id,
-            DeviceAssignment.device_id == device.id,
-            DeviceAssignment.phase == old_phase,
-            DeviceAssignment.removed_at == None
+    # End the current phase in phase_history
+    if old_phase:
+        result = await session.execute(
+            select(PhaseHistory).where(
+                PhaseHistory.plant_id == plant.id,
+                PhaseHistory.phase == old_phase,
+                PhaseHistory.ended_at == None
+            )
         )
+        current_phase_record = result.scalars().first()
+        if current_phase_record:
+            current_phase_record.ended_at = datetime.utcnow()
+
+    # Create new phase history record
+    new_phase_record = PhaseHistory(
+        plant_id=plant.id,
+        phase=new_phase,
+        started_at=datetime.utcnow(),
+        ended_at=None
     )
-    assignment = result.scalars().first()
+    session.add(new_phase_record)
 
-    if not assignment:
-        raise HTTPException(404, f"No active assignment found for device with phase '{old_phase}'")
-
-    # Update the phase
-    assignment.phase = new_phase
-
-    # Update plant status based on new phase
-    if new_phase == 'veg':
-        plant.status = 'veg'
-        plant.current_phase = 'veg'
-    elif new_phase == 'flower':
-        plant.status = 'flower'
-        plant.current_phase = 'flower'
-    elif new_phase == 'drying':
-        plant.status = 'drying'
-        plant.current_phase = 'drying'
-        if not plant.cure_start_date:
-            plant.cure_start_date = datetime.utcnow()
+    # Update plant's current phase and status
+    plant.current_phase = new_phase
+    plant.status = new_phase
 
     await session.commit()
 
-    # Send websocket notification to device if online
-    if device_id in device_connections:
-        try:
-            await device_connections[device_id].send_json({
-                "command": "assign_plant",  # Reuse assign command to update phase
-                "plant_id": plant.plant_id,
-                "plant_name": plant.name,
-                "phase": new_phase,
-                "system_id": plant.system_id or f"Zone{plant.plant_id[-1]}"
-            })
-            print(f"[WS] Sent phase update to device {device_id}")
-        except Exception as e:
-            print(f"[WS] Failed to send phase update to device: {e}")
+    # Notify any assigned devices about the phase change
+    result = await session.execute(
+        select(DeviceAssignment, Device)
+        .join(Device, DeviceAssignment.device_id == Device.id)
+        .where(
+            DeviceAssignment.plant_id == plant.id,
+            DeviceAssignment.removed_at == None
+        )
+    )
+    for assignment, device in result.all():
+        if device.device_id in device_connections:
+            try:
+                await device_connections[device.device_id].send_json({
+                    "command": "phase_changed",
+                    "plant_id": plant.plant_id,
+                    "plant_name": plant.name,
+                    "phase": new_phase
+                })
+                print(f"[WS] Sent phase change notification to device {device.device_id}")
+            except Exception as e:
+                print(f"[WS] Failed to send phase change to device: {e}")
 
-    return {"message": f"Phase updated from '{old_phase}' to '{new_phase}'"}
+    return {"message": f"Phase changed from '{old_phase or 'none'}' to '{new_phase}'"}
+
+# Get phase history for a plant
+@app.get("/user/plants/{plant_id}/phase-history")
+async def get_phase_history(
+    plant_id: str,
+    user: User = Depends(current_user),
+    session: AsyncSession = Depends(get_db)
+):
+    """Get the complete phase history for a plant"""
+    # Get the plant
+    result = await session.execute(select(Plant).where(Plant.plant_id == plant_id))
+    plant = result.scalars().first()
+
+    if not plant:
+        raise HTTPException(404, "Plant not found")
+
+    # Verify user owns the plant
+    if plant.user_id != user.id:
+        raise HTTPException(403, "You don't have permission to view this plant")
+
+    # Get all phase history records
+    result = await session.execute(
+        select(PhaseHistory)
+        .where(PhaseHistory.plant_id == plant.id)
+        .order_by(PhaseHistory.started_at.desc())
+    )
+
+    phase_records = []
+    for record in result.scalars().all():
+        phase_records.append({
+            "phase": record.phase,
+            "started_at": record.started_at.isoformat(),
+            "ended_at": record.ended_at.isoformat() if record.ended_at else None,
+            "is_current": record.ended_at is None
+        })
+
+    return phase_records
 
 # NEW: Unassign a device from a plant (end a phase)
 @app.post("/user/plants/{plant_id}/unassign", response_model=Dict[str, str])

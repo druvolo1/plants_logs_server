@@ -647,56 +647,101 @@
                 <span class="close" onclick="closeAssignmentsModal()">&times;</span>
             </div>
             <div class="modal-body">
-                <div style="margin-bottom: 1.5rem;">
-                    <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
-                        <h3 style="color: #10b981; margin: 0;">
-                            <span id="assignmentPlantNameDisplay"></span>
-                            <input type="text" id="assignmentPlantNameEdit" style="display: none; padding: 0.5rem; background: #1e293b; border: 1px solid #10b981; border-radius: 4px; color: #e2e8f0; font-size: 1.25rem; font-weight: 700; width: 300px;">
-                        </h3>
-                        <button id="editPlantNameBtn" onclick="startEditPlantName()" style="background: #3b82f6; color: white; padding: 0.5rem 0.75rem; border: none; border-radius: 4px; cursor: pointer; font-size: 0.85rem;">Edit Name</button>
-                        <button id="savePlantNameBtn" onclick="savePlantName()" style="display: none; background: #10b981; color: white; padding: 0.5rem 0.75rem; border: none; border-radius: 4px; cursor: pointer; font-size: 0.85rem;">Save</button>
-                        <button id="cancelPlantNameBtn" onclick="cancelEditPlantName()" style="display: none; background: #64748b; color: white; padding: 0.5rem 0.75rem; border: none; border-radius: 4px; cursor: pointer; font-size: 0.85rem;">Cancel</button>
-                    </div>
-                    <p style="color: #64748b; font-size: 0.9rem;">Status: <span id="assignmentPlantStatus"></span></p>
-                </div>
+                <!-- SECTION 1: Plant Details -->
+                <div style="background: rgba(16, 185, 129, 0.05); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem;">
+                    <h4 style="color: #10b981; margin-bottom: 1rem; border-bottom: 1px solid rgba(16, 185, 129, 0.2); padding-bottom: 0.5rem;">🌱 Plant Details</h4>
 
-                <!-- Current Device/Phase -->
-                <div id="currentAssignments" style="margin-bottom: 2rem;">
-                    <h4 style="margin-bottom: 0.5rem;">Current Device & Phase</h4>
-                    <p style="color: #64748b; font-size: 0.85rem; margin-bottom: 1rem;">Use <strong>Edit</strong> to change phase on same device, or <strong>Remove</strong> to unassign</p>
-                    <div id="assignmentsList" style="display: flex; flex-direction: column; gap: 0.75rem;">
-                        <p style="color: #64748b;">Loading...</p>
-                    </div>
-                </div>
-
-                <!-- Assign to Different Device -->
-                <div id="addAssignmentSection">
-                    <h4 style="margin-bottom: 0.5rem;">Assign to Different Device</h4>
-                    <p style="color: #64748b; font-size: 0.85rem; margin-bottom: 1rem;">Move this plant to a different device and/or phase</p>
-                    <form id="addAssignmentForm" style="display: flex; flex-direction: column; gap: 1rem;">
-                        <div>
-                            <label>Device</label>
-                            <select id="assignmentDeviceSelect" style="width: 100%; padding: 0.5rem; background: #1e293b; border: 1px solid #334155; border-radius: 4px; color: #e2e8f0;">
-                                <option value="">Select a device...</option>
-                            </select>
+                    <!-- Name -->
+                    <div style="margin-bottom: 1rem;">
+                        <label style="display: block; margin-bottom: 0.5rem; color: #94a3b8; font-size: 0.85rem; font-weight: 600;">Name</label>
+                        <div style="display: flex; align-items: center; gap: 0.75rem;">
+                            <span id="assignmentPlantNameDisplay" style="color: #e2e8f0; font-size: 1.1rem; font-weight: 600;"></span>
+                            <input type="text" id="assignmentPlantNameEdit" style="display: none; padding: 0.5rem; background: #1e293b; border: 1px solid #10b981; border-radius: 4px; color: #e2e8f0; font-size: 1rem; flex: 1;">
+                            <button id="editPlantNameBtn" onclick="startEditPlantName()" style="background: #3b82f6; color: white; padding: 0.5rem 0.75rem; border: none; border-radius: 4px; cursor: pointer; font-size: 0.85rem;">Edit</button>
+                            <button id="savePlantNameBtn" onclick="savePlantName()" style="display: none; background: #10b981; color: white; padding: 0.5rem 0.75rem; border: none; border-radius: 4px; cursor: pointer; font-size: 0.85rem;">Save</button>
+                            <button id="cancelPlantNameBtn" onclick="cancelEditPlantName()" style="display: none; background: #64748b; color: white; padding: 0.5rem 0.75rem; border: none; border-radius: 4px; cursor: pointer; font-size: 0.85rem;">Cancel</button>
                         </div>
-                        <div>
-                            <label>Phase</label>
-                            <select id="assignmentPhaseSelect" style="width: 100%; padding: 0.5rem; background: #1e293b; border: 1px solid #334155; border-radius: 4px; color: #e2e8f0;">
-                                <option value="veg">Vegetative</option>
-                                <option value="flower" selected>Flower</option>
+                    </div>
+
+                    <!-- Current Phase -->
+                    <div style="margin-bottom: 1rem;">
+                        <label style="display: block; margin-bottom: 0.5rem; color: #94a3b8; font-size: 0.85rem; font-weight: 600;">Current Phase</label>
+                        <div style="display: flex; align-items: center; gap: 0.75rem;">
+                            <span id="currentPhaseDisplay" style="color: #e2e8f0; font-size: 1.1rem; font-weight: 600; text-transform: capitalize;"></span>
+                            <select id="phaseChangeSelect" style="display: none; padding: 0.5rem; background: #1e293b; border: 1px solid #10b981; border-radius: 4px; color: #e2e8f0; min-width: 150px;">
+                                <option value="clone">Clone</option>
+                                <option value="veg">Veg</option>
+                                <option value="flower">Flower</option>
                                 <option value="drying">Drying</option>
                             </select>
+                            <button id="editPhaseBtn" onclick="startEditPhase()" style="background: #3b82f6; color: white; padding: 0.5rem 0.75rem; border: none; border-radius: 4px; cursor: pointer; font-size: 0.85rem;">Change Phase ▼</button>
+                            <button id="savePhaseBtn" onclick="savePhase()" style="display: none; background: #10b981; color: white; padding: 0.5rem 0.75rem; border: none; border-radius: 4px; cursor: pointer; font-size: 0.85rem;">Save</button>
+                            <button id="cancelPhaseBtn" onclick="cancelEditPhase()" style="display: none; background: #64748b; color: white; padding: 0.5rem 0.75rem; border: none; border-radius: 4px; cursor: pointer; font-size: 0.85rem;">Cancel</button>
                         </div>
-                        <button type="submit" style="background: #10b981; color: white; padding: 0.75rem; border: none; border-radius: 6px; font-weight: 600; cursor: pointer;">Assign to Device</button>
-                    </form>
+                    </div>
+
+                    <!-- Status -->
+                    <div>
+                        <label style="display: block; margin-bottom: 0.5rem; color: #94a3b8; font-size: 0.85rem; font-weight: 600;">Status</label>
+                        <span id="assignmentPlantStatus" style="color: #e2e8f0;"></span>
+                    </div>
                 </div>
 
-                <!-- Assignment History -->
-                <div id="assignmentHistory" style="margin-top: 2rem; padding-top: 2rem; border-top: 1px solid #334155;">
-                    <h4 style="margin-bottom: 1rem;">Assignment History</h4>
-                    <div id="historyList" style="display: flex; flex-direction: column; gap: 0.75rem;">
-                        <p style="color: #64748b;">No historical assignments</p>
+                <!-- SECTION 2: Device Assignment -->
+                <div style="background: rgba(59, 130, 246, 0.05); border: 1px solid rgba(59, 130, 246, 0.2); border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem;">
+                    <h4 style="color: #3b82f6; margin-bottom: 1rem; border-bottom: 1px solid rgba(59, 130, 246, 0.2); padding-bottom: 0.5rem;">📊 Device Assignment</h4>
+
+                    <!-- Currently Assigned Device -->
+                    <div id="currentDeviceSection">
+                        <p style="color: #64748b; font-size: 0.85rem; margin-bottom: 0.75rem;">Currently assigned to:</p>
+                        <div id="currentDeviceDisplay" style="padding: 1rem; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 6px; margin-bottom: 1rem;">
+                            <p style="color: #64748b;">Loading...</p>
+                        </div>
+                    </div>
+
+                    <!-- No Device Assigned -->
+                    <div id="noDeviceSection" style="display: none;">
+                        <p style="color: #64748b; margin-bottom: 1rem;">Not assigned to any device</p>
+                    </div>
+
+                    <!-- Assign/Change Device Form -->
+                    <div>
+                        <button id="showAssignFormBtn" onclick="toggleAssignForm()" style="background: #10b981; color: white; padding: 0.5rem 1rem; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; width: 100%;">Assign Device</button>
+                        <button id="showChangeFormBtn" onclick="toggleAssignForm()" style="display: none; background: #3b82f6; color: white; padding: 0.5rem 1rem; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; width: 100%;">Change Device</button>
+
+                        <form id="assignDeviceForm" style="display: none; margin-top: 1rem; padding: 1rem; background: rgba(16, 185, 129, 0.05); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 6px;">
+                            <div style="margin-bottom: 1rem;">
+                                <label style="display: block; margin-bottom: 0.5rem; color: #94a3b8; font-size: 0.85rem; font-weight: 600;">Select Device</label>
+                                <select id="deviceSelect" style="width: 100%; padding: 0.75rem; background: #1e293b; border: 1px solid #334155; border-radius: 4px; color: #e2e8f0;">
+                                    <option value="">Select a device...</option>
+                                </select>
+                            </div>
+                            <div style="display: flex; gap: 0.75rem;">
+                                <button type="submit" style="flex: 1; background: #10b981; color: white; padding: 0.75rem; border: none; border-radius: 6px; font-weight: 600; cursor: pointer;">Assign</button>
+                                <button type="button" onclick="toggleAssignForm()" style="flex: 1; background: #64748b; color: white; padding: 0.75rem; border: none; border-radius: 6px; font-weight: 600; cursor: pointer;">Cancel</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- SECTION 3: History -->
+                <div style="background: rgba(148, 163, 184, 0.05); border: 1px solid rgba(148, 163, 184, 0.2); border-radius: 8px; padding: 1.5rem;">
+                    <h4 style="color: #94a3b8; margin-bottom: 1rem; border-bottom: 1px solid rgba(148, 163, 184, 0.2); padding-bottom: 0.5rem;">📜 History</h4>
+
+                    <!-- Phase History -->
+                    <div style="margin-bottom: 1.5rem;">
+                        <h5 style="color: #e2e8f0; margin-bottom: 0.75rem; font-size: 0.95rem;">Phase Changes</h5>
+                        <div id="phaseHistoryList" style="display: flex; flex-direction: column; gap: 0.5rem;">
+                            <p style="color: #64748b; font-size: 0.85rem;">Loading...</p>
+                        </div>
+                    </div>
+
+                    <!-- Device Assignment History -->
+                    <div>
+                        <h5 style="color: #e2e8f0; margin-bottom: 0.75rem; font-size: 0.95rem;">Device Assignments</h5>
+                        <div id="deviceHistoryList" style="display: flex; flex-direction: column; gap: 0.5rem;">
+                            <p style="color: #64748b; font-size: 0.85rem;">Loading...</p>
+                        </div>
                     </div>
                 </div>
 
@@ -826,22 +871,35 @@
                 return;
             }
 
-            container.innerHTML = plants.map(plant => `
+            container.innerHTML = plants.map(plant => {
+                const phase = plant.current_phase || plant.status || 'unknown';
+                const phaseColors = {
+                    'clone': '#8b5cf6',
+                    'veg': '#10b981',
+                    'flower': '#f59e0b',
+                    'drying': '#6366f1'
+                };
+                const phaseColor = phaseColors[phase] || '#64748b';
+
+                return `
                 <div class="plant-card ${plant.is_active ? '' : 'finished'}" data-plant-id="${plant.plant_id}" draggable="true">
                     <div class="plant-drag-handle" title="Drag to reorder">⋮⋮</div>
                     <button class="plant-menu-button" onclick="openAssignmentsModalFromCard(event, '${plant.plant_id}')" title="Manage assignments">☰</button>
                     <div class="plant-card-content" onclick="viewPlantDetails('${plant.plant_id}')">
                         <div class="plant-header">
-                            <div class="plant-name">${escapeHtml(plant.name)}</div>
+                            <div>
+                                <div class="plant-name">${escapeHtml(plant.name)}</div>
+                                <div style="margin-top: 0.5rem;">
+                                    <span style="display: inline-block; padding: 0.35rem 0.85rem; background: ${phaseColor}22; color: ${phaseColor}; border: 1.5px solid ${phaseColor}; border-radius: 6px; font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">
+                                        ${phase}
+                                    </span>
+                                </div>
+                            </div>
                             <div class="plant-status ${plant.is_active ? 'active' : 'finished'}">
                                 ${plant.is_active ? 'Active' : 'Finished'}
                             </div>
                         </div>
                         <div class="plant-info">
-                            <div class="plant-info-row">
-                                <span class="plant-info-label">System</span>
-                                <span class="plant-info-value">${escapeHtml(plant.system_id || 'N/A')}</span>
-                            </div>
                             <div class="plant-info-row">
                                 <span class="plant-info-label">Started</span>
                                 <span class="plant-info-value">${formatDate(plant.start_date)}</span>
@@ -865,7 +923,8 @@
                         </div>
                     </div>
                 </div>
-            `).join('');
+            `;
+            }).join('');
 
             // Initialize drag and drop after rendering
             initializePlantDragAndDrop();
@@ -2287,13 +2346,19 @@
             }
         }
 
+        // NEW: Load plant details including phase and device assignments
         async function loadPlantAssignments() {
-            const listDiv = document.getElementById('assignmentsList');
-            const historyDiv = document.getElementById('historyList');
-            listDiv.innerHTML = '<p style="color: #64748b;">Loading...</p>';
-            historyDiv.innerHTML = '<p style="color: #64748b;">Loading...</p>';
-
             try {
+                // Set plant name and status
+                document.getElementById('assignmentPlantNameDisplay').textContent = currentPlant.name;
+                document.getElementById('assignmentPlantStatus').textContent = currentPlant.is_active ? 'Active' : 'Finished';
+
+                // Set current phase
+                const currentPhase = currentPlant.current_phase || 'clone';
+                document.getElementById('currentPhaseDisplay').textContent = currentPhase;
+                document.getElementById('phaseChangeSelect').value = currentPhase;
+
+                // Load device assignments
                 const response = await fetch(`/user/plants/${currentPlant.plant_id}/assignments`);
                 if (!response.ok) throw new Error('Failed to load assignments');
 
@@ -2301,58 +2366,59 @@
                 const activeAssignments = data.active || [];
                 const historyAssignments = data.history || [];
 
-                // Render active assignments
-                if (activeAssignments.length === 0) {
-                    listDiv.innerHTML = '<p style="color: #64748b;">No active assignments</p>';
-                } else {
-                    listDiv.innerHTML = activeAssignments.map((assignment, index) => `
-                        <div id="assignment-${index}" style="padding: 1rem; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 6px;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-                                <div>
-                                    <strong style="color: #10b981;">${formatDeviceName(assignment.device_name, assignment.device_id)}</strong>
-                                    <span id="phase-display-${index}" style="margin-left: 0.5rem; padding: 0.25rem 0.5rem; background: rgba(59, 130, 246, 0.2); color: #3b82f6; border-radius: 4px; font-size: 0.85rem;">${assignment.phase}</span>
-                                    <select id="phase-edit-${index}" style="display: none; margin-left: 0.5rem; padding: 0.25rem 0.5rem; background: #1e293b; border: 1px solid #334155; border-radius: 4px; color: #e2e8f0; font-size: 0.85rem;">
-                                        <option value="veg" ${assignment.phase === 'veg' ? 'selected' : ''}>Veg</option>
-                                        <option value="flower" ${assignment.phase === 'flower' ? 'selected' : ''}>Flower</option>
-                                        <option value="drying" ${assignment.phase === 'drying' ? 'selected' : ''}>Drying</option>
-                                    </select>
-                                </div>
-                                <div style="display: flex; gap: 0.5rem;">
-                                    <button id="edit-btn-${index}" onclick="startEditPhase(${index}, '${assignment.device_id}', '${assignment.phase}')" style="background: #3b82f6; color: white; padding: 0.5rem 1rem; border: none; border-radius: 4px; cursor: pointer; font-size: 0.85rem;">Edit</button>
-                                    <button id="save-btn-${index}" onclick="savePhaseEdit(${index}, '${assignment.device_id}', '${assignment.phase}')" style="display: none; background: #10b981; color: white; padding: 0.5rem 1rem; border: none; border-radius: 4px; cursor: pointer; font-size: 0.85rem;">Save</button>
-                                    <button id="cancel-btn-${index}" onclick="cancelEditPhase(${index})" style="display: none; background: #64748b; color: white; padding: 0.5rem 1rem; border: none; border-radius: 4px; cursor: pointer; font-size: 0.85rem;">Cancel</button>
-                                    <button id="remove-btn-${index}" onclick="removeAssignment('${assignment.phase}')" style="background: #ef4444; color: white; padding: 0.5rem 1rem; border: none; border-radius: 4px; cursor: pointer; font-size: 0.85rem;">Remove</button>
+                // Show/hide sections based on whether plant has assigned device
+                const currentDeviceSection = document.getElementById('currentDeviceSection');
+                const noDeviceSection = document.getElementById('noDeviceSection');
+                const showAssignBtn = document.getElementById('showAssignFormBtn');
+                const showChangeBtn = document.getElementById('showChangeFormBtn');
+
+                if (activeAssignments.length > 0) {
+                    // Has assigned device
+                    currentDeviceSection.style.display = 'block';
+                    noDeviceSection.style.display = 'none';
+                    showAssignBtn.style.display = 'none';
+                    showChangeBtn.style.display = 'block';
+
+                    const assignment = activeAssignments[0];
+                    document.getElementById('currentDeviceDisplay').innerHTML = `
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <strong style="color: #10b981; font-size: 1.1rem;">${formatDeviceName(assignment.device_name, assignment.device_id)}</strong>
+                                <div style="font-size: 0.85rem; color: #64748b; margin-top: 0.25rem;">
+                                    Assigned: ${new Date(assignment.assigned_at).toLocaleDateString()}
                                 </div>
                             </div>
-                            <div style="font-size: 0.85rem; color: #94a3b8;">
-                                Assigned: ${new Date(assignment.assigned_at).toLocaleDateString()}
-                            </div>
+                            <button onclick="removeDeviceAssignment()" style="background: #ef4444; color: white; padding: 0.5rem 1rem; border: none; border-radius: 4px; cursor: pointer; font-size: 0.85rem;">Remove</button>
                         </div>
-                    `).join('');
+                    `;
+                } else {
+                    // No assigned device
+                    currentDeviceSection.style.display = 'none';
+                    noDeviceSection.style.display = 'block';
+                    showAssignBtn.style.display = 'block';
+                    showChangeBtn.style.display = 'none';
                 }
 
-                // Render historical assignments
+                // Load phase history
+                await loadPhaseHistory();
+
+                // Load device history
+                const deviceHistoryList = document.getElementById('deviceHistoryList');
                 if (historyAssignments.length === 0) {
-                    historyDiv.innerHTML = '<p style="color: #64748b;">No historical assignments</p>';
+                    deviceHistoryList.innerHTML = '<p style="color: #64748b; font-size: 0.85rem;">No previous assignments</p>';
                 } else {
-                    historyDiv.innerHTML = historyAssignments.map(assignment => {
+                    deviceHistoryList.innerHTML = historyAssignments.map(assignment => {
                         const startDate = new Date(assignment.assigned_at);
                         const endDate = new Date(assignment.removed_at);
                         const duration = Math.floor((endDate - startDate) / (1000 * 60 * 60 * 24));
 
                         return `
-                            <div style="padding: 1rem; background: rgba(100, 116, 139, 0.1); border: 1px solid rgba(100, 116, 139, 0.3); border-radius: 6px;">
-                                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.5rem;">
-                                    <div>
-                                        <strong style="color: #94a3b8;">${formatDeviceName(assignment.device_name, assignment.device_id)}</strong>
-                                        <span style="margin-left: 0.5rem; padding: 0.25rem 0.5rem; background: rgba(100, 116, 139, 0.2); color: #94a3b8; border-radius: 4px; font-size: 0.85rem;">${assignment.phase}</span>
-                                    </div>
-                                    <div style="text-align: right; font-size: 0.85rem; color: #64748b;">
-                                        ${duration} day${duration !== 1 ? 's' : ''}
-                                    </div>
+                            <div style="padding: 0.75rem; background: rgba(100, 116, 139, 0.1); border-left: 3px solid #64748b; border-radius: 4px;">
+                                <div style="color: #e2e8f0; font-weight: 600; margin-bottom: 0.25rem;">
+                                    ${formatDeviceName(assignment.device_name, assignment.device_id)}
                                 </div>
-                                <div style="font-size: 0.85rem; color: #64748b;">
-                                    ${startDate.toLocaleDateString()} → ${endDate.toLocaleDateString()}
+                                <div style="font-size: 0.85rem; color: #94a3b8;">
+                                    ${startDate.toLocaleDateString()} → ${endDate.toLocaleDateString()} (${duration} day${duration !== 1 ? 's' : ''})
                                 </div>
                             </div>
                         `;
@@ -2360,9 +2426,133 @@
                 }
 
             } catch (error) {
-                console.error('Error loading assignments:', error);
-                listDiv.innerHTML = '<p style="color: #ef4444;">Failed to load assignments</p>';
-                historyDiv.innerHTML = '<p style="color: #ef4444;">Failed to load history</p>';
+                console.error('Error loading plant details:', error);
+            }
+        }
+
+        // NEW: Load phase history
+        async function loadPhaseHistory() {
+            const phaseHistoryList = document.getElementById('phaseHistoryList');
+            phaseHistoryList.innerHTML = '<p style="color: #64748b; font-size: 0.85rem;">Loading...</p>';
+
+            try {
+                const response = await fetch(`/user/plants/${currentPlant.plant_id}/phase-history`);
+                if (!response.ok) throw new Error('Failed to load phase history');
+
+                const phases = await response.json();
+
+                if (phases.length === 0) {
+                    phaseHistoryList.innerHTML = '<p style="color: #64748b; font-size: 0.85rem;">No phase changes yet</p>';
+                } else {
+                    phaseHistoryList.innerHTML = phases.map(phase => {
+                        const startDate = new Date(phase.started_at);
+                        const endDate = phase.ended_at ? new Date(phase.ended_at) : null;
+                        const duration = endDate ? Math.floor((endDate - startDate) / (1000 * 60 * 60 * 24)) : null;
+
+                        return `
+                            <div style="padding: 0.75rem; background: ${phase.is_current ? 'rgba(16, 185, 129, 0.1)' : 'rgba(100, 116, 139, 0.1)'}; border-left: 3px solid ${phase.is_current ? '#10b981' : '#64748b'}; border-radius: 4px;">
+                                <div style="color: #e2e8f0; font-weight: 600; text-transform: capitalize; margin-bottom: 0.25rem;">
+                                    ${phase.phase} ${phase.is_current ? '(Current)' : ''}
+                                </div>
+                                <div style="font-size: 0.85rem; color: #94a3b8;">
+                                    ${startDate.toLocaleDateString()} ${endDate ? `→ ${endDate.toLocaleDateString()} (${duration} day${duration !== 1 ? 's' : ''})` : '→ Present'}
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+                }
+
+            } catch (error) {
+                console.error('Error loading phase history:', error);
+                phaseHistoryList.innerHTML = '<p style="color: #ef4444; font-size: 0.85rem;">Failed to load phase history</p>';
+            }
+        }
+
+        // NEW: Phase editing functions
+        function startEditPhase() {
+            document.getElementById('currentPhaseDisplay').style.display = 'none';
+            document.getElementById('phaseChangeSelect').style.display = 'block';
+            document.getElementById('editPhaseBtn').style.display = 'none';
+            document.getElementById('savePhaseBtn').style.display = 'inline-block';
+            document.getElementById('cancelPhaseBtn').style.display = 'inline-block';
+        }
+
+        function cancelEditPhase() {
+            document.getElementById('currentPhaseDisplay').style.display = 'inline';
+            document.getElementById('phaseChangeSelect').style.display = 'none';
+            document.getElementById('editPhaseBtn').style.display = 'inline-block';
+            document.getElementById('savePhaseBtn').style.display = 'none';
+            document.getElementById('cancelPhaseBtn').style.display = 'none';
+        }
+
+        async function savePhase() {
+            const newPhase = document.getElementById('phaseChangeSelect').value;
+
+            try {
+                const response = await fetch(`/user/plants/${currentPlant.plant_id}/change-phase`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ new_phase: newPhase })
+                });
+
+                if (!response.ok) throw new Error('Failed to change phase');
+
+                // Update UI
+                currentPlant.current_phase = newPhase;
+                currentPlant.status = newPhase;
+                document.getElementById('currentPhaseDisplay').textContent = newPhase;
+                cancelEditPhase();
+
+                // Reload phase history and main plant list
+                await loadPhaseHistory();
+                await loadPlants();
+
+                showStatus('Phase changed successfully', 'success');
+            } catch (error) {
+                console.error('Error changing phase:', error);
+                showStatus('Failed to change phase', 'error');
+            }
+        }
+
+        // NEW: Toggle assign/change device form
+        function toggleAssignForm() {
+            const form = document.getElementById('assignDeviceForm');
+            form.style.display = form.style.display === 'none' ? 'block' : 'none';
+        }
+
+        // NEW: Remove device assignment
+        async function removeDeviceAssignment() {
+            if (!confirm('Remove this device from the plant?')) return;
+
+            try {
+                // Get the active assignment
+                const response = await fetch(`/user/plants/${currentPlant.plant_id}/assignments`);
+                if (!response.ok) throw new Error('Failed to load assignments');
+
+                const data = await response.json();
+                const activeAssignments = data.active || [];
+
+                if (activeAssignments.length === 0) {
+                    showStatus('No active assignment to remove', 'error');
+                    return;
+                }
+
+                // Remove the assignment
+                const removeResponse = await fetch(`/user/plants/${currentPlant.plant_id}/unassign`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phase: currentPlant.current_phase || 'veg' })
+                });
+
+                if (!removeResponse.ok) throw new Error('Failed to remove assignment');
+
+                showStatus('Device removed successfully', 'success');
+                await loadPlantAssignments();
+                await loadPlants();
+
+            } catch (error) {
+                console.error('Error removing assignment:', error);
+                showStatus('Failed to remove device', 'error');
             }
         }
 
@@ -2372,15 +2562,18 @@
                 if (!response.ok) throw new Error('Failed to load devices');
 
                 const devices = await response.json();
-                const availableDevices = devices.filter(d => !d.active_plant_name && d.is_online);
+                // Show all devices, not just available ones (user can assign to any device they own)
+                const userDevices = devices.filter(d => d.is_owner || d.permission_level === 'controller');
 
-                const select = document.getElementById('assignmentDeviceSelect');
+                const select = document.getElementById('deviceSelect');
                 select.innerHTML = '<option value="">Select a device...</option>';
 
-                availableDevices.forEach(device => {
+                userDevices.forEach(device => {
                     const option = document.createElement('option');
                     option.value = device.device_id;
-                    option.textContent = `${device.name || device.device_id} ${device.is_owner ? '' : '(Shared)'}`;
+                    const statusText = device.is_online ? '🟢' : '🔴';
+                    const plantText = device.active_plant_name ? ` (${device.active_plant_name})` : '';
+                    option.textContent = `${statusText} ${formatDeviceName(device.name, device.device_id)}${plantText}`;
                     select.appendChild(option);
                 });
             } catch (error) {
@@ -2504,13 +2697,12 @@
         }
 
         // Handle add assignment form submission
-        document.getElementById('addAssignmentForm').addEventListener('submit', async (e) => {
+        document.getElementById('assignDeviceForm').addEventListener('submit', async (e) => {
             e.preventDefault();
 
             if (!currentPlant) return;
 
-            const deviceId = document.getElementById('assignmentDeviceSelect').value;
-            const phase = document.getElementById('assignmentPhaseSelect').value;
+            const deviceId = document.getElementById('deviceSelect').value;
             const statusDiv = document.getElementById('assignmentStatus');
 
             if (!deviceId) {
@@ -2530,7 +2722,7 @@
                 const response = await fetch(`/user/plants/${currentPlant.plant_id}/assign`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ device_id: deviceId, phase: phase })
+                    body: JSON.stringify({ device_id: deviceId })
                 });
 
                 if (!response.ok) throw new Error('Failed to assign device');
@@ -2539,8 +2731,9 @@
                 statusDiv.style.background = 'rgba(16, 185, 129, 0.1)';
                 statusDiv.style.color = '#10b981';
 
-                // Reset form
-                document.getElementById('assignmentDeviceSelect').value = '';
+                // Reset form and hide it
+                document.getElementById('deviceSelect').value = '';
+                toggleAssignForm();
 
                 // Reload assignments and available devices
                 await loadPlantAssignments();
