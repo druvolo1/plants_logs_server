@@ -1726,6 +1726,85 @@ async def assign_device_to_plant(
 
     return {"message": f"Device assigned to plant for {assignment_data.phase} phase"}
 
+# NEW: Update phase of an existing assignment
+@app.post("/user/plants/{plant_id}/update-phase", response_model=Dict[str, str])
+async def update_assignment_phase(
+    plant_id: str,
+    device_id: str = Body(...),
+    old_phase: str = Body(...),
+    new_phase: str = Body(...),
+    user: User = Depends(current_user),
+    session: AsyncSession = Depends(get_db)
+):
+    """Update the phase of an existing device assignment"""
+    from datetime import datetime
+
+    # Get the plant
+    result = await session.execute(select(Plant).where(Plant.plant_id == plant_id))
+    plant = result.scalars().first()
+
+    if not plant:
+        raise HTTPException(404, "Plant not found")
+
+    # Verify user owns the plant
+    if plant.user_id != user.id:
+        raise HTTPException(403, "You don't have permission to modify this plant")
+
+    # Get the device
+    result = await session.execute(select(Device).where(Device.device_id == device_id))
+    device = result.scalars().first()
+
+    if not device:
+        raise HTTPException(404, "Device not found")
+
+    # Find the active assignment for this device and old phase
+    result = await session.execute(
+        select(DeviceAssignment).where(
+            DeviceAssignment.plant_id == plant.id,
+            DeviceAssignment.device_id == device.id,
+            DeviceAssignment.phase == old_phase,
+            DeviceAssignment.removed_at == None
+        )
+    )
+    assignment = result.scalars().first()
+
+    if not assignment:
+        raise HTTPException(404, f"No active assignment found for device with phase '{old_phase}'")
+
+    # Update the phase
+    assignment.phase = new_phase
+
+    # Update plant status based on new phase
+    if new_phase == 'veg':
+        plant.status = 'veg'
+        plant.current_phase = 'veg'
+    elif new_phase == 'flower':
+        plant.status = 'flower'
+        plant.current_phase = 'flower'
+    elif new_phase == 'drying':
+        plant.status = 'drying'
+        plant.current_phase = 'drying'
+        if not plant.cure_start_date:
+            plant.cure_start_date = datetime.utcnow()
+
+    await session.commit()
+
+    # Send websocket notification to device if online
+    if device_id in device_connections:
+        try:
+            await device_connections[device_id].send_json({
+                "command": "assign_plant",  # Reuse assign command to update phase
+                "plant_id": plant.plant_id,
+                "plant_name": plant.name,
+                "phase": new_phase,
+                "system_id": plant.system_id or f"Zone{plant.plant_id[-1]}"
+            })
+            print(f"[WS] Sent phase update to device {device_id}")
+        except Exception as e:
+            print(f"[WS] Failed to send phase update to device: {e}")
+
+    return {"message": f"Phase updated from '{old_phase}' to '{new_phase}'"}
+
 # NEW: Unassign a device from a plant (end a phase)
 @app.post("/user/plants/{plant_id}/unassign", response_model=Dict[str, str])
 async def unassign_device_from_plant(
