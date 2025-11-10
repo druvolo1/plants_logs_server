@@ -2056,6 +2056,32 @@ async def finish_plant(
 
     return {"status": "success", "message": "Plant finished successfully"}
 
+# Update plant name
+@app.patch("/user/plants/{plant_id}/name", response_model=Dict[str, str])
+async def update_plant_name(
+    plant_id: str,
+    name: str = Body(..., embed=True),
+    user: User = Depends(current_user),
+    session: AsyncSession = Depends(get_db)
+):
+    """Update the name of a plant"""
+    # Get plant and verify ownership
+    result = await session.execute(select(Plant).where(Plant.plant_id == plant_id))
+    plant = result.scalars().first()
+
+    if not plant:
+        raise HTTPException(404, "Plant not found")
+
+    # Verify user owns the plant
+    if plant.user_id != user.id:
+        raise HTTPException(403, "You don't have permission to modify this plant")
+
+    # Update the name
+    plant.name = name
+    await session.commit()
+
+    return {"message": "Plant name updated successfully"}
+
 # Update yield for finished plant
 @app.patch("/user/plants/{plant_id}/yield", response_model=Dict[str, str])
 async def update_plant_yield(

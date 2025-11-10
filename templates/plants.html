@@ -632,7 +632,15 @@
             </div>
             <div class="modal-body">
                 <div style="margin-bottom: 1.5rem;">
-                    <h3 style="color: #10b981; margin-bottom: 0.5rem;"><span id="assignmentPlantName"></span></h3>
+                    <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
+                        <h3 style="color: #10b981; margin: 0;">
+                            <span id="assignmentPlantNameDisplay"></span>
+                            <input type="text" id="assignmentPlantNameEdit" style="display: none; padding: 0.5rem; background: #1e293b; border: 1px solid #10b981; border-radius: 4px; color: #e2e8f0; font-size: 1.25rem; font-weight: 700; width: 300px;">
+                        </h3>
+                        <button id="editPlantNameBtn" onclick="startEditPlantName()" style="background: #3b82f6; color: white; padding: 0.5rem 0.75rem; border: none; border-radius: 4px; cursor: pointer; font-size: 0.85rem;">Edit Name</button>
+                        <button id="savePlantNameBtn" onclick="savePlantName()" style="display: none; background: #10b981; color: white; padding: 0.5rem 0.75rem; border: none; border-radius: 4px; cursor: pointer; font-size: 0.85rem;">Save</button>
+                        <button id="cancelPlantNameBtn" onclick="cancelEditPlantName()" style="display: none; background: #64748b; color: white; padding: 0.5rem 0.75rem; border: none; border-radius: 4px; cursor: pointer; font-size: 0.85rem;">Cancel</button>
+                    </div>
                     <p style="color: #64748b; font-size: 0.9rem;">Status: <span id="assignmentPlantStatus"></span></p>
                 </div>
 
@@ -1189,10 +1197,21 @@
                 const timeRange = document.getElementById('timeRangeFilter').value;
                 let url = `/user/plants/${plantId}/logs?limit=10000`;
 
-                if (timeRange !== 'all') {
-                    const startDate = new Date();
-                    startDate.setDate(startDate.getDate() - parseInt(timeRange));
-                    url += `&start_date=${startDate.toISOString()}`;
+                // Always filter from plant start date at minimum
+                let filterStartDate = currentPlant.start_date ? new Date(currentPlant.start_date) : null;
+
+                if (timeRange !== 'all' && filterStartDate) {
+                    // Use the later of: plant start date OR the time range filter
+                    const rangeStartDate = new Date();
+                    rangeStartDate.setDate(rangeStartDate.getDate() - parseInt(timeRange));
+
+                    if (rangeStartDate > filterStartDate) {
+                        filterStartDate = rangeStartDate;
+                    }
+                }
+
+                if (filterStartDate) {
+                    url += `&start_date=${filterStartDate.toISOString()}`;
                 }
 
                 const response = await fetch(url);
@@ -2079,8 +2098,16 @@
             }
 
             // Set plant info
-            document.getElementById('assignmentPlantName').textContent = currentPlant.name;
+            document.getElementById('assignmentPlantNameDisplay').textContent = currentPlant.name;
+            document.getElementById('assignmentPlantNameEdit').value = currentPlant.name;
             document.getElementById('assignmentPlantStatus').textContent = currentPlant.status || 'Unknown';
+
+            // Reset name edit UI
+            document.getElementById('assignmentPlantNameDisplay').style.display = 'inline';
+            document.getElementById('assignmentPlantNameEdit').style.display = 'none';
+            document.getElementById('editPlantNameBtn').style.display = 'inline-block';
+            document.getElementById('savePlantNameBtn').style.display = 'none';
+            document.getElementById('cancelPlantNameBtn').style.display = 'none';
 
             // Load current assignments and available devices
             await loadPlantAssignments();
@@ -2092,6 +2119,76 @@
 
         function closeAssignmentsModal() {
             document.getElementById('assignmentsModal').style.display = 'none';
+        }
+
+        function startEditPlantName() {
+            document.getElementById('assignmentPlantNameDisplay').style.display = 'none';
+            document.getElementById('assignmentPlantNameEdit').style.display = 'inline-block';
+            document.getElementById('editPlantNameBtn').style.display = 'none';
+            document.getElementById('savePlantNameBtn').style.display = 'inline-block';
+            document.getElementById('cancelPlantNameBtn').style.display = 'inline-block';
+            document.getElementById('assignmentPlantNameEdit').focus();
+        }
+
+        function cancelEditPlantName() {
+            document.getElementById('assignmentPlantNameDisplay').style.display = 'inline';
+            document.getElementById('assignmentPlantNameEdit').style.display = 'none';
+            document.getElementById('editPlantNameBtn').style.display = 'inline-block';
+            document.getElementById('savePlantNameBtn').style.display = 'none';
+            document.getElementById('cancelPlantNameBtn').style.display = 'none';
+            // Reset to original value
+            document.getElementById('assignmentPlantNameEdit').value = currentPlant.name;
+        }
+
+        async function savePlantName() {
+            if (!currentPlant) return;
+
+            const newName = document.getElementById('assignmentPlantNameEdit').value.trim();
+
+            if (!newName) {
+                alert('Plant name cannot be empty');
+                return;
+            }
+
+            if (newName === currentPlant.name) {
+                cancelEditPlantName();
+                return;
+            }
+
+            try {
+                const response = await fetch(`/user/plants/${currentPlant.plant_id}/name`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: newName })
+                });
+
+                if (!response.ok) throw new Error('Failed to update plant name');
+
+                // Update local plant object
+                currentPlant.name = newName;
+                document.getElementById('assignmentPlantNameDisplay').textContent = newName;
+
+                // Update in plants list
+                const plantIndex = plants.findIndex(p => p.plant_id === currentPlant.plant_id);
+                if (plantIndex !== -1) {
+                    plants[plantIndex].name = newName;
+                }
+
+                // Refresh plants view and modal title
+                await loadPlants();
+
+                // Also update the main plant details modal title if it's open
+                const modalPlantName = document.getElementById('modalPlantName');
+                if (modalPlantName && modalPlantName.textContent) {
+                    modalPlantName.textContent = newName;
+                }
+
+                cancelEditPlantName();
+
+            } catch (error) {
+                console.error('Error updating plant name:', error);
+                alert(`Failed to update plant name: ${error.message}`);
+            }
         }
 
         async function loadPlantAssignments() {
