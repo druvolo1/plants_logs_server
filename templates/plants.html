@@ -2146,7 +2146,7 @@
                     availableDevices.forEach(device => {
                         const option = document.createElement('option');
                         option.value = device.device_id;
-                        option.textContent = `${device.name || device.device_id} ${device.is_owner ? '' : '(Shared)'}`;
+                        option.textContent = `${formatDeviceName(device.name, device.device_id, device.system_name)} ${device.is_owner ? '' : '(Shared)'}`;
                         select.appendChild(option);
                     });
                 }
