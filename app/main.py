@@ -1111,6 +1111,13 @@ class PlantFinish(BaseModel):
 class PlantYieldUpdate(BaseModel):
     yield_grams: float
 
+class AssignedDeviceInfo(BaseModel):
+    """Info about a device assigned to a plant"""
+    device_id: str  # Device UUID
+    device_name: Optional[str]
+    system_name: Optional[str]
+    is_online: bool
+
 class PlantRead(BaseModel):
     plant_id: str
     name: str
@@ -1125,6 +1132,7 @@ class PlantRead(BaseModel):
     harvest_date: Optional[datetime]
     cure_start_date: Optional[datetime]
     cure_end_date: Optional[datetime]
+    assigned_devices: List['AssignedDeviceInfo'] = []  # Currently assigned devices
 
 class DeviceAssignmentRead(BaseModel):
     id: int
@@ -2068,6 +2076,24 @@ async def list_plants(
 
     plants_list = []
     for plant, device_uuid in result.all():
+        # Get currently assigned devices for this plant
+        assignments_result = await session.execute(
+            select(Device)
+            .join(DeviceAssignment, DeviceAssignment.device_id == Device.id)
+            .where(
+                DeviceAssignment.plant_id == plant.id,
+                DeviceAssignment.removed_at == None
+            )
+        )
+        assigned_devices = []
+        for device in assignments_result.scalars().all():
+            assigned_devices.append(AssignedDeviceInfo(
+                device_id=device.device_id,
+                device_name=device.name,
+                system_name=device.system_name,
+                is_online=device.is_online
+            ))
+
         plants_list.append(PlantRead(
             plant_id=plant.plant_id,
             name=plant.name,
@@ -2081,7 +2107,8 @@ async def list_plants(
             current_phase=plant.current_phase,
             harvest_date=plant.harvest_date,
             cure_start_date=plant.cure_start_date,
-            cure_end_date=plant.cure_end_date
+            cure_end_date=plant.cure_end_date,
+            assigned_devices=assigned_devices
         ))
 
     return plants_list

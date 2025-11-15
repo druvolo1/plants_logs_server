@@ -906,6 +906,16 @@
                             </div>
                         </div>
                         <div class="plant-info">
+                            ${plant.assigned_devices && plant.assigned_devices.length > 0 ? `
+                                <div class="plant-info-row">
+                                    <span class="plant-info-label">Device</span>
+                                    <span class="plant-info-value">
+                                        ${plant.assigned_devices.map(d =>
+                                            `<span style="color: ${d.is_online ? '#10b981' : '#ef4444'};">${d.is_online ? '🟢' : '🔴'}</span> ${formatDeviceName(d.device_name, d.device_id, d.system_name)}`
+                                        ).join(', ')}
+                                    </span>
+                                </div>
+                            ` : ''}
                             <div class="plant-info-row">
                                 <span class="plant-info-label">Started</span>
                                 <span class="plant-info-value">${formatDate(plant.start_date)}</span>
