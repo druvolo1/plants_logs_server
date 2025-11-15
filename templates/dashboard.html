@@ -527,23 +527,23 @@
             .device-header {
                 flex-direction: column;
                 align-items: stretch;
-                gap: 8px;
-                padding: 10px 12px;
+                gap: 4px;
+                padding: 6px 8px;
                 position: relative;
             }
             .device-header-left {
                 flex-direction: row;
                 align-items: center;
-                gap: 8px;
+                gap: 6px;
                 flex-wrap: wrap;
-                padding-right: 40px;
+                padding-right: 35px;
             }
             .device-name {
-                font-size: 1rem;
+                font-size: 0.9rem;
             }
             .status-badge {
-                padding: 4px 8px;
-                font-size: 0.75em;
+                padding: 3px 7px;
+                font-size: 0.7em;
             }
 
             /* Hide pH and EC from header-info on mobile, will show next to badge */
@@ -556,30 +556,31 @@
             .header-ph-ec {
                 display: flex !important;
                 flex-wrap: wrap;
-                gap: 8px;
-                font-size: 0.95em !important;
+                gap: 6px;
+                font-size: 0.85em !important;
             }
 
-            /* Header info: vertical stack on phone for clarity */
+            /* Header info: 2-column grid on phone for compact layout */
             .header-info {
-                display: flex !important;
-                flex-direction: column !important;
-                gap: 8px !important;
+                display: grid !important;
+                grid-template-columns: 1fr 1fr !important;
+                gap: 4px !important;
                 width: 100% !important;
             }
 
             .info-item {
                 display: flex !important;
-                flex-direction: row !important;
-                align-items: center !important;
-                justify-content: space-between !important;
-                gap: 6px !important;
-                background: rgba(51, 65, 85, 0.4) !important;
-                border: 1px solid rgba(148, 163, 184, 0.15) !important;
-                padding: 6px 10px !important;
-                border-radius: 5px !important;
+                flex-direction: column !important;
+                align-items: flex-start !important;
+                justify-content: center !important;
+                gap: 2px !important;
+                background: rgba(51, 65, 85, 0.3) !important;
+                border: 1px solid rgba(148, 163, 184, 0.1) !important;
+                padding: 4px 6px !important;
+                border-radius: 4px !important;
                 margin: 0 !important;
                 box-sizing: border-box !important;
+                min-height: 32px !important;
             }
 
             /* HIDE drag handles completely on phone */
@@ -588,22 +589,25 @@
             }
 
             .info-item label {
-                font-size: 0.7em !important;
+                font-size: 0.6em !important;
                 color: #888 !important;
                 text-transform: uppercase !important;
-                letter-spacing: 0.3px !important;
+                letter-spacing: 0.2px !important;
                 font-weight: 600 !important;
                 white-space: nowrap !important;
+                line-height: 1.2 !important;
             }
 
             .info-item span {
-                font-size: 0.75em !important;
-                font-weight: 500 !important;
+                font-size: 0.7em !important;
+                font-weight: 600 !important;
                 color: #10b981 !important;
-                text-align: right !important;
+                text-align: left !important;
                 white-space: nowrap !important;
                 overflow: hidden !important;
                 text-overflow: ellipsis !important;
+                width: 100% !important;
+                line-height: 1.2 !important;
             }
 
             /* Reset any grid positioning */
@@ -640,18 +644,23 @@
                 font-size: 1.1rem !important;
             }
 
+            /* Device content padding mobile */
+            .device-content-inner {
+                padding: 8px !important;
+            }
+
             /* Cards grid mobile */
             .cards-grid {
                 grid-template-columns: 1fr !important;
-                gap: 10px;
+                gap: 6px;
             }
 
             /* Card adjustments */
             .card {
-                padding: 8px;
+                padding: 6px;
             }
             .card-title {
-                font-size: 0.9em;
+                font-size: 0.85em;
             }
 
             /* Dose sections mobile */
@@ -723,12 +732,19 @@
 
             /* Main container mobile */
             .main-container {
-                padding: 1rem 0.75rem !important;
+                padding: 0.75rem 0.5rem !important;
+            }
+
+            /* Page title mobile */
+            .main-container h2 {
+                font-size: 1.5rem !important;
+                margin-bottom: 0.75rem !important;
+                margin-top: 0 !important;
             }
 
             /* Device section spacing mobile */
             .device-section {
-                margin-bottom: 15px;
+                margin-bottom: 8px;
             }
 
             /* All valves table mobile */
