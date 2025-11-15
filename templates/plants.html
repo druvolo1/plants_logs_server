@@ -1048,7 +1048,7 @@
                     const startDate = new Date(currentPhaseEntry.started_at);
                     const now = new Date();
                     const diffTime = Math.abs(now - startDate);
-                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
 
                     const phaseName = plant.current_phase || 'unknown';
                     element.querySelector('.plant-info-value').textContent = `In ${phaseName} for ${diffDays} day${diffDays !== 1 ? 's' : ''}`;
@@ -2713,7 +2713,7 @@
                 const startDate = new Date(currentPhaseEntry.started_at);
                 const now = new Date();
                 const diffTime = Math.abs(now - startDate);
-                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
 
                 const phaseName = currentPlant.current_phase || 'unknown';
                 document.getElementById('phaseDurationDisplay').textContent = `In ${phaseName} for ${diffDays} day${diffDays !== 1 ? 's' : ''}`;
@@ -2770,7 +2770,7 @@
                     const startDate = new Date(currentPhaseEntry.started_at);
                     const now = new Date();
                     const diffTime = Math.abs(now - startDate);
-                    daysInCurrentPhase = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                    daysInCurrentPhase = Math.floor(diffTime / (1000 * 60 * 60 * 24));
                 }
 
                 // Calculate remaining days in current phase
