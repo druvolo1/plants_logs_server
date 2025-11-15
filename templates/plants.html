@@ -651,6 +651,14 @@
                 <canvas id="dosingChart"></canvas>
             </div>
 
+            <!-- Phase History -->
+            <div style="margin-top: 2rem; padding: 1.5rem; background: rgba(245, 158, 11, 0.05); border: 1px solid rgba(245, 158, 11, 0.2); border-radius: 8px;">
+                <h3 style="margin-bottom: 1rem; color: #f59e0b;">Phase History</h3>
+                <div id="plantPhaseHistory" style="display: flex; flex-direction: column; gap: 0.75rem;">
+                    <p style="color: #64748b;">Loading phase history...</p>
+                </div>
+            </div>
+
             <!-- Plant Assignment History -->
             <div style="margin-top: 2rem; padding: 1.5rem; background: rgba(16, 185, 129, 0.05); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 8px;">
                 <h3 style="margin-bottom: 1rem; color: #10b981;">Assignment History</h3>
@@ -1113,7 +1121,8 @@
                 editCompletionMenuItem.style.display = 'none';
             }
 
-            // Load assignment history
+            // Load phase history and assignment history
+            await loadPlantPhaseHistory(plantId);
             await loadPlantReportHistory(plantId);
 
             await loadPlantLogs(plantId);
@@ -3311,6 +3320,76 @@
                 statusDiv.style.color = '#ef4444';
             }
         });
+
+        // Load plant phase history
+        async function loadPlantPhaseHistory(plantId) {
+            const historyDiv = document.getElementById('plantPhaseHistory');
+            historyDiv.innerHTML = '<p style="color: #64748b;">Loading...</p>';
+
+            try {
+                const response = await fetch(`/user/plants/${plantId}/phase-history`);
+                if (!response.ok) throw new Error('Failed to load phase history');
+
+                const phaseHistory = await response.json();
+
+                if (phaseHistory.length === 0) {
+                    historyDiv.innerHTML = '<p style="color: #64748b;">No phase history</p>';
+                    return;
+                }
+
+                // Sort by started_at descending (most recent first)
+                phaseHistory.sort((a, b) => new Date(b.started_at) - new Date(a.started_at));
+
+                const phaseColors = {
+                    'seed': '#a855f7',
+                    'clone': '#8b5cf6',
+                    'veg': '#10b981',
+                    'flower': '#f59e0b',
+                    'drying': '#6366f1'
+                };
+
+                historyDiv.innerHTML = phaseHistory.map(entry => {
+                    const startDate = new Date(entry.started_at);
+                    const endDate = entry.ended_at ? new Date(entry.ended_at) : null;
+                    const isActive = !entry.ended_at;
+
+                    let duration = '';
+                    if (endDate) {
+                        const days = Math.floor((endDate - startDate) / (1000 * 60 * 60 * 24));
+                        duration = `${days} day${days !== 1 ? 's' : ''}`;
+                    } else {
+                        const now = new Date();
+                        const days = Math.floor((now - startDate) / (1000 * 60 * 60 * 24));
+                        duration = `${days} day${days !== 1 ? 's' : ''} (current)`;
+                    }
+
+                    const phaseColor = phaseColors[entry.phase] || '#64748b';
+                    const bgColor = isActive ? `${phaseColor}22` : 'rgba(100, 116, 139, 0.1)';
+                    const borderColor = isActive ? `${phaseColor}66` : 'rgba(100, 116, 139, 0.3)';
+
+                    return `
+                        <div style="padding: 1rem; background: ${bgColor}; border: 1px solid ${borderColor}; border-radius: 6px;">
+                            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.5rem;">
+                                <div>
+                                    <strong style="color: ${phaseColor}; text-transform: uppercase; font-size: 0.95rem;">${entry.phase}</strong>
+                                    ${isActive ? '<span style="margin-left: 0.5rem; padding: 0.25rem 0.5rem; background: rgba(16, 185, 129, 0.2); color: #10b981; border-radius: 4px; font-size: 0.85rem;">Current</span>' : ''}
+                                </div>
+                                <div style="text-align: right; font-size: 0.85rem; color: #64748b;">
+                                    ${duration}
+                                </div>
+                            </div>
+                            <div style="font-size: 0.85rem; color: #64748b;">
+                                ${startDate.toLocaleDateString()} ${endDate ? `→ ${endDate.toLocaleDateString()}` : '→ Present'}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+            } catch (error) {
+                console.error('Error loading plant phase history:', error);
+                historyDiv.innerHTML = '<p style="color: #ef4444;">Failed to load phase history</p>';
+            }
+        }
 
         // Load plant report history
         async function loadPlantReportHistory(plantId) {
