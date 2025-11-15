@@ -612,11 +612,12 @@
                 min-width: 0 !important;
             }
 
-            /* Reset any grid positioning */
+            /* Force all info items to show on mobile */
             .info-item[id^="system-item"],
             .info-item[id^="plant-item"],
             .info-item[id^="start-date-item"],
             .info-item[id^="weeks-item"] {
+                display: flex !important;
                 grid-column: unset !important;
                 grid-row: unset !important;
             }
