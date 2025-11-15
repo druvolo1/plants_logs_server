@@ -1880,7 +1880,7 @@ async def change_plant_phase(
     from datetime import datetime
 
     # Validate phase
-    valid_phases = ['clone', 'veg', 'flower', 'drying']
+    valid_phases = ['seed', 'clone', 'veg', 'flower', 'drying']
     if new_phase not in valid_phases:
         raise HTTPException(400, f"Invalid phase. Must be one of: {', '.join(valid_phases)}")
 
@@ -2062,7 +2062,7 @@ async def list_plants(
     query = select(Plant, Device.device_id).outerjoin(Device, Plant.device_id == Device.id).where(Plant.user_id == user.id).order_by(Plant.display_order, Plant.id)
 
     if active_only:
-        query = query.where(Plant.status.in_(['clone', 'created', 'veg', 'flower', 'drying', 'harvested', 'feeding', 'curing']))  # Not finished
+        query = query.where(Plant.status.in_(['seed', 'clone', 'created', 'veg', 'flower', 'drying', 'harvested', 'feeding', 'curing']))  # Not finished
 
     result = await session.execute(query)
 

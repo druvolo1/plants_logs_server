@@ -561,8 +561,11 @@
                     <div style="margin-bottom: 1rem;">
                         <label for="assignPhase" style="display: block; margin-bottom: 0.5rem; color: #e0e0e0;">Growth Phase</label>
                         <select id="assignPhase" style="width: 100%; padding: 0.75rem; border: 1px solid #444; border-radius: 6px; background: #2d3748; color: #e0e0e0; font-size: 1rem;">
+                            <option value="seed">Seed</option>
+                            <option value="clone">Clone</option>
                             <option value="veg">Vegetative</option>
                             <option value="flower" selected>Flower</option>
+                            <option value="drying">Drying</option>
                         </select>
                     </div>
                     <div id="createPlantStatus" style="margin-bottom: 1rem; color: #10b981;"></div>
@@ -669,14 +672,15 @@
                         <div style="display: flex; align-items: center; gap: 0.75rem;">
                             <span id="currentPhaseDisplay" style="color: #e2e8f0; font-size: 1.1rem; font-weight: 600; text-transform: capitalize;"></span>
                             <select id="phaseChangeSelect" style="display: none; padding: 0.5rem; background: #1e293b; border: 1px solid #10b981; border-radius: 4px; color: #e2e8f0; min-width: 150px;">
+                                <option value="seed">Seed</option>
                                 <option value="clone">Clone</option>
                                 <option value="veg">Veg</option>
                                 <option value="flower">Flower</option>
                                 <option value="drying">Drying</option>
                             </select>
-                            <button id="editPhaseBtn" onclick="startEditPhase()" style="background: #3b82f6; color: white; padding: 0.5rem 0.75rem; border: none; border-radius: 4px; cursor: pointer; font-size: 0.85rem;">Change Phase ▼</button>
+                            <button id="editPhaseBtn" onclick="startEditPlantPhase()" style="background: #3b82f6; color: white; padding: 0.5rem 0.75rem; border: none; border-radius: 4px; cursor: pointer; font-size: 0.85rem;">Change Phase ▼</button>
                             <button id="savePhaseBtn" onclick="savePhase()" style="display: none; background: #10b981; color: white; padding: 0.5rem 0.75rem; border: none; border-radius: 4px; cursor: pointer; font-size: 0.85rem;">Save</button>
-                            <button id="cancelPhaseBtn" onclick="cancelEditPhase()" style="display: none; background: #64748b; color: white; padding: 0.5rem 0.75rem; border: none; border-radius: 4px; cursor: pointer; font-size: 0.85rem;">Cancel</button>
+                            <button id="cancelPhaseBtn" onclick="cancelEditPlantPhase()" style="display: none; background: #64748b; color: white; padding: 0.5rem 0.75rem; border: none; border-radius: 4px; cursor: pointer; font-size: 0.85rem;">Cancel</button>
                         </div>
                     </div>
 
@@ -880,6 +884,7 @@
             container.innerHTML = plants.map(plant => {
                 const phase = plant.current_phase || plant.status || 'unknown';
                 const phaseColors = {
+                    'seed': '#a855f7',
                     'clone': '#8b5cf6',
                     'veg': '#10b981',
                     'flower': '#f59e0b',
@@ -2499,8 +2504,8 @@
             }
         }
 
-        // NEW: Phase editing functions
-        function startEditPhase() {
+        // NEW: Phase editing functions (for main plant phase)
+        function startEditPlantPhase() {
             document.getElementById('currentPhaseDisplay').style.display = 'none';
             document.getElementById('phaseChangeSelect').style.display = 'block';
             document.getElementById('editPhaseBtn').style.display = 'none';
@@ -2508,7 +2513,7 @@
             document.getElementById('cancelPhaseBtn').style.display = 'inline-block';
         }
 
-        function cancelEditPhase() {
+        function cancelEditPlantPhase() {
             document.getElementById('currentPhaseDisplay').style.display = 'inline';
             document.getElementById('phaseChangeSelect').style.display = 'none';
             document.getElementById('editPhaseBtn').style.display = 'inline-block';
