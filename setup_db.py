@@ -68,55 +68,61 @@ class DeviceShare(Base):
     device_id = Column(Integer, ForeignKey("devices.id"), nullable=False)
     owner_user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     shared_with_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
-    share_code = Column(String(10), unique=True, nullable=False)
-    permission_level = Column(String(20), default="viewer")
+    share_code = Column(String(12), unique=True, nullable=False)
+    permission_level = Column(String(20), nullable=False)
     created_at = Column(DateTime, nullable=False)
     expires_at = Column(DateTime, nullable=False)
     accepted_at = Column(DateTime, nullable=True)
+    revoked_at = Column(DateTime, nullable=True)
+    is_active = Column(Boolean, default=True, nullable=False)
 
 class DeviceAssignment(Base):
     __tablename__ = "device_assignments"
     id = Column(Integer, primary_key=True, index=True)
+    plant_id = Column(Integer, ForeignKey("plants.id"), nullable=False)
     device_id = Column(Integer, ForeignKey("devices.id"), nullable=False)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    permission_level = Column(String(20), default="viewer")
-    device = relationship("Device", back_populates="device_assignments")
+    assigned_at = Column(DateTime, nullable=False)
+    removed_at = Column(DateTime, nullable=True)
 
 class PhaseHistory(Base):
     __tablename__ = "phase_history"
     id = Column(Integer, primary_key=True, index=True)
     plant_id = Column(Integer, ForeignKey("plants.id"), nullable=False)
     phase = Column(String(50), nullable=False)
-    start_date = Column(DateTime, nullable=False)
-    end_date = Column(DateTime, nullable=True)
+    started_at = Column(DateTime, nullable=False)
+    ended_at = Column(DateTime, nullable=True)
 
 class Plant(Base):
     __tablename__ = "plants"
     id = Column(Integer, primary_key=True, index=True)
+    plant_id = Column(String(64), unique=True, index=True, nullable=False)
     name = Column(String(255), nullable=False)
-    strain = Column(String(255), nullable=True)
-    start_date = Column(DateTime, nullable=False)
-    harvest_date = Column(DateTime, nullable=True)
-    current_phase = Column(String(50), default="vegetative")
+    system_id = Column(String(255), nullable=True)
     device_id = Column(Integer, ForeignKey("devices.id"), nullable=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    is_active = Column(Boolean, default=True)
-    notes = Column(Text, nullable=True)
+    start_date = Column(DateTime, nullable=False)
+    end_date = Column(DateTime, nullable=True)
+    yield_grams = Column(Float, nullable=True)
+    display_order = Column(Integer, nullable=True, default=0)
+
+    # Lifecycle fields
+    status = Column(String(50), nullable=False, default='feeding')
+    current_phase = Column(String(50), nullable=True)
+    harvest_date = Column(DateTime, nullable=True)
+    cure_start_date = Column(DateTime, nullable=True)
+    cure_end_date = Column(DateTime, nullable=True)
 
 class LogEntry(Base):
     __tablename__ = "log_entries"
     id = Column(Integer, primary_key=True, index=True)
-    plant_id = Column(Integer, ForeignKey("plants.id"), nullable=True)
-    timestamp = Column(DateTime, nullable=False)
-    ph = Column(Float, nullable=True)
-    ec = Column(Float, nullable=True)
-    water_temp = Column(Float, nullable=True)
-    tds = Column(Float, nullable=True)
-    air_temp = Column(Float, nullable=True)
-    humidity = Column(Float, nullable=True)
-    co2 = Column(Float, nullable=True)
-    device_id = Column(String(36), nullable=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    plant_id = Column(Integer, ForeignKey("plants.id"), nullable=False)
+    event_type = Column(String(20), nullable=False)
+    sensor_name = Column(String(50), nullable=True)
+    value = Column(Float, nullable=True)
+    dose_type = Column(String(10), nullable=True)
+    dose_amount_ml = Column(Float, nullable=True)
+    timestamp = Column(DateTime, nullable=False, index=True)
+    phase = Column(String(50), nullable=True)
 
 # ============ GUI APPLICATION ============
 
