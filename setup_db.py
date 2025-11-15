@@ -92,11 +92,29 @@ class PhaseHistory(Base):
     started_at = Column(DateTime, nullable=False)
     ended_at = Column(DateTime, nullable=True)
 
+class PhaseTemplate(Base):
+    __tablename__ = "phase_templates"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(100), nullable=False)
+    description = Column(Text, nullable=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+
+    # Expected durations for each phase (in days)
+    expected_seed_days = Column(Integer, nullable=True)
+    expected_clone_days = Column(Integer, nullable=True)
+    expected_veg_days = Column(Integer, nullable=True)
+    expected_flower_days = Column(Integer, nullable=True)
+    expected_drying_days = Column(Integer, nullable=True)
+
+    created_at = Column(DateTime, nullable=False)
+    updated_at = Column(DateTime, nullable=True)
+
 class Plant(Base):
     __tablename__ = "plants"
     id = Column(Integer, primary_key=True, index=True)
     plant_id = Column(String(64), unique=True, index=True, nullable=False)
     name = Column(String(255), nullable=False)
+    batch_number = Column(String(100), nullable=True)
     system_id = Column(String(255), nullable=True)
     device_id = Column(Integer, ForeignKey("devices.id"), nullable=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
@@ -111,6 +129,14 @@ class Plant(Base):
     harvest_date = Column(DateTime, nullable=True)
     cure_start_date = Column(DateTime, nullable=True)
     cure_end_date = Column(DateTime, nullable=True)
+
+    # Expected phase durations (in days) - can override template
+    expected_seed_days = Column(Integer, nullable=True)
+    expected_clone_days = Column(Integer, nullable=True)
+    expected_veg_days = Column(Integer, nullable=True)
+    expected_flower_days = Column(Integer, nullable=True)
+    expected_drying_days = Column(Integer, nullable=True)
+    template_id = Column(Integer, ForeignKey("phase_templates.id"), nullable=True)
 
 class LogEntry(Base):
     __tablename__ = "log_entries"

@@ -138,11 +138,29 @@ class PhaseHistory(Base):
     plant = relationship("Plant", back_populates="phase_history")
 
 # Plant model
+class PhaseTemplate(Base):
+    __tablename__ = "phase_templates"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(100), nullable=False)
+    description = Column(Text, nullable=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+
+    # Expected durations for each phase (in days)
+    expected_seed_days = Column(Integer, nullable=True)
+    expected_clone_days = Column(Integer, nullable=True)
+    expected_veg_days = Column(Integer, nullable=True)
+    expected_flower_days = Column(Integer, nullable=True)
+    expected_drying_days = Column(Integer, nullable=True)
+
+    created_at = Column(DateTime, nullable=False)
+    updated_at = Column(DateTime, nullable=True)
+
 class Plant(Base):
     __tablename__ = "plants"
     id = Column(Integer, primary_key=True, index=True)
     plant_id = Column(String(64), unique=True, index=True, nullable=False)  # Timestamp-based unique ID
     name = Column(String(255), nullable=False)  # Strain name
+    batch_number = Column(String(100), nullable=True)  # Batch number for seed-to-sale tracking
     system_id = Column(String(255), nullable=True)  # e.g., "Zone1" - legacy field, use device_assignments for new plants
     device_id = Column(Integer, ForeignKey("devices.id"), nullable=True)  # Made nullable - legacy field for backward compatibility
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
@@ -157,6 +175,14 @@ class Plant(Base):
     harvest_date = Column(DateTime, nullable=True)  # When plant was harvested from feeding
     cure_start_date = Column(DateTime, nullable=True)  # When curing phase started
     cure_end_date = Column(DateTime, nullable=True)  # When curing phase completed
+
+    # Expected phase durations (in days) - can override template
+    expected_seed_days = Column(Integer, nullable=True)
+    expected_clone_days = Column(Integer, nullable=True)
+    expected_veg_days = Column(Integer, nullable=True)
+    expected_flower_days = Column(Integer, nullable=True)
+    expected_drying_days = Column(Integer, nullable=True)
+    template_id = Column(Integer, ForeignKey("phase_templates.id"), nullable=True)
 
     # Relationships
     device = relationship("Device", foreign_keys=[device_id], back_populates="plants")
@@ -1095,11 +1121,41 @@ class PlantCreate(BaseModel):
     system_id: Optional[str] = None
     device_id: str  # Device UUID
 
+class PhaseTemplateCreate(BaseModel):
+    name: str
+    description: Optional[str] = None
+    expected_seed_days: Optional[int] = None
+    expected_clone_days: Optional[int] = None
+    expected_veg_days: Optional[int] = None
+    expected_flower_days: Optional[int] = None
+    expected_drying_days: Optional[int] = None
+
+class PhaseTemplateRead(BaseModel):
+    id: int
+    name: str
+    description: Optional[str]
+    expected_seed_days: Optional[int]
+    expected_clone_days: Optional[int]
+    expected_veg_days: Optional[int]
+    expected_flower_days: Optional[int]
+    expected_drying_days: Optional[int]
+
+    class Config:
+        from_attributes = True
+
 class PlantCreateNew(BaseModel):
     """New plant creation without device assignment"""
     name: str  # Strain name
+    batch_number: Optional[str] = None  # Batch number for seed-to-sale tracking
     start_date: Optional[str] = None  # ISO format, defaults to now
-    phase: Optional[str] = 'clone'  # Initial phase: 'clone', 'veg', 'flower', 'drying'
+    phase: Optional[str] = 'clone'  # Initial phase: 'seed', 'clone', 'veg', 'flower', 'drying'
+    template_id: Optional[int] = None  # Phase template to use
+    # Expected durations (override template if provided)
+    expected_seed_days: Optional[int] = None
+    expected_clone_days: Optional[int] = None
+    expected_veg_days: Optional[int] = None
+    expected_flower_days: Optional[int] = None
+    expected_drying_days: Optional[int] = None
 
 class DeviceAssignmentCreate(BaseModel):
     """Assign a device to a plant (phase is tracked separately on the plant)"""
@@ -1121,6 +1177,7 @@ class AssignedDeviceInfo(BaseModel):
 class PlantRead(BaseModel):
     plant_id: str
     name: str
+    batch_number: Optional[str]
     system_id: Optional[str]
     device_id: Optional[str]  # Device UUID for display (legacy, may be None for new plants)
     start_date: datetime
@@ -1132,6 +1189,13 @@ class PlantRead(BaseModel):
     harvest_date: Optional[datetime]
     cure_start_date: Optional[datetime]
     cure_end_date: Optional[datetime]
+    # Expected phase durations
+    expected_seed_days: Optional[int]
+    expected_clone_days: Optional[int]
+    expected_veg_days: Optional[int]
+    expected_flower_days: Optional[int]
+    expected_drying_days: Optional[int]
+    template_id: Optional[int]
     assigned_devices: List['AssignedDeviceInfo'] = []  # Currently assigned devices
 
 class DeviceAssignmentRead(BaseModel):
@@ -1664,16 +1728,38 @@ async def create_plant_new(
     # Determine initial phase (default to 'clone' if not specified)
     initial_phase = plant_data.phase if hasattr(plant_data, 'phase') and plant_data.phase else 'clone'
 
+    # Load template if specified
+    template_durations = {}
+    if plant_data.template_id:
+        result = await session.execute(select(PhaseTemplate).where(PhaseTemplate.id == plant_data.template_id))
+        template = result.scalars().first()
+        if template:
+            template_durations = {
+                'seed': template.expected_seed_days,
+                'clone': template.expected_clone_days,
+                'veg': template.expected_veg_days,
+                'flower': template.expected_flower_days,
+                'drying': template.expected_drying_days
+            }
+
     # Create plant with initial phase
     new_plant = Plant(
         plant_id=plant_id,
         name=plant_data.name,
+        batch_number=plant_data.batch_number,
         user_id=user.id,
         start_date=start_date,
         status=initial_phase,
         current_phase=initial_phase,
         device_id=None,  # No device initially
-        system_id=None
+        system_id=None,
+        template_id=plant_data.template_id,
+        # Use provided durations, fall back to template, or None
+        expected_seed_days=plant_data.expected_seed_days or template_durations.get('seed'),
+        expected_clone_days=plant_data.expected_clone_days or template_durations.get('clone'),
+        expected_veg_days=plant_data.expected_veg_days or template_durations.get('veg'),
+        expected_flower_days=plant_data.expected_flower_days or template_durations.get('flower'),
+        expected_drying_days=plant_data.expected_drying_days or template_durations.get('drying')
     )
 
     session.add(new_plant)
@@ -1691,6 +1777,107 @@ async def create_plant_new(
     await session.commit()
 
     return {"plant_id": plant_id, "message": "Plant created successfully. Assign it to a device to start monitoring."}
+
+# ============ PHASE TEMPLATE ENDPOINTS ============
+
+@app.get("/user/phase-templates", response_model=List[PhaseTemplateRead])
+async def list_phase_templates(
+    user: User = Depends(current_user),
+    session: AsyncSession = Depends(get_db)
+):
+    """Get all phase templates for the current user"""
+    result = await session.execute(
+        select(PhaseTemplate)
+        .where(PhaseTemplate.user_id == user.id)
+        .order_by(PhaseTemplate.name)
+    )
+    templates = result.scalars().all()
+    return templates
+
+@app.post("/user/phase-templates", response_model=PhaseTemplateRead)
+async def create_phase_template(
+    template_data: PhaseTemplateCreate,
+    user: User = Depends(current_user),
+    session: AsyncSession = Depends(get_db)
+):
+    """Create a new phase template"""
+    from datetime import datetime
+
+    new_template = PhaseTemplate(
+        name=template_data.name,
+        description=template_data.description,
+        user_id=user.id,
+        expected_seed_days=template_data.expected_seed_days,
+        expected_clone_days=template_data.expected_clone_days,
+        expected_veg_days=template_data.expected_veg_days,
+        expected_flower_days=template_data.expected_flower_days,
+        expected_drying_days=template_data.expected_drying_days,
+        created_at=datetime.utcnow()
+    )
+
+    session.add(new_template)
+    await session.commit()
+    await session.refresh(new_template)
+
+    return new_template
+
+@app.patch("/user/phase-templates/{template_id}", response_model=PhaseTemplateRead)
+async def update_phase_template(
+    template_id: int,
+    template_data: PhaseTemplateCreate,
+    user: User = Depends(current_user),
+    session: AsyncSession = Depends(get_db)
+):
+    """Update a phase template"""
+    from datetime import datetime
+
+    result = await session.execute(
+        select(PhaseTemplate).where(
+            PhaseTemplate.id == template_id,
+            PhaseTemplate.user_id == user.id
+        )
+    )
+    template = result.scalars().first()
+
+    if not template:
+        raise HTTPException(404, "Template not found")
+
+    template.name = template_data.name
+    template.description = template_data.description
+    template.expected_seed_days = template_data.expected_seed_days
+    template.expected_clone_days = template_data.expected_clone_days
+    template.expected_veg_days = template_data.expected_veg_days
+    template.expected_flower_days = template_data.expected_flower_days
+    template.expected_drying_days = template_data.expected_drying_days
+    template.updated_at = datetime.utcnow()
+
+    await session.commit()
+    await session.refresh(template)
+
+    return template
+
+@app.delete("/user/phase-templates/{template_id}")
+async def delete_phase_template(
+    template_id: int,
+    user: User = Depends(current_user),
+    session: AsyncSession = Depends(get_db)
+):
+    """Delete a phase template"""
+    result = await session.execute(
+        select(PhaseTemplate).where(
+            PhaseTemplate.id == template_id,
+            PhaseTemplate.user_id == user.id
+        )
+    )
+    template = result.scalars().first()
+
+    if not template:
+        raise HTTPException(404, "Template not found")
+
+    await session.delete(template)
+    await session.commit()
+
+    return {"message": "Template deleted successfully"}
 
 # Get assignments for a plant (both active and historical)
 @app.get("/user/plants/{plant_id}/assignments")
@@ -2089,6 +2276,7 @@ async def list_plants(
         plants_list.append(PlantRead(
             plant_id=plant.plant_id,
             name=plant.name,
+            batch_number=plant.batch_number,
             system_id=plant.system_id,
             device_id=device_uuid,  # May be None for new plants
             start_date=plant.start_date,
@@ -2100,6 +2288,12 @@ async def list_plants(
             harvest_date=plant.harvest_date,
             cure_start_date=plant.cure_start_date,
             cure_end_date=plant.cure_end_date,
+            expected_seed_days=plant.expected_seed_days,
+            expected_clone_days=plant.expected_clone_days,
+            expected_veg_days=plant.expected_veg_days,
+            expected_flower_days=plant.expected_flower_days,
+            expected_drying_days=plant.expected_drying_days,
+            template_id=plant.template_id,
             assigned_devices=assigned_devices
         ))
 
@@ -2128,6 +2322,7 @@ async def get_plant(
     return PlantRead(
         plant_id=plant.plant_id,
         name=plant.name,
+        batch_number=plant.batch_number,
         system_id=plant.system_id,
         device_id=device_uuid,
         start_date=plant.start_date,
@@ -2138,7 +2333,14 @@ async def get_plant(
         current_phase=plant.current_phase,
         harvest_date=plant.harvest_date,
         cure_start_date=plant.cure_start_date,
-        cure_end_date=plant.cure_end_date
+        cure_end_date=plant.cure_end_date,
+        expected_seed_days=plant.expected_seed_days,
+        expected_clone_days=plant.expected_clone_days,
+        expected_veg_days=plant.expected_veg_days,
+        expected_flower_days=plant.expected_flower_days,
+        expected_drying_days=plant.expected_drying_days,
+        template_id=plant.template_id,
+        assigned_devices=[]
     )
 
 # Finish a plant - for devices using API key
@@ -2250,6 +2452,32 @@ async def update_plant_name(
     await session.commit()
 
     return {"message": "Plant name updated successfully"}
+
+# Update batch number for plant
+@app.patch("/user/plants/{plant_id}/batch", response_model=Dict[str, str])
+async def update_plant_batch(
+    plant_id: str,
+    batch_number: Optional[str] = Body(None, embed=True),
+    user: User = Depends(current_user),
+    session: AsyncSession = Depends(get_db)
+):
+    """Update the batch number of a plant"""
+    # Get plant and verify ownership
+    result = await session.execute(select(Plant).where(Plant.plant_id == plant_id))
+    plant = result.scalars().first()
+
+    if not plant:
+        raise HTTPException(404, "Plant not found")
+
+    # Verify user owns the plant
+    if plant.user_id != user.id:
+        raise HTTPException(403, "You don't have permission to modify this plant")
+
+    # Update the batch number
+    plant.batch_number = batch_number
+    await session.commit()
+
+    return {"message": "Plant batch number updated successfully"}
 
 # Update yield for finished plant
 @app.patch("/user/plants/{plant_id}/yield", response_model=Dict[str, str])

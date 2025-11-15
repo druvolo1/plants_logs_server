@@ -499,6 +499,7 @@
         }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
 </head>
@@ -553,19 +554,29 @@
                         <input type="text" id="newPlantName" required style="width: 100%; padding: 0.75rem; border: 1px solid #444; border-radius: 6px; background: #2d3748; color: #e0e0e0; font-size: 1rem;">
                     </div>
                     <div style="margin-bottom: 1rem;">
-                        <label for="assignDevice" style="display: block; margin-bottom: 0.5rem; color: #e0e0e0;">Assign to Device (Optional)</label>
-                        <select id="assignDevice" style="width: 100%; padding: 0.75rem; border: 1px solid #444; border-radius: 6px; background: #2d3748; color: #e0e0e0; font-size: 1rem;">
-                            <option value="">-- Don't assign yet --</option>
-                        </select>
+                        <label for="newPlantBatchNumber" style="display: block; margin-bottom: 0.5rem; color: #e0e0e0;">Batch Number <span style="color: #94a3b8; font-size: 0.85rem;">(Optional)</span></label>
+                        <input type="text" id="newPlantBatchNumber" style="width: 100%; padding: 0.75rem; border: 1px solid #444; border-radius: 6px; background: #2d3748; color: #e0e0e0; font-size: 1rem;" placeholder="e.g., BATCH-2024-001">
                     </div>
                     <div style="margin-bottom: 1rem;">
-                        <label for="assignPhase" style="display: block; margin-bottom: 0.5rem; color: #e0e0e0;">Growth Phase</label>
+                        <label for="assignPhase" style="display: block; margin-bottom: 0.5rem; color: #e0e0e0;">Initial Growth Phase</label>
                         <select id="assignPhase" style="width: 100%; padding: 0.75rem; border: 1px solid #444; border-radius: 6px; background: #2d3748; color: #e0e0e0; font-size: 1rem;">
                             <option value="seed">Seed</option>
                             <option value="clone">Clone</option>
                             <option value="veg">Vegetative</option>
                             <option value="flower" selected>Flower</option>
                             <option value="drying">Drying</option>
+                        </select>
+                    </div>
+                    <div style="margin-bottom: 1rem;">
+                        <label for="phaseTemplate" style="display: block; margin-bottom: 0.5rem; color: #e0e0e0;">Phase Template <span style="color: #94a3b8; font-size: 0.85rem;">(Optional)</span></label>
+                        <select id="phaseTemplate" style="width: 100%; padding: 0.75rem; border: 1px solid #444; border-radius: 6px; background: #2d3748; color: #e0e0e0; font-size: 1rem;">
+                            <option value="">-- No template --</option>
+                        </select>
+                    </div>
+                    <div style="margin-bottom: 1rem;">
+                        <label for="assignDevice" style="display: block; margin-bottom: 0.5rem; color: #e0e0e0;">Assign to Device <span style="color: #94a3b8; font-size: 0.85rem;">(Optional)</span></label>
+                        <select id="assignDevice" style="width: 100%; padding: 0.75rem; border: 1px solid #444; border-radius: 6px; background: #2d3748; color: #e0e0e0; font-size: 1rem;">
+                            <option value="">-- Don't assign yet --</option>
                         </select>
                     </div>
                     <div id="createPlantStatus" style="margin-bottom: 1rem; color: #10b981;"></div>
@@ -614,8 +625,8 @@
                 </div>
             </div>
 
-            <div class="chart-container">
-                <canvas id="phChart"></canvas>
+            <div id="chartsContainer" style="display: flex; flex-direction: column; gap: 2rem;">
+                <!-- Sensor charts will be dynamically added here -->
             </div>
 
             <div class="chart-container">
@@ -666,6 +677,18 @@
                         </div>
                     </div>
 
+                    <!-- Batch Number -->
+                    <div style="margin-bottom: 1rem;">
+                        <label style="display: block; margin-bottom: 0.5rem; color: #94a3b8; font-size: 0.85rem; font-weight: 600;">Batch Number</label>
+                        <div style="display: flex; align-items: center; gap: 0.75rem;">
+                            <span id="batchNumberDisplay" style="color: #e2e8f0; font-size: 1.1rem; font-weight: 600;"></span>
+                            <input type="text" id="batchNumberEdit" style="display: none; padding: 0.5rem; background: #1e293b; border: 1px solid #10b981; border-radius: 4px; color: #e2e8f0; font-size: 1rem; flex: 1;" placeholder="e.g., BATCH-2024-001">
+                            <button id="editBatchBtn" onclick="startEditBatch()" style="background: #3b82f6; color: white; padding: 0.5rem 0.75rem; border: none; border-radius: 4px; cursor: pointer; font-size: 0.85rem;">Edit</button>
+                            <button id="saveBatchBtn" onclick="saveBatch()" style="display: none; background: #10b981; color: white; padding: 0.5rem 0.75rem; border: none; border-radius: 4px; cursor: pointer; font-size: 0.85rem;">Save</button>
+                            <button id="cancelBatchBtn" onclick="cancelEditBatch()" style="display: none; background: #64748b; color: white; padding: 0.5rem 0.75rem; border: none; border-radius: 4px; cursor: pointer; font-size: 0.85rem;">Cancel</button>
+                        </div>
+                    </div>
+
                     <!-- Current Phase -->
                     <div style="margin-bottom: 1rem;">
                         <label style="display: block; margin-bottom: 0.5rem; color: #94a3b8; font-size: 0.85rem; font-weight: 600;">Current Phase</label>
@@ -682,6 +705,18 @@
                             <button id="savePhaseBtn" onclick="savePhase()" style="display: none; background: #10b981; color: white; padding: 0.5rem 0.75rem; border: none; border-radius: 4px; cursor: pointer; font-size: 0.85rem;">Save</button>
                             <button id="cancelPhaseBtn" onclick="cancelEditPlantPhase()" style="display: none; background: #64748b; color: white; padding: 0.5rem 0.75rem; border: none; border-radius: 4px; cursor: pointer; font-size: 0.85rem;">Cancel</button>
                         </div>
+                    </div>
+
+                    <!-- Phase Duration -->
+                    <div style="margin-bottom: 1rem;">
+                        <label style="display: block; margin-bottom: 0.5rem; color: #94a3b8; font-size: 0.85rem; font-weight: 600;">Time in Current Phase</label>
+                        <span id="phaseDurationDisplay" style="color: #10b981; font-size: 1.1rem; font-weight: 600;"></span>
+                    </div>
+
+                    <!-- Expected Harvest Date -->
+                    <div style="margin-bottom: 1rem;">
+                        <label style="display: block; margin-bottom: 0.5rem; color: #94a3b8; font-size: 0.85rem; font-weight: 600;">Expected Harvest</label>
+                        <span id="expectedHarvestDisplay" style="color: #f59e0b; font-size: 1.1rem; font-weight: 600;"></span>
                     </div>
 
                     <!-- Status -->
@@ -782,7 +817,7 @@
         let plants = [];
         let currentPlant = null;
         let currentLogs = [];
-        let phChart = null;
+        let sensorCharts = []; // Array to hold dynamically created sensor charts
         let dosingChart = null;
         let isAdmin = false;
         let currentUserId = null;
@@ -941,6 +976,10 @@
                                 <span class="plant-info-label">Age</span>
                                 <span class="plant-info-value">${calculateAge(plant.start_date, plant.end_date)}</span>
                             </div>
+                            <div class="plant-info-row phase-duration" data-plant-id="${plant.plant_id}">
+                                <span class="plant-info-label">Phase Duration</span>
+                                <span class="plant-info-value" style="color: #10b981;">Loading...</span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -949,6 +988,52 @@
 
             // Initialize drag and drop after rendering
             initializePlantDragAndDrop();
+
+            // Load phase durations for all plants
+            loadAllPhaseDurations();
+        }
+
+        // Load phase durations for all plant cards
+        async function loadAllPhaseDurations() {
+            const phaseDurationElements = document.querySelectorAll('.phase-duration');
+
+            for (const element of phaseDurationElements) {
+                const plantId = element.getAttribute('data-plant-id');
+                const plant = plants.find(p => p.plant_id === plantId);
+                if (!plant) continue;
+
+                try {
+                    // Get phase history to find current phase start date
+                    const response = await fetch(`/user/plants/${plantId}/phase-history`);
+                    if (!response.ok) {
+                        element.querySelector('.plant-info-value').textContent = 'Unknown';
+                        continue;
+                    }
+
+                    const phaseHistory = await response.json();
+
+                    // Find the current phase entry (the one without ended_at)
+                    const currentPhaseEntry = phaseHistory.find(entry => !entry.ended_at);
+
+                    if (!currentPhaseEntry) {
+                        element.querySelector('.plant-info-value').textContent = 'Unknown';
+                        continue;
+                    }
+
+                    // Calculate days since phase started
+                    const startDate = new Date(currentPhaseEntry.started_at);
+                    const now = new Date();
+                    const diffTime = Math.abs(now - startDate);
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+                    const phaseName = plant.current_phase || 'unknown';
+                    element.querySelector('.plant-info-value').textContent = `In ${phaseName} for ${diffDays} day${diffDays !== 1 ? 's' : ''}`;
+
+                } catch (error) {
+                    console.error(`Error loading phase duration for plant ${plantId}:`, error);
+                    element.querySelector('.plant-info-value').textContent = 'Error';
+                }
+            }
         }
 
         async function viewPlantDetails(plantId) {
@@ -1392,7 +1477,7 @@
                 currentLogs = logs;
 
                 renderStats(logs);
-                renderCharts(logs);
+                await renderCharts(logs);
             } catch (error) {
                 console.error('Error loading logs:', error);
             }
@@ -1431,73 +1516,170 @@
             `;
         }
 
-        function renderCharts(logs) {
+        async function getPhaseAnnotations() {
+            if (!currentPlant) return [];
+
+            try {
+                // Get phase history
+                const response = await fetch(`/user/plants/${currentPlant.plant_id}/phase-history`);
+                if (!response.ok) return [];
+
+                const phaseHistory = await response.json();
+
+                const phaseColors = {
+                    'seed': 'rgba(168, 85, 247, 0.1)',      // Purple
+                    'clone': 'rgba(139, 92, 246, 0.1)',     // Violet
+                    'veg': 'rgba(16, 185, 129, 0.1)',       // Green
+                    'flower': 'rgba(245, 158, 11, 0.1)',    // Orange
+                    'drying': 'rgba(99, 102, 241, 0.1)'     // Indigo
+                };
+
+                // Create annotations for each phase
+                const annotations = {};
+                phaseHistory.forEach((entry, index) => {
+                    const startDate = new Date(entry.started_at);
+                    const endDate = entry.ended_at ? new Date(entry.ended_at) : new Date();
+
+                    annotations[`phase_${index}`] = {
+                        type: 'box',
+                        xMin: formatDateTime(startDate),
+                        xMax: formatDateTime(endDate),
+                        backgroundColor: phaseColors[entry.phase] || 'rgba(100, 116, 139, 0.1)',
+                        borderWidth: 0,
+                        label: {
+                            display: true,
+                            content: entry.phase.toUpperCase(),
+                            position: 'start',
+                            color: '#e2e8f0',
+                            font: {
+                                size: 10,
+                                weight: 'bold'
+                            }
+                        }
+                    };
+                });
+
+                return annotations;
+            } catch (error) {
+                console.error('Error getting phase annotations:', error);
+                return [];
+            }
+        }
+
+        async function renderCharts(logs) {
             const sensorLogs = logs.filter(l => l.event_type === 'sensor');
             const dosingLogs = logs.filter(l => l.event_type === 'dosing');
 
-            // pH Chart
-            const phCtx = document.getElementById('phChart').getContext('2d');
+            // Get phase history for background color-coding
+            const phaseAnnotations = await getPhaseAnnotations();
 
-            if (phChart) phChart.destroy();
+            // Group sensor logs by sensor name
+            const sensorsByName = {};
+            sensorLogs.forEach(log => {
+                const sensorName = log.sensor_name || 'Unknown Sensor';
+                if (!sensorsByName[sensorName]) {
+                    sensorsByName[sensorName] = [];
+                }
+                sensorsByName[sensorName].push(log);
+            });
 
-            phChart = new Chart(phCtx, {
-                type: 'line',
-                data: {
-                    labels: sensorLogs.map(l => formatDateTime(l.timestamp)),
-                    datasets: [{
-                        label: 'pH Level',
-                        data: sensorLogs.map(l => l.value),
-                        borderColor: '#10b981',
-                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                        tension: 0.4,
-                        pointRadius: 2,
-                        pointHoverRadius: 6
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: true,
-                    plugins: {
-                        legend: {
-                            labels: { color: '#e2e8f0' }
-                        },
-                        title: {
-                            display: true,
-                            text: 'pH History',
-                            color: '#e2e8f0',
-                            font: { size: 16 }
-                        }
+            // Destroy old sensor charts
+            sensorCharts.forEach(chart => {
+                if (chart) chart.destroy();
+            });
+            sensorCharts = [];
+
+            // Get the chart container
+            const chartsContainer = document.getElementById('chartsContainer');
+            chartsContainer.innerHTML = ''; // Clear existing charts
+
+            // Create a chart for each sensor type that has data
+            const sensorColors = {
+                'pH': '#10b981',
+                'temperature': '#f59e0b',
+                'humidity': '#3b82f6',
+                'ec': '#8b5cf6',
+                'ppm': '#ec4899',
+                'water_temp': '#06b6d4',
+                'default': '#64748b'
+            };
+
+            Object.keys(sensorsByName).forEach((sensorName, index) => {
+                const sensorData = sensorsByName[sensorName];
+
+                // Create canvas element for this sensor
+                const canvas = document.createElement('canvas');
+                canvas.id = `sensorChart_${index}`;
+                canvas.style.marginBottom = '2rem';
+                chartsContainer.appendChild(canvas);
+
+                const ctx = canvas.getContext('2d');
+                const color = sensorColors[sensorName] || sensorColors['default'];
+
+                const chart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: sensorData.map(l => formatDateTime(l.timestamp)),
+                        datasets: [{
+                            label: sensorName,
+                            data: sensorData.map(l => l.value),
+                            borderColor: color,
+                            backgroundColor: `${color}33`,
+                            tension: 0.4,
+                            pointRadius: 2,
+                            pointHoverRadius: 6
+                        }]
                     },
-                    scales: {
-                        y: {
-                            ticks: { color: '#e2e8f0' },
-                            grid: { color: '#334155' },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        plugins: {
+                            legend: {
+                                labels: { color: '#e2e8f0' }
+                            },
                             title: {
                                 display: true,
-                                text: 'pH',
-                                color: '#e2e8f0'
+                                text: `${sensorName} History`,
+                                color: '#e2e8f0',
+                                font: { size: 16 }
+                            },
+                            annotation: {
+                                annotations: phaseAnnotations
                             }
                         },
-                        x: {
-                            ticks: {
-                                color: '#e2e8f0',
-                                maxRotation: 45,
-                                minRotation: 45,
-                                autoSkip: true,
-                                maxTicksLimit: 15,
-                                callback: function(value, index, ticks) {
-                                    const label = this.getLabelForValue(value);
-                                    // Only show the date part, not the time
-                                    if (label && label.includes(',')) {
-                                        return label.split(',')[0];
-                                    }
-                                    return label;
+                        scales: {
+                            y: {
+                                ticks: { color: '#e2e8f0' },
+                                grid: { color: '#334155' },
+                                title: {
+                                    display: true,
+                                    text: sensorName,
+                                    color: '#e2e8f0'
                                 }
                             },
-                            grid: { color: '#334155' }
+                            x: {
+                                ticks: {
+                                    color: '#e2e8f0',
+                                    maxRotation: 45,
+                                    minRotation: 45,
+                                    autoSkip: true,
+                                    maxTicksLimit: 15,
+                                    callback: function(value, index, ticks) {
+                                        const label = this.getLabelForValue(value);
+                                        if (label && label.includes(',')) {
+                                            return label.split(',')[0];
+                                        }
+                                        return label;
+                                    }
+                                },
+                                grid: { color: '#334155' }
+                            }
                         }
                     }
-                }
+                });
+
+                // Store chart reference
+                sensorCharts.push(chart);
             });
 
             // Dosing Chart - Daily aggregated bar chart
@@ -2170,12 +2352,35 @@
             }
         }
 
+        async function loadPhaseTemplates() {
+            try {
+                const response = await fetch('/user/phase-templates');
+                if (response.ok) {
+                    const templates = await response.json();
+                    const select = document.getElementById('phaseTemplate');
+                    select.innerHTML = '<option value="">-- No template --</option>';
+
+                    templates.forEach(template => {
+                        const option = document.createElement('option');
+                        option.value = template.id;
+                        option.textContent = template.name;
+                        select.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading templates:', error);
+            }
+        }
+
         function openCreatePlantModal() {
             document.getElementById('createPlantModal').style.display = 'block';
             loadAvailableDevices();
+            loadPhaseTemplates();
             document.getElementById('newPlantName').value = '';
+            document.getElementById('newPlantBatchNumber').value = '';
             document.getElementById('assignDevice').value = '';
             document.getElementById('assignPhase').value = 'flower';
+            document.getElementById('phaseTemplate').value = '';
             document.getElementById('createPlantStatus').textContent = '';
         }
 
@@ -2189,8 +2394,10 @@
             e.preventDefault();
 
             const plantName = document.getElementById('newPlantName').value.trim();
+            const batchNumber = document.getElementById('newPlantBatchNumber').value.trim();
             const deviceId = document.getElementById('assignDevice').value;
             const phase = document.getElementById('assignPhase').value;
+            const templateId = document.getElementById('phaseTemplate').value;
             const statusDiv = document.getElementById('createPlantStatus');
 
             if (!plantName) {
@@ -2203,11 +2410,19 @@
                 statusDiv.textContent = 'Creating plant...';
                 statusDiv.style.color = '#10b981';
 
+                // Build request body
+                const requestBody = {
+                    name: plantName,
+                    phase: phase
+                };
+                if (batchNumber) requestBody.batch_number = batchNumber;
+                if (templateId) requestBody.template_id = parseInt(templateId);
+
                 // Create the plant
                 const createResponse = await fetch('/user/plants/new', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name: plantName, phase: phase })
+                    body: JSON.stringify(requestBody)
                 });
 
                 if (!createResponse.ok) {
@@ -2367,6 +2582,176 @@
             }
         }
 
+        // Batch Number Editing Functions
+        function startEditBatch() {
+            document.getElementById('batchNumberDisplay').style.display = 'none';
+            document.getElementById('batchNumberEdit').style.display = 'inline-block';
+            document.getElementById('editBatchBtn').style.display = 'none';
+            document.getElementById('saveBatchBtn').style.display = 'inline-block';
+            document.getElementById('cancelBatchBtn').style.display = 'inline-block';
+            document.getElementById('batchNumberEdit').focus();
+        }
+
+        function cancelEditBatch() {
+            document.getElementById('batchNumberDisplay').style.display = 'inline';
+            document.getElementById('batchNumberEdit').style.display = 'none';
+            document.getElementById('editBatchBtn').style.display = 'inline-block';
+            document.getElementById('saveBatchBtn').style.display = 'none';
+            document.getElementById('cancelBatchBtn').style.display = 'none';
+            // Reset to original value
+            document.getElementById('batchNumberEdit').value = currentPlant.batch_number || '';
+        }
+
+        async function saveBatch() {
+            if (!currentPlant) return;
+
+            const newBatchNumber = document.getElementById('batchNumberEdit').value.trim();
+
+            if (newBatchNumber === (currentPlant.batch_number || '')) {
+                cancelEditBatch();
+                return;
+            }
+
+            try {
+                const response = await fetch(`/user/plants/${currentPlant.plant_id}/batch`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ batch_number: newBatchNumber || null })
+                });
+
+                if (!response.ok) throw new Error('Failed to update batch number');
+
+                // Update local plant object
+                currentPlant.batch_number = newBatchNumber || null;
+                document.getElementById('batchNumberDisplay').textContent = newBatchNumber || 'Not set';
+
+                // Update in plants list
+                const plantIndex = plants.findIndex(p => p.plant_id === currentPlant.plant_id);
+                if (plantIndex !== -1) {
+                    plants[plantIndex].batch_number = newBatchNumber || null;
+                }
+
+                cancelEditBatch();
+
+            } catch (error) {
+                console.error('Error updating batch number:', error);
+                alert(`Failed to update batch number: ${error.message}`);
+            }
+        }
+
+        // Calculate and display phase duration
+        async function updatePhaseDuration() {
+            if (!currentPlant) return;
+
+            try {
+                // Get phase history to find current phase start date
+                const response = await fetch(`/user/plants/${currentPlant.plant_id}/phase-history`);
+                if (!response.ok) {
+                    document.getElementById('phaseDurationDisplay').textContent = 'Unknown';
+                    return;
+                }
+
+                const phaseHistory = await response.json();
+
+                // Find the current phase entry (the one without ended_at)
+                const currentPhaseEntry = phaseHistory.find(entry => !entry.ended_at);
+
+                if (!currentPhaseEntry) {
+                    document.getElementById('phaseDurationDisplay').textContent = 'Unknown';
+                    return;
+                }
+
+                // Calculate days since phase started
+                const startDate = new Date(currentPhaseEntry.started_at);
+                const now = new Date();
+                const diffTime = Math.abs(now - startDate);
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+                const phaseName = currentPlant.current_phase || 'unknown';
+                document.getElementById('phaseDurationDisplay').textContent = `In ${phaseName} for ${diffDays} day${diffDays !== 1 ? 's' : ''}`;
+
+            } catch (error) {
+                console.error('Error calculating phase duration:', error);
+                document.getElementById('phaseDurationDisplay').textContent = 'Unknown';
+            }
+        }
+
+        // Calculate and display expected harvest date
+        async function updateExpectedHarvest() {
+            if (!currentPlant) return;
+
+            try {
+                // Get the expected durations from the plant
+                const expectedDurations = {
+                    seed: currentPlant.expected_seed_days || 0,
+                    clone: currentPlant.expected_clone_days || 0,
+                    veg: currentPlant.expected_veg_days || 0,
+                    flower: currentPlant.expected_flower_days || 0,
+                    drying: currentPlant.expected_drying_days || 0
+                };
+
+                // If no expected durations are set, show "Not configured"
+                if (Object.values(expectedDurations).every(d => d === 0)) {
+                    document.getElementById('expectedHarvestDisplay').textContent = 'Not configured';
+                    return;
+                }
+
+                // Get phase history to calculate remaining time
+                const response = await fetch(`/user/plants/${currentPlant.plant_id}/phase-history`);
+                if (!response.ok) {
+                    document.getElementById('expectedHarvestDisplay').textContent = 'Unknown';
+                    return;
+                }
+
+                const phaseHistory = await response.json();
+
+                // Calculate days already spent in each phase
+                const phaseOrder = ['seed', 'clone', 'veg', 'flower', 'drying'];
+                const currentPhase = currentPlant.current_phase || 'clone';
+                const currentPhaseIndex = phaseOrder.indexOf(currentPhase);
+
+                if (currentPhaseIndex === -1) {
+                    document.getElementById('expectedHarvestDisplay').textContent = 'Unknown';
+                    return;
+                }
+
+                // Find current phase entry to get days spent so far
+                const currentPhaseEntry = phaseHistory.find(entry => !entry.ended_at);
+                let daysInCurrentPhase = 0;
+                if (currentPhaseEntry) {
+                    const startDate = new Date(currentPhaseEntry.started_at);
+                    const now = new Date();
+                    const diffTime = Math.abs(now - startDate);
+                    daysInCurrentPhase = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                }
+
+                // Calculate remaining days in current phase
+                const remainingInCurrentPhase = Math.max(0, expectedDurations[currentPhase] - daysInCurrentPhase);
+
+                // Add durations for all future phases
+                let totalRemainingDays = remainingInCurrentPhase;
+                for (let i = currentPhaseIndex + 1; i < phaseOrder.length; i++) {
+                    totalRemainingDays += expectedDurations[phaseOrder[i]];
+                }
+
+                // Calculate expected harvest date
+                const expectedDate = new Date();
+                expectedDate.setDate(expectedDate.getDate() + totalRemainingDays);
+
+                const formattedDate = expectedDate.toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric'
+                });
+
+                document.getElementById('expectedHarvestDisplay').textContent = `${formattedDate} (in ${totalRemainingDays} days)`;
+
+            } catch (error) {
+                console.error('Error calculating expected harvest:', error);
+                document.getElementById('expectedHarvestDisplay').textContent = 'Unknown';
+            }
+        }
+
         // NEW: Load plant details including phase and device assignments
         async function loadPlantAssignments() {
             try {
@@ -2378,6 +2763,22 @@
                 const currentPhase = currentPlant.current_phase || 'clone';
                 document.getElementById('currentPhaseDisplay').textContent = currentPhase;
                 document.getElementById('phaseChangeSelect').value = currentPhase;
+
+                // Set batch number
+                const batchNumberDisplay = document.getElementById('batchNumberDisplay');
+                if (batchNumberDisplay) {
+                    batchNumberDisplay.textContent = currentPlant.batch_number || 'Not set';
+                }
+                const batchNumberEdit = document.getElementById('batchNumberEdit');
+                if (batchNumberEdit) {
+                    batchNumberEdit.value = currentPlant.batch_number || '';
+                }
+
+                // Calculate and display phase duration
+                await updatePhaseDuration();
+
+                // Calculate and display expected harvest date
+                await updateExpectedHarvest();
 
                 // Load device assignments
                 const response = await fetch(`/user/plants/${currentPlant.plant_id}/assignments`);
