@@ -1994,11 +1994,11 @@ async def get_phase_history(
 @app.post("/user/plants/{plant_id}/unassign", response_model=Dict[str, str])
 async def unassign_device_from_plant(
     plant_id: str,
-    phase: str = Body(..., embed=True),
+    device_id: str = Body(..., embed=True),
     user: User = Depends(current_user),
     session: AsyncSession = Depends(get_db)
 ):
-    """Remove a device assignment from a plant (end a monitoring phase)"""
+    """Remove a device assignment from a plant"""
     from datetime import datetime
 
     # Get the plant
@@ -2012,41 +2012,33 @@ async def unassign_device_from_plant(
     if plant.user_id != user.id:
         raise HTTPException(403, "You don't have permission to modify this plant")
 
-    # Find the active assignment for this phase
+    # Get the device
+    result = await session.execute(select(Device).where(Device.device_id == device_id))
+    device = result.scalars().first()
+
+    if not device:
+        raise HTTPException(404, "Device not found")
+
+    # Find the active assignment for this device and plant
     result = await session.execute(
         select(DeviceAssignment).where(
             DeviceAssignment.plant_id == plant.id,
-            DeviceAssignment.phase == phase,
+            DeviceAssignment.device_id == device.id,
             DeviceAssignment.removed_at == None
         )
     )
     assignment = result.scalars().first()
 
     if not assignment:
-        raise HTTPException(404, f"No active assignment found for phase '{phase}'")
-
-    # Get device info before marking removed
-    result = await session.execute(select(Device).where(Device.id == assignment.device_id))
-    device = result.scalars().first()
+        raise HTTPException(404, f"No active assignment found for this device and plant")
 
     # Mark the assignment as removed
     assignment.removed_at = datetime.utcnow()
 
-    # Update plant status based on what phase ended
-    if phase in ['veg', 'flower']:
-        plant.status = 'harvested'
-        plant.harvest_date = datetime.utcnow()
-        plant.current_phase = None
-    elif phase == 'drying':
-        plant.status = 'finished'
-        plant.cure_end_date = datetime.utcnow()
-        plant.current_phase = None
-        plant.end_date = datetime.utcnow()  # Final completion
-
     await session.commit()
 
     # Send websocket notification to device
-    if device and device.device_id in device_connections:
+    if device.device_id in device_connections:
         try:
             await device_connections[device.device_id].send_json({
                 "command": "unassign_plant",
@@ -2056,7 +2048,7 @@ async def unassign_device_from_plant(
         except Exception as e:
             print(f"[WS] Failed to send unassign_plant to device: {e}")
 
-    return {"message": f"Device unassigned from plant, {phase} phase ended"}
+    return {"message": f"Device unassigned from plant"}
 
 # List all plants for user (owned or device-assigned)
 @app.get("/user/plants", response_model=List[PlantRead])

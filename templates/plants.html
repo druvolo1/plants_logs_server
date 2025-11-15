@@ -2202,7 +2202,7 @@
                 const createResponse = await fetch('/user/plants/new', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name: plantName })
+                    body: JSON.stringify({ name: plantName, phase: phase })
                 });
 
                 if (!createResponse.ok) {
