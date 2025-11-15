@@ -2544,7 +2544,7 @@
                                 `Continue anyway?`
                             );
                             if (!confirmed) {
-                                cancelEditPhase();
+                                cancelEditPlantPhase();
                                 return;
                             }
                         }
@@ -2568,17 +2568,17 @@
                 currentPlant.current_phase = newPhase;
                 currentPlant.status = newPhase;
                 document.getElementById('currentPhaseDisplay').textContent = newPhase;
-                cancelEditPhase();
+                cancelEditPlantPhase();
 
                 // Reload phase history, assignments (to update other plants list), and main plant list
                 await loadPhaseHistory();
                 await loadPlantAssignments();
                 await loadPlants();
 
-                showStatus('Phase changed successfully', 'success');
+                console.log('Phase changed successfully');
             } catch (error) {
                 console.error('Error changing phase:', error);
-                showStatus('Failed to change phase', 'error');
+                alert('Failed to change phase: ' + error.message);
             }
         }
 
