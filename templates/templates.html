@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phase Templates - Plant Monitoring</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: #e2e8f0;
+            min-height: 100vh;
+        }
+
+        .navbar {
+            background: #1e293b;
+            padding: 1rem 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .navbar-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .navbar-brand {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #10b981;
+            text-decoration: none;
+        }
+
+        .navbar-brand:hover {
+            color: #34d399;
+        }
+
+        .navbar-menu {
+            display: flex;
+            gap: 2rem;
+            align-items: center;
+        }
+
+        .navbar-link {
+            color: #94a3b8;
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+
+        .navbar-link:hover {
+            color: #10b981;
+        }
+
+        .navbar-link.active {
+            color: #10b981;
+            border-bottom: 2px solid #10b981;
+        }
+
+        .navbar-user {
+            color: #64748b;
+            font-size: 0.9rem;
+        }
+
+        .navbar-logout {
+            background: #ef4444;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            text-decoration: none;
+            transition: background 0.2s;
+        }
+
+        .navbar-logout:hover {
+            background: #dc2626;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .page-header {
+            margin-bottom: 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .page-header h1 {
+            color: #10b981;
+        }
+
+        .btn {
+            background: #10b981;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+
+        .btn:hover {
+            background: #059669;
+        }
+
+        .templates-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .template-card {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            padding: 1.5rem;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .template-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+        }
+
+        .template-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 1rem;
+        }
+
+        .template-name {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #10b981;
+        }
+
+        .template-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .btn-icon {
+            background: #3b82f6;
+            color: white;
+            padding: 0.5rem;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+
+        .btn-icon:hover {
+            background: #2563eb;
+        }
+
+        .btn-icon.delete {
+            background: #ef4444;
+        }
+
+        .btn-icon.delete:hover {
+            background: #dc2626;
+        }
+
+        .template-description {
+            color: #94a3b8;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+        }
+
+        .template-phases {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.75rem;
+        }
+
+        .phase-info {
+            background: #0f172a;
+            padding: 0.75rem;
+            border-radius: 4px;
+        }
+
+        .phase-label {
+            color: #64748b;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            margin-bottom: 0.25rem;
+        }
+
+        .phase-value {
+            color: #e2e8f0;
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: #64748b;
+        }
+
+        .empty-state h2 {
+            color: #94a3b8;
+            margin-bottom: 1rem;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.7);
+        }
+
+        .modal-content {
+            background: #1e293b;
+            margin: 5% auto;
+            padding: 2rem;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 600px;
+            border: 1px solid #334155;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .modal-header h2 {
+            color: #10b981;
+        }
+
+        .close {
+            color: #64748b;
+            font-size: 2rem;
+            font-weight: bold;
+            cursor: pointer;
+            line-height: 1;
+        }
+
+        .close:hover {
+            color: #e2e8f0;
+        }
+
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #94a3b8;
+            font-weight: 500;
+        }
+
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 0.75rem;
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 6px;
+            color: #e2e8f0;
+            font-size: 1rem;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #10b981;
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .form-group input[type="number"] {
+            max-width: 150px;
+        }
+
+        .phase-inputs {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: flex-end;
+            margin-top: 2rem;
+        }
+
+        .btn-secondary {
+            background: #64748b;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        .btn-secondary:hover {
+            background: #475569;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+        <div class="navbar-container">
+            <a href="/dashboard" class="navbar-brand">
+                🌱 Plant Monitor
+            </a>
+            <div class="navbar-menu" id="navbar-menu">
+                <a href="/dashboard" class="navbar-link">Dashboard</a>
+                <a href="/devices" class="navbar-link">Devices</a>
+                <a href="/plants" class="navbar-link">Plants</a>
+                <a href="/templates" class="navbar-link active">Templates</a>
+                <span class="navbar-user" id="userEmail">Loading...</span>
+                <a href="/auth/logout" class="navbar-logout">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container">
+        <div class="page-header">
+            <h1>Phase Templates</h1>
+            <button class="btn" onclick="openCreateModal()">+ Create Template</button>
+        </div>
+
+        <div id="templatesContainer" class="templates-grid">
+            <div class="empty-state">
+                <h2>Loading templates...</h2>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create/Edit Template Modal -->
+    <div id="templateModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Create Phase Template</h2>
+                <span class="close" onclick="closeModal()">&times;</span>
+            </div>
+
+            <form id="templateForm" onsubmit="saveTemplate(event)">
+                <div class="form-group">
+                    <label>Template Name *</label>
+                    <input type="text" id="templateName" required placeholder="e.g., Indica Standard">
+                </div>
+
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea id="templateDescription" placeholder="Optional description of this template"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>Expected Phase Durations (days)</label>
+                    <div class="phase-inputs">
+                        <div>
+                            <label style="font-size: 0.9rem; color: #64748b;">Seed</label>
+                            <input type="number" id="seedDays" min="0" placeholder="0">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.9rem; color: #64748b;">Clone</label>
+                            <input type="number" id="cloneDays" min="0" placeholder="0">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.9rem; color: #64748b;">Veg</label>
+                            <input type="number" id="vegDays" min="0" placeholder="0">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.9rem; color: #64748b;">Flower</label>
+                            <input type="number" id="flowerDays" min="0" placeholder="0">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.9rem; color: #64748b;">Drying</label>
+                            <input type="number" id="dryingDays" min="0" placeholder="0">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn-secondary" onclick="closeModal()">Cancel</button>
+                    <button type="submit" class="btn">Save Template</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let templates = [];
+        let editingTemplateId = null;
+
+        // Load user info
+        async function loadUserInfo() {
+            try {
+                const response = await fetch('/auth/userinfo');
+                if (response.ok) {
+                    const data = await response.json();
+                    document.getElementById('userEmail').textContent = data.email;
+                }
+            } catch (error) {
+                console.error('Error loading user info:', error);
+            }
+        }
+
+        // Load all templates
+        async function loadTemplates() {
+            try {
+                const response = await fetch('/user/phase-templates');
+                if (!response.ok) throw new Error('Failed to load templates');
+
+                templates = await response.json();
+                renderTemplates();
+            } catch (error) {
+                console.error('Error loading templates:', error);
+                document.getElementById('templatesContainer').innerHTML = `
+                    <div class="empty-state">
+                        <h2>Error loading templates</h2>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Render templates grid
+        function renderTemplates() {
+            const container = document.getElementById('templatesContainer');
+
+            if (templates.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <h2>No Templates Yet</h2>
+                        <p>Create your first phase template to get started!</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = templates.map(template => `
+                <div class="template-card">
+                    <div class="template-header">
+                        <div class="template-name">${escapeHtml(template.name)}</div>
+                        <div class="template-actions">
+                            <button class="btn-icon" onclick="editTemplate(${template.id})" title="Edit">✏️</button>
+                            <button class="btn-icon delete" onclick="deleteTemplate(${template.id})" title="Delete">🗑️</button>
+                        </div>
+                    </div>
+                    ${template.description ? `<div class="template-description">${escapeHtml(template.description)}</div>` : ''}
+                    <div class="template-phases">
+                        ${template.expected_seed_days ? `
+                            <div class="phase-info">
+                                <div class="phase-label">Seed</div>
+                                <div class="phase-value">${template.expected_seed_days} days</div>
+                            </div>
+                        ` : ''}
+                        ${template.expected_clone_days ? `
+                            <div class="phase-info">
+                                <div class="phase-label">Clone</div>
+                                <div class="phase-value">${template.expected_clone_days} days</div>
+                            </div>
+                        ` : ''}
+                        ${template.expected_veg_days ? `
+                            <div class="phase-info">
+                                <div class="phase-label">Veg</div>
+                                <div class="phase-value">${template.expected_veg_days} days</div>
+                            </div>
+                        ` : ''}
+                        ${template.expected_flower_days ? `
+                            <div class="phase-info">
+                                <div class="phase-label">Flower</div>
+                                <div class="phase-value">${template.expected_flower_days} days</div>
+                            </div>
+                        ` : ''}
+                        ${template.expected_drying_days ? `
+                            <div class="phase-info">
+                                <div class="phase-label">Drying</div>
+                                <div class="phase-value">${template.expected_drying_days} days</div>
+                            </div>
+                        ` : ''}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Open create modal
+        function openCreateModal() {
+            editingTemplateId = null;
+            document.getElementById('modalTitle').textContent = 'Create Phase Template';
+            document.getElementById('templateForm').reset();
+            document.getElementById('templateModal').style.display = 'block';
+        }
+
+        // Edit template
+        function editTemplate(id) {
+            const template = templates.find(t => t.id === id);
+            if (!template) return;
+
+            editingTemplateId = id;
+            document.getElementById('modalTitle').textContent = 'Edit Phase Template';
+            document.getElementById('templateName').value = template.name;
+            document.getElementById('templateDescription').value = template.description || '';
+            document.getElementById('seedDays').value = template.expected_seed_days || '';
+            document.getElementById('cloneDays').value = template.expected_clone_days || '';
+            document.getElementById('vegDays').value = template.expected_veg_days || '';
+            document.getElementById('flowerDays').value = template.expected_flower_days || '';
+            document.getElementById('dryingDays').value = template.expected_drying_days || '';
+            document.getElementById('templateModal').style.display = 'block';
+        }
+
+        // Close modal
+        function closeModal() {
+            document.getElementById('templateModal').style.display = 'none';
+            editingTemplateId = null;
+        }
+
+        // Save template
+        async function saveTemplate(event) {
+            event.preventDefault();
+
+            const templateData = {
+                name: document.getElementById('templateName').value,
+                description: document.getElementById('templateDescription').value || null,
+                expected_seed_days: parseInt(document.getElementById('seedDays').value) || null,
+                expected_clone_days: parseInt(document.getElementById('cloneDays').value) || null,
+                expected_veg_days: parseInt(document.getElementById('vegDays').value) || null,
+                expected_flower_days: parseInt(document.getElementById('flowerDays').value) || null,
+                expected_drying_days: parseInt(document.getElementById('dryingDays').value) || null
+            };
+
+            try {
+                let response;
+                if (editingTemplateId) {
+                    // Update existing template
+                    response = await fetch(`/user/phase-templates/${editingTemplateId}`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(templateData)
+                    });
+                } else {
+                    // Create new template
+                    response = await fetch('/user/phase-templates', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(templateData)
+                    });
+                }
+
+                if (!response.ok) throw new Error('Failed to save template');
+
+                closeModal();
+                await loadTemplates();
+            } catch (error) {
+                console.error('Error saving template:', error);
+                alert(`Failed to save template: ${error.message}`);
+            }
+        }
+
+        // Delete template
+        async function deleteTemplate(id) {
+            if (!confirm('Are you sure you want to delete this template?')) return;
+
+            try {
+                const response = await fetch(`/user/phase-templates/${id}`, {
+                    method: 'DELETE'
+                });
+
+                if (!response.ok) throw new Error('Failed to delete template');
+
+                await loadTemplates();
+            } catch (error) {
+                console.error('Error deleting template:', error);
+                alert(`Failed to delete template: ${error.message}`);
+            }
+        }
+
+        // Escape HTML
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Initialize
+        loadUserInfo();
+        loadTemplates();
+    </script>
+</body>
+</html>

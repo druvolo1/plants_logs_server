@@ -888,6 +888,11 @@ async def devices_page(request: Request, user: User = Depends(current_user)):
 async def plants_page(request: Request, user: User = Depends(current_user)):
     return templates.TemplateResponse("plants.html", {"request": request, "user": user})
 
+# Templates page
+@app.get("/templates", response_class=HTMLResponse)
+async def templates_page(request: Request, user: User = Depends(current_user)):
+    return templates.TemplateResponse("templates.html", {"request": request, "user": user})
+
 # Admin: Overview page
 @app.get("/admin/overview", response_class=HTMLResponse)
 async def admin_overview_page(request: Request, admin: User = Depends(current_admin)):
