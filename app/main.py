@@ -6,7 +6,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, Integer, String, Boolean, select, ForeignKey, DateTime, Float, Text, func
+from sqlalchemy import Column, Integer, String, Boolean, select, ForeignKey, DateTime, Float, Text, func, or_
 from sqlalchemy.orm import relationship, selectinload, Session
 from datetime import datetime, timedelta
 from dateutil import parser as date_parser
