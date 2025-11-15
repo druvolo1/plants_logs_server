@@ -612,6 +612,24 @@
                 <span class="close" onclick="closePlantModal()">&times;</span>
             </div>
 
+            <!-- Plant Info Section -->
+            <div style="padding: 1rem; background: rgba(16, 185, 129, 0.05); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 8px; margin-bottom: 1.5rem;">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+                    <div id="modalBatchNumberContainer" style="display: none;">
+                        <label style="display: block; color: #94a3b8; font-size: 0.85rem; margin-bottom: 0.25rem;">Batch Number</label>
+                        <span id="modalBatchNumber" style="color: #e2e8f0; font-weight: 600;"></span>
+                    </div>
+                    <div>
+                        <label style="display: block; color: #94a3b8; font-size: 0.85rem; margin-bottom: 0.25rem;">Started</label>
+                        <span id="modalPlantStartDate" style="color: #e2e8f0; font-weight: 600;"></span>
+                    </div>
+                    <div id="modalPlantEndDateContainer" style="display: none;">
+                        <label style="display: block; color: #94a3b8; font-size: 0.85rem; margin-bottom: 0.25rem;">Finished</label>
+                        <span id="modalPlantEndDate" style="color: #e2e8f0; font-weight: 600;"></span>
+                    </div>
+                </div>
+            </div>
+
             <div class="stats-grid" id="plantStats"></div>
 
             <div class="filters">
@@ -956,6 +974,12 @@
                                     </span>
                                 </div>
                             ` : ''}
+                            ${plant.batch_number ? `
+                                <div class="plant-info-row">
+                                    <span class="plant-info-label">Batch</span>
+                                    <span class="plant-info-value">${escapeHtml(plant.batch_number)}</span>
+                                </div>
+                            ` : ''}
                             <div class="plant-info-row">
                                 <span class="plant-info-label">Started</span>
                                 <span class="plant-info-value">${formatDate(plant.start_date)}</span>
@@ -1050,6 +1074,14 @@
                 document.getElementById('modalPlantEndDateContainer').style.display = 'inline';
             } else {
                 document.getElementById('modalPlantEndDateContainer').style.display = 'none';
+            }
+
+            // Set batch number
+            if (currentPlant.batch_number) {
+                document.getElementById('modalBatchNumber').textContent = currentPlant.batch_number;
+                document.getElementById('modalBatchNumberContainer').style.display = 'block';
+            } else {
+                document.getElementById('modalBatchNumberContainer').style.display = 'none';
             }
 
             document.getElementById('plantModal').style.display = 'block';
