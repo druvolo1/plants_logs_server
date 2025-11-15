@@ -1527,6 +1527,15 @@
         function renderStats(logs) {
             const sensorLogs = logs.filter(l => l.event_type === 'sensor');
             const dosingLogs = logs.filter(l => l.event_type === 'dosing');
+            const plantStatsDiv = document.getElementById('plantStats');
+
+            // Only show stats if there's sensor or dosing data
+            if (sensorLogs.length === 0 && dosingLogs.length === 0) {
+                plantStatsDiv.style.display = 'none';
+                return;
+            }
+
+            plantStatsDiv.style.display = 'grid';
 
             const phValues = sensorLogs.map(l => l.value);
             const avgPh = phValues.length > 0 ? (phValues.reduce((a, b) => a + b, 0) / phValues.length).toFixed(2) : 'N/A';
@@ -1537,7 +1546,7 @@
             const upDoses = dosingLogs.filter(l => l.dose_type === 'up').length;
             const downDoses = dosingLogs.filter(l => l.dose_type === 'down').length;
 
-            document.getElementById('plantStats').innerHTML = `
+            plantStatsDiv.innerHTML = `
                 <div class="stat-card">
                     <div class="stat-value">${avgPh}</div>
                     <div class="stat-label">Average pH</div>
