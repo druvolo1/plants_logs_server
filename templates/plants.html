@@ -1795,7 +1795,11 @@
 
         function closePlantModal() {
             document.getElementById('plantModal').style.display = 'none';
-            if (phChart) phChart.destroy();
+            // Destroy all sensor charts
+            sensorCharts.forEach(chart => {
+                if (chart) chart.destroy();
+            });
+            sensorCharts = [];
             if (dosingChart) dosingChart.destroy();
         }
 
