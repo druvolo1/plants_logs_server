@@ -1,0 +1,5 @@
+# Minimal requirements for setup_db.py
+# Only what's needed to run the database setup GUI
+python-dotenv==1.0.1
+sqlalchemy==2.0.35
+pymysql==1.1.0
