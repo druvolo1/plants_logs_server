@@ -3036,26 +3036,33 @@
                             const startDate = new Date(historyEntry.started_at);
                             const endDate = new Date(historyEntry.ended_at);
                             const actualDays = Math.floor((endDate - startDate) / (1000 * 60 * 60 * 24));
-                            const diff = actualDays - expected;
-                            const diffColor = diff > 0 ? '#f59e0b' : '#10b981';
-                            const diffSign = diff > 0 ? '+' : '';
 
-                            // Format completion date
-                            const formattedEndDate = endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                            // Check if this phase was skipped (0 days means plant was added after this phase)
+                            if (actualDays === 0) {
+                                statusIcon = '-';
+                                statusText = 'N/A';
+                                actualText = 'N/A';
+                                completionText = 'N/A';
+                                rowColor = '#0f172a';
+                                // Don't add to accumulated days since this phase was skipped
+                            } else {
+                                const diff = actualDays - expected;
+                                const diffSign = diff > 0 ? '+' : '';
 
-                            statusIcon = '✅';
-                            statusText = 'Complete';
-                            actualText = `${actualDays} days`;
-                            completionText = diff < 0 ? `${diffSign}${diff} days` : (diff > 0 ? `+${diff} days` : 'On time');
-                            rowColor = '#1e293b';
+                                statusIcon = '✅';
+                                statusText = 'Complete';
+                                actualText = `${actualDays} days`;
+                                completionText = diff < 0 ? `${diffSign}${diff} days` : (diff > 0 ? `+${diff} days` : 'On time');
+                                rowColor = '#1e293b';
 
-                            accumulatedDays += actualDays;
+                                accumulatedDays += actualDays;
+                            }
                         } else {
-                            statusIcon = '✅';
-                            statusText = 'Complete';
+                            statusIcon = '-';
+                            statusText = 'N/A';
                             actualText = 'N/A';
                             completionText = 'N/A';
-                            rowColor = '#1e293b';
+                            rowColor = '#0f172a';
                         }
                     } else if (index === currentPhaseIndex) {
                         // Current phase
