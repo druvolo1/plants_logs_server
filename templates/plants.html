@@ -3040,10 +3040,13 @@
                             const diffColor = diff > 0 ? '#f59e0b' : '#10b981';
                             const diffSign = diff > 0 ? '+' : '';
 
+                            // Format completion date
+                            const formattedEndDate = endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
                             statusIcon = '✅';
                             statusText = 'Complete';
                             actualText = `${actualDays} days`;
-                            completionText = `${diffSign}${diff} days`;
+                            completionText = diff < 0 ? `${diffSign}${diff} days` : (diff > 0 ? `+${diff} days` : 'On time');
                             rowColor = '#1e293b';
 
                             accumulatedDays += actualDays;
@@ -3062,16 +3065,26 @@
                             const now = new Date();
                             daysElapsed = Math.floor((now - startDate) / (1000 * 60 * 60 * 24));
 
+                            // Calculate estimated completion date for current phase
+                            const estimatedEndDate = new Date(startDate);
+                            estimatedEndDate.setDate(estimatedEndDate.getDate() + expected);
+                            const formattedEstimatedEnd = estimatedEndDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
                             statusIcon = '🟢';
                             statusText = 'In Progress';
                             actualText = `Day ${daysElapsed}`;
-                            completionText = daysElapsed > expected ? `${daysElapsed - expected} days over` : `${expected - daysElapsed} days left`;
+                            completionText = formattedEstimatedEnd;
                             rowColor = 'rgba(16, 185, 129, 0.1)';
                         } else {
+                            // Just started, calculate completion date from now
+                            const estimatedEndDate = new Date();
+                            estimatedEndDate.setDate(estimatedEndDate.getDate() + expected);
+                            const formattedEstimatedEnd = estimatedEndDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
                             statusIcon = '🟢';
                             statusText = 'Current';
                             actualText = 'Starting';
-                            completionText = `${expected} days ahead`;
+                            completionText = formattedEstimatedEnd;
                             rowColor = 'rgba(16, 185, 129, 0.1)';
                         }
 
@@ -3082,7 +3095,7 @@
                         // Future phase
                         const completionDate = new Date();
                         completionDate.setDate(completionDate.getDate() + accumulatedDays + expected);
-                        const formattedDate = completionDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                        const formattedDate = completionDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
                         statusIcon = '⏳';
                         statusText = 'Pending';
