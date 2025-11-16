@@ -3056,10 +3056,11 @@
                         }
                     } else if (index === currentPhaseIndex) {
                         // Current phase
+                        let daysElapsed = 0;
                         if (historyEntry && !historyEntry.ended_at) {
                             const startDate = new Date(historyEntry.started_at);
                             const now = new Date();
-                            const daysElapsed = Math.floor((now - startDate) / (1000 * 60 * 60 * 24));
+                            daysElapsed = Math.floor((now - startDate) / (1000 * 60 * 60 * 24));
 
                             statusIcon = '🟢';
                             statusText = 'In Progress';
@@ -3073,6 +3074,10 @@
                             completionText = `${expected} days ahead`;
                             rowColor = 'rgba(16, 185, 129, 0.1)';
                         }
+
+                        // Add remaining days in current phase to accumulated days for future phase calculations
+                        const remainingInCurrentPhase = Math.max(0, expected - daysElapsed);
+                        accumulatedDays += remainingInCurrentPhase;
                     } else {
                         // Future phase
                         const completionDate = new Date();
