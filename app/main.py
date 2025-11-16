@@ -2484,6 +2484,50 @@ async def update_plant_batch(
 
     return {"message": "Plant batch number updated successfully"}
 
+# Apply template to plant
+@app.patch("/user/plants/{plant_id}/apply-template", response_model=Dict[str, str])
+async def apply_template_to_plant(
+    plant_id: str,
+    template_id: int = Body(..., embed=True),
+    user: User = Depends(current_user),
+    session: AsyncSession = Depends(get_db)
+):
+    """Apply a phase template to a plant"""
+    # Get plant and verify ownership
+    result = await session.execute(select(Plant).where(Plant.plant_id == plant_id))
+    plant = result.scalars().first()
+
+    if not plant:
+        raise HTTPException(404, "Plant not found")
+
+    # Verify user owns the plant
+    if plant.user_id != user.id:
+        raise HTTPException(403, "You don't have permission to modify this plant")
+
+    # Get the template
+    template_result = await session.execute(
+        select(PhaseTemplate).where(
+            PhaseTemplate.id == template_id,
+            PhaseTemplate.user_id == user.id
+        )
+    )
+    template = template_result.scalars().first()
+
+    if not template:
+        raise HTTPException(404, "Template not found")
+
+    # Apply template durations to plant
+    plant.template_id = template.id
+    plant.expected_seed_days = template.expected_seed_days
+    plant.expected_clone_days = template.expected_clone_days
+    plant.expected_veg_days = template.expected_veg_days
+    plant.expected_flower_days = template.expected_flower_days
+    plant.expected_drying_days = template.expected_drying_days
+
+    await session.commit()
+
+    return {"message": "Template applied successfully"}
+
 # Update yield for finished plant
 @app.patch("/user/plants/{plant_id}/yield", response_model=Dict[str, str])
 async def update_plant_yield(

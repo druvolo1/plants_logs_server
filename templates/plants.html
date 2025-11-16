@@ -746,6 +746,18 @@
                         <span id="expectedHarvestDisplay" style="color: #f59e0b; font-size: 1.1rem; font-weight: 600;"></span>
                     </div>
 
+                    <!-- Apply Template -->
+                    <div style="margin-bottom: 1rem; padding: 1rem; background: rgba(59, 130, 246, 0.05); border: 1px solid rgba(59, 130, 246, 0.2); border-radius: 6px;">
+                        <label style="display: block; margin-bottom: 0.5rem; color: #94a3b8; font-size: 0.85rem; font-weight: 600;">Apply Phase Template</label>
+                        <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 0.75rem;">Apply a template to set expected phase durations</p>
+                        <div style="display: flex; align-items: center; gap: 0.75rem;">
+                            <select id="applyTemplateSelect" style="flex: 1; padding: 0.5rem; background: #1e293b; border: 1px solid #3b82f6; border-radius: 4px; color: #e2e8f0;">
+                                <option value="">-- Select a template --</option>
+                            </select>
+                            <button onclick="applyTemplate()" style="background: #3b82f6; color: white; padding: 0.5rem 0.75rem; border: none; border-radius: 4px; cursor: pointer; font-size: 0.85rem; white-space: nowrap;">Apply Template</button>
+                        </div>
+                    </div>
+
                     <!-- Status -->
                     <div>
                         <label style="display: block; margin-bottom: 0.5rem; color: #94a3b8; font-size: 0.85rem; font-weight: 600;">Status</label>
@@ -2439,6 +2451,92 @@
             }
         }
 
+        // Load templates for the apply template dropdown in manage plant modal
+        async function loadTemplatesForApply() {
+            try {
+                const response = await fetch('/user/phase-templates');
+                if (response.ok) {
+                    const templates = await response.json();
+                    const select = document.getElementById('applyTemplateSelect');
+                    select.innerHTML = '<option value="">-- Select a template --</option>';
+
+                    templates.forEach(template => {
+                        const option = document.createElement('option');
+                        option.value = template.id;
+                        option.textContent = template.name;
+                        select.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading templates:', error);
+            }
+        }
+
+        // Apply template to current plant
+        async function applyTemplate() {
+            if (!currentPlant) return;
+
+            const templateId = document.getElementById('applyTemplateSelect').value;
+            if (!templateId) {
+                alert('Please select a template');
+                return;
+            }
+
+            try {
+                // Fetch the template data
+                const templateResponse = await fetch('/user/phase-templates');
+                if (!templateResponse.ok) throw new Error('Failed to load templates');
+
+                const templates = await templateResponse.json();
+                const template = templates.find(t => t.id === parseInt(templateId));
+
+                if (!template) {
+                    alert('Template not found');
+                    return;
+                }
+
+                // Confirm with user
+                if (!confirm(`Apply template "${template.name}" to ${currentPlant.name}?\n\nThis will update the expected phase durations.`)) {
+                    return;
+                }
+
+                // Update the plant with template durations
+                const response = await fetch(`/user/plants/${currentPlant.plant_id}/apply-template`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ template_id: parseInt(templateId) })
+                });
+
+                if (!response.ok) throw new Error('Failed to apply template');
+
+                // Update local plant object
+                currentPlant.template_id = template.id;
+                currentPlant.expected_seed_days = template.expected_seed_days;
+                currentPlant.expected_clone_days = template.expected_clone_days;
+                currentPlant.expected_veg_days = template.expected_veg_days;
+                currentPlant.expected_flower_days = template.expected_flower_days;
+                currentPlant.expected_drying_days = template.expected_drying_days;
+
+                // Update in plants list
+                const plantIndex = plants.findIndex(p => p.plant_id === currentPlant.plant_id);
+                if (plantIndex !== -1) {
+                    plants[plantIndex] = currentPlant;
+                }
+
+                // Refresh expected harvest display
+                await updateExpectedHarvest();
+
+                // Reset dropdown
+                document.getElementById('applyTemplateSelect').value = '';
+
+                alert('Template applied successfully!');
+
+            } catch (error) {
+                console.error('Error applying template:', error);
+                alert(`Failed to apply template: ${error.message}`);
+            }
+        }
+
         function openCreatePlantModal() {
             document.getElementById('createPlantModal').style.display = 'block';
             loadAvailableDevices();
@@ -2570,6 +2668,9 @@
             // Load current assignments and available devices
             await loadPlantAssignments();
             await loadAvailableDevicesForAssignment();
+
+            // Load templates for the apply template dropdown
+            await loadTemplatesForApply();
 
             // Show modal
             document.getElementById('assignmentsModal').style.display = 'block';
