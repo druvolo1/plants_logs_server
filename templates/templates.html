@@ -405,6 +405,10 @@
                             <label style="font-size: 0.9rem; color: #64748b;">Drying</label>
                             <input type="number" id="dryingDays" min="0" placeholder="0">
                         </div>
+                        <div>
+                            <label style="font-size: 0.9rem; color: #64748b;">Curing</label>
+                            <input type="number" id="curingDays" min="0" placeholder="0">
+                        </div>
                     </div>
                 </div>
 
@@ -507,6 +511,12 @@
                                 <div class="phase-value">${template.expected_drying_days} days</div>
                             </div>
                         ` : ''}
+                        ${template.expected_curing_days ? `
+                            <div class="phase-info">
+                                <div class="phase-label">Curing</div>
+                                <div class="phase-value">${template.expected_curing_days} days</div>
+                            </div>
+                        ` : ''}
                     </div>
                 </div>
             `).join('');
@@ -534,6 +544,7 @@
             document.getElementById('vegDays').value = template.expected_veg_days || '';
             document.getElementById('flowerDays').value = template.expected_flower_days || '';
             document.getElementById('dryingDays').value = template.expected_drying_days || '';
+            document.getElementById('curingDays').value = template.expected_curing_days || '';
             document.getElementById('templateModal').style.display = 'block';
         }
 
@@ -554,7 +565,8 @@
                 expected_clone_days: parseInt(document.getElementById('cloneDays').value) || null,
                 expected_veg_days: parseInt(document.getElementById('vegDays').value) || null,
                 expected_flower_days: parseInt(document.getElementById('flowerDays').value) || null,
-                expected_drying_days: parseInt(document.getElementById('dryingDays').value) || null
+                expected_drying_days: parseInt(document.getElementById('dryingDays').value) || null,
+                expected_curing_days: parseInt(document.getElementById('curingDays').value) || null
             };
 
             try {

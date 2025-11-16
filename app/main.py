@@ -151,6 +151,7 @@ class PhaseTemplate(Base):
     expected_veg_days = Column(Integer, nullable=True)
     expected_flower_days = Column(Integer, nullable=True)
     expected_drying_days = Column(Integer, nullable=True)
+    expected_curing_days = Column(Integer, nullable=True)
 
     created_at = Column(DateTime, nullable=False)
     updated_at = Column(DateTime, nullable=True)
@@ -182,6 +183,7 @@ class Plant(Base):
     expected_veg_days = Column(Integer, nullable=True)
     expected_flower_days = Column(Integer, nullable=True)
     expected_drying_days = Column(Integer, nullable=True)
+    expected_curing_days = Column(Integer, nullable=True)
     template_id = Column(Integer, ForeignKey("phase_templates.id"), nullable=True)
 
     # Relationships
@@ -1134,6 +1136,7 @@ class PhaseTemplateCreate(BaseModel):
     expected_veg_days: Optional[int] = None
     expected_flower_days: Optional[int] = None
     expected_drying_days: Optional[int] = None
+    expected_curing_days: Optional[int] = None
 
 class PhaseTemplateRead(BaseModel):
     id: int
@@ -1144,6 +1147,7 @@ class PhaseTemplateRead(BaseModel):
     expected_veg_days: Optional[int]
     expected_flower_days: Optional[int]
     expected_drying_days: Optional[int]
+    expected_curing_days: Optional[int]
 
     class Config:
         from_attributes = True
@@ -1153,7 +1157,7 @@ class PlantCreateNew(BaseModel):
     name: str  # Strain name
     batch_number: Optional[str] = None  # Batch number for seed-to-sale tracking
     start_date: Optional[str] = None  # ISO format, defaults to now
-    phase: Optional[str] = 'clone'  # Initial phase: 'seed', 'clone', 'veg', 'flower', 'drying'
+    phase: Optional[str] = 'clone'  # Initial phase: 'seed', 'clone', 'veg', 'flower', 'drying', 'curing'
     template_id: Optional[int] = None  # Phase template to use
     # Expected durations (override template if provided)
     expected_seed_days: Optional[int] = None
@@ -1161,6 +1165,7 @@ class PlantCreateNew(BaseModel):
     expected_veg_days: Optional[int] = None
     expected_flower_days: Optional[int] = None
     expected_drying_days: Optional[int] = None
+    expected_curing_days: Optional[int] = None
 
 class DeviceAssignmentCreate(BaseModel):
     """Assign a device to a plant (phase is tracked separately on the plant)"""
@@ -1200,6 +1205,7 @@ class PlantRead(BaseModel):
     expected_veg_days: Optional[int]
     expected_flower_days: Optional[int]
     expected_drying_days: Optional[int]
+    expected_curing_days: Optional[int]
     template_id: Optional[int]
     assigned_devices: List['AssignedDeviceInfo'] = []  # Currently assigned devices
 
@@ -1744,7 +1750,8 @@ async def create_plant_new(
                 'clone': template.expected_clone_days,
                 'veg': template.expected_veg_days,
                 'flower': template.expected_flower_days,
-                'drying': template.expected_drying_days
+                'drying': template.expected_drying_days,
+                'curing': template.expected_curing_days
             }
 
     # Create plant with initial phase
@@ -1764,7 +1771,8 @@ async def create_plant_new(
         expected_clone_days=plant_data.expected_clone_days or template_durations.get('clone'),
         expected_veg_days=plant_data.expected_veg_days or template_durations.get('veg'),
         expected_flower_days=plant_data.expected_flower_days or template_durations.get('flower'),
-        expected_drying_days=plant_data.expected_drying_days or template_durations.get('drying')
+        expected_drying_days=plant_data.expected_drying_days or template_durations.get('drying'),
+        expected_curing_days=plant_data.expected_curing_days or template_durations.get('curing')
     )
 
     session.add(new_plant)
@@ -1817,6 +1825,7 @@ async def create_phase_template(
         expected_veg_days=template_data.expected_veg_days,
         expected_flower_days=template_data.expected_flower_days,
         expected_drying_days=template_data.expected_drying_days,
+        expected_curing_days=template_data.expected_curing_days,
         created_at=datetime.utcnow()
     )
 
@@ -1854,6 +1863,7 @@ async def update_phase_template(
     template.expected_veg_days = template_data.expected_veg_days
     template.expected_flower_days = template_data.expected_flower_days
     template.expected_drying_days = template_data.expected_drying_days
+    template.expected_curing_days = template_data.expected_curing_days
     template.updated_at = datetime.utcnow()
 
     await session.commit()
@@ -2072,7 +2082,7 @@ async def change_plant_phase(
     from datetime import datetime
 
     # Validate phase
-    valid_phases = ['seed', 'clone', 'veg', 'flower', 'drying']
+    valid_phases = ['seed', 'clone', 'veg', 'flower', 'drying', 'curing']
     if new_phase not in valid_phases:
         raise HTTPException(400, f"Invalid phase. Must be one of: {', '.join(valid_phases)}")
 
@@ -2298,6 +2308,7 @@ async def list_plants(
             expected_veg_days=plant.expected_veg_days,
             expected_flower_days=plant.expected_flower_days,
             expected_drying_days=plant.expected_drying_days,
+            expected_curing_days=plant.expected_curing_days,
             template_id=plant.template_id,
             assigned_devices=assigned_devices
         ))
@@ -2344,6 +2355,7 @@ async def get_plant(
         expected_veg_days=plant.expected_veg_days,
         expected_flower_days=plant.expected_flower_days,
         expected_drying_days=plant.expected_drying_days,
+        expected_curing_days=plant.expected_curing_days,
         template_id=plant.template_id,
         assigned_devices=[]
     )
@@ -2523,6 +2535,7 @@ async def apply_template_to_plant(
     plant.expected_veg_days = template.expected_veg_days
     plant.expected_flower_days = template.expected_flower_days
     plant.expected_drying_days = template.expected_drying_days
+    plant.expected_curing_days = template.expected_curing_days
 
     await session.commit()
 

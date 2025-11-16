@@ -566,6 +566,7 @@
                             <option value="veg">Vegetative</option>
                             <option value="flower" selected>Flower</option>
                             <option value="drying">Drying</option>
+                            <option value="curing">Curing</option>
                         </select>
                     </div>
                     <div style="margin-bottom: 1rem;">
@@ -628,6 +629,27 @@
                         <label style="display: block; color: #94a3b8; font-size: 0.85rem; margin-bottom: 0.25rem;">Finished</label>
                         <span id="modalPlantEndDate" style="color: #e2e8f0; font-weight: 600;"></span>
                     </div>
+                </div>
+            </div>
+
+            <!-- Phase Timeline Table (Details Modal) -->
+            <div style="padding: 1.5rem; background: rgba(245, 158, 11, 0.05); border: 1px solid rgba(245, 158, 11, 0.2); border-radius: 8px; margin-bottom: 1.5rem;">
+                <h3 style="margin-bottom: 1rem; color: #f59e0b; font-size: 1.1rem;">Phase Timeline</h3>
+                <div style="overflow-x: auto;">
+                    <table id="phaseTimelineTableDetails" style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
+                        <thead>
+                            <tr style="border-bottom: 1px solid #374151;">
+                                <th style="text-align: left; padding: 0.5rem; color: #9ca3af;">Phase</th>
+                                <th style="text-align: left; padding: 0.5rem; color: #9ca3af;">Status</th>
+                                <th style="text-align: right; padding: 0.5rem; color: #9ca3af;">Expected</th>
+                                <th style="text-align: right; padding: 0.5rem; color: #9ca3af;">Actual/Progress</th>
+                                <th style="text-align: right; padding: 0.5rem; color: #9ca3af;">Completion</th>
+                            </tr>
+                        </thead>
+                        <tbody id="phaseTimelineBodyDetails" style="color: #e2e8f0;">
+                            <!-- Timeline rows will be inserted here -->
+                        </tbody>
+                    </table>
                 </div>
             </div>
 
@@ -727,6 +749,7 @@
                                 <option value="veg">Veg</option>
                                 <option value="flower">Flower</option>
                                 <option value="drying">Drying</option>
+                                <option value="curing">Curing</option>
                             </select>
                             <button id="editPhaseBtn" onclick="startEditPlantPhase()" style="background: #3b82f6; color: white; padding: 0.5rem 0.75rem; border: none; border-radius: 4px; cursor: pointer; font-size: 0.85rem;">Change Phase ▼</button>
                             <button id="savePhaseBtn" onclick="savePhase()" style="display: none; background: #10b981; color: white; padding: 0.5rem 0.75rem; border: none; border-radius: 4px; cursor: pointer; font-size: 0.85rem;">Save</button>
@@ -740,10 +763,31 @@
                         <span id="phaseDurationDisplay" style="color: #10b981; font-size: 1.1rem; font-weight: 600;"></span>
                     </div>
 
-                    <!-- Expected Harvest Date -->
+                    <!-- Estimated Completion Date -->
                     <div style="margin-bottom: 1rem;">
-                        <label style="display: block; margin-bottom: 0.5rem; color: #94a3b8; font-size: 0.85rem; font-weight: 600;">Expected Harvest</label>
-                        <span id="expectedHarvestDisplay" style="color: #f59e0b; font-size: 1.1rem; font-weight: 600;"></span>
+                        <label style="display: block; margin-bottom: 0.5rem; color: #94a3b8; font-size: 0.85rem; font-weight: 600;">Estimated Completion</label>
+                        <span id="estimatedCompletionDisplay" style="color: #f59e0b; font-size: 1.1rem; font-weight: 600;"></span>
+                    </div>
+
+                    <!-- Phase Timeline Table -->
+                    <div style="margin-bottom: 1.5rem;">
+                        <label style="display: block; margin-bottom: 0.75rem; color: #94a3b8; font-size: 0.85rem; font-weight: 600;">Phase Timeline</label>
+                        <div style="overflow-x: auto;">
+                            <table id="phaseTimelineTable" style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
+                                <thead>
+                                    <tr style="border-bottom: 1px solid #374151;">
+                                        <th style="text-align: left; padding: 0.5rem; color: #9ca3af;">Phase</th>
+                                        <th style="text-align: left; padding: 0.5rem; color: #9ca3af;">Status</th>
+                                        <th style="text-align: right; padding: 0.5rem; color: #9ca3af;">Expected</th>
+                                        <th style="text-align: right; padding: 0.5rem; color: #9ca3af;">Actual/Progress</th>
+                                        <th style="text-align: right; padding: 0.5rem; color: #9ca3af;">Completion</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="phaseTimelineBody" style="color: #e2e8f0;">
+                                    <!-- Timeline rows will be inserted here -->
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
 
                     <!-- Apply Template -->
@@ -759,9 +803,15 @@
                     </div>
 
                     <!-- Status -->
-                    <div>
+                    <div style="margin-bottom: 1rem;">
                         <label style="display: block; margin-bottom: 0.5rem; color: #94a3b8; font-size: 0.85rem; font-weight: 600;">Status</label>
                         <span id="assignmentPlantStatus" style="color: #e2e8f0;"></span>
+                    </div>
+
+                    <!-- Mark Complete Button -->
+                    <div id="markCompleteSection" style="display: none; padding: 1rem; background: rgba(16, 185, 129, 0.05); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 6px;">
+                        <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 0.75rem;">Mark this plant as complete when all phases are finished</p>
+                        <button id="markCompleteFromManageBtn" onclick="markPlantCompleteFromManage()" style="background: #10b981; color: white; padding: 0.75rem 1rem; border: none; border-radius: 4px; cursor: pointer; font-size: 0.9rem; font-weight: 600; width: 100%;">✓ Mark Plant Complete</button>
                     </div>
                 </div>
 
@@ -962,7 +1012,8 @@
                     'clone': '#8b5cf6',
                     'veg': '#10b981',
                     'flower': '#f59e0b',
-                    'drying': '#6366f1'
+                    'drying': '#6366f1',
+                    'curing': '#ec4899'
                 };
                 const phaseColor = phaseColors[phase] || '#64748b';
 
@@ -1137,6 +1188,9 @@
             // Load phase history and assignment history
             await loadPlantPhaseHistory(plantId);
             await loadPlantReportHistory(plantId);
+
+            // Update phase timeline table for Details modal
+            await updatePhaseTimeline('phaseTimelineBodyDetails');
 
             await loadPlantLogs(plantId);
         }
@@ -1594,7 +1648,8 @@
                     'clone': 'rgba(139, 92, 246, 0.1)',     // Violet
                     'veg': 'rgba(16, 185, 129, 0.1)',       // Green
                     'flower': 'rgba(245, 158, 11, 0.1)',    // Orange
-                    'drying': 'rgba(99, 102, 241, 0.1)'     // Indigo
+                    'drying': 'rgba(99, 102, 241, 0.1)',    // Indigo
+                    'curing': 'rgba(236, 72, 153, 0.1)'     // Pink
                 };
 
                 // Create annotations for each phase
@@ -2523,8 +2578,8 @@
                     plants[plantIndex] = currentPlant;
                 }
 
-                // Refresh expected harvest display
-                await updateExpectedHarvest();
+                // Refresh estimated completion display
+                await updateEstimatedCompletion();
 
                 // Reset dropdown
                 document.getElementById('applyTemplateSelect').value = '';
@@ -2844,8 +2899,8 @@
             }
         }
 
-        // Calculate and display expected harvest date
-        async function updateExpectedHarvest() {
+        // Calculate and display estimated completion date
+        async function updateEstimatedCompletion() {
             if (!currentPlant) return;
 
             try {
@@ -2855,31 +2910,32 @@
                     clone: currentPlant.expected_clone_days || 0,
                     veg: currentPlant.expected_veg_days || 0,
                     flower: currentPlant.expected_flower_days || 0,
-                    drying: currentPlant.expected_drying_days || 0
+                    drying: currentPlant.expected_drying_days || 0,
+                    curing: currentPlant.expected_curing_days || 0
                 };
 
                 // If no expected durations are set, show "Not configured"
                 if (Object.values(expectedDurations).every(d => d === 0)) {
-                    document.getElementById('expectedHarvestDisplay').textContent = 'Not configured';
+                    document.getElementById('estimatedCompletionDisplay').textContent = 'Not configured';
                     return;
                 }
 
                 // Get phase history to calculate remaining time
                 const response = await fetch(`/user/plants/${currentPlant.plant_id}/phase-history`);
                 if (!response.ok) {
-                    document.getElementById('expectedHarvestDisplay').textContent = 'Unknown';
+                    document.getElementById('estimatedCompletionDisplay').textContent = 'Unknown';
                     return;
                 }
 
                 const phaseHistory = await response.json();
 
                 // Calculate days already spent in each phase
-                const phaseOrder = ['seed', 'clone', 'veg', 'flower', 'drying'];
+                const phaseOrder = ['seed', 'clone', 'veg', 'flower', 'drying', 'curing'];
                 const currentPhase = currentPlant.current_phase || 'clone';
                 const currentPhaseIndex = phaseOrder.indexOf(currentPhase);
 
                 if (currentPhaseIndex === -1) {
-                    document.getElementById('expectedHarvestDisplay').textContent = 'Unknown';
+                    document.getElementById('estimatedCompletionDisplay').textContent = 'Unknown';
                     return;
                 }
 
@@ -2902,7 +2958,7 @@
                     totalRemainingDays += expectedDurations[phaseOrder[i]];
                 }
 
-                // Calculate expected harvest date
+                // Calculate estimated completion date
                 const expectedDate = new Date();
                 expectedDate.setDate(expectedDate.getDate() + totalRemainingDays);
 
@@ -2912,11 +2968,143 @@
                     day: 'numeric'
                 });
 
-                document.getElementById('expectedHarvestDisplay').textContent = `${formattedDate} (in ${totalRemainingDays} days)`;
+                document.getElementById('estimatedCompletionDisplay').textContent = `${formattedDate} (in ${totalRemainingDays} days)`;
 
             } catch (error) {
-                console.error('Error calculating expected harvest:', error);
-                document.getElementById('expectedHarvestDisplay').textContent = 'Unknown';
+                console.error('Error calculating estimated completion:', error);
+                document.getElementById('estimatedCompletionDisplay').textContent = 'Unknown';
+            }
+        }
+
+        // Update phase timeline table (accepts tbody ID for flexibility)
+        async function updatePhaseTimeline(tbodyId = 'phaseTimelineBody') {
+            if (!currentPlant) return;
+
+            try {
+                const phaseOrder = ['seed', 'clone', 'veg', 'flower', 'drying', 'curing'];
+                const phaseNames = {
+                    seed: 'Seed',
+                    clone: 'Clone',
+                    veg: 'Vegetative',
+                    flower: 'Flower',
+                    drying: 'Drying',
+                    curing: 'Curing'
+                };
+
+                const expectedDurations = {
+                    seed: currentPlant.expected_seed_days || 0,
+                    clone: currentPlant.expected_clone_days || 0,
+                    veg: currentPlant.expected_veg_days || 0,
+                    flower: currentPlant.expected_flower_days || 0,
+                    drying: currentPlant.expected_drying_days || 0,
+                    curing: currentPlant.expected_curing_days || 0
+                };
+
+                // Get phase history
+                const response = await fetch(`/user/plants/${currentPlant.plant_id}/phase-history`);
+                if (!response.ok) throw new Error('Failed to load phase history');
+                const phaseHistory = await response.json();
+
+                // Build a map of phase -> history entry
+                const phaseMap = {};
+                phaseHistory.forEach(entry => {
+                    phaseMap[entry.phase] = entry;
+                });
+
+                const currentPhase = currentPlant.current_phase || 'clone';
+                const currentPhaseIndex = phaseOrder.indexOf(currentPhase);
+
+                const tbody = document.getElementById(tbodyId);
+                if (!tbody) return;
+                tbody.innerHTML = '';
+
+                let accumulatedDays = 0;
+
+                phaseOrder.forEach((phase, index) => {
+                    const expected = expectedDurations[phase];
+                    if (expected === 0) return; // Skip phases with no expected duration
+
+                    const historyEntry = phaseMap[phase];
+                    const row = document.createElement('tr');
+                    row.style.borderBottom = '1px solid #374151';
+
+                    let statusIcon, statusText, actualText, completionText, rowColor;
+
+                    if (index < currentPhaseIndex) {
+                        // Completed phase
+                        if (historyEntry && historyEntry.ended_at) {
+                            const startDate = new Date(historyEntry.started_at);
+                            const endDate = new Date(historyEntry.ended_at);
+                            const actualDays = Math.floor((endDate - startDate) / (1000 * 60 * 60 * 24));
+                            const diff = actualDays - expected;
+                            const diffColor = diff > 0 ? '#f59e0b' : '#10b981';
+                            const diffSign = diff > 0 ? '+' : '';
+
+                            statusIcon = '✅';
+                            statusText = 'Complete';
+                            actualText = `${actualDays} days`;
+                            completionText = `${diffSign}${diff} days`;
+                            rowColor = '#1e293b';
+
+                            accumulatedDays += actualDays;
+                        } else {
+                            statusIcon = '✅';
+                            statusText = 'Complete';
+                            actualText = 'N/A';
+                            completionText = 'N/A';
+                            rowColor = '#1e293b';
+                        }
+                    } else if (index === currentPhaseIndex) {
+                        // Current phase
+                        if (historyEntry && !historyEntry.ended_at) {
+                            const startDate = new Date(historyEntry.started_at);
+                            const now = new Date();
+                            const daysElapsed = Math.floor((now - startDate) / (1000 * 60 * 60 * 24));
+
+                            statusIcon = '🟢';
+                            statusText = 'In Progress';
+                            actualText = `Day ${daysElapsed}`;
+                            completionText = daysElapsed > expected ? `${daysElapsed - expected} days over` : `${expected - daysElapsed} days left`;
+                            rowColor = 'rgba(16, 185, 129, 0.1)';
+                        } else {
+                            statusIcon = '🟢';
+                            statusText = 'Current';
+                            actualText = 'Starting';
+                            completionText = `${expected} days ahead`;
+                            rowColor = 'rgba(16, 185, 129, 0.1)';
+                        }
+                    } else {
+                        // Future phase
+                        const completionDate = new Date();
+                        completionDate.setDate(completionDate.getDate() + accumulatedDays + expected);
+                        const formattedDate = completionDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+                        statusIcon = '⏳';
+                        statusText = 'Pending';
+                        actualText = '-';
+                        completionText = formattedDate;
+                        rowColor = '#0f172a';
+                    }
+
+                    row.style.background = rowColor;
+                    row.innerHTML = `
+                        <td style="padding: 0.5rem; text-transform: capitalize;">${phaseNames[phase]}</td>
+                        <td style="padding: 0.5rem;">${statusIcon} ${statusText}</td>
+                        <td style="padding: 0.5rem; text-align: right;">${expected} days</td>
+                        <td style="padding: 0.5rem; text-align: right;">${actualText}</td>
+                        <td style="padding: 0.5rem; text-align: right;">${completionText}</td>
+                    `;
+
+                    tbody.appendChild(row);
+
+                    // For future phases, accumulate expected days for date calculation
+                    if (index > currentPhaseIndex) {
+                        accumulatedDays += expected;
+                    }
+                });
+
+            } catch (error) {
+                console.error('Error updating phase timeline:', error);
             }
         }
 
@@ -2926,6 +3114,12 @@
                 // Set plant name and status
                 document.getElementById('assignmentPlantNameDisplay').textContent = currentPlant.name;
                 document.getElementById('assignmentPlantStatus').textContent = currentPlant.is_active ? 'Active' : 'Finished';
+
+                // Show/hide Mark Complete button based on status
+                const markCompleteSection = document.getElementById('markCompleteSection');
+                if (markCompleteSection) {
+                    markCompleteSection.style.display = currentPlant.is_active ? 'block' : 'none';
+                }
 
                 // Set current phase
                 const currentPhase = currentPlant.current_phase || 'clone';
@@ -2945,8 +3139,11 @@
                 // Calculate and display phase duration
                 await updatePhaseDuration();
 
-                // Calculate and display expected harvest date
-                await updateExpectedHarvest();
+                // Calculate and display estimated completion date
+                await updateEstimatedCompletion();
+
+                // Update phase timeline table
+                await updatePhaseTimeline();
 
                 // Load device assignments
                 const response = await fetch(`/user/plants/${currentPlant.plant_id}/assignments`);
@@ -3456,7 +3653,8 @@
                     'clone': '#8b5cf6',
                     'veg': '#10b981',
                     'flower': '#f59e0b',
-                    'drying': '#6366f1'
+                    'drying': '#6366f1',
+                    'curing': '#ec4899'
                 };
 
                 historyDiv.innerHTML = phaseHistory.map(entry => {
@@ -3581,6 +3779,14 @@
             document.getElementById('completionDateInput').value = today;
 
             document.getElementById('markCompleteModal').style.display = 'block';
+        }
+
+        function markPlantCompleteFromManage() {
+            // Close the Manage Plant modal
+            closeAssignmentsModal();
+
+            // Open the Mark Complete modal
+            openMarkCompleteModal();
         }
 
         function closeMarkCompleteModal() {
