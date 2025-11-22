@@ -2902,6 +2902,38 @@ async def device_websocket(websocket: WebSocket, device_id: str, api_key: str = 
             data = await websocket.receive_json()
             print(f"Received from device {device_id}: {json.dumps(data)}")  # Log incoming data
 
+            # Handle device_info message for auto-detection
+            if data.get('type') == 'device_info':
+                device_type = data.get('device_type')
+                capabilities = data.get('capabilities')
+
+                updates = {}
+
+                # Auto-detect device type
+                if device_type:
+                    updates['device_type'] = device_type
+                    # Set scope based on device type
+                    if device_type == 'environmental':
+                        updates['scope'] = 'room'
+                    else:
+                        updates['scope'] = 'plant'
+                    print(f"Auto-detected device type for {device_id}: {device_type}")
+
+                # Store capabilities as JSON string
+                if capabilities:
+                    updates['capabilities'] = json.dumps(capabilities)
+                    print(f"Stored capabilities for {device_id}: {capabilities}")
+
+                # Update device in database
+                if updates:
+                    await session.execute(
+                        update(Device)
+                        .where(Device.device_id == device_id)
+                        .values(**updates)
+                    )
+                    await session.commit()
+                    print(f"Updated device {device_id} with: {updates}")
+
             # Extract and save system_name if present in the payload
             if data.get('type') == 'full_sync' or 'data' in data:
                 payload = data.get('data', data)
