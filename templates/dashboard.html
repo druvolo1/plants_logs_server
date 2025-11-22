@@ -157,6 +157,45 @@
         .device-header:hover {
             background: #333;
         }
+
+        /* Device Type Badges */
+        .device-type-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-right: 8px;
+        }
+        .device-type-feeding {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+        }
+        .device-type-environmental {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            color: white;
+        }
+        .device-type-valve {
+            background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+            color: white;
+        }
+        .device-type-other {
+            background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+            color: white;
+        }
+        .device-scope-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 8px;
+            font-size: 0.7rem;
+            font-weight: 500;
+            background: rgba(148, 163, 184, 0.2);
+            color: rgba(148, 163, 184, 0.9);
+            margin-left: 4px;
+        }
+
         .device-header-left {
             display: flex;
             align-items: center;
@@ -546,6 +585,16 @@
                 font-size: 0.7em;
             }
 
+            /* Device type badges on mobile */
+            .device-type-badge {
+                font-size: 0.65rem;
+                padding: 3px 7px;
+            }
+            .device-scope-badge {
+                font-size: 0.6rem;
+                padding: 2px 6px;
+            }
+
             /* Hide pH and EC from header-info on mobile, will show next to badge */
             .header-info [data-key="ph"],
             .header-info [data-key="ec"] {
@@ -893,6 +942,29 @@
     <script>
         let wsMap = {};
 
+        // Helper function to get device type badge HTML
+        function getDeviceTypeBadge(deviceType) {
+            const typeMap = {
+                'feeding_system': { label: 'Feeding', class: 'device-type-feeding', icon: '🔧' },
+                'environmental': { label: 'Environmental', class: 'device-type-environmental', icon: '🌡️' },
+                'valve_controller': { label: 'Valve', class: 'device-type-valve', icon: '💧' },
+                'other': { label: 'Other', class: 'device-type-other', icon: '📟' }
+            };
+
+            const type = typeMap[deviceType] || typeMap['other'];
+            return `<span class="device-type-badge ${type.class}">${type.icon} ${type.label}</span>`;
+        }
+
+        // Helper function to get scope badge HTML
+        function getScopeBadge(scope) {
+            if (scope === 'room') {
+                return `<span class="device-scope-badge" title="Room-level monitoring">Room</span>`;
+            } else if (scope === 'plant') {
+                return `<span class="device-scope-badge" title="Plant-level monitoring">Plant</span>`;
+            }
+            return '';
+        }
+
         async function fetchAndConnectDevices() {
             const response = await fetch('/user/devices');
             if (response.ok) {
@@ -980,6 +1052,8 @@
                                 <div class="status-badge ${device.is_online ? 'status-online' : 'status-offline'}" id="status-badge-${device.device_id}">
                                     ● ${device.is_online ? 'Online' : 'Offline'}
                                 </div>
+                                ${getDeviceTypeBadge(device.device_type || 'feeding_system')}
+                                ${getScopeBadge(device.scope)}
                                 ${ownershipText ? `<div style="margin-left: 1rem;">${ownershipText}</div>` : ''}
                                 <div class="header-ph-ec" id="header-ph-ec-${device.device_id}" style="display:none; font-size: 0.7em; color: #10b981; gap: 8px;">
                                     <span id="header-ph-${device.device_id}" style="display:none;"></span>
