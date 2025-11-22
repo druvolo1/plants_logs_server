@@ -158,24 +158,33 @@
             background: #333;
         }
 
-        /* Device Type Badges - Subtle, top-right corner */
-        .device-type-indicator {
+        /* Device Type Icon in Left Bar */
+        .device-type-icon-bar {
             position: absolute;
-            top: 8px;
-            right: 120px;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 50px;
             display: flex;
-            gap: 6px;
+            flex-direction: column;
             align-items: center;
-            z-index: 10;
+            justify-content: center;
+            gap: 4px;
+            z-index: 5;
+            font-size: 1.8rem;
+            padding: 8px 0;
         }
-        .device-type-badge {
-            display: inline-block;
-            padding: 4px 8px;
-            border-radius: 10px;
-            font-size: 1.2rem;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-            border: 1px solid rgba(255, 255, 255, 0.15);
+        .device-type-icon-bar .icon {
             line-height: 1;
+        }
+        .device-type-icon-bar .scope-text {
+            font-size: 0.5rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: rgba(255, 255, 255, 0.9);
+            writing-mode: vertical-rl;
+            text-orientation: mixed;
         }
         .device-type-feeding {
             background: linear-gradient(135deg, #10b981 0%, #059669 100%);
@@ -211,7 +220,7 @@
             align-items: center;
             gap: 15px;
             flex: 1;
-            padding-left: 3rem;
+            padding-left: 60px; /* Space for icon bar */
         }
         .device-name {
             font-size: 1.1em;
@@ -975,11 +984,21 @@
             return '';
         }
 
-        // Helper function to get device type indicator (badges in top-right)
-        function getDeviceTypeIndicator(deviceType, scope) {
-            return `<div class="device-type-indicator">
-                ${getDeviceTypeBadge(deviceType)}
-                ${getScopeBadge(scope)}
+        // Helper function to get device type icon bar (left side)
+        function getDeviceTypeIconBar(deviceType, scope) {
+            const typeMap = {
+                'feeding_system': { icon: '🔧', bgClass: 'device-type-feeding' },
+                'environmental': { icon: '🌡️', bgClass: 'device-type-environmental' },
+                'valve_controller': { icon: '💧', bgClass: 'device-type-valve' },
+                'other': { icon: '📟', bgClass: 'device-type-other' }
+            };
+
+            const type = typeMap[deviceType] || typeMap['other'];
+            const scopeText = scope === 'room' ? 'ROOM' : 'PLANT';
+
+            return `<div class="device-type-icon-bar ${type.bgClass}">
+                <div class="icon">${type.icon}</div>
+                <div class="scope-text">${scopeText}</div>
             </div>`;
         }
 
@@ -1081,8 +1100,7 @@
 
                     deviceSection.innerHTML = `
                         <div class="device-header" onclick="toggleDevice('${device.device_id}')" style="cursor: ${device.is_online ? 'pointer' : 'not-allowed'}; opacity: ${device.is_online ? '1' : '0.6'}; background: ${headerBgColor}; border-color: ${headerBorderColor}; position: relative;">
-                            <div class="drag-handle" title="Drag to reorder">⋮⋮</div>
-                            ${getDeviceTypeIndicator(device.device_type || 'feeding_system', device.scope)}
+                            ${getDeviceTypeIconBar(device.device_type || 'feeding_system', device.scope)}
                             <div class="device-header-left">
                                 <div class="status-badge ${device.is_online ? 'status-online' : 'status-offline'}" id="status-badge-${device.device_id}">
                                     ● ${device.is_online ? 'Online' : 'Offline'}
@@ -1192,13 +1210,7 @@
                         </div>
                     `;
 
-                    // Apply clean accent bar - thick colored left border
-                    deviceSection.style.setProperty('border-left', `6px solid ${headerBorderColor}`, 'important');
-                    deviceSection.style.setProperty('box-shadow', `
-                        -6px 0 12px ${headerBorderColor}40,
-                        0 2px 8px rgba(0, 0, 0, 0.3)
-                    `, 'important');
-
+                    // No need for border styling - icon bar handles it
                     statusDiv.appendChild(deviceSection);
 
                     document.getElementById(`refresh-icon-${device.device_id}`).addEventListener('click', (e) => {
