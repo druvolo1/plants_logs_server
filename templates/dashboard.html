@@ -1193,11 +1193,11 @@
                     `;
 
                     // Apply clean accent bar - thick colored left border
-                    deviceSection.style.borderLeft = `6px solid ${headerBorderColor}`;
-                    deviceSection.style.boxShadow = `
+                    deviceSection.style.setProperty('border-left', `6px solid ${headerBorderColor}`, 'important');
+                    deviceSection.style.setProperty('box-shadow', `
                         -6px 0 12px ${headerBorderColor}40,
                         0 2px 8px rgba(0, 0, 0, 0.3)
-                    `;
+                    `, 'important');
 
                     statusDiv.appendChild(deviceSection);
 
