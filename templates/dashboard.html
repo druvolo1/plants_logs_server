@@ -1046,23 +1046,23 @@
                     const deviceType = device.device_type || 'feeding_system';
                     let headerBgColor, headerBorderColor, cardBgColor;
 
-                    // Device type color schemes
+                    // Device type color schemes - VIBRANT and OBVIOUS
                     if (deviceType === 'feeding_system') {
-                        headerBgColor = '#065f46'; // Dark green
+                        headerBgColor = '#047857'; // Brighter green
                         headerBorderColor = '#10b981'; // Bright green
-                        cardBgColor = 'linear-gradient(135deg, #064e3b 0%, #065f46 100%)'; // Green gradient
+                        cardBgColor = 'linear-gradient(180deg, #047857 0%, #064e3b 50%, #1a1a1a 100%)'; // Green fade to dark
                     } else if (deviceType === 'environmental') {
-                        headerBgColor = '#1e3a8a'; // Dark blue
+                        headerBgColor = '#1d4ed8'; // Brighter blue
                         headerBorderColor = '#3b82f6'; // Bright blue
-                        cardBgColor = 'linear-gradient(135deg, #1e293b 0%, #1e3a8a 100%)'; // Blue gradient
+                        cardBgColor = 'linear-gradient(180deg, #1d4ed8 0%, #1e3a8a 50%, #1a1a1a 100%)'; // Blue fade to dark
                     } else if (deviceType === 'valve_controller') {
-                        headerBgColor = '#581c87'; // Dark purple
+                        headerBgColor = '#7c3aed'; // Brighter purple
                         headerBorderColor = '#8b5cf6'; // Bright purple
-                        cardBgColor = 'linear-gradient(135deg, #4c1d95 0%, #581c87 100%)'; // Purple gradient
+                        cardBgColor = 'linear-gradient(180deg, #7c3aed 0%, #581c87 50%, #1a1a1a 100%)'; // Purple fade to dark
                     } else {
-                        headerBgColor = '#374151'; // Dark gray
+                        headerBgColor = '#4b5563'; // Lighter gray
                         headerBorderColor = '#6b7280'; // Medium gray
-                        cardBgColor = 'linear-gradient(135deg, #1f2937 0%, #374151 100%)'; // Gray gradient
+                        cardBgColor = 'linear-gradient(180deg, #4b5563 0%, #374151 50%, #1a1a1a 100%)'; // Gray fade to dark
                     }
 
                     // Override with ownership colors if shared
@@ -1137,7 +1137,7 @@
                             </div>
                         </div>
                         
-                        <div class="device-content" id="device-content-${device.device_id}" data-device-id="${device.device_id}" style="background: ${cardBgColor};">
+                        <div class="device-content" id="device-content-${device.device_id}" data-device-id="${device.device_id}">
                             <div class="device-content-inner">
                                 <div class="cards-grid" data-device-id="${device.device_id}">
                                     <!-- Water Level Card -->
@@ -1198,7 +1198,8 @@
                         </div>
                     `;
 
-                    // Apply device-type-specific border color to the entire section
+                    // Apply device-type-specific styling to the entire section
+                    deviceSection.style.background = cardBgColor;
                     deviceSection.style.borderLeft = `4px solid ${headerBorderColor}`;
                     deviceSection.style.boxShadow = `0 0 20px ${headerBorderColor}40`;
 
