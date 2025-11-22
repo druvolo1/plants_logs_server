@@ -3067,7 +3067,7 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 @app.on_event("startup")
 async def on_startup():
     # Initialize database schema (add missing columns if needed)
-    from .init_database import init_database
+    from app.init_database import init_database
     await init_database()
     
     await create_db_and_tables()
