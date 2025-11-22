@@ -94,7 +94,7 @@
             margin-bottom: 10px;
             border: 1px solid #444;
             border-radius: 8px;
-            background: #1a1a1a;
+            background: transparent; /* Changed from #1a1a1a to allow gradient backgrounds */
             overflow: hidden;
             transition: transform 0.3s ease, opacity 0.3s ease;
             cursor: grab;
@@ -158,18 +158,24 @@
             background: #333;
         }
 
-        /* Device Type Badges - Made More Prominent */
+        /* Device Type Badges - Subtle, top-right corner */
+        .device-type-indicator {
+            position: absolute;
+            top: 8px;
+            right: 120px;
+            display: flex;
+            gap: 6px;
+            align-items: center;
+            z-index: 10;
+        }
         .device-type-badge {
             display: inline-block;
-            padding: 6px 14px;
-            border-radius: 14px;
-            font-size: 0.85rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.8px;
-            margin-right: 10px;
-            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
-            border: 2px solid rgba(255, 255, 255, 0.2);
+            padding: 4px 8px;
+            border-radius: 10px;
+            font-size: 1.2rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            line-height: 1;
         }
         .device-type-feeding {
             background: linear-gradient(135deg, #10b981 0%, #059669 100%);
@@ -189,14 +195,15 @@
         }
         .device-scope-badge {
             display: inline-block;
-            padding: 4px 10px;
-            border-radius: 10px;
-            font-size: 0.75rem;
+            padding: 3px 6px;
+            border-radius: 6px;
+            font-size: 0.65rem;
             font-weight: 600;
-            background: rgba(148, 163, 184, 0.3);
-            color: rgba(255, 255, 255, 0.95);
-            margin-left: 4px;
-            border: 1px solid rgba(148, 163, 184, 0.4);
+            background: rgba(148, 163, 184, 0.25);
+            color: rgba(255, 255, 255, 0.85);
+            border: 1px solid rgba(148, 163, 184, 0.3);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
         .device-header-left {
@@ -945,27 +952,35 @@
     <script>
         let wsMap = {};
 
-        // Helper function to get device type badge HTML
+        // Helper function to get device type badge HTML (icon only)
         function getDeviceTypeBadge(deviceType) {
             const typeMap = {
-                'feeding_system': { label: 'Feeding', class: 'device-type-feeding', icon: '🔧' },
-                'environmental': { label: 'Environmental', class: 'device-type-environmental', icon: '🌡️' },
-                'valve_controller': { label: 'Valve', class: 'device-type-valve', icon: '💧' },
-                'other': { label: 'Other', class: 'device-type-other', icon: '📟' }
+                'feeding_system': { label: 'Feeding System', class: 'device-type-feeding', icon: '🔧' },
+                'environmental': { label: 'Environmental Sensor', class: 'device-type-environmental', icon: '🌡️' },
+                'valve_controller': { label: 'Valve Controller', class: 'device-type-valve', icon: '💧' },
+                'other': { label: 'Other Device', class: 'device-type-other', icon: '📟' }
             };
 
             const type = typeMap[deviceType] || typeMap['other'];
-            return `<span class="device-type-badge ${type.class}">${type.icon} ${type.label}</span>`;
+            return `<span class="device-type-badge ${type.class}" title="${type.label}">${type.icon}</span>`;
         }
 
         // Helper function to get scope badge HTML
         function getScopeBadge(scope) {
             if (scope === 'room') {
-                return `<span class="device-scope-badge" title="Room-level monitoring">Room</span>`;
+                return `<span class="device-scope-badge" title="Room-level monitoring">ROOM</span>`;
             } else if (scope === 'plant') {
-                return `<span class="device-scope-badge" title="Plant-level monitoring">Plant</span>`;
+                return `<span class="device-scope-badge" title="Plant-level monitoring">PLANT</span>`;
             }
             return '';
+        }
+
+        // Helper function to get device type indicator (badges in top-right)
+        function getDeviceTypeIndicator(deviceType, scope) {
+            return `<div class="device-type-indicator">
+                ${getDeviceTypeBadge(deviceType)}
+                ${getScopeBadge(scope)}
+            </div>`;
         }
 
         async function fetchAndConnectDevices() {
@@ -1071,14 +1086,13 @@
                     deviceSection.dataset.isOwner = device.is_owner;
 
                     deviceSection.innerHTML = `
-                        <div class="device-header" onclick="toggleDevice('${device.device_id}')" style="cursor: ${device.is_online ? 'pointer' : 'not-allowed'}; opacity: ${device.is_online ? '1' : '0.6'}; background: ${headerBgColor}; border-color: ${headerBorderColor};">
+                        <div class="device-header" onclick="toggleDevice('${device.device_id}')" style="cursor: ${device.is_online ? 'pointer' : 'not-allowed'}; opacity: ${device.is_online ? '1' : '0.6'}; background: ${headerBgColor}; border-color: ${headerBorderColor}; position: relative;">
                             <div class="drag-handle" title="Drag to reorder">⋮⋮</div>
+                            ${getDeviceTypeIndicator(device.device_type || 'feeding_system', device.scope)}
                             <div class="device-header-left">
                                 <div class="status-badge ${device.is_online ? 'status-online' : 'status-offline'}" id="status-badge-${device.device_id}">
                                     ● ${device.is_online ? 'Online' : 'Offline'}
                                 </div>
-                                ${getDeviceTypeBadge(device.device_type || 'feeding_system')}
-                                ${getScopeBadge(device.scope)}
                                 ${ownershipText ? `<div style="margin-left: 1rem;">${ownershipText}</div>` : ''}
                                 <div class="header-ph-ec" id="header-ph-ec-${device.device_id}" style="display:none; font-size: 0.7em; color: #10b981; gap: 8px;">
                                     <span id="header-ph-${device.device_id}" style="display:none;"></span>
