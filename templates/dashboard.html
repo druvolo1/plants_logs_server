@@ -158,16 +158,18 @@
             background: #333;
         }
 
-        /* Device Type Badges */
+        /* Device Type Badges - Made More Prominent */
         .device-type-badge {
             display: inline-block;
-            padding: 4px 10px;
-            border-radius: 12px;
-            font-size: 0.75rem;
-            font-weight: 600;
+            padding: 6px 14px;
+            border-radius: 14px;
+            font-size: 0.85rem;
+            font-weight: 700;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-right: 8px;
+            letter-spacing: 0.8px;
+            margin-right: 10px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+            border: 2px solid rgba(255, 255, 255, 0.2);
         }
         .device-type-feeding {
             background: linear-gradient(135deg, #10b981 0%, #059669 100%);
@@ -187,13 +189,14 @@
         }
         .device-scope-badge {
             display: inline-block;
-            padding: 2px 8px;
-            border-radius: 8px;
-            font-size: 0.7rem;
-            font-weight: 500;
-            background: rgba(148, 163, 184, 0.2);
-            color: rgba(148, 163, 184, 0.9);
+            padding: 4px 10px;
+            border-radius: 10px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            background: rgba(148, 163, 184, 0.3);
+            color: rgba(255, 255, 255, 0.95);
             margin-left: 4px;
+            border: 1px solid rgba(148, 163, 184, 0.4);
         }
 
         .device-header-left {
@@ -1024,19 +1027,41 @@
                     deviceSection.classList.add('device-section');
                     deviceSection.dataset.deviceId = device.device_id; // Store device ID for reordering
 
-                    // Set header color based on ownership/permission
-                    let headerBgColor = '#1e293b'; // Default (owner)
-                    let headerBorderColor = '#10b981'; // Default (owner)
-                    let ownershipText = '';
+                    // Set colors based on device type (more prominent visual distinction)
+                    const deviceType = device.device_type || 'feeding_system';
+                    let headerBgColor, headerBorderColor, cardBgColor;
 
+                    // Device type color schemes
+                    if (deviceType === 'feeding_system') {
+                        headerBgColor = '#065f46'; // Dark green
+                        headerBorderColor = '#10b981'; // Bright green
+                        cardBgColor = 'linear-gradient(135deg, #064e3b 0%, #065f46 100%)'; // Green gradient
+                    } else if (deviceType === 'environmental') {
+                        headerBgColor = '#1e3a8a'; // Dark blue
+                        headerBorderColor = '#3b82f6'; // Bright blue
+                        cardBgColor = 'linear-gradient(135deg, #1e293b 0%, #1e3a8a 100%)'; // Blue gradient
+                    } else if (deviceType === 'valve_controller') {
+                        headerBgColor = '#581c87'; // Dark purple
+                        headerBorderColor = '#8b5cf6'; // Bright purple
+                        cardBgColor = 'linear-gradient(135deg, #4c1d95 0%, #581c87 100%)'; // Purple gradient
+                    } else {
+                        headerBgColor = '#374151'; // Dark gray
+                        headerBorderColor = '#6b7280'; // Medium gray
+                        cardBgColor = 'linear-gradient(135deg, #1f2937 0%, #374151 100%)'; // Gray gradient
+                    }
+
+                    // Override with ownership colors if shared
+                    let ownershipText = '';
                     if (!device.is_owner) {
                         if (device.permission_level === 'viewer') {
                             headerBgColor = '#312e81'; // Indigo for viewer
                             headerBorderColor = '#8b5cf6'; // Purple border
+                            cardBgColor = 'linear-gradient(135deg, #1e1b4b 0%, #312e81 100%)'; // Indigo gradient
                             ownershipText = `<span style="font-size: 0.8em; color: #a78bfa;">👁️ View Only (${device.shared_by_email})</span>`;
                         } else {
                             headerBgColor = '#1e3a8a'; // Blue for controller
                             headerBorderColor = '#3b82f6'; // Lighter blue border
+                            cardBgColor = 'linear-gradient(135deg, #1e293b 0%, #1e3a8a 100%)'; // Blue gradient
                             ownershipText = `<span style="font-size: 0.8em; color: #60a5fa;">🔧 Shared (${device.shared_by_email})</span>`;
                         }
                     }
@@ -1098,7 +1123,7 @@
                             </div>
                         </div>
                         
-                        <div class="device-content" id="device-content-${device.device_id}" data-device-id="${device.device_id}">
+                        <div class="device-content" id="device-content-${device.device_id}" data-device-id="${device.device_id}" style="background: ${cardBgColor};">
                             <div class="device-content-inner">
                                 <div class="cards-grid" data-device-id="${device.device_id}">
                                     <!-- Water Level Card -->
@@ -1158,6 +1183,11 @@
                             </div>
                         </div>
                     `;
+
+                    // Apply device-type-specific border color to the entire section
+                    deviceSection.style.borderLeft = `4px solid ${headerBorderColor}`;
+                    deviceSection.style.boxShadow = `0 0 20px ${headerBorderColor}40`;
+
                     statusDiv.appendChild(deviceSection);
 
                     document.getElementById(`refresh-icon-${device.device_id}`).addEventListener('click', (e) => {
