@@ -1199,7 +1199,7 @@
                     `;
 
                     // Apply device-type-specific styling to the entire section
-                    deviceSection.style.background = cardBgColor;
+                    deviceSection.style.setProperty('background', cardBgColor, 'important');
                     deviceSection.style.borderLeft = `4px solid ${headerBorderColor}`;
                     deviceSection.style.boxShadow = `0 0 20px ${headerBorderColor}40`;
 
