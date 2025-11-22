@@ -86,7 +86,10 @@ class Device(Base):
     name = Column(String(255), nullable=True)  # User-set custom name
     system_name = Column(String(255), nullable=True)  # Device's self-reported name
     is_online = Column(Boolean, default=False)
-    device_type = Column(String(50), nullable=True, default='feeding_system')  # 'feeding_system', 'curing_monitor', 'environmental'
+    last_seen = Column(DateTime, nullable=True)  # Last connection timestamp
+    device_type = Column(String(50), nullable=True, default='feeding_system')  # 'feeding_system', 'environmental', 'valve_controller', 'other'
+    scope = Column(String(20), nullable=True, default='plant')  # 'plant' (1-to-1) or 'room' (1-to-many)
+    capabilities = Column(Text, nullable=True)  # JSON string of device capabilities
     user_id = Column(Integer, ForeignKey("users.id"))
     user = relationship("User", back_populates="devices")
     plants = relationship("Plant", foreign_keys="Plant.device_id", cascade="all, delete-orphan", passive_deletes=False)
@@ -1080,6 +1083,8 @@ async def delete_user_admin(user_id: int, session: AsyncSession = Depends(get_db
 class DeviceCreate(BaseModel):
     device_id: str
     name: Optional[str] = None
+    device_type: Optional[str] = 'feeding_system'  # 'feeding_system', 'environmental', 'valve_controller', 'other'
+    scope: Optional[str] = 'plant'  # 'plant' or 'room'
 
 class AssignedPlantInfo(BaseModel):
     plant_id: str
@@ -1091,6 +1096,10 @@ class DeviceRead(BaseModel):
     name: Optional[str]  # User-set custom name
     system_name: Optional[str]  # Device's self-reported name
     is_online: bool
+    device_type: Optional[str] = 'feeding_system'  # Device type
+    scope: Optional[str] = 'plant'  # 'plant' or 'room'
+    capabilities: Optional[str] = None  # JSON string of capabilities
+    last_seen: Optional[datetime] = None  # Last connection timestamp
     is_owner: Optional[bool] = True  # Whether current user owns the device
     permission_level: Optional[str] = None  # 'viewer', 'controller', or None if owner
     shared_by_email: Optional[str] = None  # Email of owner if shared device
@@ -1239,19 +1248,30 @@ async def add_device(device: DeviceCreate, user: User = Depends(current_user), s
     existing = await session.execute(select(Device).where(Device.device_id == device.device_id))
     if existing.scalars().first():
         raise HTTPException(400, "Device ID already linked")
-    
+
     api_key = secrets.token_hex(32)
-    
+
+    # Set default scope based on device type
+    scope = device.scope
+    if not scope:
+        # Default scopes for different device types
+        if device.device_type == 'environmental':
+            scope = 'room'
+        else:
+            scope = 'plant'
+
     new_device = Device(
         device_id=device.device_id,
         api_key=api_key,
         name=device.name,
+        device_type=device.device_type or 'feeding_system',
+        scope=scope,
         user_id=user.id
     )
     session.add(new_device)
     await session.commit()
     await session.refresh(new_device)
-    
+
     return {"api_key": api_key, "message": "Device added. Copy API key to Pi settings."}
 
 # Added: List user devices (owned and shared)
@@ -1290,6 +1310,10 @@ async def list_devices(user: User = Depends(current_user), session: AsyncSession
             name=device.name,
             system_name=device.system_name,
             is_online=device.is_online,
+            device_type=device.device_type or 'feeding_system',
+            scope=device.scope or 'plant',
+            capabilities=device.capabilities,
+            last_seen=device.last_seen,
             is_owner=True,
             permission_level=None,
             shared_by_email=None,
@@ -1342,6 +1366,10 @@ async def list_devices(user: User = Depends(current_user), session: AsyncSession
             name=device.name,
             system_name=device.system_name,
             is_online=device.is_online,
+            device_type=device.device_type or 'feeding_system',
+            scope=device.scope or 'plant',
+            capabilities=device.capabilities,
+            last_seen=device.last_seen,
             is_owner=False,
             permission_level=share.permission_level,
             shared_by_email=owner_email,
@@ -2846,7 +2874,7 @@ async def device_websocket(websocket: WebSocket, device_id: str, api_key: str = 
 
     device, user = row
 
-    await session.execute(update(Device).where(Device.device_id == device_id).values(is_online=True))
+    await session.execute(update(Device).where(Device.device_id == device_id).values(is_online=True, last_seen=datetime.utcnow()))
     await session.commit()
     print(f"Set {device_id} online in DB")  # Log DB update
     device_connections[device_id] = websocket
@@ -2897,7 +2925,7 @@ async def device_websocket(websocket: WebSocket, device_id: str, api_key: str = 
         print(f"Device disconnected: {device_id}")  # Log disconnect
         if device_id in device_connections:
             del device_connections[device_id]
-        await session.execute(update(Device).where(Device.device_id == device_id).values(is_online=False))
+        await session.execute(update(Device).where(Device.device_id == device_id).values(is_online=False, last_seen=datetime.utcnow()))
         await session.commit()
         print(f"Set {device_id} offline in DB")  # Log DB update
         

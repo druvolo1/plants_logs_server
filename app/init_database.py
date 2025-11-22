@@ -174,6 +174,32 @@ async def init_database():
                 '0'  # FALSE in MySQL/MariaDB
             )
 
+            print("\nChecking 'devices' table schema...")
+
+            # Add scope column if it doesn't exist (plant-level vs room-level)
+            await check_and_add_column(
+                conn,
+                'devices',
+                'scope',
+                "scope VARCHAR(20) NULL DEFAULT 'plant' AFTER device_type"
+            )
+
+            # Add capabilities column if it doesn't exist (JSON field for device capabilities)
+            await check_and_add_column(
+                conn,
+                'devices',
+                'capabilities',
+                "capabilities TEXT NULL AFTER scope"
+            )
+
+            # Add last_seen column if it doesn't exist (better online/offline tracking)
+            await check_and_add_column(
+                conn,
+                'devices',
+                'last_seen',
+                "last_seen DATETIME NULL AFTER is_online"
+            )
+
             print("\nChecking 'plants' table schema...")
 
             # Add display_order column if it doesn't exist
