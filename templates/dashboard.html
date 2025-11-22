@@ -1046,23 +1046,19 @@
                     const deviceType = device.device_type || 'feeding_system';
                     let headerBgColor, headerBorderColor, cardBgColor;
 
-                    // Device type color schemes - VIBRANT and OBVIOUS
+                    // Device type color schemes - Clean accent bar approach
                     if (deviceType === 'feeding_system') {
-                        headerBgColor = '#047857'; // Brighter green
-                        headerBorderColor = '#10b981'; // Bright green
-                        cardBgColor = 'linear-gradient(180deg, #047857 0%, #064e3b 50%, #1a1a1a 100%)'; // Green fade to dark
+                        headerBgColor = '#1e293b'; // Standard dark header
+                        headerBorderColor = '#10b981'; // BRIGHT GREEN accent
                     } else if (deviceType === 'environmental') {
-                        headerBgColor = '#1d4ed8'; // Brighter blue
-                        headerBorderColor = '#3b82f6'; // Bright blue
-                        cardBgColor = 'linear-gradient(180deg, #1d4ed8 0%, #1e3a8a 50%, #1a1a1a 100%)'; // Blue fade to dark
+                        headerBgColor = '#1e293b'; // Standard dark header
+                        headerBorderColor = '#3b82f6'; // BRIGHT BLUE accent
                     } else if (deviceType === 'valve_controller') {
-                        headerBgColor = '#7c3aed'; // Brighter purple
-                        headerBorderColor = '#8b5cf6'; // Bright purple
-                        cardBgColor = 'linear-gradient(180deg, #7c3aed 0%, #581c87 50%, #1a1a1a 100%)'; // Purple fade to dark
+                        headerBgColor = '#1e293b'; // Standard dark header
+                        headerBorderColor = '#a855f7'; // BRIGHT PURPLE accent
                     } else {
-                        headerBgColor = '#4b5563'; // Lighter gray
-                        headerBorderColor = '#6b7280'; // Medium gray
-                        cardBgColor = 'linear-gradient(180deg, #4b5563 0%, #374151 50%, #1a1a1a 100%)'; // Gray fade to dark
+                        headerBgColor = '#1e293b'; // Standard dark header
+                        headerBorderColor = '#6b7280'; // GRAY accent
                     }
 
                     // Override with ownership colors if shared
@@ -1071,12 +1067,10 @@
                         if (device.permission_level === 'viewer') {
                             headerBgColor = '#312e81'; // Indigo for viewer
                             headerBorderColor = '#8b5cf6'; // Purple border
-                            cardBgColor = 'linear-gradient(135deg, #1e1b4b 0%, #312e81 100%)'; // Indigo gradient
                             ownershipText = `<span style="font-size: 0.8em; color: #a78bfa;">👁️ View Only (${device.shared_by_email})</span>`;
                         } else {
                             headerBgColor = '#1e3a8a'; // Blue for controller
                             headerBorderColor = '#3b82f6'; // Lighter blue border
-                            cardBgColor = 'linear-gradient(135deg, #1e293b 0%, #1e3a8a 100%)'; // Blue gradient
                             ownershipText = `<span style="font-size: 0.8em; color: #60a5fa;">🔧 Shared (${device.shared_by_email})</span>`;
                         }
                     }
@@ -1198,10 +1192,12 @@
                         </div>
                     `;
 
-                    // Apply device-type-specific styling to the entire section
-                    deviceSection.style.setProperty('background', cardBgColor, 'important');
-                    deviceSection.style.borderLeft = `4px solid ${headerBorderColor}`;
-                    deviceSection.style.boxShadow = `0 0 20px ${headerBorderColor}40`;
+                    // Apply clean accent bar - thick colored left border
+                    deviceSection.style.borderLeft = `6px solid ${headerBorderColor}`;
+                    deviceSection.style.boxShadow = `
+                        -6px 0 12px ${headerBorderColor}40,
+                        0 2px 8px rgba(0, 0, 0, 0.3)
+                    `;
 
                     statusDiv.appendChild(deviceSection);
 
