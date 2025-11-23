@@ -2002,7 +2002,7 @@ async def pair_device(pair_request: DevicePairRequest, user: User = Depends(curr
     await session.refresh(new_device)
 
     # Return pairing response with API key and server URL
-    server_url = f"{os.getenv('SERVER_URL', 'http://garden.ruvolo.loseyourip.com')}"
+    server_url = f"{os.getenv('SERVER_URL', 'https://garden.ruvolo.loseyourip.com')}"
 
     response = DevicePairResponse(
         success=True,
