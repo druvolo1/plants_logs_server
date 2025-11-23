@@ -340,13 +340,24 @@
         let currentLocationId = null;
         let currentShareLocationId = null;
         let locations = [];
+        let devices = [];
 
         async function fetchLocations() {
-            const response = await fetch('/user/locations');
-            if (response.ok) {
-                locations = await response.json();
-                renderLocations();
+            // Fetch both locations and devices in parallel
+            const [locationsResponse, devicesResponse] = await Promise.all([
+                fetch('/user/locations'),
+                fetch('/user/devices')
+            ]);
+
+            if (locationsResponse.ok) {
+                locations = await locationsResponse.json();
             }
+
+            if (devicesResponse.ok) {
+                devices = await devicesResponse.json();
+            }
+
+            renderLocations();
         }
 
         function buildLocationHierarchy(locations) {
@@ -376,6 +387,9 @@
                 ? '<span style="color: #10b981; font-size: 0.875rem;">✓ You own this</span>'
                 : `<span style="color: #f59e0b; font-size: 0.875rem;">🔗 Shared by ${location.shared_by_email} (${location.permission_level})</span>`;
 
+            // Get devices in this location
+            const locationDevices = devices.filter(d => d.location_id === location.id);
+
             let html = `
                 <div class="location-card ${isNested ? 'nested' : ''}" style="margin-left: ${level * 2}rem;">
                     <div class="location-header">
@@ -398,8 +412,52 @@
                     <div class="location-meta">
                         ${ownerBadge}
                     </div>
-                </div>
             `;
+
+            // Display devices in this location
+            if (locationDevices.length > 0) {
+                html += `
+                    <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #e5e7eb;">
+                        <h4 style="margin: 0 0 0.5rem 0; font-size: 0.9rem; color: #6b7280; font-weight: 600;">Devices (${locationDevices.length})</h4>
+                        <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                `;
+
+                locationDevices.forEach(device => {
+                    const deviceName = device.name || device.system_name || device.device_id;
+                    const onlineStatus = device.is_online
+                        ? '<span style="color: #10b981;">● Online</span>'
+                        : '<span style="color: #6b7280;">○ Offline</span>';
+                    const deviceOwnership = device.is_owner
+                        ? ''
+                        : `<span style="color: #f59e0b; font-size: 0.75rem; margin-left: 0.5rem;">(Shared by ${device.shared_by_email})</span>`;
+
+                    html += `
+                        <div style="padding: 0.5rem; background: #f9fafb; border-radius: 4px; display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <span style="font-weight: 500; color: #1f2937;">${deviceName}</span>
+                                ${deviceOwnership}
+                                <div style="font-size: 0.75rem; color: #6b7280; margin-top: 0.25rem;">
+                                    ${onlineStatus} • ${device.device_id.substring(0, 8)}...
+                                </div>
+                            </div>
+                            <a href="/devices" style="text-decoration: none; color: #3b82f6; font-size: 0.875rem;">View →</a>
+                        </div>
+                    `;
+                });
+
+                html += `
+                        </div>
+                    </div>
+                `;
+            } else {
+                html += `
+                    <div style="margin-top: 1rem; padding: 0.75rem; background: #f9fafb; border-radius: 4px; color: #6b7280; font-size: 0.875rem; text-align: center;">
+                        No devices in this location
+                    </div>
+                `;
+            }
+
+            html += `</div>`;
 
             // Render children
             if (location.children && location.children.length > 0) {
