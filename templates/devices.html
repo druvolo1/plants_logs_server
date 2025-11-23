@@ -282,10 +282,39 @@
         </div>
     </div>
 
+    <!-- Edit Device Modal -->
+    <div id="edit-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 2000;">
+        <div style="position: relative; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #1e293b; padding: 2rem; border-radius: 12px; max-width: 500px; width: 90%; box-shadow: 0 8px 32px rgba(0,0,0,0.5);">
+            <h3 style="color: #10b981; margin-top: 0;">Edit Device</h3>
+            <p style="color: #888; font-size: 0.9rem;" id="edit-device-name"></p>
+
+            <form id="edit-device-form" onsubmit="saveDeviceEdit(event)">
+                <div style="margin-bottom: 1rem;">
+                    <label for="edit-name" style="display: block; color: #fff; margin-bottom: 0.5rem;">Device Name:</label>
+                    <input type="text" id="edit-name" style="width: 100%; padding: 0.5rem; border-radius: 4px; border: 1px solid #374151; background: #0f172a; color: #fff;">
+                </div>
+
+                <div style="margin-bottom: 1rem;">
+                    <label for="edit-location" style="display: block; color: #fff; margin-bottom: 0.5rem;">Location:</label>
+                    <select id="edit-location" style="width: 100%; padding: 0.5rem; border-radius: 4px; border: 1px solid #374151; background: #0f172a; color: #fff;">
+                        <option value="">Unassigned</option>
+                    </select>
+                </div>
+
+                <div style="display: flex; gap: 0.5rem; margin-top: 1.5rem;">
+                    <button type="submit" style="background: #10b981; flex: 1;">Save Changes</button>
+                    <button type="button" onclick="closeEditModal()" style="background: #64748b; flex: 1;">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script>
         // Store WebSocket connections per device
         let wsMap = {};
         let currentShareDeviceId = null;
+        let currentEditDeviceId = null;
+        let locationsMap = {};
 
         // Fetch and display devices list with Update and Delete buttons
         async function fetchDevices() {
@@ -300,9 +329,9 @@
                     return;
                 }
 
-                // Fetch locations for grouping
+                // Fetch locations for grouping and reference
                 const locationsResponse = await fetch('/user/locations');
-                let locationsMap = {};
+                locationsMap = {};
                 if (locationsResponse.ok) {
                     const locations = await locationsResponse.json();
                     locations.forEach(loc => {
@@ -376,7 +405,17 @@
                 ? `<p style="color: #10b981; font-weight: bold; font-size: 1rem; margin: 0.5rem 0;">🌱 Monitoring: ${device.active_plant_name} (${device.active_phase})</p>`
                 : '';
 
-            // Only owners can share and delete
+            // Show location info
+            const locationName = device.location_id && locationsMap[device.location_id]
+                ? locationsMap[device.location_id]
+                : 'Unassigned';
+            const locationInfo = `<p><strong>Location:</strong> <span style="color: ${device.location_id ? '#10b981' : '#6b7280'};">📍 ${locationName}</span></p>`;
+
+            // Only owners can edit, share and delete
+            const editButton = device.is_owner
+                ? `<button onclick="openEditModal('${device.device_id}')" style="background: #3b82f6;">Edit</button>`
+                : '';
+
             const shareButton = device.is_owner
                 ? `<button onclick="openShareModal('${device.device_id}')" style="background: #8b5cf6;">Share</button>`
                 : '';
@@ -406,8 +445,10 @@
                 ${plantInfo}
                 <p><strong>System Name:</strong> <span id="name-${device.device_id}">${device.name || 'Loading...'}</span></p>
                 <p><strong>Device ID:</strong> ${device.device_id}</p>
+                ${locationInfo}
                 <p><strong>Version:</strong> <span id="version-${device.device_id}">Loading...</span></p>
                 <p><strong>Online:</strong> <span id="online-${device.device_id}">${device.is_online ? 'Yes' : 'No'}</span></p>
+                ${editButton}
                 <button onclick="updateDevice('${device.device_id}')" id="update-btn-${device.device_id}">Update Software</button>
                 <button onclick="restartService('${device.device_id}')" id="restart-btn-${device.device_id}">Restart Service</button>
                 <button onclick="rebootSystem('${device.device_id}')" id="reboot-btn-${device.device_id}" style="background: #dc2626;">Reboot System</button>
@@ -535,6 +576,78 @@
                 loadShares(currentShareDeviceId);
             } else {
                 alert('Failed to update permission');
+            }
+        }
+
+        // Edit Device Functions
+        async function openEditModal(device_id) {
+            currentEditDeviceId = device_id;
+
+            // Fetch current device data
+            const response = await fetch('/user/devices');
+            if (response.ok) {
+                const devices = await response.json();
+                const device = devices.find(d => d.device_id === device_id);
+
+                if (device) {
+                    document.getElementById('edit-device-name').textContent = `Device: ${device_id}`;
+                    document.getElementById('edit-name').value = device.name || '';
+
+                    // Populate locations dropdown
+                    const locationsResponse = await fetch('/user/locations');
+                    if (locationsResponse.ok) {
+                        const locations = await locationsResponse.json();
+                        const select = document.getElementById('edit-location');
+                        select.innerHTML = '<option value="">Unassigned</option>';
+
+                        const ownedLocations = locations.filter(loc => loc.is_owner);
+                        ownedLocations.forEach(loc => {
+                            const option = document.createElement('option');
+                            option.value = loc.id;
+                            option.textContent = loc.name;
+                            if (device.location_id === loc.id) {
+                                option.selected = true;
+                            }
+                            select.appendChild(option);
+                        });
+                    }
+
+                    document.getElementById('edit-modal').style.display = 'block';
+                }
+            }
+        }
+
+        function closeEditModal() {
+            document.getElementById('edit-modal').style.display = 'none';
+            currentEditDeviceId = null;
+        }
+
+        async function saveDeviceEdit(event) {
+            event.preventDefault();
+
+            const name = document.getElementById('edit-name').value;
+            const location_id = document.getElementById('edit-location').value;
+
+            const payload = { name: name };
+            if (location_id) {
+                payload.location_id = parseInt(location_id);
+            } else {
+                payload.location_id = null;
+            }
+
+            const response = await fetch(`/user/devices/${currentEditDeviceId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (response.ok) {
+                closeEditModal();
+                fetchDevices(); // Reload devices list
+                alert('Device updated successfully');
+            } else {
+                const error = await response.json();
+                alert(`Failed to update device: ${error.detail || 'Unknown error'}`);
             }
         }
 

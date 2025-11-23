@@ -1134,6 +1134,10 @@ class DeviceCreate(BaseModel):
     scope: Optional[str] = 'plant'  # 'plant' or 'room'
     location_id: Optional[int] = None  # Location assignment
 
+class DeviceUpdate(BaseModel):
+    name: Optional[str] = None
+    location_id: Optional[int] = None
+
 class AssignedPlantInfo(BaseModel):
     plant_id: str
     name: str
@@ -1823,6 +1827,47 @@ async def list_devices(user: User = Depends(current_user), session: AsyncSession
         ))
 
     return devices_list
+
+# Added: Update device
+@app.put("/user/devices/{device_id}")
+async def update_device(
+    device_id: str,
+    device_update: DeviceUpdate,
+    user: User = Depends(current_user),
+    session: AsyncSession = Depends(get_db)
+):
+    """Update device name and/or location"""
+    # Get the device
+    result = await session.execute(
+        select(Device).where(Device.device_id == device_id, Device.user_id == user.id)
+    )
+    device = result.scalars().first()
+
+    if not device:
+        raise HTTPException(404, "Device not found or access denied")
+
+    # Update fields if provided
+    if device_update.name is not None:
+        device.name = device_update.name
+
+    if device_update.location_id is not None:
+        # Validate location exists and user owns it
+        if device_update.location_id:  # Only validate if not setting to null
+            location_result = await session.execute(
+                select(Location).where(
+                    Location.id == device_update.location_id,
+                    Location.user_id == user.id
+                )
+            )
+            location = location_result.scalars().first()
+            if not location:
+                raise HTTPException(404, "Location not found or access denied")
+        device.location_id = device_update.location_id
+
+    await session.commit()
+    await session.refresh(device)
+
+    return {"status": "success", "message": "Device updated"}
 
 # Added: Delete device
 @app.delete("/user/devices/{device_id}")
