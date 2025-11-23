@@ -2062,6 +2062,28 @@ async def pair_status_options(device_id: str, response: Response):
     response.headers["Access-Control-Allow-Headers"] = "*"
     return {}
 
+# Device unpair endpoint (device-initiated)
+@app.post("/api/devices/{device_id}/unpair")
+async def unpair_device(device_id: str, api_key: str = Query(...), session: AsyncSession = Depends(get_db)):
+    """
+    Device requests to unpair itself from the server.
+    This is called when the user clicks "Clear Pairing" on the device.
+    """
+    # Verify device and API key
+    result = await session.execute(
+        select(Device).where(Device.device_id == device_id, Device.api_key == api_key)
+    )
+    device = result.scalars().first()
+
+    if not device:
+        raise HTTPException(401, "Invalid device or API key")
+
+    # Delete the device from the database
+    await session.delete(device)
+    await session.commit()
+
+    return {"success": True, "message": "Device unpaired successfully"}
+
 # Added: List user devices (owned and shared)
 @app.get("/user/devices", response_model=List[DeviceRead])
 async def list_devices(user: User = Depends(current_user), session: AsyncSession = Depends(get_db)):
@@ -3692,7 +3714,8 @@ async def upload_environment_data(
     device = result.scalars().first()
 
     if not device:
-        raise HTTPException(401, "Invalid device or API key")
+        # Return 404 with special message so device knows to clear pairing
+        raise HTTPException(404, "Device not found - please re-pair")
 
     # Verify device is an environmental sensor
     if device.device_type != 'environmental':
