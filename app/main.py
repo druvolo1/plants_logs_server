@@ -1859,6 +1859,72 @@ async def list_devices(user: User = Depends(current_user), session: AsyncSession
             active_phase=active_phase
         ))
 
+    # Get devices in shared locations
+    shared_locations_result = await session.execute(
+        select(Device, Location, LocationShare, User.email)
+        .join(Location, Device.location_id == Location.id)
+        .join(LocationShare, LocationShare.location_id == Location.id)
+        .join(User, LocationShare.owner_user_id == User.id)
+        .where(
+            LocationShare.shared_with_user_id == user.id,
+            LocationShare.is_active == True,
+            LocationShare.revoked_at == None,
+            LocationShare.accepted_at != None
+        )
+    )
+
+    # Track device IDs we've already added to avoid duplicates
+    existing_device_ids = {d.device_id for d in devices_list}
+
+    for device, location, location_share, owner_email in shared_locations_result.all():
+        # Skip if we already added this device (e.g., it was directly shared or owned)
+        if device.device_id in existing_device_ids:
+            continue
+
+        # Get ALL active plant assignments
+        assignment_result = await session.execute(
+            select(Plant)
+            .join(DeviceAssignment, DeviceAssignment.plant_id == Plant.id)
+            .where(
+                DeviceAssignment.device_id == device.id,
+                DeviceAssignment.removed_at == None
+            )
+            .order_by(Plant.name)
+        )
+        assigned_plants_list = []
+        for plant in assignment_result.scalars().all():
+            assigned_plants_list.append(AssignedPlantInfo(
+                plant_id=plant.plant_id,
+                name=plant.name,
+                current_phase=plant.current_phase
+            ))
+
+        # Legacy fields - use first plant if any
+        active_plant_name = assigned_plants_list[0].name if assigned_plants_list else None
+        active_plant_id = assigned_plants_list[0].plant_id if assigned_plants_list else None
+        active_phase = assigned_plants_list[0].current_phase if assigned_plants_list else None
+
+        devices_list.append(DeviceRead(
+            device_id=device.device_id,
+            name=device.name,
+            system_name=device.system_name,
+            is_online=device.is_online,
+            device_type=device.device_type or 'feeding_system',
+            scope=device.scope or 'plant',
+            capabilities=device.capabilities,
+            last_seen=device.last_seen,
+            location_id=device.location_id,
+            is_owner=False,
+            permission_level=location_share.permission_level,
+            shared_by_email=owner_email,
+            assigned_plants=assigned_plants_list,
+            assigned_plant_count=len(assigned_plants_list),
+            active_plant_name=active_plant_name,
+            active_plant_id=active_plant_id,
+            active_phase=active_phase
+        ))
+        existing_device_ids.add(device.device_id)
+
     return devices_list
 
 # Added: Update device
@@ -3572,7 +3638,23 @@ async def user_websocket(websocket: WebSocket, device_id: str):
                 )
                 share = result.scalars().first()
 
-                if not share:
+                # If not directly shared, check if device is in a location shared with user
+                if not share and device.location_id:
+                    result = await session.execute(
+                        select(LocationShare).where(
+                            LocationShare.location_id == device.location_id,
+                            LocationShare.shared_with_user_id == user.id,
+                            LocationShare.is_active == True,
+                            LocationShare.revoked_at == None,
+                            LocationShare.accepted_at != None
+                        )
+                    )
+                    location_share = result.scalars().first()
+                    if not location_share:
+                        print(f"WebSocket auth failed: Device {device_id} not owned, shared, or in shared location with user {user_id}")
+                        await websocket.close(code=1008, reason="Access denied")
+                        return
+                elif not share:
                     print(f"WebSocket auth failed: Device {device_id} not owned or shared with user {user_id}")
                     await websocket.close(code=1008, reason="Access denied")
                     return
