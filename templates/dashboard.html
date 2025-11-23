@@ -915,6 +915,7 @@
                 <a href="/dashboard" class="navbar-link active">Dashboard</a>
                 <a href="/devices" class="navbar-link">Devices</a>
                 <a href="/plants" class="navbar-link">Plants</a>
+                <a href="/locations" class="navbar-link">Locations</a>
                 {% if user.is_superuser %}
                 <a href="/admin/overview" class="navbar-link">Admin Overview</a>
                 <a href="/admin/users" class="navbar-link">Users</a>
@@ -956,7 +957,15 @@
     </script>
 
     <div class="main-container" style="padding: 2rem 1.5rem; max-width: 1400px; margin: 0 auto;">
-        <h2 style="color: #10b981; margin-bottom: 1.5rem;">My Devices</h2>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+            <h2 style="color: #10b981; margin: 0;">My Devices</h2>
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <label for="location-filter" style="font-weight: 500; color: #374151;">Filter by Location:</label>
+                <select id="location-filter" style="padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 4px; font-size: 1rem;">
+                    <option value="">All Locations</option>
+                </select>
+            </div>
+        </div>
     <div id="devices-status"></div>
 
     <script>
@@ -2502,7 +2511,132 @@
             }
         }
 
-        window.onload = fetchAndConnectDevices;
+        // Location filtering
+        let allLocations = [];
+        let allDevices = [];
+        let selectedLocationId = null;
+
+        async function fetchLocations() {
+            const response = await fetch('/user/locations');
+            if (response.ok) {
+                allLocations = await response.json();
+                populateLocationFilter();
+            }
+        }
+
+        function buildLocationHierarchy(locations) {
+            const locationMap = {};
+            const roots = [];
+
+            locations.forEach(loc => {
+                locationMap[loc.id] = { ...loc, children: [] };
+            });
+
+            locations.forEach(loc => {
+                if (loc.parent_id && locationMap[loc.parent_id]) {
+                    locationMap[loc.parent_id].children.push(locationMap[loc.id]);
+                } else {
+                    roots.push(locationMap[loc.id]);
+                }
+            });
+
+            return { map: locationMap, roots };
+        }
+
+        function getAllChildLocationIds(locationId, locationMap) {
+            const ids = [locationId];
+            const location = locationMap[locationId];
+
+            if (location && location.children) {
+                location.children.forEach(child => {
+                    ids.push(...getAllChildLocationIds(child.id, locationMap));
+                });
+            }
+
+            return ids;
+        }
+
+        function addLocationOptions(location, select, level = 0) {
+            const option = document.createElement('option');
+            option.value = location.id;
+            option.textContent = '  '.repeat(level) + (level > 0 ? '└─ ' : '') + location.name;
+            select.appendChild(option);
+
+            if (location.children) {
+                location.children.forEach(child => {
+                    addLocationOptions(child, select, level + 1);
+                });
+            }
+        }
+
+        function populateLocationFilter() {
+            const select = document.getElementById('location-filter');
+            select.innerHTML = '<option value="">All Locations</option>';
+
+            const { roots } = buildLocationHierarchy(allLocations);
+            roots.forEach(loc => {
+                addLocationOptions(loc, select);
+            });
+
+            select.addEventListener('change', function() {
+                selectedLocationId = this.value ? parseInt(this.value) : null;
+                filterAndDisplayDevices();
+            });
+        }
+
+        function filterAndDisplayDevices() {
+            const statusDiv = document.getElementById('devices-status');
+
+            if (!allDevices || allDevices.length === 0) {
+                statusDiv.innerHTML = '<p style="color: #888;">No devices connected yet.</p>';
+                return;
+            }
+
+            let filteredDevices = allDevices;
+
+            if (selectedLocationId) {
+                const { map } = buildLocationHierarchy(allLocations);
+                const locationIds = getAllChildLocationIds(selectedLocationId, map);
+
+                filteredDevices = allDevices.filter(device =>
+                    device.location_id && locationIds.includes(device.location_id)
+                );
+            }
+
+            statusDiv.innerHTML = '';
+
+            filteredDevices.forEach(device => {
+                const deviceCard = createDeviceCard(device);
+                statusDiv.appendChild(deviceCard);
+
+                if (device.is_online) {
+                    connectWebSocket(device.device_id);
+                }
+            });
+
+            if (filteredDevices.length === 0) {
+                if (selectedLocationId) {
+                    statusDiv.innerHTML = '<p style="color: #888;">No devices found in this location.</p>';
+                } else {
+                    statusDiv.innerHTML = '<p style="color: #888;">No devices connected yet.</p>';
+                }
+            }
+        }
+
+        // Modified fetchAndConnectDevices to store devices and call filter
+        const originalFetchAndConnectDevices = fetchAndConnectDevices;
+        fetchAndConnectDevices = async function() {
+            const response = await fetch('/user/devices');
+            if (response.ok) {
+                allDevices = await response.json();
+                filterAndDisplayDevices();
+            }
+        };
+
+        window.onload = function() {
+            fetchLocations();
+            fetchAndConnectDevices();
+        };
         window.onpageshow = (evt) => { if (evt.persisted) window.location.reload(); };
     </script>
     </div>

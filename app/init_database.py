@@ -240,6 +240,129 @@ async def init_database():
                 """
             )
 
+            print("\nChecking 'locations' table...")
+
+            # Create locations table if it doesn't exist
+            await check_and_create_table(
+                conn,
+                'locations',
+                """
+                CREATE TABLE locations (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    name VARCHAR(255) NOT NULL,
+                    description TEXT NULL,
+                    parent_id INT NULL,
+                    user_id INT NOT NULL,
+                    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    INDEX idx_parent_id (parent_id),
+                    INDEX idx_user_id (user_id),
+                    FOREIGN KEY (parent_id) REFERENCES locations(id) ON DELETE CASCADE,
+                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+                """
+            )
+
+            print("\nChecking 'location_shares' table...")
+
+            # Create location_shares table if it doesn't exist
+            await check_and_create_table(
+                conn,
+                'location_shares',
+                """
+                CREATE TABLE location_shares (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    location_id INT NOT NULL,
+                    owner_user_id INT NOT NULL,
+                    shared_with_user_id INT NULL,
+                    share_code VARCHAR(12) NOT NULL UNIQUE,
+                    permission_level VARCHAR(20) NOT NULL,
+                    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    expires_at DATETIME NOT NULL,
+                    accepted_at DATETIME NULL,
+                    revoked_at DATETIME NULL,
+                    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+                    INDEX idx_location_id (location_id),
+                    INDEX idx_share_code (share_code),
+                    INDEX idx_owner_user_id (owner_user_id),
+                    INDEX idx_shared_with_user_id (shared_with_user_id),
+                    FOREIGN KEY (location_id) REFERENCES locations(id) ON DELETE CASCADE,
+                    FOREIGN KEY (owner_user_id) REFERENCES users(id) ON DELETE CASCADE,
+                    FOREIGN KEY (shared_with_user_id) REFERENCES users(id) ON DELETE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+                """
+            )
+
+            print("\nAdding location_id column to devices and plants tables...")
+
+            # Add location_id to devices table
+            await check_and_add_column(
+                conn,
+                'devices',
+                'location_id',
+                "location_id INT NULL AFTER user_id"
+            )
+
+            # Add foreign key for devices.location_id if it doesn't exist
+            try:
+                # Check if foreign key exists
+                result = await conn.execute(text("""
+                    SELECT COUNT(*) as count
+                    FROM information_schema.KEY_COLUMN_USAGE
+                    WHERE TABLE_SCHEMA = DATABASE()
+                    AND TABLE_NAME = 'devices'
+                    AND COLUMN_NAME = 'location_id'
+                    AND REFERENCED_TABLE_NAME = 'locations'
+                """))
+                row = result.fetchone()
+
+                if row[0] == 0:
+                    print("  Adding foreign key constraint for devices.location_id...")
+                    await conn.execute(text("""
+                        ALTER TABLE devices
+                        ADD CONSTRAINT fk_devices_location
+                        FOREIGN KEY (location_id) REFERENCES locations(id) ON DELETE SET NULL
+                    """))
+                    print("  ✓ Foreign key constraint added")
+                else:
+                    print("  ✓ Foreign key constraint already exists")
+            except Exception as e:
+                print(f"  Note: Foreign key constraint may already exist or error occurred: {e}")
+
+            # Add location_id to plants table
+            await check_and_add_column(
+                conn,
+                'plants',
+                'location_id',
+                "location_id INT NULL AFTER user_id"
+            )
+
+            # Add foreign key for plants.location_id if it doesn't exist
+            try:
+                # Check if foreign key exists
+                result = await conn.execute(text("""
+                    SELECT COUNT(*) as count
+                    FROM information_schema.KEY_COLUMN_USAGE
+                    WHERE TABLE_SCHEMA = DATABASE()
+                    AND TABLE_NAME = 'plants'
+                    AND COLUMN_NAME = 'location_id'
+                    AND REFERENCED_TABLE_NAME = 'locations'
+                """))
+                row = result.fetchone()
+
+                if row[0] == 0:
+                    print("  Adding foreign key constraint for plants.location_id...")
+                    await conn.execute(text("""
+                        ALTER TABLE plants
+                        ADD CONSTRAINT fk_plants_location
+                        FOREIGN KEY (location_id) REFERENCES locations(id) ON DELETE SET NULL
+                    """))
+                    print("  ✓ Foreign key constraint added")
+                else:
+                    print("  ✓ Foreign key constraint already exists")
+            except Exception as e:
+                print(f"  Note: Foreign key constraint may already exist or error occurred: {e}")
+
             print("\n" + "="*80)
             print("✓ Database initialization complete!")
             print("="*80 + "\n")

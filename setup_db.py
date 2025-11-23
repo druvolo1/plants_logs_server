@@ -48,6 +48,30 @@ class User(Base):
     oauth_accounts = relationship("OAuthAccount", back_populates="user", cascade="all, delete-orphan")
     devices = relationship("Device", back_populates="user", cascade="all, delete-orphan")
 
+class Location(Base):
+    __tablename__ = "locations"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
+    parent_id = Column(Integer, ForeignKey("locations.id"), nullable=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    created_at = Column(DateTime, nullable=False)
+    updated_at = Column(DateTime, nullable=False)
+
+class LocationShare(Base):
+    __tablename__ = "location_shares"
+    id = Column(Integer, primary_key=True, index=True)
+    location_id = Column(Integer, ForeignKey("locations.id"), nullable=False)
+    owner_user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    shared_with_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    share_code = Column(String(12), unique=True, nullable=False)
+    permission_level = Column(String(20), nullable=False)
+    created_at = Column(DateTime, nullable=False)
+    expires_at = Column(DateTime, nullable=False)
+    accepted_at = Column(DateTime, nullable=True)
+    revoked_at = Column(DateTime, nullable=True)
+    is_active = Column(Boolean, default=True, nullable=False)
+
 class Device(Base):
     __tablename__ = "devices"
     id = Column(Integer, primary_key=True, index=True)
@@ -57,7 +81,11 @@ class Device(Base):
     system_name = Column(String(255), nullable=True)
     is_online = Column(Boolean, default=False)
     device_type = Column(String(50), nullable=True, default='feeding_system')
+    scope = Column(String(20), nullable=True, default='plant')
+    capabilities = Column(Text, nullable=True)
+    last_seen = Column(DateTime, nullable=True)
     user_id = Column(Integer, ForeignKey("users.id"))
+    location_id = Column(Integer, ForeignKey("locations.id"), nullable=True)
     user = relationship("User", back_populates="devices")
     plants = relationship("Plant", foreign_keys="Plant.device_id", cascade="all, delete-orphan", passive_deletes=False)
     device_assignments = relationship("DeviceAssignment", back_populates="device", cascade="all, delete-orphan")
@@ -105,6 +133,7 @@ class PhaseTemplate(Base):
     expected_veg_days = Column(Integer, nullable=True)
     expected_flower_days = Column(Integer, nullable=True)
     expected_drying_days = Column(Integer, nullable=True)
+    expected_curing_days = Column(Integer, nullable=True)
 
     created_at = Column(DateTime, nullable=False)
     updated_at = Column(DateTime, nullable=True)
@@ -118,6 +147,7 @@ class Plant(Base):
     system_id = Column(String(255), nullable=True)
     device_id = Column(Integer, ForeignKey("devices.id"), nullable=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    location_id = Column(Integer, ForeignKey("locations.id"), nullable=True)
     start_date = Column(DateTime, nullable=False)
     end_date = Column(DateTime, nullable=True)
     yield_grams = Column(Float, nullable=True)
@@ -136,6 +166,7 @@ class Plant(Base):
     expected_veg_days = Column(Integer, nullable=True)
     expected_flower_days = Column(Integer, nullable=True)
     expected_drying_days = Column(Integer, nullable=True)
+    expected_curing_days = Column(Integer, nullable=True)
     template_id = Column(Integer, ForeignKey("phase_templates.id"), nullable=True)
 
 class LogEntry(Base):
@@ -211,9 +242,12 @@ class DatabaseSetupGUI:
         tables = [
             "users",
             "oauth_accounts",
+            "locations",
+            "location_shares",
             "devices",
             "device_shares",
             "device_assignments",
+            "phase_templates",
             "plants",
             "phase_history",
             "log_entries"
@@ -381,13 +415,16 @@ class DatabaseSetupGUI:
             # Define table creation order (parent tables first)
             table_order = [
                 "users",              # No dependencies
-                "devices",            # Depends on users
+                "locations",          # Depends on users
+                "location_shares",    # Depends on locations and users
                 "oauth_accounts",     # Depends on users
-                "plants",             # Depends on devices and users
+                "devices",            # Depends on users and locations
                 "device_shares",      # Depends on devices and users
-                "device_assignments", # Depends on devices and users
+                "phase_templates",    # Depends on users
+                "plants",             # Depends on devices, users, and locations
+                "device_assignments", # Depends on devices and plants
                 "phase_history",      # Depends on plants
-                "log_entries"         # Depends on plants and users
+                "log_entries"         # Depends on plants
             ]
 
             for table_name in table_order:

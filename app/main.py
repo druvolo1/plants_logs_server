@@ -91,7 +91,9 @@ class Device(Base):
     scope = Column(String(20), nullable=True, default='plant')  # 'plant' (1-to-1) or 'room' (1-to-many)
     capabilities = Column(Text, nullable=True)  # JSON string of device capabilities
     user_id = Column(Integer, ForeignKey("users.id"))
+    location_id = Column(Integer, ForeignKey("locations.id"), nullable=True)  # Location assignment
     user = relationship("User", back_populates="devices")
+    location = relationship("Location", back_populates="devices")
     plants = relationship("Plant", foreign_keys="Plant.device_id", cascade="all, delete-orphan", passive_deletes=False)
     device_assignments = relationship("DeviceAssignment", back_populates="device", cascade="all, delete-orphan")
 
@@ -112,6 +114,44 @@ class DeviceShare(Base):
 
     # Relationships
     device = relationship("Device", foreign_keys=[device_id])
+    owner = relationship("User", foreign_keys=[owner_user_id])
+    shared_with = relationship("User", foreign_keys=[shared_with_user_id])
+
+# Location model - supports arbitrary nesting for hierarchical organization
+class Location(Base):
+    __tablename__ = "locations"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
+    parent_id = Column(Integer, ForeignKey("locations.id"), nullable=True)  # NULL for top-level locations
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)  # Owner of the location
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    # Relationships
+    parent = relationship("Location", remote_side=[id], backref="children")
+    owner = relationship("User", foreign_keys=[user_id])
+    devices = relationship("Device", back_populates="location")
+    plants = relationship("Plant", back_populates="location")
+    location_shares = relationship("LocationShare", foreign_keys="LocationShare.location_id", cascade="all, delete-orphan")
+
+# Location Sharing model - similar to DeviceShare but for locations
+class LocationShare(Base):
+    __tablename__ = "location_shares"
+    id = Column(Integer, primary_key=True, index=True)
+    location_id = Column(Integer, ForeignKey("locations.id"), nullable=False)
+    owner_user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    shared_with_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)  # NULL until accepted
+    share_code = Column(String(12), unique=True, index=True, nullable=False)
+    permission_level = Column(String(20), nullable=False)  # 'viewer' or 'controller'
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    expires_at = Column(DateTime, nullable=False)
+    accepted_at = Column(DateTime, nullable=True)
+    revoked_at = Column(DateTime, nullable=True)
+    is_active = Column(Boolean, default=True, nullable=False)
+
+    # Relationships
+    location = relationship("Location", foreign_keys=[location_id])
     owner = relationship("User", foreign_keys=[owner_user_id])
     shared_with = relationship("User", foreign_keys=[shared_with_user_id])
 
@@ -168,6 +208,7 @@ class Plant(Base):
     system_id = Column(String(255), nullable=True)  # e.g., "Zone1" - legacy field, use device_assignments for new plants
     device_id = Column(Integer, ForeignKey("devices.id"), nullable=True)  # Made nullable - legacy field for backward compatibility
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    location_id = Column(Integer, ForeignKey("locations.id"), nullable=True)  # Location assignment
     start_date = Column(DateTime, nullable=False)
     end_date = Column(DateTime, nullable=True)
     yield_grams = Column(Float, nullable=True)  # Added after harvest
@@ -192,6 +233,7 @@ class Plant(Base):
     # Relationships
     device = relationship("Device", foreign_keys=[device_id], back_populates="plants")
     user = relationship("User", foreign_keys=[user_id])
+    location = relationship("Location", back_populates="plants")
     logs = relationship("LogEntry", back_populates="plant", cascade="all, delete-orphan")
     device_assignments = relationship("DeviceAssignment", back_populates="plant", cascade="all, delete-orphan")
     phase_history = relationship("PhaseHistory", back_populates="plant", cascade="all, delete-orphan")
@@ -893,6 +935,11 @@ async def devices_page(request: Request, user: User = Depends(current_user)):
 async def plants_page(request: Request, user: User = Depends(current_user)):
     return templates.TemplateResponse("plants.html", {"request": request, "user": user})
 
+# Locations page
+@app.get("/locations", response_class=HTMLResponse)
+async def locations_page(request: Request, user: User = Depends(current_user)):
+    return templates.TemplateResponse("locations.html", {"request": request, "user": user})
+
 # Templates page
 @app.get("/templates", response_class=HTMLResponse)
 async def templates_page(request: Request, user: User = Depends(current_user)):
@@ -1085,6 +1132,7 @@ class DeviceCreate(BaseModel):
     name: Optional[str] = None
     device_type: Optional[str] = 'feeding_system'  # 'feeding_system', 'environmental', 'valve_controller', 'other'
     scope: Optional[str] = 'plant'  # 'plant' or 'room'
+    location_id: Optional[int] = None  # Location assignment
 
 class AssignedPlantInfo(BaseModel):
     plant_id: str
@@ -1100,6 +1148,7 @@ class DeviceRead(BaseModel):
     scope: Optional[str] = 'plant'  # 'plant' or 'room'
     capabilities: Optional[str] = None  # JSON string of capabilities
     last_seen: Optional[datetime] = None  # Last connection timestamp
+    location_id: Optional[int] = None  # Location assignment
     is_owner: Optional[bool] = True  # Whether current user owns the device
     permission_level: Optional[str] = None  # 'viewer', 'controller', or None if owner
     shared_by_email: Optional[str] = None  # Email of owner if shared device
@@ -1131,11 +1180,50 @@ class ShareRead(BaseModel):
     is_active: bool
     shared_with_email: Optional[str]
 
+# Location Pydantic models
+class LocationCreate(BaseModel):
+    name: str
+    description: Optional[str] = None
+    parent_id: Optional[int] = None
+
+class LocationUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    parent_id: Optional[int] = None
+
+class LocationRead(BaseModel):
+    id: int
+    name: str
+    description: Optional[str]
+    parent_id: Optional[int]
+    user_id: int
+    created_at: datetime
+    updated_at: datetime
+    is_owner: bool = True
+    permission_level: Optional[str] = None
+    shared_by_email: Optional[str] = None
+
+class LocationShareCreate(BaseModel):
+    permission_level: str  # 'viewer' or 'controller'
+    expires_in_days: int = 7
+
+class LocationShareRead(BaseModel):
+    id: int
+    location_id: int
+    share_code: str
+    permission_level: str
+    created_at: datetime
+    expires_at: datetime
+    accepted_at: Optional[datetime]
+    is_active: bool
+    shared_with_email: Optional[str]
+
 # Plant Pydantic models
 class PlantCreate(BaseModel):
     name: str  # Strain name
     system_id: Optional[str] = None
     device_id: str  # Device UUID
+    location_id: Optional[int] = None  # Location assignment
 
 class PhaseTemplateCreate(BaseModel):
     name: str
@@ -1243,6 +1331,357 @@ class LogEntryRead(BaseModel):
     dose_amount_ml: Optional[float]
     timestamp: datetime
 
+# Location Management Endpoints
+
+@app.post("/user/locations", response_model=LocationRead)
+async def create_location(location: LocationCreate, user: User = Depends(current_user), session: AsyncSession = Depends(get_db)):
+    """Create a new location"""
+    # Verify parent exists if parent_id is provided
+    if location.parent_id:
+        parent_result = await session.execute(select(Location).where(Location.id == location.parent_id, Location.user_id == user.id))
+        parent = parent_result.scalars().first()
+        if not parent:
+            raise HTTPException(404, "Parent location not found")
+
+    new_location = Location(
+        name=location.name,
+        description=location.description,
+        parent_id=location.parent_id,
+        user_id=user.id
+    )
+    session.add(new_location)
+    await session.commit()
+    await session.refresh(new_location)
+
+    return LocationRead(
+        id=new_location.id,
+        name=new_location.name,
+        description=new_location.description,
+        parent_id=new_location.parent_id,
+        user_id=new_location.user_id,
+        created_at=new_location.created_at,
+        updated_at=new_location.updated_at,
+        is_owner=True
+    )
+
+@app.get("/user/locations", response_model=List[LocationRead])
+async def list_locations(user: User = Depends(current_user), session: AsyncSession = Depends(get_db)):
+    """List all locations owned by or shared with the user"""
+    locations_list = []
+
+    # Get owned locations
+    owned_result = await session.execute(select(Location).where(Location.user_id == user.id))
+    for location in owned_result.scalars().all():
+        locations_list.append(LocationRead(
+            id=location.id,
+            name=location.name,
+            description=location.description,
+            parent_id=location.parent_id,
+            user_id=location.user_id,
+            created_at=location.created_at,
+            updated_at=location.updated_at,
+            is_owner=True
+        ))
+
+    # Get shared locations (accepted and active)
+    shared_result = await session.execute(
+        select(LocationShare)
+        .where(
+            LocationShare.shared_with_user_id == user.id,
+            LocationShare.is_active == True,
+            LocationShare.accepted_at != None,
+            LocationShare.revoked_at == None,
+            LocationShare.expires_at > datetime.utcnow()
+        )
+    )
+
+    for share in shared_result.scalars().all():
+        location_result = await session.execute(select(Location).where(Location.id == share.location_id))
+        location = location_result.scalars().first()
+        if location:
+            owner_result = await session.execute(select(User).where(User.id == share.owner_user_id))
+            owner = owner_result.scalars().first()
+            owner_email = owner.email if owner else "Unknown"
+
+            locations_list.append(LocationRead(
+                id=location.id,
+                name=location.name,
+                description=location.description,
+                parent_id=location.parent_id,
+                user_id=location.user_id,
+                created_at=location.created_at,
+                updated_at=location.updated_at,
+                is_owner=False,
+                permission_level=share.permission_level,
+                shared_by_email=owner_email
+            ))
+
+    return locations_list
+
+@app.get("/user/locations/{location_id}", response_model=LocationRead)
+async def get_location(location_id: int, user: User = Depends(current_user), session: AsyncSession = Depends(get_db)):
+    """Get a specific location by ID"""
+    result = await session.execute(select(Location).where(Location.id == location_id))
+    location = result.scalars().first()
+
+    if not location:
+        raise HTTPException(404, "Location not found")
+
+    # Check if user owns or has access to this location
+    if location.user_id != user.id:
+        # Check if location is shared with user
+        share_result = await session.execute(
+            select(LocationShare).where(
+                LocationShare.location_id == location_id,
+                LocationShare.shared_with_user_id == user.id,
+                LocationShare.is_active == True,
+                LocationShare.accepted_at != None,
+                LocationShare.revoked_at == None,
+                LocationShare.expires_at > datetime.utcnow()
+            )
+        )
+        share = share_result.scalars().first()
+        if not share:
+            raise HTTPException(403, "Access denied")
+
+        owner_result = await session.execute(select(User).where(User.id == location.user_id))
+        owner = owner_result.scalars().first()
+
+        return LocationRead(
+            id=location.id,
+            name=location.name,
+            description=location.description,
+            parent_id=location.parent_id,
+            user_id=location.user_id,
+            created_at=location.created_at,
+            updated_at=location.updated_at,
+            is_owner=False,
+            permission_level=share.permission_level,
+            shared_by_email=owner.email if owner else "Unknown"
+        )
+
+    return LocationRead(
+        id=location.id,
+        name=location.name,
+        description=location.description,
+        parent_id=location.parent_id,
+        user_id=location.user_id,
+        created_at=location.created_at,
+        updated_at=location.updated_at,
+        is_owner=True
+    )
+
+@app.put("/user/locations/{location_id}", response_model=LocationRead)
+async def update_location(location_id: int, location_update: LocationUpdate, user: User = Depends(current_user), session: AsyncSession = Depends(get_db)):
+    """Update a location"""
+    result = await session.execute(select(Location).where(Location.id == location_id, Location.user_id == user.id))
+    location = result.scalars().first()
+
+    if not location:
+        raise HTTPException(404, "Location not found or access denied")
+
+    # Verify parent exists if parent_id is being updated
+    if location_update.parent_id is not None:
+        if location_update.parent_id == location_id:
+            raise HTTPException(400, "Location cannot be its own parent")
+        parent_result = await session.execute(select(Location).where(Location.id == location_update.parent_id, Location.user_id == user.id))
+        parent = parent_result.scalars().first()
+        if not parent:
+            raise HTTPException(404, "Parent location not found")
+
+    # Update fields
+    if location_update.name is not None:
+        location.name = location_update.name
+    if location_update.description is not None:
+        location.description = location_update.description
+    if location_update.parent_id is not None:
+        location.parent_id = location_update.parent_id
+
+    await session.commit()
+    await session.refresh(location)
+
+    return LocationRead(
+        id=location.id,
+        name=location.name,
+        description=location.description,
+        parent_id=location.parent_id,
+        user_id=location.user_id,
+        created_at=location.created_at,
+        updated_at=location.updated_at,
+        is_owner=True
+    )
+
+@app.delete("/user/locations/{location_id}")
+async def delete_location(location_id: int, user: User = Depends(current_user), session: AsyncSession = Depends(get_db)):
+    """Delete a location"""
+    result = await session.execute(select(Location).where(Location.id == location_id, Location.user_id == user.id))
+    location = result.scalars().first()
+
+    if not location:
+        raise HTTPException(404, "Location not found or access denied")
+
+    await session.delete(location)
+    await session.commit()
+
+    return {"status": "success", "message": "Location deleted"}
+
+# Location Sharing Endpoints
+
+@app.post("/user/locations/{location_id}/share", response_model=Dict[str, str])
+async def create_location_share(
+    location_id: int,
+    share_data: LocationShareCreate,
+    user: User = Depends(current_user),
+    session: AsyncSession = Depends(get_db)
+):
+    """Create a share code for a location"""
+    # Verify user owns the location
+    result = await session.execute(select(Location).where(Location.id == location_id, Location.user_id == user.id))
+    location = result.scalars().first()
+    if not location:
+        raise HTTPException(404, "Location not found or not owned by you")
+
+    # Validate permission level
+    if share_data.permission_level not in ['viewer', 'controller']:
+        raise HTTPException(400, "Invalid permission level. Must be 'viewer' or 'controller'")
+
+    # Generate unique share code
+    share_code = await generate_share_code(session)
+
+    # Create share with expiration
+    expires_at = datetime.utcnow() + timedelta(days=share_data.expires_in_days)
+
+    share = LocationShare(
+        location_id=location.id,
+        owner_user_id=user.id,
+        share_code=share_code,
+        permission_level=share_data.permission_level,
+        expires_at=expires_at,
+        is_active=True
+    )
+
+    session.add(share)
+    await session.commit()
+    await session.refresh(share)
+
+    return {"share_code": share_code, "expires_at": share.expires_at.isoformat()}
+
+@app.post("/user/locations/accept-share", response_model=Dict[str, str])
+async def accept_location_share(
+    share_data: ShareAccept,
+    user: User = Depends(current_user),
+    session: AsyncSession = Depends(get_db)
+):
+    """Accept a location share using a share code"""
+    # Find the share by code
+    result = await session.execute(
+        select(LocationShare).where(
+            LocationShare.share_code == share_data.share_code,
+            LocationShare.is_active == True,
+            LocationShare.accepted_at == None
+        )
+    )
+    share = result.scalars().first()
+
+    if not share:
+        raise HTTPException(404, "Invalid or already accepted share code")
+
+    # Check if expired
+    if datetime.utcnow() > share.expires_at:
+        share.is_active = False
+        await session.commit()
+        raise HTTPException(400, "Share code has expired")
+
+    # Check if user is trying to share with themselves
+    if share.owner_user_id == user.id:
+        raise HTTPException(400, "You cannot accept your own share")
+
+    # Accept the share
+    share.shared_with_user_id = user.id
+    share.accepted_at = datetime.utcnow()
+
+    await session.commit()
+    await session.refresh(share)
+
+    # Get location info
+    location_result = await session.execute(select(Location).where(Location.id == share.location_id))
+    location = location_result.scalars().first()
+
+    return {"status": "success", "location_id": str(location.id) if location else "unknown", "location_name": location.name if location else "unknown"}
+
+@app.get("/user/locations/{location_id}/shares", response_model=List[LocationShareRead])
+async def list_location_shares(
+    location_id: int,
+    user: User = Depends(current_user),
+    session: AsyncSession = Depends(get_db)
+):
+    """List all shares for a location (owner only)"""
+    # Verify ownership
+    location_result = await session.execute(select(Location).where(Location.id == location_id, Location.user_id == user.id))
+    location = location_result.scalars().first()
+    if not location:
+        raise HTTPException(404, "Location not found or not owned by you")
+
+    # Get all active shares
+    shares_result = await session.execute(
+        select(LocationShare).where(
+            LocationShare.location_id == location.id,
+            LocationShare.owner_user_id == user.id,
+            LocationShare.revoked_at == None
+        )
+    )
+
+    shares_list = []
+    for share in shares_result.scalars().all():
+        shared_with_email = None
+        if share.shared_with_user_id:
+            user_result = await session.execute(select(User).where(User.id == share.shared_with_user_id))
+            shared_user = user_result.scalars().first()
+            shared_with_email = shared_user.email if shared_user else None
+
+        shares_list.append(LocationShareRead(
+            id=share.id,
+            location_id=share.location_id,
+            share_code=share.share_code,
+            permission_level=share.permission_level,
+            created_at=share.created_at,
+            expires_at=share.expires_at,
+            accepted_at=share.accepted_at,
+            is_active=share.is_active,
+            shared_with_email=shared_with_email
+        ))
+
+    return shares_list
+
+@app.delete("/user/locations/{location_id}/shares/{share_id}")
+async def revoke_location_share(
+    location_id: int,
+    share_id: int,
+    user: User = Depends(current_user),
+    session: AsyncSession = Depends(get_db)
+):
+    """Revoke a location share"""
+    # Verify ownership and get share
+    share_result = await session.execute(
+        select(LocationShare).where(
+            LocationShare.id == share_id,
+            LocationShare.location_id == location_id,
+            LocationShare.owner_user_id == user.id
+        )
+    )
+    share = share_result.scalars().first()
+
+    if not share:
+        raise HTTPException(404, "Share not found or access denied")
+
+    # Mark as revoked
+    share.revoked_at = datetime.utcnow()
+    share.is_active = False
+
+    await session.commit()
+
+    return {"status": "success", "message": "Share revoked"}
+
 @app.post("/user/devices", response_model=Dict[str, str])
 async def add_device(device: DeviceCreate, user: User = Depends(current_user), session: AsyncSession = Depends(get_db)):
     existing = await session.execute(select(Device).where(Device.device_id == device.device_id))
@@ -1266,6 +1705,7 @@ async def add_device(device: DeviceCreate, user: User = Depends(current_user), s
         name=device.name,
         device_type=device.device_type or 'feeding_system',
         scope=scope,
+        location_id=device.location_id,
         user_id=user.id
     )
     session.add(new_device)
@@ -1314,6 +1754,7 @@ async def list_devices(user: User = Depends(current_user), session: AsyncSession
             scope=device.scope or 'plant',
             capabilities=device.capabilities,
             last_seen=device.last_seen,
+            location_id=device.location_id,
             is_owner=True,
             permission_level=None,
             shared_by_email=None,
@@ -1370,6 +1811,7 @@ async def list_devices(user: User = Depends(current_user), session: AsyncSession
             scope=device.scope or 'plant',
             capabilities=device.capabilities,
             last_seen=device.last_seen,
+            location_id=device.location_id,
             is_owner=False,
             permission_level=share.permission_level,
             shared_by_email=owner_email,
@@ -1679,6 +2121,7 @@ async def create_plant_device(
         system_id=plant_data.system_id,
         device_id=device.id,
         user_id=device.user_id,  # Plant belongs to device owner
+        location_id=plant_data.location_id,
         start_date=datetime.utcnow()
     )
 
@@ -1733,6 +2176,7 @@ async def create_plant(
         system_id=plant_data.system_id,
         device_id=device.id,
         user_id=device.user_id,  # Plant belongs to device owner
+        location_id=plant_data.location_id,
         start_date=datetime.utcnow()
     )
 
