@@ -252,6 +252,19 @@
 
     <!-- Devices list -->
     <h3>My Devices</h3>
+
+    <!-- Search Bar -->
+    <div style="margin-bottom: 1.5rem;">
+        <input
+            type="text"
+            id="device-search"
+            placeholder="Search devices by name, ID, location, version, or online status..."
+            style="width: 100%; padding: 0.75rem; border-radius: 6px; border: 1px solid #374151; background: #0f172a; color: #fff; font-size: 1rem;"
+            oninput="filterDevices()"
+        >
+        <p id="search-results-count" style="color: #888; font-size: 0.9rem; margin-top: 0.5rem;"></p>
+    </div>
+
     <div id="devices-list"></div>
 
     <!-- Share Management Modal -->
@@ -315,6 +328,7 @@
         let currentShareDeviceId = null;
         let currentEditDeviceId = null;
         let locationsMap = {};
+        let allDevices = []; // Store all devices for filtering
 
         // Helper function to get full location path (e.g., "Dave's House -> Basement")
         function getLocationPath(locationId) {
@@ -338,26 +352,111 @@
             return path.join(' -> ');
         }
 
+        // Filter devices based on search query
+        function filterDevices() {
+            const searchQuery = document.getElementById('device-search').value.toLowerCase().trim();
+
+            if (!searchQuery) {
+                // No search query, show all devices
+                renderDevices(allDevices);
+                document.getElementById('search-results-count').textContent = '';
+                return;
+            }
+
+            const filteredDevices = allDevices.filter(device => {
+                // Get device properties for searching
+                const systemName = (device.name || '').toLowerCase();
+                const deviceId = (device.device_id || '').toLowerCase();
+                const locationPath = device.location_id ? getLocationPath(device.location_id).toLowerCase() : 'unassigned';
+                const version = (device.version || 'loading...').toLowerCase();
+
+                // Online status - match both "online"/"offline" and "yes"/"no"
+                const isOnline = device.is_online;
+                const onlineText = isOnline ? 'yes online' : 'no offline';
+
+                // Check if search query matches any field
+                return systemName.includes(searchQuery) ||
+                       deviceId.includes(searchQuery) ||
+                       locationPath.includes(searchQuery) ||
+                       version.includes(searchQuery) ||
+                       onlineText.includes(searchQuery);
+            });
+
+            renderDevices(filteredDevices);
+
+            // Update search results count
+            const countText = filteredDevices.length === 1
+                ? '1 device found'
+                : `${filteredDevices.length} devices found`;
+            document.getElementById('search-results-count').textContent = countText;
+        }
+
+        // Render devices list (separated from fetching for filtering support)
+        function renderDevices(devices) {
+            const listDiv = document.getElementById('devices-list');
+            listDiv.innerHTML = '';
+
+            if (devices.length === 0) {
+                listDiv.innerHTML = '<p style="color: #888;">No devices found</p>';
+                return;
+            }
+
+            // Group devices by location
+            const devicesByLocation = {};
+            const unassignedDevices = [];
+
+            devices.forEach(device => {
+                if (device.location_id && locationsMap[device.location_id]) {
+                    const locationPath = getLocationPath(device.location_id);
+                    if (!devicesByLocation[locationPath]) {
+                        devicesByLocation[locationPath] = [];
+                    }
+                    devicesByLocation[locationPath].push(device);
+                } else {
+                    unassignedDevices.push(device);
+                }
+            });
+
+            // Render devices grouped by location
+            Object.keys(devicesByLocation).sort().forEach(locationName => {
+                const locationHeader = document.createElement('h4');
+                locationHeader.textContent = `📍 ${locationName}`;
+                locationHeader.style.color = '#10b981';
+                locationHeader.style.marginTop = '1.5rem';
+                locationHeader.style.marginBottom = '1rem';
+                listDiv.appendChild(locationHeader);
+
+                devicesByLocation[locationName].forEach(device => {
+                    listDiv.appendChild(createDeviceCard(device));
+                });
+            });
+
+            // Render unassigned devices
+            if (unassignedDevices.length > 0) {
+                const unassignedHeader = document.createElement('h4');
+                unassignedHeader.textContent = 'Unassigned';
+                unassignedHeader.style.color = '#64748b';
+                unassignedHeader.style.marginTop = '2rem';
+                unassignedHeader.style.marginBottom = '1rem';
+                listDiv.appendChild(unassignedHeader);
+
+                unassignedDevices.forEach(device => {
+                    listDiv.appendChild(createDeviceCard(device));
+                });
+            }
+        }
+
         // Fetch and display devices list with Update and Delete buttons
         async function fetchDevices() {
             const response = await fetch('/user/devices');
             if (response.ok) {
                 const devices = await response.json();
-                const listDiv = document.getElementById('devices-list');
-                listDiv.innerHTML = '';
-
-                if (devices.length === 0) {
-                    listDiv.innerHTML = '<p style="color: #888;">No devices found</p>';
-                    return;
-                }
 
                 // Fetch locations for grouping and reference
                 const locationsResponse = await fetch('/user/locations');
                 locationsMap = {};
-                let locationsData = [];
                 if (locationsResponse.ok) {
                     const locations = await locationsResponse.json();
-                    locationsData = locations;
                     locations.forEach(loc => {
                         locationsMap[loc.id] = {
                             name: loc.name,
@@ -366,49 +465,19 @@
                     });
                 }
 
-                // Group devices by location
-                const devicesByLocation = {};
-                const unassignedDevices = [];
+                // Store all devices for filtering
+                // Add initial version property for search (will be updated via WebSocket)
+                allDevices = devices.map(device => ({
+                    ...device,
+                    version: 'Loading...'
+                }));
 
-                devices.forEach(device => {
-                    if (device.location_id && locationsMap[device.location_id]) {
-                        const locationPath = getLocationPath(device.location_id);
-                        if (!devicesByLocation[locationPath]) {
-                            devicesByLocation[locationPath] = [];
-                        }
-                        devicesByLocation[locationPath].push(device);
-                    } else {
-                        unassignedDevices.push(device);
-                    }
-                });
+                // Render devices
+                renderDevices(allDevices);
 
-                // Render devices grouped by location
-                Object.keys(devicesByLocation).sort().forEach(locationName => {
-                    const locationHeader = document.createElement('h4');
-                    locationHeader.textContent = `📍 ${locationName}`;
-                    locationHeader.style.color = '#10b981';
-                    locationHeader.style.marginTop = '1.5rem';
-                    locationHeader.style.marginBottom = '1rem';
-                    listDiv.appendChild(locationHeader);
-
-                    devicesByLocation[locationName].forEach(device => {
-                        listDiv.appendChild(createDeviceCard(device));
-                    });
-                });
-
-                // Render unassigned devices
-                if (unassignedDevices.length > 0) {
-                    const unassignedHeader = document.createElement('h4');
-                    unassignedHeader.textContent = 'Unassigned';
-                    unassignedHeader.style.color = '#64748b';
-                    unassignedHeader.style.marginTop = '2rem';
-                    unassignedHeader.style.marginBottom = '1rem';
-                    listDiv.appendChild(unassignedHeader);
-
-                    unassignedDevices.forEach(device => {
-                        listDiv.appendChild(createDeviceCard(device));
-                    });
-                }
+                // Clear search when refetching
+                document.getElementById('device-search').value = '';
+                document.getElementById('search-results-count').textContent = '';
             }
         }
 
@@ -724,12 +793,23 @@
                 // Update system name from settings
                 if (data.type === 'settings_update' && data.system_name) {
                     document.getElementById(`name-${device_id}`).textContent = data.system_name;
+                    // Update in allDevices array for search
+                    const deviceIndex = allDevices.findIndex(d => d.device_id === device_id);
+                    if (deviceIndex !== -1) {
+                        allDevices[deviceIndex].name = data.system_name;
+                    }
                 }
 
                 // Update version from full_sync or status_update
                 if ((data.type === 'full_sync' || data.type === 'status_update') && data.data && data.data.settings) {
                     if (data.data.settings.current_version) {
                         document.getElementById(`version-${device_id}`).textContent = data.data.settings.current_version;
+
+                        // Update in allDevices array for search
+                        const deviceIndex = allDevices.findIndex(d => d.device_id === device_id);
+                        if (deviceIndex !== -1) {
+                            allDevices[deviceIndex].version = data.data.settings.current_version;
+                        }
 
                         // Check if this device was updating and clear the status message
                         if (localStorage.getItem(`updating_${device_id}`) === 'true') {
@@ -750,6 +830,11 @@
                     }
                     if (data.data.settings.system_name) {
                         document.getElementById(`name-${device_id}`).textContent = data.data.settings.system_name;
+                        // Update in allDevices array for search
+                        const deviceIndex = allDevices.findIndex(d => d.device_id === device_id);
+                        if (deviceIndex !== -1) {
+                            allDevices[deviceIndex].name = data.data.settings.system_name;
+                        }
                     }
                 }
 
@@ -759,6 +844,11 @@
                     if (onlineElem) {
                         onlineElem.textContent = data.online ? 'Yes' : 'No';
                     }
+                    // Update in allDevices array for search
+                    const deviceIndex = allDevices.findIndex(d => d.device_id === device_id);
+                    if (deviceIndex !== -1) {
+                        allDevices[deviceIndex].is_online = data.online;
+                    }
                 }
             };
             ws.onclose = () => {
@@ -766,6 +856,11 @@
                 const onlineElem = document.getElementById(`online-${device_id}`);
                 if (onlineElem) {
                     onlineElem.textContent = 'No';
+                }
+                // Update in allDevices array for search
+                const deviceIndex = allDevices.findIndex(d => d.device_id === device_id);
+                if (deviceIndex !== -1) {
+                    allDevices[deviceIndex].is_online = false;
                 }
                 delete wsMap[device_id];
             };
