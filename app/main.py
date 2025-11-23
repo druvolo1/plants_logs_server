@@ -90,6 +90,7 @@ class Device(Base):
     device_type = Column(String(50), nullable=True, default='feeding_system')  # 'feeding_system', 'environmental', 'valve_controller', 'other'
     scope = Column(String(20), nullable=True, default='plant')  # 'plant' (1-to-1) or 'room' (1-to-many)
     capabilities = Column(Text, nullable=True)  # JSON string of device capabilities
+    settings = Column(Text, nullable=True)  # JSON string for device-specific settings (temp scale, update interval, etc.)
     user_id = Column(Integer, ForeignKey("users.id"))
     location_id = Column(Integer, ForeignKey("locations.id"), nullable=True)  # Location assignment
     user = relationship("User", back_populates="devices")
@@ -253,6 +254,36 @@ class LogEntry(Base):
 
     # Relationships
     plant = relationship("Plant", back_populates="logs")
+
+# Environment Log model
+class EnvironmentLog(Base):
+    __tablename__ = "environment_logs"
+    id = Column(Integer, primary_key=True, index=True)
+    device_id = Column(Integer, ForeignKey("devices.id"), nullable=False)
+    location_id = Column(Integer, ForeignKey("locations.id"), nullable=True)
+
+    # Air Quality readings
+    co2 = Column(Integer, nullable=True)
+    temperature = Column(Float, nullable=True)
+    humidity = Column(Float, nullable=True)
+    vpd = Column(Float, nullable=True)
+
+    # Atmospheric readings
+    pressure = Column(Float, nullable=True)
+    altitude = Column(Float, nullable=True)
+    gas_resistance = Column(Float, nullable=True)
+    air_quality_score = Column(Integer, nullable=True)
+
+    # Light readings
+    lux = Column(Float, nullable=True)
+    ppfd = Column(Float, nullable=True)
+
+    timestamp = Column(DateTime, nullable=False, index=True)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+    # Relationships
+    device = relationship("Device")
+    location = relationship("Location")
 
 async def create_db_and_tables():
     async with engine.begin() as conn:
@@ -783,6 +814,12 @@ async def login_page(request: Request, error: str = None):
 @app.get("/register", response_class=HTMLResponse)
 async def register_page(request: Request):
     return templates.TemplateResponse("register.html", {"request": request})
+
+# Device pairing page
+@app.get("/pair-device", response_class=HTMLResponse)
+async def device_pair_page(request: Request, user: User = Depends(current_user)):
+    """Device pairing page for environment sensors"""
+    return templates.TemplateResponse("device_pair.html", {"request": request, "user": user})
 
 # Registration form handler
 @app.post("/auth/register")
@@ -1336,6 +1373,62 @@ class LogEntryRead(BaseModel):
     dose_amount_ml: Optional[float]
     timestamp: datetime
 
+class EnvironmentDataCreate(BaseModel):
+    # Air Quality
+    co2: Optional[int] = None
+    temperature: Optional[float] = None
+    humidity: Optional[float] = None
+    vpd: Optional[float] = None
+    # Atmospheric
+    pressure: Optional[float] = None
+    altitude: Optional[float] = None
+    gas_resistance: Optional[float] = None
+    air_quality_score: Optional[int] = None
+    # Light
+    lux: Optional[float] = None
+    ppfd: Optional[float] = None
+    timestamp: str  # ISO format datetime string
+
+class EnvironmentLogRead(BaseModel):
+    id: int
+    device_id: int
+    location_id: Optional[int]
+    co2: Optional[int]
+    temperature: Optional[float]
+    humidity: Optional[float]
+    vpd: Optional[float]
+    pressure: Optional[float]
+    altitude: Optional[float]
+    gas_resistance: Optional[float]
+    air_quality_score: Optional[int]
+    lux: Optional[float]
+    ppfd: Optional[float]
+    timestamp: datetime
+    created_at: datetime
+
+class DevicePairRequest(BaseModel):
+    device_id: str
+    device_name: str
+    location_id: Optional[int] = None
+    location_name: Optional[str] = None  # For creating new location
+    # Device info
+    mac_address: str
+    model: str
+    manufacturer: str
+    sw_version: str
+    hw_version: str
+
+class DevicePairResponse(BaseModel):
+    success: bool
+    api_key: str
+    device_id: str
+    server_url: str
+    message: str
+
+class DeviceSettingsResponse(BaseModel):
+    use_fahrenheit: bool
+    update_interval: int  # seconds
+
 # Location Management Endpoints
 
 @app.post("/user/locations", response_model=LocationRead)
@@ -1751,6 +1844,88 @@ async def add_device(device: DeviceCreate, user: User = Depends(current_user), s
     await session.refresh(new_device)
 
     return {"api_key": api_key, "message": "Device added. Copy API key to Pi settings."}
+
+# Environment Sensor Pairing Endpoint
+@app.post("/api/devices/pair", response_model=DevicePairResponse)
+async def pair_device(pair_request: DevicePairRequest, user: User = Depends(current_user), session: AsyncSession = Depends(get_db)):
+    """
+    Pair an environment sensor device to a user account.
+    Creates device, handles location, and returns API key for authentication.
+    """
+    # Check if device already exists
+    existing = await session.execute(select(Device).where(Device.device_id == pair_request.device_id))
+    existing_device = existing.scalars().first()
+
+    if existing_device:
+        raise HTTPException(400, "Device already paired to an account")
+
+    # Handle location - create new or use existing
+    location_id = pair_request.location_id
+    if pair_request.location_name and not location_id:
+        # Create new location
+        new_location = Location(
+            name=pair_request.location_name,
+            user_id=user.id
+        )
+        session.add(new_location)
+        await session.flush()
+        location_id = new_location.id
+    elif location_id:
+        # Verify location exists and belongs to user
+        location_result = await session.execute(
+            select(Location).where(Location.id == location_id, Location.user_id == user.id)
+        )
+        if not location_result.scalars().first():
+            raise HTTPException(404, "Location not found")
+
+    # Generate API key
+    api_key = secrets.token_hex(32)
+
+    # Create default settings for environment sensor
+    default_settings = {
+        "use_fahrenheit": False,
+        "update_interval": 60  # Default 60 seconds
+    }
+
+    # Build capabilities JSON
+    capabilities = {
+        "model": pair_request.model,
+        "manufacturer": pair_request.manufacturer,
+        "sw_version": pair_request.sw_version,
+        "hw_version": pair_request.hw_version,
+        "mac_address": pair_request.mac_address,
+        "sensors": ["co2", "temperature", "humidity", "vpd", "pressure", "lux", "ppfd", "gas_resistance", "air_quality"]
+    }
+
+    # Create device
+    new_device = Device(
+        device_id=pair_request.device_id,
+        api_key=api_key,
+        name=pair_request.device_name,
+        system_name=pair_request.device_name,
+        device_type='environmental',
+        scope='room',
+        location_id=location_id,
+        user_id=user.id,
+        capabilities=json.dumps(capabilities),
+        settings=json.dumps(default_settings),
+        is_online=False
+    )
+
+    session.add(new_device)
+    await session.commit()
+    await session.refresh(new_device)
+
+    # Return pairing response with API key and server URL
+    server_url = f"{os.getenv('SERVER_URL', 'http://garden.ruvolo.loseyourip.com')}"
+
+    return DevicePairResponse(
+        success=True,
+        api_key=api_key,
+        device_id=pair_request.device_id,
+        server_url=server_url,
+        message="Device successfully paired!"
+    )
 
 # Added: List user devices (owned and shared)
 @app.get("/user/devices", response_model=List[DeviceRead])
@@ -3362,6 +3537,78 @@ async def upload_logs(
     if skipped_count > 0:
         message += f", skipped {skipped_count} duplicates"
     return {"status": "success", "message": message}
+
+# Environment Sensor Data Upload Endpoint
+@app.post("/api/devices/{device_id}/environment", response_model=DeviceSettingsResponse)
+async def upload_environment_data(
+    device_id: str,
+    data: EnvironmentDataCreate,
+    api_key: str = Query(...),
+    session: AsyncSession = Depends(get_db)
+):
+    """
+    Receive environment sensor data from device and return device settings.
+    This endpoint handles periodic POST updates from environment sensors.
+    """
+    # Verify device and API key
+    result = await session.execute(
+        select(Device).where(Device.device_id == device_id, Device.api_key == api_key)
+    )
+    device = result.scalars().first()
+
+    if not device:
+        raise HTTPException(401, "Invalid device or API key")
+
+    # Verify device is an environmental sensor
+    if device.device_type != 'environmental':
+        raise HTTPException(400, "This endpoint is only for environmental sensors")
+
+    # Update device last_seen and is_online status
+    await session.execute(
+        update(Device)
+        .where(Device.device_id == device_id)
+        .values(is_online=True, last_seen=datetime.utcnow())
+    )
+
+    # Parse timestamp
+    try:
+        timestamp = date_parser.isoparse(data.timestamp)
+    except Exception as e:
+        raise HTTPException(400, f"Invalid timestamp format: {str(e)}")
+
+    # Create environment log entry
+    env_log = EnvironmentLog(
+        device_id=device.id,
+        location_id=device.location_id,
+        co2=data.co2,
+        temperature=data.temperature,
+        humidity=data.humidity,
+        vpd=data.vpd,
+        pressure=data.pressure,
+        altitude=data.altitude,
+        gas_resistance=data.gas_resistance,
+        air_quality_score=data.air_quality_score,
+        lux=data.lux,
+        ppfd=data.ppfd,
+        timestamp=timestamp
+    )
+
+    session.add(env_log)
+    await session.commit()
+
+    # Load device settings and return to device
+    settings = {}
+    if device.settings:
+        try:
+            settings = json.loads(device.settings)
+        except:
+            settings = {}
+
+    # Return settings to device
+    return DeviceSettingsResponse(
+        use_fahrenheit=settings.get("use_fahrenheit", False),
+        update_interval=settings.get("update_interval", 60)
+    )
 
 # Get logs for a plant
 @app.get("/user/plants/{plant_id}/logs", response_model=List[LogEntryRead])

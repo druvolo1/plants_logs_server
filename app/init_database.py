@@ -192,6 +192,14 @@ async def init_database():
                 "capabilities TEXT NULL AFTER scope"
             )
 
+            # Add settings column if it doesn't exist (JSON field for device-specific settings)
+            await check_and_add_column(
+                conn,
+                'devices',
+                'settings',
+                "settings TEXT NULL AFTER capabilities"
+            )
+
             # Add last_seen column if it doesn't exist (better online/offline tracking)
             await check_and_add_column(
                 conn,
@@ -362,6 +370,39 @@ async def init_database():
                     print("  ✓ Foreign key constraint already exists")
             except Exception as e:
                 print(f"  Note: Foreign key constraint may already exist or error occurred: {e}")
+
+            print("\nChecking 'environment_logs' table...")
+
+            # Create environment_logs table if it doesn't exist
+            await check_and_create_table(
+                conn,
+                'environment_logs',
+                """
+                CREATE TABLE environment_logs (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    device_id INT NOT NULL,
+                    location_id INT NULL,
+                    co2 INT NULL COMMENT 'CO2 level in ppm',
+                    temperature DECIMAL(5,2) NULL COMMENT 'Temperature in Celsius',
+                    humidity DECIMAL(5,2) NULL COMMENT 'Relative humidity in %',
+                    vpd DECIMAL(5,3) NULL COMMENT 'Vapor Pressure Deficit in kPa',
+                    pressure DECIMAL(6,2) NULL COMMENT 'Atmospheric pressure in hPa',
+                    altitude DECIMAL(6,1) NULL COMMENT 'Calculated altitude in meters',
+                    gas_resistance DECIMAL(7,2) NULL COMMENT 'Gas resistance in kOhms',
+                    air_quality_score INT NULL COMMENT 'Air quality score 0-100',
+                    lux DECIMAL(8,1) NULL COMMENT 'Light intensity in lux',
+                    ppfd DECIMAL(6,1) NULL COMMENT 'Photosynthetic Photon Flux Density in μmol/m²/s',
+                    timestamp DATETIME NOT NULL,
+                    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    INDEX idx_device_id (device_id),
+                    INDEX idx_location_id (location_id),
+                    INDEX idx_timestamp (timestamp),
+                    INDEX idx_device_timestamp (device_id, timestamp),
+                    FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE CASCADE,
+                    FOREIGN KEY (location_id) REFERENCES locations(id) ON DELETE SET NULL
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+                """
+            )
 
             print("\n" + "="*80)
             print("✓ Database initialization complete!")

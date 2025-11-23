@@ -1,0 +1,285 @@
+<!-- templates/device_pair.html - Device pairing page for environment sensors -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Pair Environment Sensor</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        body {
+            padding: 1rem;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+        }
+
+        .device-info {
+            background: #f5f5f5;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+        }
+
+        .device-info p {
+            margin: 0.5rem 0;
+        }
+
+        form {
+            width: 100%;
+        }
+
+        input[type="text"],
+        select {
+            width: 100%;
+            box-sizing: border-box;
+            font-size: 1rem;
+            padding: 0.75rem;
+        }
+
+        button {
+            width: 100%;
+            box-sizing: border-box;
+            font-size: 1rem;
+            padding: 0.75rem;
+            margin-top: 0.5rem;
+        }
+
+        label {
+            display: block;
+            margin-top: 1rem;
+            margin-bottom: 0.5rem;
+            font-weight: bold;
+        }
+
+        .btn-secondary {
+            background-color: #6c757d;
+        }
+
+        .btn-secondary:hover {
+            background-color: #5a6268;
+        }
+
+        .success-message {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+        }
+
+        .error-message {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+        }
+
+        .create-location-toggle {
+            cursor: pointer;
+            color: #007bff;
+            text-decoration: underline;
+            margin-top: 0.5rem;
+            display: inline-block;
+        }
+
+        #new-location-field {
+            display: none;
+        }
+
+        @media (max-width: 480px) {
+            h1 {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>🌱 Pair Environment Sensor</h1>
+
+    <div id="message"></div>
+
+    <div class="device-info">
+        <h3>Device Information</h3>
+        <p><strong>Device ID:</strong> <span id="display-device-id"></span></p>
+        <p><strong>Model:</strong> <span id="display-model"></span></p>
+        <p><strong>MAC Address:</strong> <span id="display-mac"></span></p>
+    </div>
+
+    <form id="pair-form">
+        <input type="hidden" id="device_id" name="device_id">
+        <input type="hidden" id="mac_address" name="mac_address">
+        <input type="hidden" id="model" name="model">
+        <input type="hidden" id="manufacturer" name="manufacturer">
+        <input type="hidden" id="sw_version" name="sw_version">
+        <input type="hidden" id="hw_version" name="hw_version">
+
+        <label for="device_name">Device Name:</label>
+        <input type="text" id="device_name" name="device_name" required placeholder="e.g., Grow Room Sensor">
+
+        <label for="location_id">Location:</label>
+        <select id="location_id" name="location_id">
+            <option value="">-- Select Location --</option>
+        </select>
+        <span class="create-location-toggle" onclick="toggleNewLocation()">Or create new location</span>
+
+        <div id="new-location-field">
+            <label for="location_name">New Location Name:</label>
+            <input type="text" id="location_name" name="location_name" placeholder="e.g., Grow Tent 1">
+        </div>
+
+        <button type="submit" style="margin-top: 1.5rem;">Pair Device</button>
+    </form>
+
+    <script>
+        // Parse URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const deviceId = urlParams.get('device_id');
+        const macAddress = urlParams.get('mac');
+        const model = urlParams.get('model') || 'HNENVCO2';
+        const manufacturer = urlParams.get('manufacturer') || 'HerbNerdz';
+        const swVersion = urlParams.get('sw_version') || '2.0';
+        const hwVersion = urlParams.get('hw_version') || '1';
+        const defaultName = urlParams.get('name') || 'Environment Sensor';
+
+        // Populate form
+        document.getElementById('device_id').value = deviceId;
+        document.getElementById('mac_address').value = macAddress;
+        document.getElementById('model').value = model;
+        document.getElementById('manufacturer').value = manufacturer;
+        document.getElementById('sw_version').value = swVersion;
+        document.getElementById('hw_version').value = hwVersion;
+        document.getElementById('device_name').value = defaultName;
+
+        // Display device info
+        document.getElementById('display-device-id').textContent = deviceId || 'Unknown';
+        document.getElementById('display-model').textContent = model;
+        document.getElementById('display-mac').textContent = macAddress || 'Unknown';
+
+        // Load user's locations
+        async function loadLocations() {
+            try {
+                const response = await fetch('/user/locations');
+                if (!response.ok) {
+                    console.error('Failed to load locations');
+                    return;
+                }
+                const locations = await response.json();
+                const select = document.getElementById('location_id');
+
+                locations.forEach(loc => {
+                    const option = document.createElement('option');
+                    option.value = loc.id;
+                    option.textContent = loc.name;
+                    select.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Error loading locations:', error);
+            }
+        }
+
+        function toggleNewLocation() {
+            const newLocationField = document.getElementById('new-location-field');
+            const locationSelect = document.getElementById('location_id');
+
+            if (newLocationField.style.display === 'none' || newLocationField.style.display === '') {
+                newLocationField.style.display = 'block';
+                locationSelect.value = '';
+                locationSelect.disabled = true;
+            } else {
+                newLocationField.style.display = 'none';
+                locationSelect.disabled = false;
+                document.getElementById('location_name').value = '';
+            }
+        }
+
+        function showMessage(type, text) {
+            const messageDiv = document.getElementById('message');
+            messageDiv.className = type === 'success' ? 'success-message' : 'error-message';
+            messageDiv.textContent = text;
+            messageDiv.style.display = 'block';
+        }
+
+        // Handle form submission
+        document.getElementById('pair-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const formData = new FormData(e.target);
+            const locationId = formData.get('location_id');
+            const locationName = formData.get('location_name');
+
+            if (!locationId && !locationName) {
+                showMessage('error', 'Please select a location or create a new one');
+                return;
+            }
+
+            const pairData = {
+                device_id: formData.get('device_id'),
+                device_name: formData.get('device_name'),
+                mac_address: formData.get('mac_address'),
+                model: formData.get('model'),
+                manufacturer: formData.get('manufacturer'),
+                sw_version: formData.get('sw_version'),
+                hw_version: formData.get('hw_version'),
+                location_id: locationId ? parseInt(locationId) : null,
+                location_name: locationName || null
+            };
+
+            try {
+                const response = await fetch('/api/devices/pair', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(pairData)
+                });
+
+                const result = await response.json();
+
+                if (response.ok && result.success) {
+                    showMessage('success', 'Device paired successfully! Redirecting to sensor...');
+
+                    // Send success message back to the sensor device
+                    // The sensor should be listening on its callback URL
+                    const callbackUrl = urlParams.get('callback');
+                    if (callbackUrl) {
+                        try {
+                            await fetch(callbackUrl, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    success: true,
+                                    api_key: result.api_key,
+                                    server_url: result.server_url
+                                })
+                            });
+                        } catch (err) {
+                            console.error('Failed to send callback to sensor:', err);
+                        }
+                    }
+
+                    // Redirect after 2 seconds
+                    setTimeout(() => {
+                        window.location.href = '/devices';
+                    }, 2000);
+                } else {
+                    showMessage('error', result.message || 'Failed to pair device');
+                }
+            } catch (error) {
+                console.error('Error pairing device:', error);
+                showMessage('error', 'An error occurred while pairing the device');
+            }
+        });
+
+        // Load locations on page load
+        loadLocations();
+    </script>
+</body>
+</html>
