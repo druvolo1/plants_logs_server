@@ -316,6 +316,28 @@
         let currentEditDeviceId = null;
         let locationsMap = {};
 
+        // Helper function to get full location path (e.g., "Dave's House -> Basement")
+        function getLocationPath(locationId) {
+            if (!locationId || !locationsMap[locationId]) {
+                return 'Unassigned';
+            }
+
+            const path = [];
+            let currentId = locationId;
+            let maxDepth = 10; // Prevent infinite loops
+
+            while (currentId && maxDepth > 0) {
+                const location = locationsMap[currentId];
+                if (!location) break;
+
+                path.unshift(location.name);
+                currentId = location.parent_id;
+                maxDepth--;
+            }
+
+            return path.join(' -> ');
+        }
+
         // Fetch and display devices list with Update and Delete buttons
         async function fetchDevices() {
             const response = await fetch('/user/devices');
@@ -332,10 +354,15 @@
                 // Fetch locations for grouping and reference
                 const locationsResponse = await fetch('/user/locations');
                 locationsMap = {};
+                let locationsData = [];
                 if (locationsResponse.ok) {
                     const locations = await locationsResponse.json();
+                    locationsData = locations;
                     locations.forEach(loc => {
-                        locationsMap[loc.id] = loc.name;
+                        locationsMap[loc.id] = {
+                            name: loc.name,
+                            parent_id: loc.parent_id
+                        };
                     });
                 }
 
@@ -345,11 +372,11 @@
 
                 devices.forEach(device => {
                     if (device.location_id && locationsMap[device.location_id]) {
-                        const locationName = locationsMap[device.location_id];
-                        if (!devicesByLocation[locationName]) {
-                            devicesByLocation[locationName] = [];
+                        const locationPath = getLocationPath(device.location_id);
+                        if (!devicesByLocation[locationPath]) {
+                            devicesByLocation[locationPath] = [];
                         }
-                        devicesByLocation[locationName].push(device);
+                        devicesByLocation[locationPath].push(device);
                     } else {
                         unassignedDevices.push(device);
                     }
@@ -405,11 +432,9 @@
                 ? `<p style="color: #10b981; font-weight: bold; font-size: 1rem; margin: 0.5rem 0;">🌱 Monitoring: ${device.active_plant_name} (${device.active_phase})</p>`
                 : '';
 
-            // Show location info
-            const locationName = device.location_id && locationsMap[device.location_id]
-                ? locationsMap[device.location_id]
-                : 'Unassigned';
-            const locationInfo = `<p><strong>Location:</strong> <span style="color: ${device.location_id ? '#10b981' : '#6b7280'};">📍 ${locationName}</span></p>`;
+            // Show location info with full path
+            const locationPath = device.location_id ? getLocationPath(device.location_id) : 'Unassigned';
+            const locationInfo = `<p><strong>Location:</strong> <span style="color: ${device.location_id ? '#10b981' : '#6b7280'};">📍 ${locationPath}</span></p>`;
 
             // Only owners can edit, share and delete
             const editButton = device.is_owner
