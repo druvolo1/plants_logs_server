@@ -76,27 +76,56 @@
     
     <br><br>
     
-    <form action="/auth/jwt/login" method="post">
+    <form action="/auth/jwt/login" method="post" id="login-form">
         <label for="username">Email:</label>
         <input type="email" id="username" name="username" required>
         <br>
         <label for="password">Password:</label>
         <input type="password" id="password" name="password" required>
         <br>
+        <input type="hidden" id="next" name="next" value="">
+        <input type="hidden" id="device_id" name="device_id" value="">
         <button type="submit">Login</button>
     </form>
     
     <p>Don't have an account? <a href="/register">Create Account</a></p>
 
     <script>
+        // Get URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const nextUrl = urlParams.get('next');
+        const deviceId = urlParams.get('device_id');
+
+        // Populate hidden fields if parameters exist
+        if (nextUrl) {
+            document.getElementById('next').value = nextUrl;
+        }
+        if (deviceId) {
+            document.getElementById('device_id').value = deviceId;
+        }
+
         // Check if this is a redirect from OAuth (has auth cookie set)
         if (document.cookie.includes('auth_cookie') && window.location.search.includes('from=oauth')) {
-            window.location.href = '/dashboard';
+            // If there's a next URL with device_id, redirect there instead of dashboard
+            if (nextUrl && deviceId) {
+                window.location.href = `${nextUrl}?device_id=${deviceId}`;
+            } else {
+                window.location.href = '/dashboard';
+            }
         }
-        
+
         document.getElementById('google-login-btn').addEventListener('click', async () => {
             try {
-                const response = await fetch('/auth/google/authorize');
+                // Build authorization URL with next parameter if present
+                let authUrl = '/auth/google/authorize';
+                if (nextUrl || deviceId) {
+                    const params = new URLSearchParams();
+                    if (nextUrl) params.append('next', nextUrl);
+                    if (deviceId) params.append('device_id', deviceId);
+                    authUrl += '?' + params.toString();
+                }
+
+                const response = await fetch(authUrl);
                 const data = await response.json();
                 if (data.authorization_url) {
                     // Open OAuth in same window

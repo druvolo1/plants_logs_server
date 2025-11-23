@@ -139,15 +139,14 @@
     </form>
 
     <script>
-        // Retrieve device info from sessionStorage
-        const deviceInfoJson = sessionStorage.getItem('pending_device_pair');
+        // Retrieve device info from template context (injected by server)
+        const deviceInfo = {{ device_info | tojson }};
 
-        if (!deviceInfoJson) {
+        if (!deviceInfo || !deviceInfo.device_id) {
             document.body.innerHTML = '<h1>Error</h1><p>No pending device pairing found. Please start the pairing process from your device.</p>';
             throw new Error('No pending device pair data');
         }
 
-        const deviceInfo = JSON.parse(deviceInfoJson);
         const deviceId = deviceInfo.device_id;
         const macAddress = deviceInfo.mac_address;
         const model = deviceInfo.model;
@@ -252,9 +251,6 @@
                 const result = await response.json();
 
                 if (response.ok && result.success) {
-                    // Clear the pending pairing data
-                    sessionStorage.removeItem('pending_device_pair');
-
                     showMessage('success', 'Device paired successfully! Your sensor will connect automatically in a few seconds. Redirecting...');
 
                     // Redirect after 3 seconds

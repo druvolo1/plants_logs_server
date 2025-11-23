@@ -816,36 +816,108 @@ async def login_page(request: Request, error: str = None):
 async def register_page(request: Request):
     return templates.TemplateResponse("register.html", {"request": request})
 
-# Device pairing initiation (no auth required - just redirects to login with params)
+# Temporary storage for pending device pairings (device_id -> device_info)
+# This avoids sessionStorage issues when redirecting to login
+pending_pairings = {}
+
+# Device pairing initiation (no auth required - stores params server-side)
 @app.get("/pair-device", response_class=HTMLResponse)
 async def device_pair_initiation(request: Request):
-    """Device pairing initiation - stores device info in session and redirects to login"""
-    return templates.TemplateResponse("device_pair_init.html", {"request": request})
+    """Device pairing initiation - stores device info server-side and shows login or pairing page"""
+    # Get device info from query params
+    device_id = request.query_params.get('device_id')
+    device_name = request.query_params.get('name', 'Environment Sensor')
+    mac_address = request.query_params.get('mac')
+    model = request.query_params.get('model', 'HNENVCO2')
+    manufacturer = request.query_params.get('manufacturer', 'HerbNerdz')
+    sw_version = request.query_params.get('sw_version', '2.0')
+    hw_version = request.query_params.get('hw_version', '1')
+
+    if not device_id or not mac_address:
+        return templates.TemplateResponse("error.html", {
+            "request": request,
+            "error": "Invalid pairing request - missing device information"
+        })
+
+    # Store device info server-side with timestamp for cleanup
+    pending_pairings[device_id] = {
+        "device_id": device_id,
+        "device_name": device_name,
+        "mac_address": mac_address,
+        "model": model,
+        "manufacturer": manufacturer,
+        "sw_version": sw_version,
+        "hw_version": hw_version,
+        "timestamp": datetime.utcnow()
+    }
+
+    # Check if user is already authenticated
+    try:
+        auth_cookie = request.cookies.get("auth_cookie")
+        if auth_cookie:
+            try:
+                user = await current_user(request)
+                # User is authenticated - show pairing page directly
+                return templates.TemplateResponse("device_pair.html", {
+                    "request": request,
+                    "user": user,
+                    "device_info": pending_pairings[device_id]
+                })
+            except:
+                pass
+    except:
+        pass
+
+    # Not authenticated - redirect to login with device_id in URL
+    return RedirectResponse(url=f"/login?next=/pair-device-auth&device_id={device_id}", status_code=302)
 
 # Device pairing page (requires authentication)
 @app.get("/pair-device-auth", response_class=HTMLResponse)
 async def device_pair_page(request: Request):
     """Device pairing page for environment sensors - requires authentication"""
+    device_id = request.query_params.get('device_id')
+
     # Check if user is authenticated
     try:
         # Try to get the auth cookie
         auth_cookie = request.cookies.get("auth_cookie")
         if not auth_cookie:
             # Not authenticated - redirect to login with return URL
-            return RedirectResponse(url=f"/login?next=/pair-device-auth", status_code=302)
+            redirect_url = f"/login?next=/pair-device-auth"
+            if device_id:
+                redirect_url += f"&device_id={device_id}"
+            return RedirectResponse(url=redirect_url, status_code=302)
 
         # Verify the token (this will raise exception if invalid)
-        from fastapi_users import exceptions as fastapi_users_exceptions
         try:
             user = await current_user(request)
         except:
             # Token invalid - redirect to login
-            return RedirectResponse(url=f"/login?next=/pair-device-auth", status_code=302)
+            redirect_url = f"/login?next=/pair-device-auth"
+            if device_id:
+                redirect_url += f"&device_id={device_id}"
+            return RedirectResponse(url=redirect_url, status_code=302)
 
-        return templates.TemplateResponse("device_pair.html", {"request": request, "user": user})
+        # Get device info from server storage
+        if not device_id or device_id not in pending_pairings:
+            return templates.TemplateResponse("error.html", {
+                "request": request,
+                "error": "Device pairing session expired or not found. Please start the pairing process again from your sensor."
+            })
+
+        device_info = pending_pairings[device_id]
+
+        return templates.TemplateResponse("device_pair.html", {
+            "request": request,
+            "user": user,
+            "device_info": device_info
+        })
     except Exception as e:
         # Any error - redirect to login
-        return RedirectResponse(url=f"/login?next=/pair-device-auth", status_code=302)
+        redirect_url = f"/login?next=/pair-device-auth"
+        if device_id:
+            redirect_url += f"&device_id={device_id}"
+        return RedirectResponse(url=redirect_url, status_code=302)
 
 # Registration form handler
 @app.post("/auth/register")
@@ -886,25 +958,32 @@ async def login(
     request: Request,
     username: str = Form(...),
     password: str = Form(...),
+    next: str = Form(None),
+    device_id: str = Form(None),
     manager: CustomUserManager = Depends(get_user_manager),
     strategy: JWTStrategy = Depends(get_jwt_strategy)
 ):
     from fastapi.security import OAuth2PasswordRequestForm
-    
+
     # Create credentials object
     credentials = OAuth2PasswordRequestForm(username=username, password=password, scope="")
-    
+
     try:
         user = await manager.authenticate(credentials)
-        
+
         if user is None:
             return RedirectResponse("/login?error=invalid_credentials", status_code=303)
-        
+
         # Create token
         token = await strategy.write_token(user)
-        
-        # Redirect based on user type - admins go to users page, regular users go to dashboard
+
+        # Redirect based on next parameter if present, otherwise dashboard
         redirect_url = "/dashboard"
+        if next and device_id:
+            redirect_url = f"{next}?device_id={device_id}"
+        elif next:
+            redirect_url = next
+
         response = RedirectResponse(redirect_url, status_code=303)
         response.set_cookie(
             key="auth_cookie",
@@ -914,7 +993,7 @@ async def login(
             samesite="lax"
         )
         return response
-        
+
     except HTTPException as e:
         if e.detail == "PENDING_APPROVAL":
             return templates.TemplateResponse("pending_approval.html", {"request": request})
