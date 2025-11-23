@@ -815,10 +815,16 @@ async def login_page(request: Request, error: str = None):
 async def register_page(request: Request):
     return templates.TemplateResponse("register.html", {"request": request})
 
-# Device pairing page
+# Device pairing initiation (no auth required - just redirects to login with params)
 @app.get("/pair-device", response_class=HTMLResponse)
+async def device_pair_initiation(request: Request):
+    """Device pairing initiation - stores device info in session and redirects to login"""
+    return templates.TemplateResponse("device_pair_init.html", {"request": request})
+
+# Device pairing page (requires authentication)
+@app.get("/pair-device-auth", response_class=HTMLResponse)
 async def device_pair_page(request: Request, user: User = Depends(current_user)):
-    """Device pairing page for environment sensors"""
+    """Device pairing page for environment sensors - requires authentication"""
     return templates.TemplateResponse("device_pair.html", {"request": request, "user": user})
 
 # Registration form handler
@@ -1845,6 +1851,10 @@ async def add_device(device: DeviceCreate, user: User = Depends(current_user), s
 
     return {"api_key": api_key, "message": "Device added. Copy API key to Pi settings."}
 
+# Temporary storage for pairing results (device_id -> pairing result)
+# In production, use Redis or database with expiration
+pairing_results = {}
+
 # Environment Sensor Pairing Endpoint
 @app.post("/api/devices/pair", response_model=DevicePairResponse)
 async def pair_device(pair_request: DevicePairRequest, user: User = Depends(current_user), session: AsyncSession = Depends(get_db)):
@@ -1919,13 +1929,49 @@ async def pair_device(pair_request: DevicePairRequest, user: User = Depends(curr
     # Return pairing response with API key and server URL
     server_url = f"{os.getenv('SERVER_URL', 'http://garden.ruvolo.loseyourip.com')}"
 
-    return DevicePairResponse(
+    response = DevicePairResponse(
         success=True,
         api_key=api_key,
         device_id=pair_request.device_id,
         server_url=server_url,
         message="Device successfully paired!"
     )
+
+    # Store pairing result for device to poll (expires after 5 minutes)
+    pairing_results[pair_request.device_id] = {
+        "success": True,
+        "api_key": api_key,
+        "server_url": server_url,
+        "timestamp": datetime.utcnow()
+    }
+
+    return response
+
+# Pairing result polling endpoint (no auth required - device polls this)
+@app.get("/api/devices/pair-status/{device_id}")
+async def get_pair_status(device_id: str):
+    """
+    Device polls this endpoint to check if pairing completed.
+    Returns pairing result if available, otherwise 404.
+    """
+    # Clean up old results (older than 5 minutes)
+    cutoff = datetime.utcnow() - timedelta(minutes=5)
+    expired_keys = [k for k, v in pairing_results.items() if v["timestamp"] < cutoff]
+    for key in expired_keys:
+        del pairing_results[key]
+
+    # Check if pairing result exists
+    if device_id in pairing_results:
+        result = pairing_results[device_id]
+        # Remove from dict after retrieval (one-time use)
+        del pairing_results[device_id]
+        return {
+            "success": result["success"],
+            "api_key": result["api_key"],
+            "server_url": result["server_url"]
+        }
+    else:
+        raise HTTPException(404, "Pairing not complete or expired")
 
 # Added: List user devices (owned and shared)
 @app.get("/user/devices", response_model=List[DeviceRead])

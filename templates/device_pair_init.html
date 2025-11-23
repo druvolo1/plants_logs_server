@@ -1,0 +1,67 @@
+<!-- templates/device_pair_init.html - Initial pairing redirect (no auth required) -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Device Pairing</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        body {
+            padding: 2rem;
+            max-width: 600px;
+            margin: 0 auto;
+            text-align: center;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 2rem auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <h1>🌱 Pairing Device</h1>
+    <div class="spinner"></div>
+    <p>Redirecting to login...</p>
+
+    <script>
+        // Get URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+
+        // Store device info in sessionStorage (more secure than URL params)
+        const deviceInfo = {
+            device_id: urlParams.get('device_id'),
+            device_name: urlParams.get('name'),
+            mac_address: urlParams.get('mac'),
+            model: urlParams.get('model') || 'HNENVCO2',
+            manufacturer: urlParams.get('manufacturer') || 'HerbNerdz',
+            sw_version: urlParams.get('sw_version') || '2.0',
+            hw_version: urlParams.get('hw_version') || '1',
+            callback: urlParams.get('callback')
+        };
+
+        // Validate we have required info
+        if (!deviceInfo.device_id || !deviceInfo.mac_address) {
+            document.body.innerHTML = '<h1>Error</h1><p>Invalid pairing request - missing device information</p>';
+        } else {
+            // Store in sessionStorage
+            sessionStorage.setItem('pending_device_pair', JSON.stringify(deviceInfo));
+
+            // Redirect to authenticated pairing page
+            // The auth middleware will redirect to login if not authenticated
+            window.location.href = '/pair-device-auth';
+        }
+    </script>
+</body>
+</html>
