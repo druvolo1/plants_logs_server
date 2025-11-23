@@ -1122,6 +1122,15 @@
                                     <span id="header-ec-${device.device_id}" style="display:none;"></span>
                                 </div>
                                 <div class="header-info" data-device-id="${device.device_id}">
+                                    ${deviceType === 'environmental' ? `
+                                    <!-- Environmental Sensor Header - Just show device name and location -->
+                                    <div class="info-item" id="system-item-${device.device_id}" data-info-type="system" draggable="true">
+                                        <span class="info-item-drag-handle" title="Drag to reorder">⋮</span>
+                                        <label>Sensor:</label>
+                                        <span id="system-name-${device.device_id}">${device.name || device.system_name || 'Environmental Sensor'}</span>
+                                    </div>
+                                    ` : `
+                                    <!-- Plant System Header -->
                                     <div class="info-item" id="system-item-${device.device_id}" data-info-type="system" draggable="true">
                                         <span class="info-item-drag-handle" title="Drag to reorder">⋮</span>
                                         <label>System:</label>
@@ -1152,6 +1161,7 @@
                                         <label>EC:</label>
                                         <span id="ec-${device.device_id}">-</span>
                                     </div>
+                                    `}
                                 </div>
                             </div>
                             <div class="header-icons-wrapper" style="display: flex; align-items: center; gap: 1rem;">
