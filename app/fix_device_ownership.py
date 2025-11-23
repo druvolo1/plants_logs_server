@@ -113,9 +113,9 @@ async def fix_device_ownership():
             print("="*80)
             print("\nNext steps:")
             print("  1. Refresh your browser")
-            print("  2. Go to http://garden.ruvolo.loseyourip.com/devices")
+            print("  2. Go to your server's /devices page")
             print("  3. Your devices should now appear!")
-            print("  4. Go to http://garden.ruvolo.loseyourip.com/dashboard")
+            print("  4. Go to your server's /dashboard page")
             print("  5. Your dashboard should now show your devices!\n")
             
             return True

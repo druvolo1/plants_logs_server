@@ -38,9 +38,10 @@ print("Loaded DATABASE_URL from .env:", DATABASE_URL)  # Debug print
 DATABASE_URL = DATABASE_URL.replace("mariadb+mariadbconnector", "mariadb+aiomysql") if DATABASE_URL else None
 print("Modified DATABASE_URL for async:", DATABASE_URL)  # Debug print
 SECRET = os.getenv("SECRET_KEY") or "secret"
+SERVER_URL = os.getenv("SERVER_URL")
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
-GOOGLE_REDIRECT_URI = os.getenv("GOOGLE_REDIRECT_URI") or "http://garden.ruvolo.loseyourip.com/auth/google/callback"
+GOOGLE_REDIRECT_URI = os.getenv("GOOGLE_REDIRECT_URI")
 
 engine = create_async_engine(DATABASE_URL)
 
@@ -2002,7 +2003,7 @@ async def pair_device(pair_request: DevicePairRequest, user: User = Depends(curr
     await session.refresh(new_device)
 
     # Return pairing response with API key and server URL
-    server_url = f"{os.getenv('SERVER_URL', 'https://garden.ruvolo.loseyourip.com')}"
+    server_url = SERVER_URL if SERVER_URL else request.base_url.scheme + "://" + request.base_url.netloc
 
     response = DevicePairResponse(
         success=True,
