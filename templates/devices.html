@@ -156,6 +156,49 @@
                 padding: 0.75rem 1rem;
             }
         }
+
+        /* Device Type Icon Bar */
+        .device-type-icon-bar {
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 50px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            z-index: 5;
+            font-size: 1.8rem;
+            padding: 8px 0;
+        }
+        .device-type-icon-bar .scope-text {
+            font-size: 1.2rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: rgba(255, 255, 255, 0.9);
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+            writing-mode: vertical-rl;
+            text-orientation: mixed;
+        }
+        .device-type-feeding {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+        }
+        .device-type-environmental {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            color: white;
+        }
+        .device-type-valve {
+            background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+            color: white;
+        }
+        .device-type-other {
+            background: linear-gradient(135deg, #64748b 0%, #475569 100%);
+            color: white;
+        }
     </style>
 </head>
 <body>
@@ -287,9 +330,11 @@
             const deviceDiv = document.createElement('div');
             deviceDiv.style.marginBottom = '1.5rem';
             deviceDiv.style.padding = '1rem';
+            deviceDiv.style.paddingLeft = '70px';
             deviceDiv.style.border = device.active_plant_name ? '2px solid #10b981' : '1px solid #ccc';
             deviceDiv.style.borderRadius = '8px';
             deviceDiv.style.background = device.active_plant_name ? 'rgba(16, 185, 129, 0.05)' : 'transparent';
+            deviceDiv.style.position = 'relative';
 
             // Show ownership info
             const ownershipInfo = device.is_owner
@@ -310,7 +355,23 @@
                 ? `<button onclick="deleteDevice('${device.device_id}')">Delete</button>`
                 : '';
 
+            // Device type icon bar
+            const deviceType = device.device_type || 'feeding_system';
+            const scope = device.scope || 'plant';
+            const typeMap = {
+                'feeding_system': { bgClass: 'device-type-feeding' },
+                'environmental': { bgClass: 'device-type-environmental' },
+                'valve_controller': { bgClass: 'device-type-valve' },
+                'other': { bgClass: 'device-type-other' }
+            };
+            const type = typeMap[deviceType] || typeMap['other'];
+            const scopeText = scope === 'room' ? 'ROOM' : 'PLANT';
+            const deviceTypeBar = `<div class="device-type-icon-bar ${type.bgClass}">
+                <div class="scope-text">${scopeText}</div>
+            </div>`;
+
             deviceDiv.innerHTML = `
+                ${deviceTypeBar}
                 ${ownershipInfo}
                 ${plantInfo}
                 <p><strong>System Name:</strong> <span id="name-${device.device_id}">${device.name || 'Loading...'}</span></p>
