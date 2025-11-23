@@ -3768,6 +3768,78 @@ async def upload_environment_data(
         update_interval=settings.get("update_interval", 60)
     )
 
+# Get latest environment data for a device (for dashboard display)
+@app.get("/api/devices/{device_id}/environment/latest")
+async def get_latest_environment_data(
+    device_id: str,
+    user: User = Depends(current_user),
+    session: AsyncSession = Depends(get_db)
+):
+    """
+    Get the latest environment sensor reading for a device.
+    Used by dashboard to display current conditions.
+    """
+    # Verify device exists and user has access
+    result = await session.execute(
+        select(Device).where(Device.device_id == device_id)
+    )
+    device = result.scalars().first()
+
+    if not device:
+        raise HTTPException(404, "Device not found")
+
+    # Check ownership or shared access
+    if device.user_id != user.id:
+        # Check if device is shared with this user
+        share_result = await session.execute(
+            select(DeviceShare).where(
+                DeviceShare.device_id == device.id,
+                DeviceShare.shared_with_user_id == user.id,
+                DeviceShare.accepted_at.isnot(None)
+            )
+        )
+        share = share_result.scalars().first()
+        if not share:
+            raise HTTPException(403, "Access denied")
+
+    # Get latest environment log entry
+    env_result = await session.execute(
+        select(EnvironmentLog)
+        .where(EnvironmentLog.device_id == device.id)
+        .order_by(EnvironmentLog.timestamp.desc())
+        .limit(1)
+    )
+    env_log = env_result.scalars().first()
+
+    if not env_log:
+        # No data yet
+        return {
+            "device_id": device_id,
+            "has_data": False,
+            "is_online": device.is_online,
+            "last_seen": device.last_seen
+        }
+
+    # Return the latest data
+    return {
+        "device_id": device_id,
+        "has_data": True,
+        "is_online": device.is_online,
+        "last_seen": device.last_seen,
+        "co2": env_log.co2,
+        "temperature": env_log.temperature,
+        "humidity": env_log.humidity,
+        "vpd": env_log.vpd,
+        "pressure": env_log.pressure,
+        "altitude": env_log.altitude,
+        "gas_resistance": env_log.gas_resistance,
+        "air_quality_score": env_log.air_quality_score,
+        "lux": env_log.lux,
+        "ppfd": env_log.ppfd,
+        "timestamp": env_log.timestamp,
+        "created_at": env_log.created_at
+    }
+
 # Get logs for a plant
 @app.get("/user/plants/{plant_id}/logs", response_model=List[LogEntryRead])
 async def get_plant_logs(

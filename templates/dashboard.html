@@ -1069,6 +1069,7 @@
                     const deviceSection = document.createElement('div');
                     deviceSection.classList.add('device-section');
                     deviceSection.dataset.deviceId = device.device_id; // Store device ID for reordering
+                    deviceSection.dataset.deviceName = device.name || device.system_name || 'Unknown Device'; // Store device name
 
                     // Set colors based on device type (more prominent visual distinction)
                     const deviceType = device.device_type || 'feeding_system';
@@ -1162,6 +1163,79 @@
                         <div class="device-content" id="device-content-${device.device_id}" data-device-id="${device.device_id}">
                             <div class="device-content-inner">
                                 <div class="cards-grid" data-device-id="${device.device_id}">
+                                    ${deviceType === 'environmental' ? `
+                                    <!-- Environmental Sensor Cards -->
+                                    <!-- Air Quality Card -->
+                                    <div class="card" id="air-quality-card-${device.device_id}" data-card-type="air-quality" draggable="true">
+                                        <div class="card-drag-handle" title="Drag to reorder">⋮⋮</div>
+                                        <div class="card-content">
+                                            <div class="card-title">🌡️ Air Quality</div>
+                                            <div style="display: flex; flex-direction: column; gap: 10px;">
+                                                <div style="display: flex; justify-content: space-between;">
+                                                    <span>Temperature:</span>
+                                                    <span id="env-temp-${device.device_id}" style="font-weight: bold;">--</span>
+                                                </div>
+                                                <div style="display: flex; justify-content: space-between;">
+                                                    <span>Humidity:</span>
+                                                    <span id="env-humidity-${device.device_id}" style="font-weight: bold;">--</span>
+                                                </div>
+                                                <div style="display: flex; justify-content: space-between;">
+                                                    <span>CO2:</span>
+                                                    <span id="env-co2-${device.device_id}" style="font-weight: bold;">--</span>
+                                                </div>
+                                                <div style="display: flex; justify-content: space-between;">
+                                                    <span>VPD:</span>
+                                                    <span id="env-vpd-${device.device_id}" style="font-weight: bold;">--</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Atmospheric Card -->
+                                    <div class="card" id="atmospheric-card-${device.device_id}" data-card-type="atmospheric" draggable="true">
+                                        <div class="card-drag-handle" title="Drag to reorder">⋮⋮</div>
+                                        <div class="card-content">
+                                            <div class="card-title">🌍 Atmospheric</div>
+                                            <div style="display: flex; flex-direction: column; gap: 10px;">
+                                                <div style="display: flex; justify-content: space-between;">
+                                                    <span>Pressure:</span>
+                                                    <span id="env-pressure-${device.device_id}" style="font-weight: bold;">--</span>
+                                                </div>
+                                                <div style="display: flex; justify-content: space-between;">
+                                                    <span>Altitude:</span>
+                                                    <span id="env-altitude-${device.device_id}" style="font-weight: bold;">--</span>
+                                                </div>
+                                                <div style="display: flex; justify-content: space-between;">
+                                                    <span>Gas Resistance:</span>
+                                                    <span id="env-gas-${device.device_id}" style="font-weight: bold;">--</span>
+                                                </div>
+                                                <div style="display: flex; justify-content: space-between;">
+                                                    <span>Air Quality Score:</span>
+                                                    <span id="env-aq-score-${device.device_id}" style="font-weight: bold;">--</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Light Card -->
+                                    <div class="card" id="light-card-${device.device_id}" data-card-type="light" draggable="true">
+                                        <div class="card-drag-handle" title="Drag to reorder">⋮⋮</div>
+                                        <div class="card-content">
+                                            <div class="card-title">💡 Light Levels</div>
+                                            <div style="display: flex; flex-direction: column; gap: 10px;">
+                                                <div style="display: flex; justify-content: space-between;">
+                                                    <span>Intensity:</span>
+                                                    <span id="env-lux-${device.device_id}" style="font-weight: bold;">--</span>
+                                                </div>
+                                                <div style="display: flex; justify-content: space-between;">
+                                                    <span>PPFD:</span>
+                                                    <span id="env-ppfd-${device.device_id}" style="font-weight: bold;">--</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    ` : `
+                                    <!-- Plant System Cards -->
                                     <!-- Water Level Card -->
                                     <div class="card" id="water-level-card-${device.device_id}" data-card-type="water-level" draggable="true">
                                         <div class="card-drag-handle" title="Drag to reorder">⋮⋮</div>
@@ -1215,6 +1289,7 @@
                                             <div id="all-valves-controls-${device.device_id}"></div>
                                         </div>
                                     </div>
+                                    `}
                                 </div>
                             </div>
                         </div>
@@ -1228,13 +1303,25 @@
                         const icon = e.target;
                         icon.style.transform = 'rotate(360deg)';
                         setTimeout(() => { icon.style.transform = 'rotate(0deg)'; }, 300);
-                        const ws = wsMap[device.device_id];
-                        if (ws) {
-                            ws.send(JSON.stringify({ type: 'request_refresh' }));
+
+                        if (deviceType === 'environmental') {
+                            // For environmental sensors, fetch data immediately
+                            fetchEnvironmentData(device.device_id);
+                        } else {
+                            // For plant systems, send refresh via WebSocket
+                            const ws = wsMap[device.device_id];
+                            if (ws) {
+                                ws.send(JSON.stringify({ type: 'request_refresh' }));
+                            }
                         }
                     });
 
-                    connectToDevice(device.device_id);
+                    // Connect based on device type
+                    if (deviceType === 'environmental') {
+                        connectToEnvironmentalSensor(device.device_id);
+                    } else {
+                        connectToDevice(device.device_id);
+                    }
                 });
 
                 // Apply saved device order
@@ -1876,6 +1963,98 @@
             } else {
                 content.classList.add('expanded');
                 icon.classList.add('expanded');
+            }
+        }
+
+        // Environmental sensor polling (no WebSocket, uses HTTP polling)
+        let envPollingIntervals = {};
+
+        function connectToEnvironmentalSensor(device_id) {
+            // Fetch immediately, then poll every 30 seconds
+            fetchEnvironmentData(device_id);
+
+            if (envPollingIntervals[device_id]) {
+                clearInterval(envPollingIntervals[device_id]);
+            }
+
+            envPollingIntervals[device_id] = setInterval(() => {
+                fetchEnvironmentData(device_id);
+            }, 30000); // Poll every 30 seconds
+        }
+
+        async function fetchEnvironmentData(device_id) {
+            try {
+                const response = await fetch(`/api/devices/${device_id}/environment/latest`);
+                if (response.ok) {
+                    const data = await response.json();
+                    updateEnvironmentDisplay(device_id, data);
+                } else {
+                    console.error(`Failed to fetch environment data for ${device_id}`);
+                    updateOnlineStatus(device_id, false);
+                }
+            } catch (error) {
+                console.error(`Error fetching environment data for ${device_id}:`, error);
+                updateOnlineStatus(device_id, false);
+            }
+        }
+
+        function updateEnvironmentDisplay(device_id, data) {
+            // Update online status
+            updateOnlineStatus(device_id, data.is_online);
+
+            if (!data.has_data) {
+                // No data yet - show placeholder
+                document.getElementById(`env-temp-${device_id}`).textContent = '--';
+                document.getElementById(`env-humidity-${device_id}`).textContent = '--';
+                document.getElementById(`env-co2-${device_id}`).textContent = '--';
+                document.getElementById(`env-vpd-${device_id}`).textContent = '--';
+                document.getElementById(`env-pressure-${device_id}`).textContent = '--';
+                document.getElementById(`env-altitude-${device_id}`).textContent = '--';
+                document.getElementById(`env-gas-${device_id}`).textContent = '--';
+                document.getElementById(`env-aq-score-${device_id}`).textContent = '--';
+                document.getElementById(`env-lux-${device_id}`).textContent = '--';
+                document.getElementById(`env-ppfd-${device_id}`).textContent = '--';
+                return;
+            }
+
+            // Update all sensor values with proper formatting and units
+            if (data.temperature !== null && data.temperature !== undefined) {
+                document.getElementById(`env-temp-${device_id}`).textContent = `${data.temperature.toFixed(1)}°C`;
+            }
+            if (data.humidity !== null && data.humidity !== undefined) {
+                document.getElementById(`env-humidity-${device_id}`).textContent = `${data.humidity.toFixed(1)}%`;
+            }
+            if (data.co2 !== null && data.co2 !== undefined) {
+                document.getElementById(`env-co2-${device_id}`).textContent = `${data.co2} ppm`;
+            }
+            if (data.vpd !== null && data.vpd !== undefined) {
+                document.getElementById(`env-vpd-${device_id}`).textContent = `${data.vpd.toFixed(2)} kPa`;
+            }
+            if (data.pressure !== null && data.pressure !== undefined) {
+                document.getElementById(`env-pressure-${device_id}`).textContent = `${data.pressure.toFixed(1)} hPa`;
+            }
+            if (data.altitude !== null && data.altitude !== undefined) {
+                document.getElementById(`env-altitude-${device_id}`).textContent = `${data.altitude.toFixed(0)} m`;
+            }
+            if (data.gas_resistance !== null && data.gas_resistance !== undefined) {
+                document.getElementById(`env-gas-${device_id}`).textContent = `${data.gas_resistance.toFixed(1)} kΩ`;
+            }
+            if (data.air_quality_score !== null && data.air_quality_score !== undefined) {
+                document.getElementById(`env-aq-score-${device_id}`).textContent = `${data.air_quality_score}/100`;
+            }
+            if (data.lux !== null && data.lux !== undefined) {
+                document.getElementById(`env-lux-${device_id}`).textContent = `${data.lux.toFixed(0)} lux`;
+            }
+            if (data.ppfd !== null && data.ppfd !== undefined) {
+                document.getElementById(`env-ppfd-${device_id}`).textContent = `${data.ppfd.toFixed(1)} μmol/m²/s`;
+            }
+
+            // Update system name in header (use device name from data attribute)
+            const systemNameEl = document.getElementById(`system-name-${device_id}`);
+            if (systemNameEl && systemNameEl.textContent === 'Loading...') {
+                const deviceSection = document.querySelector(`.device-section[data-device-id="${device_id}"]`);
+                const deviceName = deviceSection?.dataset.deviceName || 'Environmental Sensor';
+                systemNameEl.textContent = deviceName;
             }
         }
 
