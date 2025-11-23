@@ -243,7 +243,21 @@
     <div style="max-width: 1200px; margin: 2rem auto; padding: 0 1rem;">
         <h1>Location Management</h1>
 
-        <button class="primary add-location-btn" onclick="openAddLocationModal()">+ Add Location</button>
+        <div style="display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap;">
+            <button class="primary add-location-btn" onclick="openAddLocationModal()">+ Add Location</button>
+
+            <div style="flex: 1; min-width: 300px; display: flex; gap: 0.5rem;">
+                <input
+                    type="text"
+                    id="share-code-input"
+                    placeholder="Enter share code to accept location..."
+                    style="flex: 1; padding: 0.5rem 1rem; border: 1px solid #d1d5db; border-radius: 4px; font-size: 1rem;"
+                >
+                <button class="primary" onclick="acceptShareCode()">Accept Share</button>
+            </div>
+        </div>
+
+        <div id="share-code-result" style="margin-bottom: 1rem;"></div>
 
         <div id="locations-list"></div>
     </div>
@@ -282,34 +296,41 @@
         </div>
     </div>
 
-    <!-- Share Location Modal -->
+    <!-- Share Location Management Modal -->
     <div id="shareModal" class="modal">
         <div class="modal-content">
             <span class="close" onclick="closeShareModal()">&times;</span>
-            <h2>Share Location</h2>
+            <h2>Manage Location Sharing</h2>
+            <p style="color: #6b7280; font-size: 0.9rem;" id="share-location-name"></p>
 
-            <div class="form-group">
-                <label for="share-permission">Permission Level</label>
-                <select id="share-permission">
-                    <option value="viewer">Viewer (Read Only)</option>
-                    <option value="controller">Controller (Full Control)</option>
-                </select>
+            <!-- Create New Share -->
+            <div style="margin: 1.5rem 0; padding: 1rem; background: rgba(16, 185, 129, 0.1); border-radius: 8px; border-left: 4px solid #10b981;">
+                <h3 style="margin-top: 0; color: #10b981;">Create New Share Link</h3>
+                <div class="form-group">
+                    <label for="share-permission">Permission Level</label>
+                    <select id="share-permission">
+                        <option value="viewer">Viewer (Read Only)</option>
+                        <option value="controller">Controller (Full Control)</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="share-expires">Expires In (Days)</label>
+                    <input type="number" id="share-expires" value="7" min="1" max="365">
+                </div>
+
+                <button class="primary" onclick="createShare()">Generate Share Code</button>
+
+                <div id="share-code-display" style="margin-top: 1rem;"></div>
             </div>
 
-            <div class="form-group">
-                <label for="share-expires">Expires In (Days)</label>
-                <input type="number" id="share-expires" value="7" min="1" max="365">
+            <!-- Active Shares List -->
+            <div style="margin: 1.5rem 0;">
+                <h3 style="color: #10b981;">Active Shares</h3>
+                <div id="shares-list" style="margin-top: 1rem;"></div>
             </div>
 
-            <button class="primary" onclick="createShare()">Generate Share Code</button>
-
-            <div id="share-code-display" style="margin-top: 1rem; display: none;">
-                <p><strong>Share Code:</strong></p>
-                <p style="font-size: 1.5rem; font-weight: bold; color: #10b981;" id="share-code-text"></p>
-                <p style="font-size: 0.875rem; color: #6b7280;">Share this code with others to grant them access to this location.</p>
-            </div>
-
-            <div style="margin-top: 1rem;">
+            <div style="margin-top: 1.5rem;">
                 <button class="secondary" onclick="closeShareModal()">Close</button>
             </div>
         </div>
@@ -514,14 +535,57 @@
             }
         }
 
+        async function acceptShareCode() {
+            const shareCode = document.getElementById('share-code-input').value.trim();
+            const resultDiv = document.getElementById('share-code-result');
+
+            if (!shareCode) {
+                resultDiv.innerHTML = '<p style="color: #ef4444; padding: 0.5rem; background: rgba(239, 68, 68, 0.1); border-radius: 4px;">Please enter a share code</p>';
+                return;
+            }
+
+            try {
+                const response = await fetch('/user/locations/accept-share', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ share_code: shareCode })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    resultDiv.innerHTML = `<p style="color: #10b981; padding: 0.5rem; background: rgba(16, 185, 129, 0.1); border-radius: 4px;">✓ Location share accepted successfully! Location ID: ${data.location_id}</p>`;
+                    document.getElementById('share-code-input').value = '';
+                    fetchLocations();
+                } else {
+                    const error = await response.json();
+                    resultDiv.innerHTML = `<p style="color: #ef4444; padding: 0.5rem; background: rgba(239, 68, 68, 0.1); border-radius: 4px;">Error: ${error.detail}</p>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<p style="color: #ef4444; padding: 0.5rem; background: rgba(239, 68, 68, 0.1); border-radius: 4px;">Error: ${error.message}</p>`;
+            }
+        }
+
         function openShareModal(locationId) {
             currentShareLocationId = locationId;
-            document.getElementById('share-code-display').style.display = 'none';
+
+            // Get location name for display
+            const locations = Array.from(document.querySelectorAll('.location-name'));
+            const locationName = locations.find(el => {
+                const card = el.closest('.location-card');
+                const shareBtn = card?.querySelector('button[onclick*="openShareModal"]');
+                return shareBtn?.onclick.toString().includes(locationId);
+            })?.textContent || `Location #${locationId}`;
+
+            document.getElementById('share-location-name').textContent = `Location: ${locationName}`;
+            document.getElementById('share-code-display').innerHTML = '';
             document.getElementById('shareModal').style.display = 'block';
+            loadShares(locationId);
         }
 
         function closeShareModal() {
             document.getElementById('shareModal').style.display = 'none';
+            document.getElementById('share-code-display').innerHTML = '';
+            document.getElementById('shares-list').innerHTML = '';
             currentShareLocationId = null;
         }
 
@@ -539,13 +603,111 @@
                     })
                 });
 
+                const resultDiv = document.getElementById('share-code-display');
                 if (response.ok) {
                     const data = await response.json();
-                    document.getElementById('share-code-text').textContent = data.share_code;
-                    document.getElementById('share-code-display').style.display = 'block';
+                    resultDiv.innerHTML = `
+                        <div style="background: rgba(16, 185, 129, 0.2); padding: 1rem; border-radius: 6px; margin-top: 0.5rem;">
+                            <p style="margin: 0; color: #10b981; font-weight: bold;">Share Code Generated!</p>
+                            <p style="margin: 0.5rem 0; font-size: 1.2rem; font-family: monospace; color: #1f2937;">${data.share_code}</p>
+                            <p style="margin: 0; font-size: 0.85rem; color: #6b7280;">Expires: ${new Date(data.expires_at).toLocaleString()}</p>
+                            <button onclick="navigator.clipboard.writeText('${data.share_code}')" style="margin-top: 0.5rem; font-size: 0.85rem;" class="secondary">Copy Code</button>
+                        </div>
+                    `;
+                    loadShares(currentShareLocationId);
                 } else {
                     const error = await response.json();
-                    alert(`Error: ${error.detail || 'Failed to create share'}`);
+                    resultDiv.innerHTML = `<p style="color: #ef4444;">Error: ${error.detail || 'Failed to create share'}</p>`;
+                }
+            } catch (error) {
+                document.getElementById('share-code-display').innerHTML = `<p style="color: #ef4444;">Error: ${error.message}</p>`;
+            }
+        }
+
+        async function loadShares(locationId) {
+            try {
+                const response = await fetch(`/user/locations/${locationId}/shares`);
+                if (response.ok) {
+                    const shares = await response.json();
+                    const sharesDiv = document.getElementById('shares-list');
+
+                    if (shares.length === 0) {
+                        sharesDiv.innerHTML = '<p style="color: #6b7280;">No active shares</p>';
+                        return;
+                    }
+
+                    sharesDiv.innerHTML = '';
+                    shares.forEach(share => {
+                        const shareDiv = document.createElement('div');
+                        shareDiv.style.padding = '1rem';
+                        shareDiv.style.marginBottom = '0.5rem';
+                        shareDiv.style.background = '#f9fafb';
+                        shareDiv.style.borderRadius = '6px';
+                        shareDiv.style.border = '1px solid #e5e7eb';
+
+                        const statusText = share.accepted_at
+                            ? `Accepted by ${share.shared_with_email}`
+                            : `Pending (Code: ${share.share_code})`;
+
+                        const expiryDate = new Date(share.expires_at);
+                        const expiryText = expiryDate > new Date()
+                            ? `Expires: ${expiryDate.toLocaleString()}`
+                            : '<span style="color: #ef4444;">Expired</span>';
+
+                        shareDiv.innerHTML = `
+                            <p style="margin: 0 0 0.5rem 0; font-weight: 600; color: #1f2937;">${statusText}</p>
+                            <p style="margin: 0; font-size: 0.9rem; color: #6b7280;">Permission: ${share.permission_level}</p>
+                            <p style="margin: 0; font-size: 0.9rem; color: #6b7280;">${expiryText}</p>
+                            ${share.accepted_at ? `
+                                <div style="margin-top: 0.5rem;">
+                                    <select id="perm-${share.id}" style="margin-right: 0.5rem; padding: 0.25rem;">
+                                        <option value="viewer" ${share.permission_level === 'viewer' ? 'selected' : ''}>View Only</option>
+                                        <option value="controller" ${share.permission_level === 'controller' ? 'selected' : ''}>Can Control</option>
+                                    </select>
+                                    <button onclick="updatePermission(${locationId}, ${share.id})" style="font-size: 0.85rem;" class="secondary">Update</button>
+                                </div>
+                            ` : ''}
+                            <button onclick="revokeShare(${locationId}, ${share.id})" style="background: #ef4444; color: white; font-size: 0.85rem; margin-top: 0.5rem;" class="danger">Revoke</button>
+                        `;
+                        sharesDiv.appendChild(shareDiv);
+                    });
+                }
+            } catch (error) {
+                document.getElementById('shares-list').innerHTML = `<p style="color: #ef4444;">Error loading shares: ${error.message}</p>`;
+            }
+        }
+
+        async function revokeShare(locationId, shareId) {
+            if (!confirm('Are you sure you want to revoke this share?')) return;
+
+            try {
+                const response = await fetch(`/user/locations/${locationId}/shares/${shareId}`, { method: 'DELETE' });
+                if (response.ok) {
+                    loadShares(locationId);
+                    alert('Share revoked successfully');
+                } else {
+                    alert('Failed to revoke share');
+                }
+            } catch (error) {
+                alert(`Error: ${error.message}`);
+            }
+        }
+
+        async function updatePermission(locationId, shareId) {
+            const permission = document.getElementById(`perm-${shareId}`).value;
+
+            try {
+                const response = await fetch(`/user/locations/${locationId}/shares/${shareId}/permission`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ permission_level: permission })
+                });
+
+                if (response.ok) {
+                    alert('Permission updated successfully');
+                    loadShares(locationId);
+                } else {
+                    alert('Failed to update permission');
                 }
             } catch (error) {
                 alert(`Error: ${error.message}`);

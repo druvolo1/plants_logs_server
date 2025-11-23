@@ -1686,6 +1686,39 @@ async def revoke_location_share(
 
     return {"status": "success", "message": "Share revoked"}
 
+@app.put("/user/locations/{location_id}/shares/{share_id}/permission")
+async def update_location_share_permission(
+    location_id: int,
+    share_id: int,
+    share_data: ShareUpdate,
+    user: User = Depends(current_user),
+    session: AsyncSession = Depends(get_db)
+):
+    """Update the permission level of a location share"""
+    # Validate permission level
+    if share_data.permission_level not in ['viewer', 'controller']:
+        raise HTTPException(400, "Invalid permission level. Must be 'viewer' or 'controller'")
+
+    # Find the share and verify ownership
+    result = await session.execute(
+        select(LocationShare).where(
+            LocationShare.id == share_id,
+            LocationShare.location_id == location_id,
+            LocationShare.owner_user_id == user.id
+        )
+    )
+    share = result.scalars().first()
+
+    if not share:
+        raise HTTPException(404, "Share not found or not owned by you")
+
+    # Update permission
+    share.permission_level = share_data.permission_level
+
+    await session.commit()
+
+    return {"status": "success", "permission_level": share.permission_level}
+
 @app.post("/user/devices", response_model=Dict[str, str])
 async def add_device(device: DeviceCreate, user: User = Depends(current_user), session: AsyncSession = Depends(get_db)):
     existing = await session.execute(select(Device).where(Device.device_id == device.device_id))
