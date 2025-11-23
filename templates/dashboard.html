@@ -2513,7 +2513,6 @@
 
         // Location filtering
         let allLocations = [];
-        let allDevices = [];
         let selectedLocationId = null;
 
         async function fetchLocations() {
@@ -2580,56 +2579,50 @@
 
             select.addEventListener('change', function() {
                 selectedLocationId = this.value ? parseInt(this.value) : null;
-                filterAndDisplayDevices();
+                applyLocationFilter();
             });
         }
 
-        function filterAndDisplayDevices() {
-            const statusDiv = document.getElementById('devices-status');
-
-            if (!allDevices || allDevices.length === 0) {
-                statusDiv.innerHTML = '<p style="color: #888;">No devices connected yet.</p>';
+        function applyLocationFilter() {
+            if (!selectedLocationId) {
+                // Show all devices
+                document.querySelectorAll('.device-section').forEach(section => {
+                    section.style.display = '';
+                });
                 return;
             }
 
-            let filteredDevices = allDevices;
+            // Get all child location IDs
+            const { map } = buildLocationHierarchy(allLocations);
+            const locationIds = getAllChildLocationIds(selectedLocationId, map);
 
-            if (selectedLocationId) {
-                const { map } = buildLocationHierarchy(allLocations);
-                const locationIds = getAllChildLocationIds(selectedLocationId, map);
-
-                filteredDevices = allDevices.filter(device =>
-                    device.location_id && locationIds.includes(device.location_id)
-                );
-            }
-
-            statusDiv.innerHTML = '';
-
-            filteredDevices.forEach(device => {
-                const deviceCard = createDeviceCard(device);
-                statusDiv.appendChild(deviceCard);
-
-                if (device.is_online) {
-                    connectWebSocket(device.device_id);
+            // Hide/show devices based on location
+            document.querySelectorAll('.device-section').forEach(section => {
+                const deviceLocationId = parseInt(section.dataset.locationId);
+                if (deviceLocationId && locationIds.includes(deviceLocationId)) {
+                    section.style.display = '';
+                } else {
+                    section.style.display = 'none';
                 }
             });
-
-            if (filteredDevices.length === 0) {
-                if (selectedLocationId) {
-                    statusDiv.innerHTML = '<p style="color: #888;">No devices found in this location.</p>';
-                } else {
-                    statusDiv.innerHTML = '<p style="color: #888;">No devices connected yet.</p>';
-                }
-            }
         }
 
-        // Modified fetchAndConnectDevices to store devices and call filter
-        const originalFetchAndConnectDevices = fetchAndConnectDevices;
+        // Store original fetchAndConnectDevices
+        const originalFetch = fetchAndConnectDevices;
         fetchAndConnectDevices = async function() {
+            await originalFetch();
+
+            // After devices are loaded, store location_id in dataset and apply filter
             const response = await fetch('/user/devices');
             if (response.ok) {
-                allDevices = await response.json();
-                filterAndDisplayDevices();
+                const devices = await response.json();
+                devices.forEach(device => {
+                    const section = document.querySelector(`[data-device-id="${device.device_id}"]`);
+                    if (section && device.location_id) {
+                        section.dataset.locationId = device.location_id;
+                    }
+                });
+                applyLocationFilter();
             }
         };
 
