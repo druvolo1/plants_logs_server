@@ -1949,11 +1949,16 @@ async def pair_device(pair_request: DevicePairRequest, user: User = Depends(curr
 
 # Pairing result polling endpoint (no auth required - device polls this)
 @app.get("/api/devices/pair-status/{device_id}")
-async def get_pair_status(device_id: str):
+async def get_pair_status(device_id: str, response: Response):
     """
     Device polls this endpoint to check if pairing completed.
     Returns pairing result if available, otherwise 404.
     """
+    # Add CORS headers to allow sensor to poll from local network
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Methods"] = "GET, OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "*"
+
     # Clean up old results (older than 5 minutes)
     cutoff = datetime.utcnow() - timedelta(minutes=5)
     expired_keys = [k for k, v in pairing_results.items() if v["timestamp"] < cutoff]
@@ -1972,6 +1977,15 @@ async def get_pair_status(device_id: str):
         }
     else:
         raise HTTPException(404, "Pairing not complete or expired")
+
+# OPTIONS handler for CORS preflight
+@app.options("/api/devices/pair-status/{device_id}")
+async def pair_status_options(device_id: str, response: Response):
+    """Handle CORS preflight requests"""
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Methods"] = "GET, OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "*"
+    return {}
 
 # Added: List user devices (owned and shared)
 @app.get("/user/devices", response_model=List[DeviceRead])
