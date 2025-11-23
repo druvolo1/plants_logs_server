@@ -276,11 +276,21 @@
             <!-- Create New Share -->
             <div style="margin: 1.5rem 0; padding: 1rem; background: rgba(16, 185, 129, 0.1); border-radius: 8px; border-left: 4px solid #10b981;">
                 <h4 style="margin-top: 0; color: #10b981;">Create New Share Link</h4>
-                <label for="permission-select">Permission Level:</label>
-                <select id="permission-select" style="margin-left: 0.5rem; padding: 0.5rem; border-radius: 4px;">
-                    <option value="viewer">View Only</option>
-                    <option value="controller">Can Control</option>
-                </select>
+                <div style="margin-bottom: 0.5rem;">
+                    <label for="permission-select">Permission Level:</label>
+                    <select id="permission-select" style="margin-left: 0.5rem; padding: 0.5rem; border-radius: 4px;">
+                        <option value="viewer">View Only</option>
+                        <option value="controller">Can Control</option>
+                    </select>
+                </div>
+                <div style="margin-bottom: 0.5rem;">
+                    <label for="share-expires-type">Expiration:</label>
+                    <select id="share-expires-type" onchange="toggleDeviceExpiresInput()" style="margin-left: 0.5rem; padding: 0.5rem; border-radius: 4px;">
+                        <option value="days">Expires in days</option>
+                        <option value="never">Never expires</option>
+                    </select>
+                    <input type="number" id="share-expires" value="7" min="1" max="365" style="margin-left: 0.5rem; padding: 0.5rem; border-radius: 4px; width: 80px;">
+                </div>
                 <button onclick="createShare()" style="margin-left: 1rem;">Generate Share Code</button>
                 <div id="share-code-result" style="margin-top: 1rem;"></div>
             </div>
@@ -574,22 +584,37 @@
             currentShareDeviceId = null;
         }
 
+        function toggleDeviceExpiresInput() {
+            const expiresType = document.getElementById('share-expires-type').value;
+            const expiresInput = document.getElementById('share-expires');
+            expiresInput.style.display = expiresType === 'never' ? 'none' : 'inline-block';
+        }
+
         async function createShare() {
             const permission = document.getElementById('permission-select').value;
+            const expiresType = document.getElementById('share-expires-type').value;
+            const expiresInDays = expiresType === 'never' ? null : parseInt(document.getElementById('share-expires').value);
+
             const response = await fetch(`/user/devices/${currentShareDeviceId}/share`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ permission_level: permission })
+                body: JSON.stringify({
+                    permission_level: permission,
+                    expires_in_days: expiresInDays
+                })
             });
 
             const resultDiv = document.getElementById('share-code-result');
             if (response.ok) {
                 const data = await response.json();
+                const expiryText = data.expires_at
+                    ? `Expires: ${new Date(data.expires_at).toLocaleString()}`
+                    : 'Never expires';
                 resultDiv.innerHTML = `
                     <div style="background: rgba(16, 185, 129, 0.2); padding: 1rem; border-radius: 6px; margin-top: 0.5rem;">
                         <p style="margin: 0; color: #10b981; font-weight: bold;">Share Code Generated!</p>
                         <p style="margin: 0.5rem 0; font-size: 1.2rem; font-family: monospace; color: #fff;">${data.share_code}</p>
-                        <p style="margin: 0; font-size: 0.85rem; color: #888;">Expires: ${new Date(data.expires_at).toLocaleString()}</p>
+                        <p style="margin: 0; font-size: 0.85rem; color: #888;">${expiryText}</p>
                         <button onclick="navigator.clipboard.writeText('${data.share_code}')" style="margin-top: 0.5rem; font-size: 0.85rem;">Copy Code</button>
                     </div>
                 `;
@@ -623,9 +648,15 @@
                         ? `Accepted by ${share.shared_with_email}`
                         : `Pending (Code: ${share.share_code})`;
 
-                    const expiryText = new Date(share.expires_at) > new Date()
-                        ? `Expires: ${new Date(share.expires_at).toLocaleString()}`
-                        : '<span style="color: #ef4444;">Expired</span>';
+                    let expiryText;
+                    if (share.expires_at === null) {
+                        expiryText = 'Never expires';
+                    } else {
+                        const expiryDate = new Date(share.expires_at);
+                        expiryText = expiryDate > new Date()
+                            ? `Expires: ${expiryDate.toLocaleString()}`
+                            : '<span style="color: #ef4444;">Expired</span>';
+                    }
 
                     shareDiv.innerHTML = `
                         <p style="margin: 0 0 0.5rem 0;"><strong>${statusText}</strong></p>

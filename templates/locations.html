@@ -315,8 +315,12 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="share-expires">Expires In (Days)</label>
-                    <input type="number" id="share-expires" value="7" min="1" max="365">
+                    <label for="share-expires">Expiration</label>
+                    <select id="share-expires-type" onchange="toggleExpiresInput()" style="margin-bottom: 0.5rem;">
+                        <option value="days">Expires in days</option>
+                        <option value="never">Never expires</option>
+                    </select>
+                    <input type="number" id="share-expires" value="7" min="1" max="365" style="margin-top: 0.5rem;">
                 </div>
 
                 <button class="primary" onclick="createShare()">Generate Share Code</button>
@@ -647,9 +651,16 @@
             currentShareLocationId = null;
         }
 
+        function toggleExpiresInput() {
+            const expiresType = document.getElementById('share-expires-type').value;
+            const expiresInput = document.getElementById('share-expires');
+            expiresInput.style.display = expiresType === 'never' ? 'none' : 'block';
+        }
+
         async function createShare() {
             const permission = document.getElementById('share-permission').value;
-            const expiresInDays = parseInt(document.getElementById('share-expires').value);
+            const expiresType = document.getElementById('share-expires-type').value;
+            const expiresInDays = expiresType === 'never' ? null : parseInt(document.getElementById('share-expires').value);
 
             try {
                 const response = await fetch(`/user/locations/${currentShareLocationId}/share`, {
@@ -664,11 +675,14 @@
                 const resultDiv = document.getElementById('share-code-display');
                 if (response.ok) {
                     const data = await response.json();
+                    const expiryText = data.expires_at
+                        ? `Expires: ${new Date(data.expires_at).toLocaleString()}`
+                        : 'Never expires';
                     resultDiv.innerHTML = `
                         <div style="background: rgba(16, 185, 129, 0.2); padding: 1rem; border-radius: 6px; margin-top: 0.5rem;">
                             <p style="margin: 0; color: #10b981; font-weight: bold;">Share Code Generated!</p>
                             <p style="margin: 0.5rem 0; font-size: 1.2rem; font-family: monospace; color: #1f2937;">${data.share_code}</p>
-                            <p style="margin: 0; font-size: 0.85rem; color: #6b7280;">Expires: ${new Date(data.expires_at).toLocaleString()}</p>
+                            <p style="margin: 0; font-size: 0.85rem; color: #6b7280;">${expiryText}</p>
                             <button onclick="navigator.clipboard.writeText('${data.share_code}')" style="margin-top: 0.5rem; font-size: 0.85rem;" class="secondary">Copy Code</button>
                         </div>
                     `;
@@ -707,10 +721,15 @@
                             ? `Accepted by ${share.shared_with_email}`
                             : `Pending (Code: ${share.share_code})`;
 
-                        const expiryDate = new Date(share.expires_at);
-                        const expiryText = expiryDate > new Date()
-                            ? `Expires: ${expiryDate.toLocaleString()}`
-                            : '<span style="color: #ef4444;">Expired</span>';
+                        let expiryText;
+                        if (share.expires_at === null) {
+                            expiryText = 'Never expires';
+                        } else {
+                            const expiryDate = new Date(share.expires_at);
+                            expiryText = expiryDate > new Date()
+                                ? `Expires: ${expiryDate.toLocaleString()}`
+                                : '<span style="color: #ef4444;">Expired</span>';
+                        }
 
                         shareDiv.innerHTML = `
                             <p style="margin: 0 0 0.5rem 0; font-weight: 600; color: #1f2937;">${statusText}</p>

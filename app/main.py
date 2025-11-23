@@ -107,7 +107,7 @@ class DeviceShare(Base):
     share_code = Column(String(12), unique=True, index=True, nullable=False)
     permission_level = Column(String(20), nullable=False)  # 'viewer' or 'controller'
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    expires_at = Column(DateTime, nullable=False)
+    expires_at = Column(DateTime, nullable=True)  # NULL for never expire
     accepted_at = Column(DateTime, nullable=True)
     revoked_at = Column(DateTime, nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)
@@ -145,7 +145,7 @@ class LocationShare(Base):
     share_code = Column(String(12), unique=True, index=True, nullable=False)
     permission_level = Column(String(20), nullable=False)  # 'viewer' or 'controller'
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    expires_at = Column(DateTime, nullable=False)
+    expires_at = Column(DateTime, nullable=True)  # NULL for never expire
     accepted_at = Column(DateTime, nullable=True)
     revoked_at = Column(DateTime, nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)
@@ -1166,6 +1166,7 @@ class DeviceRead(BaseModel):
 # Device Sharing Pydantic models
 class ShareCreate(BaseModel):
     permission_level: str  # 'viewer' or 'controller'
+    expires_in_days: Optional[int] = 7  # None for never expire
 
 class ShareAccept(BaseModel):
     share_code: str
@@ -1209,7 +1210,7 @@ class LocationRead(BaseModel):
 
 class LocationShareCreate(BaseModel):
     permission_level: str  # 'viewer' or 'controller'
-    expires_in_days: int = 7
+    expires_in_days: Optional[int] = 7  # None for never expire
 
 class LocationShareRead(BaseModel):
     id: int
@@ -1395,7 +1396,7 @@ async def list_locations(user: User = Depends(current_user), session: AsyncSessi
             LocationShare.is_active == True,
             LocationShare.accepted_at != None,
             LocationShare.revoked_at == None,
-            LocationShare.expires_at > datetime.utcnow()
+            or_(LocationShare.expires_at == None, LocationShare.expires_at > datetime.utcnow())
         )
     )
 
@@ -1441,7 +1442,7 @@ async def get_location(location_id: int, user: User = Depends(current_user), ses
                 LocationShare.is_active == True,
                 LocationShare.accepted_at != None,
                 LocationShare.revoked_at == None,
-                LocationShare.expires_at > datetime.utcnow()
+                or_(LocationShare.expires_at == None, LocationShare.expires_at > datetime.utcnow())
             )
         )
         share = share_result.scalars().first()
@@ -1552,8 +1553,8 @@ async def create_location_share(
     # Generate unique share code
     share_code = await generate_share_code(session)
 
-    # Create share with expiration
-    expires_at = datetime.utcnow() + timedelta(days=share_data.expires_in_days)
+    # Create share with expiration (None for never expire)
+    expires_at = None if share_data.expires_in_days is None else datetime.utcnow() + timedelta(days=share_data.expires_in_days)
 
     share = LocationShare(
         location_id=location.id,
@@ -1568,7 +1569,7 @@ async def create_location_share(
     await session.commit()
     await session.refresh(share)
 
-    return {"share_code": share_code, "expires_at": share.expires_at.isoformat()}
+    return {"share_code": share_code, "expires_at": share.expires_at.isoformat() if share.expires_at else None}
 
 @app.post("/user/locations/accept-share", response_model=Dict[str, str])
 async def accept_location_share(
@@ -1590,8 +1591,8 @@ async def accept_location_share(
     if not share:
         raise HTTPException(404, "Invalid or already accepted share code")
 
-    # Check if expired
-    if datetime.utcnow() > share.expires_at:
+    # Check if expired (skip check if expires_at is None)
+    if share.expires_at is not None and datetime.utcnow() > share.expires_at:
         share.is_active = False
         await session.commit()
         raise HTTPException(400, "Share code has expired")
@@ -1869,7 +1870,8 @@ async def list_devices(user: User = Depends(current_user), session: AsyncSession
             LocationShare.shared_with_user_id == user.id,
             LocationShare.is_active == True,
             LocationShare.revoked_at == None,
-            LocationShare.accepted_at != None
+            LocationShare.accepted_at != None,
+            or_(LocationShare.expires_at == None, LocationShare.expires_at > datetime.utcnow())
         )
     )
 
@@ -2080,13 +2082,15 @@ async def create_share(
     # Generate unique share code
     share_code = await generate_share_code(session)
 
-    # Create share
+    # Create share with expiration (None for never expire)
+    expires_at = None if share_data.expires_in_days is None else datetime.utcnow() + timedelta(days=share_data.expires_in_days)
+
     share = DeviceShare(
         device_id=device.id,
         owner_user_id=user.id,
         share_code=share_code,
         permission_level=share_data.permission_level,
-        expires_at=datetime.utcnow() + timedelta(hours=24),
+        expires_at=expires_at,
         is_active=True
     )
 
@@ -2094,7 +2098,7 @@ async def create_share(
     await session.commit()
     await session.refresh(share)
 
-    return {"share_code": share_code, "expires_at": share.expires_at.isoformat()}
+    return {"share_code": share_code, "expires_at": share.expires_at.isoformat() if share.expires_at else None}
 
 # Accept a share with a code
 @app.post("/user/devices/accept-share", response_model=Dict[str, str])
@@ -2116,8 +2120,8 @@ async def accept_share(
     if not share:
         raise HTTPException(404, "Invalid or already accepted share code")
 
-    # Check if expired
-    if datetime.utcnow() > share.expires_at:
+    # Check if expired (skip check if expires_at is None)
+    if share.expires_at is not None and datetime.utcnow() > share.expires_at:
         share.is_active = False
         await session.commit()
         raise HTTPException(400, "Share code has expired")
@@ -3646,7 +3650,8 @@ async def user_websocket(websocket: WebSocket, device_id: str):
                             LocationShare.shared_with_user_id == user.id,
                             LocationShare.is_active == True,
                             LocationShare.revoked_at == None,
-                            LocationShare.accepted_at != None
+                            LocationShare.accepted_at != None,
+                            or_(LocationShare.expires_at == None, LocationShare.expires_at > datetime.utcnow())
                         )
                     )
                     location_share = result.scalars().first()
