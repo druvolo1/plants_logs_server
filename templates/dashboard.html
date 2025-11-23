@@ -1103,9 +1103,10 @@
                         }
                     }
 
-                    // Store permission level on device section for later use
+                    // Store permission level and scope on device section for later use
                     deviceSection.dataset.permissionLevel = device.permission_level || 'owner';
                     deviceSection.dataset.isOwner = device.is_owner;
+                    deviceSection.dataset.scope = device.scope || 'plant'; // Store device scope (plant or room)
 
                     deviceSection.innerHTML = `
                         <div class="device-header" onclick="toggleDevice('${device.device_id}')" style="cursor: ${device.is_online ? 'pointer' : 'not-allowed'}; opacity: ${device.is_online ? '1' : '0.6'}; background: ${headerBgColor}; border-color: ${headerBorderColor}; position: relative;">
@@ -1999,26 +2000,32 @@
             };
             
             document.getElementById(`system-name-${device_id}`).innerHTML = statusData.settings?.system_name || 'N/A';
-            
-            // Plant info
-            const plantInfo = statusData.settings?.plant_info || {};
-            const plantName = plantInfo.name;
-            const startDate = plantInfo.start_date;
 
-            const plantItem = document.getElementById(`plant-item-${device_id}`);
-            const startDateItem = document.getElementById(`start-date-item-${device_id}`);
-            const weeksItem = document.getElementById(`weeks-item-${device_id}`);
+            // Get device scope to determine if plant fields should be shown
+            const deviceSection = document.querySelector(`[data-device-id="${device_id}"]`)?.closest('.device-section');
+            const deviceScope = deviceSection?.dataset.scope || 'plant';
 
-            if (plantName && plantName !== '-') {
-                plantItem.style.setProperty('display', 'flex', 'important');
-                document.getElementById(`plant-name-${device_id}`).innerHTML = plantName;
-            } else {
-                plantItem.style.setProperty('display', 'none', 'important');
-            }
+            // Only show plant info for plant-scoped devices
+            if (deviceScope === 'plant') {
+                // Plant info
+                const plantInfo = statusData.settings?.plant_info || {};
+                const plantName = plantInfo.name;
+                const startDate = plantInfo.start_date;
 
-            if (startDate && startDate !== '-') {
-                startDateItem.style.setProperty('display', 'flex', 'important');
-                document.getElementById(`start-date-${device_id}`).innerHTML = startDate;
+                const plantItem = document.getElementById(`plant-item-${device_id}`);
+                const startDateItem = document.getElementById(`start-date-item-${device_id}`);
+                const weeksItem = document.getElementById(`weeks-item-${device_id}`);
+
+                if (plantName && plantName !== '-') {
+                    plantItem.style.setProperty('display', 'flex', 'important');
+                    document.getElementById(`plant-name-${device_id}`).innerHTML = plantName;
+                } else {
+                    plantItem.style.setProperty('display', 'none', 'important');
+                }
+
+                if (startDate && startDate !== '-') {
+                    startDateItem.style.setProperty('display', 'flex', 'important');
+                    document.getElementById(`start-date-${device_id}`).innerHTML = startDate;
 
                 // Calculate weeks
                 try {
@@ -2034,9 +2041,18 @@
                 } catch (e) {
                     console.error('Error calculating weeks:', e);
                 }
+                } else {
+                    startDateItem.style.setProperty('display', 'none', 'important');
+                    weeksItem.style.setProperty('display', 'none', 'important');
+                }
             } else {
-                startDateItem.style.setProperty('display', 'none', 'important');
-                weeksItem.style.setProperty('display', 'none', 'important');
+                // Room-scoped device - hide all plant-related fields
+                const plantItem = document.getElementById(`plant-item-${device_id}`);
+                const startDateItem = document.getElementById(`start-date-item-${device_id}`);
+                const weeksItem = document.getElementById(`weeks-item-${device_id}`);
+                if (plantItem) plantItem.style.setProperty('display', 'none', 'important');
+                if (startDateItem) startDateItem.style.setProperty('display', 'none', 'important');
+                if (weeksItem) weeksItem.style.setProperty('display', 'none', 'important');
             }
             
             // pH/EC
@@ -2176,20 +2192,29 @@
         }
 
         function updatePlantInfo(device_id, data) {
+            // Get device scope to determine if plant fields should be shown
+            const deviceSection = document.querySelector(`[data-device-id="${device_id}"]`)?.closest('.device-section');
+            const deviceScope = deviceSection?.dataset.scope || 'plant';
+
+            // Only update plant info for plant-scoped devices
+            if (deviceScope !== 'plant') {
+                return; // Skip plant info updates for room-scoped devices
+            }
+
             // Update plant info granularly
             const plantItem = document.getElementById(`plant-item-${device_id}`);
             const startDateItem = document.getElementById(`start-date-item-${device_id}`);
             const weeksItem = document.getElementById(`weeks-item-${device_id}`);
-            
+
             if (data.name) {
                 plantItem.style.display = 'flex';
                 document.getElementById(`plant-name-${device_id}`).innerHTML = data.name;
             }
-            
+
             if (data.start_date) {
                 startDateItem.style.display = 'flex';
                 document.getElementById(`start-date-${device_id}`).innerHTML = data.start_date;
-                
+
                 // Calculate weeks
                 try {
                     const start = new Date(data.start_date);
