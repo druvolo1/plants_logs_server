@@ -873,51 +873,24 @@ async def device_pair_initiation(request: Request):
 
 # Device pairing page (requires authentication)
 @app.get("/pair-device-auth", response_class=HTMLResponse)
-async def device_pair_page(request: Request):
+async def device_pair_page(request: Request, user: User = Depends(current_user)):
     """Device pairing page for environment sensors - requires authentication"""
     device_id = request.query_params.get('device_id')
 
-    # Check if user is authenticated
-    try:
-        # Try to get the auth cookie
-        auth_cookie = request.cookies.get("auth_cookie")
-        if not auth_cookie:
-            # Not authenticated - redirect to login with return URL
-            redirect_url = f"/login?next=/pair-device-auth"
-            if device_id:
-                redirect_url += f"&device_id={device_id}"
-            return RedirectResponse(url=redirect_url, status_code=302)
-
-        # Verify the token (this will raise exception if invalid)
-        try:
-            user = await current_user(request)
-        except:
-            # Token invalid - redirect to login
-            redirect_url = f"/login?next=/pair-device-auth"
-            if device_id:
-                redirect_url += f"&device_id={device_id}"
-            return RedirectResponse(url=redirect_url, status_code=302)
-
-        # Get device info from server storage
-        if not device_id or device_id not in pending_pairings:
-            return templates.TemplateResponse("error.html", {
-                "request": request,
-                "error": "Device pairing session expired or not found. Please start the pairing process again from your sensor."
-            })
-
-        device_info = pending_pairings[device_id]
-
-        return templates.TemplateResponse("device_pair.html", {
+    # Get device info from server storage
+    if not device_id or device_id not in pending_pairings:
+        return templates.TemplateResponse("error.html", {
             "request": request,
-            "user": user,
-            "device_info": device_info
+            "error": "Device pairing session expired or not found. Please start the pairing process again from your sensor."
         })
-    except Exception as e:
-        # Any error - redirect to login
-        redirect_url = f"/login?next=/pair-device-auth"
-        if device_id:
-            redirect_url += f"&device_id={device_id}"
-        return RedirectResponse(url=redirect_url, status_code=302)
+
+    device_info = pending_pairings[device_id]
+
+    return templates.TemplateResponse("device_pair.html", {
+        "request": request,
+        "user": user,
+        "device_info": device_info
+    })
 
 # Registration form handler
 @app.post("/auth/register")
@@ -4106,6 +4079,13 @@ async def user_websocket(websocket: WebSocket, device_id: str):
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
     if exc.status_code == 401:
+        # Special handling for pairing flow - redirect to login with return URL
+        if request.url.path == "/pair-device-auth":
+            device_id = request.query_params.get('device_id')
+            redirect_url = f"/login?next=/pair-device-auth"
+            if device_id:
+                redirect_url += f"&device_id={device_id}"
+            return RedirectResponse(url=redirect_url, status_code=302)
         return templates.TemplateResponse("unauthorized.html", {"request": request}, status_code=401)
     if exc.status_code == 400 and exc.detail == "LOGIN_BAD_CREDENTIALS":
         return templates.TemplateResponse("suspended.html", {"request": request}, status_code=400)
