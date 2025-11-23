@@ -886,10 +886,13 @@ async def device_pair_page(request: Request, user: User = Depends(current_user))
 
     device_info = pending_pairings[device_id]
 
+    # Create a copy of device_info without the timestamp (not JSON serializable)
+    device_info_for_template = {k: v for k, v in device_info.items() if k != 'timestamp'}
+
     return templates.TemplateResponse("device_pair.html", {
         "request": request,
         "user": user,
-        "device_info": device_info
+        "device_info": device_info_for_template
     })
 
 # Registration form handler
