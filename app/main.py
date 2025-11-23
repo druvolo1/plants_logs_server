@@ -27,6 +27,7 @@ import jwt  # Added for WebSocket JWT decoding
 # Added for WS
 from fastapi import WebSocket, Query
 from starlette.websockets import WebSocketDisconnect
+from starlette.responses import RedirectResponse
 from collections import defaultdict
 import json
 from sqlalchemy import update
@@ -823,9 +824,28 @@ async def device_pair_initiation(request: Request):
 
 # Device pairing page (requires authentication)
 @app.get("/pair-device-auth", response_class=HTMLResponse)
-async def device_pair_page(request: Request, user: User = Depends(current_user)):
+async def device_pair_page(request: Request):
     """Device pairing page for environment sensors - requires authentication"""
-    return templates.TemplateResponse("device_pair.html", {"request": request, "user": user})
+    # Check if user is authenticated
+    try:
+        # Try to get the auth cookie
+        auth_cookie = request.cookies.get("auth_cookie")
+        if not auth_cookie:
+            # Not authenticated - redirect to login with return URL
+            return RedirectResponse(url=f"/login?next=/pair-device-auth", status_code=302)
+
+        # Verify the token (this will raise exception if invalid)
+        from fastapi_users import exceptions as fastapi_users_exceptions
+        try:
+            user = await current_user(request)
+        except:
+            # Token invalid - redirect to login
+            return RedirectResponse(url=f"/login?next=/pair-device-auth", status_code=302)
+
+        return templates.TemplateResponse("device_pair.html", {"request": request, "user": user})
+    except Exception as e:
+        # Any error - redirect to login
+        return RedirectResponse(url=f"/login?next=/pair-device-auth", status_code=302)
 
 # Registration form handler
 @app.post("/auth/register")
