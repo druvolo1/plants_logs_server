@@ -72,33 +72,45 @@ async def create_db_and_tables():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
-class UserRead(schemas.BaseUser[int]):
-    first_name: Optional[str] = None
-    last_name: Optional[str] = None
-
-class UserCreate(schemas.BaseUserCreate):
-    password: Optional[str] = None
-    first_name: Optional[str] = None
-    last_name: Optional[str] = None
-    is_active: Optional[bool] = False  # Default to pending approval
-    is_superuser: Optional[bool] = False
-    is_verified: Optional[bool] = False
-    is_suspended: Optional[bool] = False  # Default to not suspended
-
-class UserUpdate(BaseModel):
-    email: Optional[EmailStr] = None
-    first_name: Optional[str] = None
-    last_name: Optional[str] = None
-    is_active: Optional[bool] = None
-    is_superuser: Optional[bool] = None
-    is_suspended: Optional[bool] = None
-
-class UserLogin(BaseModel):
-    username: str
-    password: str
-
-class PasswordReset(BaseModel):
-    password: str
+# Import Pydantic schemas from schemas package
+from app.schemas import (
+    UserRead,
+    UserCreate,
+    UserUpdate,
+    UserLogin,
+    PasswordReset,
+    DeviceCreate,
+    DeviceUpdate,
+    DeviceRead,
+    DeviceSettingsUpdate,
+    DeviceSettingsResponse,
+    DevicePairRequest,
+    DevicePairResponse,
+    AssignedPlantInfo,
+    ShareCreate,
+    ShareAccept,
+    ShareUpdate,
+    ShareRead,
+    LocationCreate,
+    LocationUpdate,
+    LocationRead,
+    LocationShareCreate,
+    LocationShareRead,
+    PlantCreate,
+    PlantCreateNew,
+    PlantRead,
+    PlantFinish,
+    PlantYieldUpdate,
+    PhaseTemplateCreate,
+    PhaseTemplateRead,
+    DeviceAssignmentCreate,
+    DeviceAssignmentRead,
+    AssignedDeviceInfo,
+    LogEntryCreate,
+    LogEntryRead,
+    EnvironmentDataCreate,
+    EnvironmentLogRead,
+)
 
 class CustomSQLAlchemyUserDatabase(SQLAlchemyUserDatabase[User, int]):
     async def add_oauth_account(
@@ -1026,275 +1038,7 @@ async def delete_user_admin(user_id: int, session: AsyncSession = Depends(get_db
         return {"status": "success"}
     raise HTTPException(404, "User not found")
 
-# Added: Device create/add
-class DeviceCreate(BaseModel):
-    device_id: str
-    name: Optional[str] = None
-    device_type: Optional[str] = 'feeding_system'  # 'feeding_system', 'environmental', 'valve_controller', 'other'
-    scope: Optional[str] = 'plant'  # 'plant' or 'room'
-    location_id: Optional[int] = None  # Location assignment
-
-class DeviceUpdate(BaseModel):
-    name: Optional[str] = None
-    location_id: Optional[int] = None
-
-class DeviceSettingsUpdate(BaseModel):
-    use_fahrenheit: Optional[bool] = None
-    update_interval: Optional[int] = None
-
-class AssignedPlantInfo(BaseModel):
-    plant_id: str
-    name: str
-    current_phase: Optional[str]
-
-class DeviceRead(BaseModel):
-    device_id: str
-    name: Optional[str]  # User-set custom name
-    system_name: Optional[str]  # Device's self-reported name
-    is_online: bool
-    device_type: Optional[str] = 'feeding_system'  # Device type
-    scope: Optional[str] = 'plant'  # 'plant' or 'room'
-    capabilities: Optional[str] = None  # JSON string of capabilities
-    last_seen: Optional[datetime] = None  # Last connection timestamp
-    location_id: Optional[int] = None  # Location assignment
-    is_owner: Optional[bool] = True  # Whether current user owns the device
-    permission_level: Optional[str] = None  # 'viewer', 'controller', or None if owner
-    shared_by_email: Optional[str] = None  # Email of owner if shared device
-    assigned_plants: List[AssignedPlantInfo] = []  # All plants currently assigned to device
-    assigned_plant_count: int = 0  # Count of assigned plants
-    # Legacy fields (kept for backward compatibility)
-    active_plant_name: Optional[str] = None  # Name of first assigned plant
-    active_plant_id: Optional[str] = None  # ID of first assigned plant
-    active_phase: Optional[str] = None  # Phase of first assigned plant
-
-# Device Sharing Pydantic models
-class ShareCreate(BaseModel):
-    permission_level: str  # 'viewer' or 'controller'
-    expires_in_days: Optional[int] = 7  # None for never expire
-
-class ShareAccept(BaseModel):
-    share_code: str
-
-class ShareUpdate(BaseModel):
-    permission_level: str
-
-class ShareRead(BaseModel):
-    id: int
-    device_id: int
-    share_code: str
-    permission_level: str
-    created_at: datetime
-    expires_at: datetime
-    accepted_at: Optional[datetime]
-    is_active: bool
-    shared_with_email: Optional[str]
-
-# Location Pydantic models
-class LocationCreate(BaseModel):
-    name: str
-    description: Optional[str] = None
-    parent_id: Optional[int] = None
-
-class LocationUpdate(BaseModel):
-    name: Optional[str] = None
-    description: Optional[str] = None
-    parent_id: Optional[int] = None
-
-class LocationRead(BaseModel):
-    id: int
-    name: str
-    description: Optional[str]
-    parent_id: Optional[int]
-    user_id: int
-    created_at: datetime
-    updated_at: datetime
-    is_owner: bool = True
-    permission_level: Optional[str] = None
-    shared_by_email: Optional[str] = None
-
-class LocationShareCreate(BaseModel):
-    permission_level: str  # 'viewer' or 'controller'
-    expires_in_days: Optional[int] = 7  # None for never expire
-
-class LocationShareRead(BaseModel):
-    id: int
-    location_id: int
-    share_code: str
-    permission_level: str
-    created_at: datetime
-    expires_at: datetime
-    accepted_at: Optional[datetime]
-    is_active: bool
-    shared_with_email: Optional[str]
-
-# Plant Pydantic models
-class PlantCreate(BaseModel):
-    name: str  # Strain name
-    system_id: Optional[str] = None
-    device_id: str  # Device UUID
-    location_id: Optional[int] = None  # Location assignment
-
-class PhaseTemplateCreate(BaseModel):
-    name: str
-    description: Optional[str] = None
-    expected_seed_days: Optional[int] = None
-    expected_clone_days: Optional[int] = None
-    expected_veg_days: Optional[int] = None
-    expected_flower_days: Optional[int] = None
-    expected_drying_days: Optional[int] = None
-    expected_curing_days: Optional[int] = None
-
-class PhaseTemplateRead(BaseModel):
-    id: int
-    name: str
-    description: Optional[str]
-    expected_seed_days: Optional[int]
-    expected_clone_days: Optional[int]
-    expected_veg_days: Optional[int]
-    expected_flower_days: Optional[int]
-    expected_drying_days: Optional[int]
-    expected_curing_days: Optional[int]
-
-    class Config:
-        from_attributes = True
-
-class PlantCreateNew(BaseModel):
-    """New plant creation without device assignment"""
-    name: str  # Strain name
-    batch_number: Optional[str] = None  # Batch number for seed-to-sale tracking
-    start_date: Optional[str] = None  # ISO format, defaults to now
-    phase: Optional[str] = 'clone'  # Initial phase: 'seed', 'clone', 'veg', 'flower', 'drying', 'curing'
-    template_id: Optional[int] = None  # Phase template to use
-    # Expected durations (override template if provided)
-    expected_seed_days: Optional[int] = None
-    expected_clone_days: Optional[int] = None
-    expected_veg_days: Optional[int] = None
-    expected_flower_days: Optional[int] = None
-    expected_drying_days: Optional[int] = None
-    expected_curing_days: Optional[int] = None
-
-class DeviceAssignmentCreate(BaseModel):
-    """Assign a device to a plant (phase is tracked separately on the plant)"""
-    device_id: str  # Device UUID
-
-class PlantFinish(BaseModel):
-    end_date: Optional[str] = None  # ISO format date string, defaults to today
-
-class PlantYieldUpdate(BaseModel):
-    yield_grams: float
-
-class AssignedDeviceInfo(BaseModel):
-    """Info about a device assigned to a plant"""
-    device_id: str  # Device UUID
-    device_name: Optional[str]
-    system_name: Optional[str]
-    is_online: bool
-
-class PlantRead(BaseModel):
-    plant_id: str
-    name: str
-    batch_number: Optional[str]
-    system_id: Optional[str]
-    device_id: Optional[str]  # Device UUID for display (legacy, may be None for new plants)
-    start_date: datetime
-    end_date: Optional[datetime]
-    yield_grams: Optional[float]
-    is_active: bool  # Computed: True if end_date is None
-    status: str  # 'created', 'feeding', 'harvested', 'curing', 'finished'
-    current_phase: Optional[str]  # Current phase name
-    harvest_date: Optional[datetime]
-    cure_start_date: Optional[datetime]
-    cure_end_date: Optional[datetime]
-    # Expected phase durations
-    expected_seed_days: Optional[int]
-    expected_clone_days: Optional[int]
-    expected_veg_days: Optional[int]
-    expected_flower_days: Optional[int]
-    expected_drying_days: Optional[int]
-    expected_curing_days: Optional[int]
-    template_id: Optional[int]
-    assigned_devices: List['AssignedDeviceInfo'] = []  # Currently assigned devices
-
-class DeviceAssignmentRead(BaseModel):
-    id: int
-    device_id: str  # Device UUID
-    device_name: Optional[str]
-    phase: str
-    assigned_at: datetime
-    removed_at: Optional[datetime]
-
-class LogEntryCreate(BaseModel):
-    event_type: str  # 'sensor' or 'dosing'
-    sensor_name: Optional[str] = None
-    value: Optional[float] = None
-    dose_type: Optional[str] = None
-    dose_amount_ml: Optional[float] = None
-    timestamp: str  # ISO format datetime string
-
-class LogEntryRead(BaseModel):
-    id: int
-    event_type: str
-    sensor_name: Optional[str]
-    value: Optional[float]
-    dose_type: Optional[str]
-    dose_amount_ml: Optional[float]
-    timestamp: datetime
-
-class EnvironmentDataCreate(BaseModel):
-    # Air Quality
-    co2: Optional[int] = None
-    temperature: Optional[float] = None
-    humidity: Optional[float] = None
-    vpd: Optional[float] = None
-    # Atmospheric
-    pressure: Optional[float] = None
-    altitude: Optional[float] = None
-    gas_resistance: Optional[float] = None
-    air_quality_score: Optional[int] = None
-    # Light
-    lux: Optional[float] = None
-    ppfd: Optional[float] = None
-    timestamp: str  # ISO format datetime string
-
-class EnvironmentLogRead(BaseModel):
-    id: int
-    device_id: int
-    location_id: Optional[int]
-    co2: Optional[int]
-    temperature: Optional[float]
-    humidity: Optional[float]
-    vpd: Optional[float]
-    pressure: Optional[float]
-    altitude: Optional[float]
-    gas_resistance: Optional[float]
-    air_quality_score: Optional[int]
-    lux: Optional[float]
-    ppfd: Optional[float]
-    timestamp: datetime
-    created_at: datetime
-
-class DevicePairRequest(BaseModel):
-    device_id: str
-    device_name: str
-    location_id: Optional[int] = None
-    location_name: Optional[str] = None  # For creating new location
-    # Device info
-    mac_address: str
-    model: str
-    manufacturer: str
-    sw_version: str
-    hw_version: str
-
-class DevicePairResponse(BaseModel):
-    success: bool
-    api_key: str
-    device_id: str
-    server_url: str
-    message: str
-
-class DeviceSettingsResponse(BaseModel):
-    use_fahrenheit: bool
-    update_interval: int  # seconds
+# Schemas imported above from app.schemas
 
 # Location Management Endpoints
 
