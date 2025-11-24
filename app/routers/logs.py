@@ -87,7 +87,7 @@ async def upload_logs(
             .where(
                 DeviceAssignment.device_id == device.id,
                 DeviceAssignment.removed_at == None,
-                Plant.is_active == True
+                Plant.end_date == None  # Active plants have no end_date
             )
         )
         target_plants = result.scalars().all()
