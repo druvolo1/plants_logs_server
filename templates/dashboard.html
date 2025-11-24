@@ -2096,8 +2096,11 @@
                     const probeStatus = window.deviceProbeStatus?.[device_id];
                     if (probeStatus?.hasPhProbe && data.value !== null && data.value !== undefined) {
                         const phItem = document.getElementById(`ph-item-${device_id}`);
-                        phItem.style.display = 'flex';
-                        document.getElementById(`ph-${device_id}`).innerHTML = data.value;
+                        const phValue = document.getElementById(`ph-${device_id}`);
+                        if (phItem && phValue) {
+                            phItem.style.display = 'flex';
+                            phValue.innerHTML = data.value;
+                        }
                     }
                 }
                 // Handle granular EC update
@@ -2106,8 +2109,11 @@
                     const probeStatus = window.deviceProbeStatus?.[device_id];
                     if (probeStatus?.hasEcProbe && data.value !== null && data.value !== undefined) {
                         const ecItem = document.getElementById(`ec-item-${device_id}`);
-                        ecItem.style.display = 'flex';
-                        document.getElementById(`ec-${device_id}`).innerHTML = data.value;
+                        const ecValue = document.getElementById(`ec-${device_id}`);
+                        if (ecItem && ecValue) {
+                            ecItem.style.display = 'flex';
+                            ecValue.innerHTML = data.value;
+                        }
                     }
                 }
                 // Handle granular water level update
