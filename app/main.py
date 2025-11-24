@@ -104,7 +104,6 @@ from app.schemas import (
     PhaseTemplateCreate,
     PhaseTemplateRead,
     DeviceAssignmentCreate,
-    DeviceAssignmentRead,
     AssignedDeviceInfo,
     LogEntryCreate,
     LogEntryRead,
