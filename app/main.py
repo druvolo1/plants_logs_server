@@ -1257,6 +1257,10 @@ class DeviceUpdate(BaseModel):
     name: Optional[str] = None
     location_id: Optional[int] = None
 
+class DeviceSettingsUpdate(BaseModel):
+    use_fahrenheit: Optional[bool] = None
+    update_interval: Optional[int] = None
+
 class AssignedPlantInfo(BaseModel):
     plant_id: str
     name: str
@@ -3764,6 +3768,56 @@ async def upload_environment_data(
             settings = {}
 
     # Return settings to device
+    return DeviceSettingsResponse(
+        use_fahrenheit=settings.get("use_fahrenheit", False),
+        update_interval=settings.get("update_interval", 60)
+    )
+
+# Update device settings (called by device via API key)
+@app.patch("/api/devices/{device_id}/settings", response_model=DeviceSettingsResponse)
+async def update_device_settings(
+    device_id: str,
+    settings_update: DeviceSettingsUpdate,
+    api_key: str = Header(..., alias="X-API-Key"),
+    session: AsyncSession = Depends(get_db)
+):
+    """
+    Update device settings (temperature unit, update interval, etc.)
+    This endpoint is called by the device itself when settings are changed locally.
+    Requires API key authentication.
+    """
+    # Verify device exists and API key matches
+    result = await session.execute(
+        select(Device).where(Device.device_id == device_id)
+    )
+    device = result.scalars().first()
+
+    if not device or device.api_key != api_key:
+        raise HTTPException(401, "Invalid device ID or API key")
+
+    # Load existing settings or create new dict
+    if device.settings:
+        try:
+            settings = json.loads(device.settings)
+        except:
+            settings = {}
+    else:
+        settings = {}
+
+    # Update only provided fields
+    if settings_update.use_fahrenheit is not None:
+        settings["use_fahrenheit"] = settings_update.use_fahrenheit
+        print(f"[Device {device_id}] Temperature unit updated to: {'Fahrenheit' if settings_update.use_fahrenheit else 'Celsius'}")
+
+    if settings_update.update_interval is not None:
+        settings["update_interval"] = settings_update.update_interval
+        print(f"[Device {device_id}] Update interval updated to: {settings_update.update_interval}s")
+
+    # Save updated settings
+    device.settings = json.dumps(settings)
+    await session.commit()
+
+    # Return current settings
     return DeviceSettingsResponse(
         use_fahrenheit=settings.get("use_fahrenheit", False),
         update_interval=settings.get("update_interval", 60)
