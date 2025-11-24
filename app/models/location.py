@@ -23,7 +23,7 @@ class Location(Base):
     owner = relationship("User", foreign_keys=[user_id])
     devices = relationship("Device", back_populates="location")
     plants = relationship("Plant", back_populates="location")
-    location_shares = relationship("LocationShare", foreign_keys="LocationShare.location_id", cascade="all, delete-orphan")
+    location_shares = relationship("LocationShare", foreign_keys="LocationShare.location_id", back_populates="location", cascade="all, delete-orphan")
 
 
 class LocationShare(Base):
@@ -41,6 +41,6 @@ class LocationShare(Base):
     is_active = Column(Boolean, default=True, nullable=False)
 
     # Relationships
-    location = relationship("Location", foreign_keys=[location_id])
+    location = relationship("Location", foreign_keys=[location_id], back_populates="location_shares")
     owner = relationship("User", foreign_keys=[owner_user_id])
     shared_with = relationship("User", foreign_keys=[shared_with_user_id])
