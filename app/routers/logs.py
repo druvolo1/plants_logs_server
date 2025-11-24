@@ -57,8 +57,22 @@ async def upload_logs(
 
     if plant_id:
         # Legacy mode: specific plant_id provided (backward compatibility)
+        # Try legacy direct assignment first
         result = await session.execute(select(Plant).where(Plant.plant_id == plant_id, Plant.device_id == device.id))
         plant = result.scalars().first()
+
+        # If not found via legacy direct assignment, try DeviceAssignment table
+        if not plant:
+            result = await session.execute(
+                select(Plant)
+                .join(DeviceAssignment, DeviceAssignment.plant_id == Plant.id)
+                .where(
+                    Plant.plant_id == plant_id,
+                    DeviceAssignment.device_id == device.id,
+                    DeviceAssignment.removed_at == None
+                )
+            )
+            plant = result.scalars().first()
 
         if not plant:
             print(f"[LOG UPLOAD ERROR] Plant not found: plant_id={plant_id}, device.id={device.id}")
