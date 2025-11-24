@@ -98,7 +98,7 @@ async def get_all_devices(
         if assignment_row:
             assignment, plant = assignment_row
             active_plant_name = plant.name
-            active_phase = assignment.phase
+            active_phase = plant.current_phase
 
         devices_list.append({
             "device_id": device.device_id,
