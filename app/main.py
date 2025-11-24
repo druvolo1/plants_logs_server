@@ -10,6 +10,7 @@ from sqlalchemy.orm import selectinload
 from datetime import datetime, timedelta
 from dateutil import parser as date_parser
 from typing import List, Optional, Dict, Any
+from pydantic import BaseModel, EmailStr
 from fastapi_users import FastAPIUsers, BaseUserManager, IntegerIDMixin, exceptions
 from fastapi_users.authentication import CookieTransport, AuthenticationBackend, JWTStrategy
 from fastapi_users.db import SQLAlchemyUserDatabase
