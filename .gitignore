@@ -1,0 +1,61 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual Environment
+.venv/
+venv/
+ENV/
+env/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Project specific
+main_backup.py
+refactor_main.py
+verify_imports.py
+snips/
+scripts/migration_*.py
+run_migration_*.py
+run_migration_*.bat
+sync_schema*.py
+sync_schema*.bat
+setup_database.bat
+export_prod_schema.sql
+add_missing_columns.sql
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.bak
+*.orig
+
+# Build artifacts
+dist/
+build/
+*.egg-info/

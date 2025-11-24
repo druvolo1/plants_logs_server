@@ -1,323 +1,47 @@
-# app/main.py - Full app with FastAPI-Users (async SQLAlchemy)
-from fastapi import FastAPI, Depends, HTTPException, Request, Form, Response, status, Body
+# app/main.py - Refactored to use modular structure
+from fastapi import FastAPI, Depends, HTTPException, Request, Form, Response, status, Body, WebSocket, Query
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, Integer, String, Boolean, select, ForeignKey, DateTime, Float, Text, func, or_
-from sqlalchemy.orm import relationship, selectinload, Session
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, or_, update, func
+from sqlalchemy.orm import selectinload
 from datetime import datetime, timedelta
 from dateutil import parser as date_parser
-from typing import List, Optional, Generator, Any, Dict
-from fastapi_users import FastAPIUsers, BaseUserManager, IntegerIDMixin
+from typing import List, Optional, Dict, Any
+from fastapi_users import FastAPIUsers, BaseUserManager, IntegerIDMixin, exceptions
 from fastapi_users.authentication import CookieTransport, AuthenticationBackend, JWTStrategy
-from fastapi_users.authentication.strategy.db import AccessTokenDatabase, DatabaseStrategy
-from fastapi_users.db import SQLAlchemyUserDatabase
-from fastapi.security import OAuth2AuthorizationCodeBearer, OAuth2PasswordRequestForm
+from fastapi.security import OAuth2PasswordRequestForm
 from httpx_oauth.clients.google import GoogleOAuth2
-from fastapi_users import schemas, exceptions
-from pydantic import BaseModel, EmailStr
-from dotenv import load_dotenv
-import os
-import secrets  # Added for API key
-import jwt  # Added for WebSocket JWT decoding
-
-# Added for WS
-from fastapi import WebSocket, Query
 from starlette.websockets import WebSocketDisconnect
-from starlette.responses import RedirectResponse
 from collections import defaultdict
 import json
-from sqlalchemy import update
+import secrets
+import jwt
 
-load_dotenv()
-DATABASE_URL = os.getenv("DATABASE_URL")
-print("Loaded DATABASE_URL from .env:", DATABASE_URL)  # Debug print
-DATABASE_URL = DATABASE_URL.replace("mariadb+mariadbconnector", "mariadb+aiomysql") if DATABASE_URL else None
-print("Modified DATABASE_URL for async:", DATABASE_URL)  # Debug print
-SECRET = os.getenv("SECRET_KEY") or "secret"
-SERVER_URL = os.getenv("SERVER_URL")
-GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
-GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
-GOOGLE_REDIRECT_URI = os.getenv("GOOGLE_REDIRECT_URI")
+# Import from new modules
+from app.core.config import SECRET, SERVER_URL, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URI, CORS_ORIGINS
+from app.core.database import Base, async_session_maker, create_db_and_tables, get_async_session
+from app.core.security import get_jwt_strategy
+from app.models import (
+    User, OAuthAccount, Device, DeviceShare, DeviceAssignment,
+    Location, LocationShare, Plant, PhaseTemplate, PhaseHistory,
+    LogEntry, EnvironmentLog
+)
+from app.schemas import (
+    UserRead, UserCreate, UserUpdate, UserLogin, PasswordReset,
+    DeviceCreate, DeviceUpdate, DeviceSettingsUpdate, AssignedPlantInfo, DeviceRead,
+    ShareCreate, ShareAccept, ShareUpdate, ShareRead, DevicePairRequest, DevicePairResponse, DeviceSettingsResponse,
+    LocationCreate, LocationUpdate, LocationRead, LocationShareCreate, LocationShareRead,
+    PlantCreate, PhaseTemplateCreate, PhaseTemplateRead, PlantCreateNew, DeviceAssignmentCreate,
+    PlantFinish, PlantYieldUpdate, AssignedDeviceInfo, PlantRead, DeviceAssignmentRead,
+    LogEntryCreate, LogEntryRead, EnvironmentDataCreate, EnvironmentLogRead
+)
 
-engine = create_async_engine(DATABASE_URL)
 
-class AsyncSessionGreenlet(AsyncSession):
-    def __init__(self, *args, **kwargs):
-        super().__init__(sync_session_class=Session, *args, **kwargs)
 
-async_session_maker = async_sessionmaker(engine, class_=AsyncSessionGreenlet, expire_on_commit=False)
-Base = declarative_base()
-
-class OAuthAccount(Base):
-    __tablename__ = "oauth_accounts"
-    id = Column(Integer, primary_key=True)
-    oauth_name = Column(String(255), nullable=False)
-    access_token = Column(String(1024), nullable=False)
-    expires_at = Column(Integer, nullable=True)
-    refresh_token = Column(String(1024), nullable=True)
-    account_id = Column(String(255), nullable=False, index=True)
-    account_email = Column(String(255), nullable=False)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    user = relationship("User", back_populates="oauth_accounts")
-
-class User(Base):
-    __tablename__ = "users"
-    id = Column(Integer, primary_key=True, index=True)
-    email = Column(String(255), unique=True, index=True)
-    hashed_password = Column(String(1024), nullable=True)
-    first_name = Column(String(255), nullable=True)  # Added
-    last_name = Column(String(255), nullable=True)   # Added
-    is_active = Column(Boolean, default=False)  # Changed default to False for pending approval
-    is_superuser = Column(Boolean, default=False)  # For admin
-    is_verified = Column(Boolean, default=False)
-    is_suspended = Column(Boolean, default=False)  # Added for suspended users
-    dashboard_preferences = Column(Text, nullable=True)  # JSON string for dashboard settings (device order, etc.)
-    oauth_accounts = relationship("OAuthAccount", back_populates="user", cascade="all, delete-orphan")
-    devices = relationship("Device", back_populates="user", cascade="all, delete-orphan")  # Added backref
-
-# Added Device model
-class Device(Base):
-    __tablename__ = "devices"
-    id = Column(Integer, primary_key=True, index=True)
-    device_id = Column(String(36), unique=True, index=True)
-    api_key = Column(String(64))
-    name = Column(String(255), nullable=True)  # User-set custom name
-    system_name = Column(String(255), nullable=True)  # Device's self-reported name
-    is_online = Column(Boolean, default=False)
-    last_seen = Column(DateTime, nullable=True)  # Last connection timestamp
-    device_type = Column(String(50), nullable=True, default='feeding_system')  # 'feeding_system', 'environmental', 'valve_controller', 'other'
-    scope = Column(String(20), nullable=True, default='plant')  # 'plant' (1-to-1) or 'room' (1-to-many)
-    capabilities = Column(Text, nullable=True)  # JSON string of device capabilities
-    settings = Column(Text, nullable=True)  # JSON string for device-specific settings (temp scale, update interval, etc.)
-    user_id = Column(Integer, ForeignKey("users.id"))
-    location_id = Column(Integer, ForeignKey("locations.id"), nullable=True)  # Location assignment
-    user = relationship("User", back_populates="devices")
-    location = relationship("Location", back_populates="devices")
-    plants = relationship("Plant", foreign_keys="Plant.device_id", cascade="all, delete-orphan", passive_deletes=False)
-    device_assignments = relationship("DeviceAssignment", back_populates="device", cascade="all, delete-orphan")
-
-# Device Sharing model
-class DeviceShare(Base):
-    __tablename__ = "device_shares"
-    id = Column(Integer, primary_key=True, index=True)
-    device_id = Column(Integer, ForeignKey("devices.id"), nullable=False)
-    owner_user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    shared_with_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)  # NULL until accepted
-    share_code = Column(String(12), unique=True, index=True, nullable=False)
-    permission_level = Column(String(20), nullable=False)  # 'viewer' or 'controller'
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    expires_at = Column(DateTime, nullable=True)  # NULL for never expire
-    accepted_at = Column(DateTime, nullable=True)
-    revoked_at = Column(DateTime, nullable=True)
-    is_active = Column(Boolean, default=True, nullable=False)
-
-    # Relationships
-    device = relationship("Device", foreign_keys=[device_id])
-    owner = relationship("User", foreign_keys=[owner_user_id])
-    shared_with = relationship("User", foreign_keys=[shared_with_user_id])
-
-# Location model - supports arbitrary nesting for hierarchical organization
-class Location(Base):
-    __tablename__ = "locations"
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String(255), nullable=False)
-    description = Column(Text, nullable=True)
-    parent_id = Column(Integer, ForeignKey("locations.id"), nullable=True)  # NULL for top-level locations
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)  # Owner of the location
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
-
-    # Relationships
-    parent = relationship("Location", remote_side=[id], backref="children")
-    owner = relationship("User", foreign_keys=[user_id])
-    devices = relationship("Device", back_populates="location")
-    plants = relationship("Plant", back_populates="location")
-    location_shares = relationship("LocationShare", foreign_keys="LocationShare.location_id", cascade="all, delete-orphan")
-
-# Location Sharing model - similar to DeviceShare but for locations
-class LocationShare(Base):
-    __tablename__ = "location_shares"
-    id = Column(Integer, primary_key=True, index=True)
-    location_id = Column(Integer, ForeignKey("locations.id"), nullable=False)
-    owner_user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    shared_with_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)  # NULL until accepted
-    share_code = Column(String(12), unique=True, index=True, nullable=False)
-    permission_level = Column(String(20), nullable=False)  # 'viewer' or 'controller'
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    expires_at = Column(DateTime, nullable=True)  # NULL for never expire
-    accepted_at = Column(DateTime, nullable=True)
-    revoked_at = Column(DateTime, nullable=True)
-    is_active = Column(Boolean, default=True, nullable=False)
-
-    # Relationships
-    location = relationship("Location", foreign_keys=[location_id])
-    owner = relationship("User", foreign_keys=[owner_user_id])
-    shared_with = relationship("User", foreign_keys=[shared_with_user_id])
-
-# Device Assignment model - tracks which device is monitoring which plant
-class DeviceAssignment(Base):
-    __tablename__ = "device_assignments"
-    id = Column(Integer, primary_key=True, index=True)
-    plant_id = Column(Integer, ForeignKey("plants.id"), nullable=False)
-    device_id = Column(Integer, ForeignKey("devices.id"), nullable=False)
-    assigned_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    removed_at = Column(DateTime, nullable=True)  # NULL if still assigned
-
-    # Relationships
-    plant = relationship("Plant", back_populates="device_assignments")
-    device = relationship("Device", back_populates="device_assignments")
-
-# Phase History model - tracks phase changes independently of device assignments
-class PhaseHistory(Base):
-    __tablename__ = "phase_history"
-    id = Column(Integer, primary_key=True, index=True)
-    plant_id = Column(Integer, ForeignKey("plants.id"), nullable=False)
-    phase = Column(String(50), nullable=False)  # 'clone', 'veg', 'flower', 'drying'
-    started_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    ended_at = Column(DateTime, nullable=True)  # NULL if current phase
-
-    # Relationships
-    plant = relationship("Plant", back_populates="phase_history")
-
-# Plant model
-class PhaseTemplate(Base):
-    __tablename__ = "phase_templates"
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String(100), nullable=False)
-    description = Column(Text, nullable=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-
-    # Expected durations for each phase (in days)
-    expected_seed_days = Column(Integer, nullable=True)
-    expected_clone_days = Column(Integer, nullable=True)
-    expected_veg_days = Column(Integer, nullable=True)
-    expected_flower_days = Column(Integer, nullable=True)
-    expected_drying_days = Column(Integer, nullable=True)
-    expected_curing_days = Column(Integer, nullable=True)
-
-    created_at = Column(DateTime, nullable=False)
-    updated_at = Column(DateTime, nullable=True)
-
-class Plant(Base):
-    __tablename__ = "plants"
-    id = Column(Integer, primary_key=True, index=True)
-    plant_id = Column(String(64), unique=True, index=True, nullable=False)  # Timestamp-based unique ID
-    name = Column(String(255), nullable=False)  # Strain name
-    batch_number = Column(String(100), nullable=True)  # Batch number for seed-to-sale tracking
-    system_id = Column(String(255), nullable=True)  # e.g., "Zone1" - legacy field, use device_assignments for new plants
-    device_id = Column(Integer, ForeignKey("devices.id"), nullable=True)  # Made nullable - legacy field for backward compatibility
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    location_id = Column(Integer, ForeignKey("locations.id"), nullable=True)  # Location assignment
-    start_date = Column(DateTime, nullable=False)
-    end_date = Column(DateTime, nullable=True)
-    yield_grams = Column(Float, nullable=True)  # Added after harvest
-    display_order = Column(Integer, nullable=True, default=0)  # For user-defined ordering
-
-    # New lifecycle fields
-    status = Column(String(50), nullable=False, default='created')  # 'created', 'feeding', 'harvested', 'curing', 'finished'
-    current_phase = Column(String(50), nullable=True)  # Current phase name, e.g., 'feeding', 'curing'
-    harvest_date = Column(DateTime, nullable=True)  # When plant was harvested from feeding
-    cure_start_date = Column(DateTime, nullable=True)  # When curing phase started
-    cure_end_date = Column(DateTime, nullable=True)  # When curing phase completed
-
-    # Expected phase durations (in days) - can override template
-    expected_seed_days = Column(Integer, nullable=True)
-    expected_clone_days = Column(Integer, nullable=True)
-    expected_veg_days = Column(Integer, nullable=True)
-    expected_flower_days = Column(Integer, nullable=True)
-    expected_drying_days = Column(Integer, nullable=True)
-    expected_curing_days = Column(Integer, nullable=True)
-    template_id = Column(Integer, ForeignKey("phase_templates.id"), nullable=True)
-
-    # Relationships
-    device = relationship("Device", foreign_keys=[device_id], back_populates="plants")
-    user = relationship("User", foreign_keys=[user_id])
-    location = relationship("Location", back_populates="plants")
-    logs = relationship("LogEntry", back_populates="plant", cascade="all, delete-orphan")
-    device_assignments = relationship("DeviceAssignment", back_populates="plant", cascade="all, delete-orphan")
-    phase_history = relationship("PhaseHistory", back_populates="plant", cascade="all, delete-orphan")
-
-# Log Entry model
-class LogEntry(Base):
-    __tablename__ = "log_entries"
-    id = Column(Integer, primary_key=True, index=True)
-    plant_id = Column(Integer, ForeignKey("plants.id"), nullable=False)
-    event_type = Column(String(20), nullable=False)  # 'sensor' or 'dosing'
-    sensor_name = Column(String(50), nullable=True)  # e.g., 'ph', 'ec', 'humidity', 'temperature'
-    value = Column(Float, nullable=True)  # pH reading, humidity %, temp, etc.
-    dose_type = Column(String(10), nullable=True)  # 'up' or 'down'
-    dose_amount_ml = Column(Float, nullable=True)  # Dose amount
-    timestamp = Column(DateTime, nullable=False, index=True)
-    phase = Column(String(50), nullable=True)  # 'feeding', 'curing', etc. - which phase this log is from
-
-    # Relationships
-    plant = relationship("Plant", back_populates="logs")
-
-# Environment Log model
-class EnvironmentLog(Base):
-    __tablename__ = "environment_logs"
-    id = Column(Integer, primary_key=True, index=True)
-    device_id = Column(Integer, ForeignKey("devices.id"), nullable=False)
-    location_id = Column(Integer, ForeignKey("locations.id"), nullable=True)
-
-    # Air Quality readings
-    co2 = Column(Integer, nullable=True)
-    temperature = Column(Float, nullable=True)
-    humidity = Column(Float, nullable=True)
-    vpd = Column(Float, nullable=True)
-
-    # Atmospheric readings
-    pressure = Column(Float, nullable=True)
-    altitude = Column(Float, nullable=True)
-    gas_resistance = Column(Float, nullable=True)
-    air_quality_score = Column(Integer, nullable=True)
-
-    # Light readings
-    lux = Column(Float, nullable=True)
-    ppfd = Column(Float, nullable=True)
-
-    timestamp = Column(DateTime, nullable=False, index=True)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-
-    # Relationships
-    device = relationship("Device")
-    location = relationship("Location")
-
-async def create_db_and_tables():
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-
-class UserRead(schemas.BaseUser[int]):
-    first_name: Optional[str] = None
-    last_name: Optional[str] = None
-
-class UserCreate(schemas.BaseUserCreate):
-    password: Optional[str] = None
-    first_name: Optional[str] = None
-    last_name: Optional[str] = None
-    is_active: Optional[bool] = False  # Default to pending approval
-    is_superuser: Optional[bool] = False
-    is_verified: Optional[bool] = False
-    is_suspended: Optional[bool] = False  # Default to not suspended
-
-class UserUpdate(BaseModel):
-    email: Optional[EmailStr] = None
-    first_name: Optional[str] = None
-    last_name: Optional[str] = None
-    is_active: Optional[bool] = None
-    is_superuser: Optional[bool] = None
-    is_suspended: Optional[bool] = None
-
-class UserLogin(BaseModel):
-    username: str
-    password: str
-
-class PasswordReset(BaseModel):
-    password: str
+# ===== Authentication Setup =====
 
 class CustomSQLAlchemyUserDatabase(SQLAlchemyUserDatabase[User, int]):
     async def add_oauth_account(
@@ -1516,6 +1240,9 @@ class DeviceSettingsResponse(BaseModel):
     update_interval: int  # seconds
 
 # Location Management Endpoints
+
+
+# ===== Routes =====
 
 @app.post("/user/locations", response_model=LocationRead)
 async def create_location(location: LocationCreate, user: User = Depends(current_user), session: AsyncSession = Depends(get_db)):
