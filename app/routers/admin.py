@@ -45,7 +45,7 @@ def get_templates():
 @router.get("/overview", response_class=HTMLResponse)
 async def admin_overview_page(
     request: Request,
-    admin: User = Depends(get_current_admin())
+    admin: User = Depends(get_current_admin)
 ):
     """Admin overview page"""
     return get_templates().TemplateResponse("admin_overview.html", {"request": request, "user": admin})
@@ -54,8 +54,8 @@ async def admin_overview_page(
 @router.get("/users", response_class=HTMLResponse)
 async def users_page(
     request: Request,
-    admin: User = Depends(get_current_admin()),
-    session: AsyncSession = Depends(get_db())
+    admin: User = Depends(get_current_admin),
+    session: AsyncSession = Depends(get_db)
 ):
     """Users management page"""
     result = await session.execute(
@@ -69,8 +69,8 @@ async def users_page(
 
 @router.get("/all-devices")
 async def get_all_devices(
-    admin: User = Depends(get_current_admin()),
-    session: AsyncSession = Depends(get_db())
+    admin: User = Depends(get_current_admin),
+    session: AsyncSession = Depends(get_db)
 ):
     """Get all devices in the system"""
     result = await session.execute(
@@ -115,8 +115,8 @@ async def get_all_devices(
 
 @router.get("/all-plants")
 async def get_all_plants(
-    admin: User = Depends(get_current_admin()),
-    session: AsyncSession = Depends(get_db())
+    admin: User = Depends(get_current_admin),
+    session: AsyncSession = Depends(get_db)
 ):
     """Get all plants in the system"""
     result = await session.execute(
@@ -145,8 +145,8 @@ async def get_all_plants(
 
 @router.get("/user-count")
 async def get_user_count(
-    admin: User = Depends(get_current_admin()),
-    session: AsyncSession = Depends(get_db())
+    admin: User = Depends(get_current_admin),
+    session: AsyncSession = Depends(get_db)
 ):
     """Get total user count"""
     result = await session.execute(select(func.count(User.id)))
@@ -159,8 +159,8 @@ async def get_user_count(
 @router.post("/users")
 async def add_user(
     user_data: UserCreate,
-    admin: User = Depends(get_current_admin()),
-    manager = Depends(get_user_manager())
+    admin: User = Depends(get_current_admin),
+    manager = Depends(get_user_manager)
 ):
     """Create a new user"""
     try:
@@ -174,9 +174,9 @@ async def add_user(
 async def update_user(
     user_id: int,
     user_data: UserUpdate,
-    admin: User = Depends(get_current_admin()),
-    manager = Depends(get_user_manager()),
-    session: AsyncSession = Depends(get_db())
+    admin: User = Depends(get_current_admin),
+    manager = Depends(get_user_manager),
+    session: AsyncSession = Depends(get_db)
 ):
     """Update user information"""
     user = await manager.user_db.get(user_id)
@@ -203,8 +203,8 @@ async def update_user(
 async def reset_password(
     user_id: int,
     password_reset: PasswordReset,
-    admin: User = Depends(get_current_admin()),
-    manager = Depends(get_user_manager())
+    admin: User = Depends(get_current_admin),
+    manager = Depends(get_user_manager)
 ):
     """Reset a user's password"""
     user = await manager.user_db.get(user_id)
@@ -219,8 +219,8 @@ async def reset_password(
 @router.post("/users/{user_id}/suspend")
 async def suspend_user(
     user_id: int,
-    admin: User = Depends(get_current_admin()),
-    manager = Depends(get_user_manager())
+    admin: User = Depends(get_current_admin),
+    manager = Depends(get_user_manager)
 ):
     """Suspend a user"""
     user = await manager.user_db.get(user_id)
@@ -234,8 +234,8 @@ async def suspend_user(
 @router.post("/users/{user_id}/unsuspend")
 async def unsuspend_user(
     user_id: int,
-    admin: User = Depends(get_current_admin()),
-    manager = Depends(get_user_manager())
+    admin: User = Depends(get_current_admin),
+    manager = Depends(get_user_manager)
 ):
     """Unsuspend a user"""
     user = await manager.user_db.get(user_id)
@@ -249,8 +249,8 @@ async def unsuspend_user(
 @router.post("/users/{user_id}/approve")
 async def approve_user(
     user_id: int,
-    admin: User = Depends(get_current_admin()),
-    manager = Depends(get_user_manager())
+    admin: User = Depends(get_current_admin),
+    manager = Depends(get_user_manager)
 ):
     """Approve a pending user"""
     user = await manager.user_db.get(user_id)
@@ -264,8 +264,8 @@ async def approve_user(
 @router.delete("/users/{user_id}")
 async def delete_user_admin(
     user_id: int,
-    session: AsyncSession = Depends(get_db()),
-    admin: User = Depends(get_current_admin())
+    session: AsyncSession = Depends(get_db),
+    admin: User = Depends(get_current_admin)
 ):
     """Delete a user"""
     user = await session.get(User, user_id)
@@ -281,8 +281,8 @@ async def delete_user_admin(
 @router.delete("/plants/{plant_id}", response_model=Dict[str, str])
 async def delete_plant_admin(
     plant_id: str,
-    user: User = Depends(get_current_admin()),
-    session: AsyncSession = Depends(get_db())
+    user: User = Depends(get_current_admin),
+    session: AsyncSession = Depends(get_db)
 ):
     """Delete a plant (admin only)"""
     # Get plant

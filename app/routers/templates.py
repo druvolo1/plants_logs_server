@@ -28,8 +28,8 @@ def get_db():
 
 @router.get("", response_model=List[PhaseTemplateRead])
 async def list_phase_templates(
-    user: User = Depends(get_current_user()),
-    session: AsyncSession = Depends(get_db())
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db)
 ):
     """Get all phase templates for the current user"""
     result = await session.execute(
@@ -44,8 +44,8 @@ async def list_phase_templates(
 @router.post("", response_model=PhaseTemplateRead)
 async def create_phase_template(
     template_data: PhaseTemplateCreate,
-    user: User = Depends(get_current_user()),
-    session: AsyncSession = Depends(get_db())
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db)
 ):
     """Create a new phase template"""
     new_template = PhaseTemplate(
@@ -72,8 +72,8 @@ async def create_phase_template(
 async def update_phase_template(
     template_id: int,
     template_data: PhaseTemplateCreate,
-    user: User = Depends(get_current_user()),
-    session: AsyncSession = Depends(get_db())
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db)
 ):
     """Update a phase template"""
     result = await session.execute(
@@ -106,8 +106,8 @@ async def update_phase_template(
 @router.delete("/{template_id}")
 async def delete_phase_template(
     template_id: int,
-    user: User = Depends(get_current_user()),
-    session: AsyncSession = Depends(get_db())
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db)
 ):
     """Delete a phase template"""
     result = await session.execute(
