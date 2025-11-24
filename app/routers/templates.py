@@ -14,22 +14,22 @@ from app.schemas import PhaseTemplateCreate, PhaseTemplateRead
 router = APIRouter(prefix="/user/phase-templates", tags=["templates"])
 
 
-def get_current_user():
+def get_current_user_dependency():
     """Import and return current_user dependency - imported here to avoid circular imports"""
     from app.main import current_user
     return current_user
 
 
-def get_db():
+def get_db_dependency():
     """Import and return get_db dependency - imported here to avoid circular imports"""
-    from app.main import get_db as _get_db
-    return _get_db
+    from app.main import get_db
+    return get_db
 
 
 @router.get("", response_model=List[PhaseTemplateRead])
 async def list_phase_templates(
-    user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_db)
+    user: User = Depends(get_current_user_dependency()),
+    session: AsyncSession = Depends(get_db_dependency())
 ):
     """Get all phase templates for the current user"""
     result = await session.execute(
@@ -44,8 +44,8 @@ async def list_phase_templates(
 @router.post("", response_model=PhaseTemplateRead)
 async def create_phase_template(
     template_data: PhaseTemplateCreate,
-    user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_db)
+    user: User = Depends(get_current_user_dependency()),
+    session: AsyncSession = Depends(get_db_dependency())
 ):
     """Create a new phase template"""
     new_template = PhaseTemplate(
@@ -72,8 +72,8 @@ async def create_phase_template(
 async def update_phase_template(
     template_id: int,
     template_data: PhaseTemplateCreate,
-    user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_db)
+    user: User = Depends(get_current_user_dependency()),
+    session: AsyncSession = Depends(get_db_dependency())
 ):
     """Update a phase template"""
     result = await session.execute(
@@ -106,8 +106,8 @@ async def update_phase_template(
 @router.delete("/{template_id}")
 async def delete_phase_template(
     template_id: int,
-    user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_db)
+    user: User = Depends(get_current_user_dependency()),
+    session: AsyncSession = Depends(get_db_dependency())
 ):
     """Delete a phase template"""
     result = await session.execute(

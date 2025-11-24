@@ -22,16 +22,16 @@ from app.schemas import (
 router = APIRouter(prefix="/user/locations", tags=["locations"])
 
 
-def get_current_user():
+def get_current_user_dependency():
     """Import and return current_user dependency"""
     from app.main import current_user
     return current_user
 
 
-def get_db():
+def get_db_dependency():
     """Import and return get_db dependency"""
-    from app.main import get_db as _get_db
-    return _get_db
+    from app.main import get_db
+    return get_db
 
 
 async def generate_share_code(session: AsyncSession) -> str:
@@ -54,8 +54,8 @@ async def generate_share_code(session: AsyncSession) -> str:
 @router.post("", response_model=LocationRead)
 async def create_location(
     location: LocationCreate,
-    user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_db)
+    user: User = Depends(get_current_user_dependency()),
+    session: AsyncSession = Depends(get_db_dependency())
 ):
     """Create a new location"""
     # Verify parent exists if parent_id is provided
@@ -89,8 +89,8 @@ async def create_location(
 
 @router.get("", response_model=List[LocationRead])
 async def list_locations(
-    user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_db)
+    user: User = Depends(get_current_user_dependency()),
+    session: AsyncSession = Depends(get_db_dependency())
 ):
     """List all locations owned by or shared with the user"""
     locations_list = []
@@ -148,8 +148,8 @@ async def list_locations(
 @router.get("/{location_id}", response_model=LocationRead)
 async def get_location(
     location_id: int,
-    user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_db)
+    user: User = Depends(get_current_user_dependency()),
+    session: AsyncSession = Depends(get_db_dependency())
 ):
     """Get a specific location by ID"""
     result = await session.execute(select(Location).where(Location.id == location_id))
@@ -207,8 +207,8 @@ async def get_location(
 async def update_location(
     location_id: int,
     location_update: LocationUpdate,
-    user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_db)
+    user: User = Depends(get_current_user_dependency()),
+    session: AsyncSession = Depends(get_db_dependency())
 ):
     """Update a location"""
     result = await session.execute(select(Location).where(Location.id == location_id, Location.user_id == user.id))
@@ -252,8 +252,8 @@ async def update_location(
 @router.delete("/{location_id}")
 async def delete_location(
     location_id: int,
-    user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_db)
+    user: User = Depends(get_current_user_dependency()),
+    session: AsyncSession = Depends(get_db_dependency())
 ):
     """Delete a location"""
     result = await session.execute(select(Location).where(Location.id == location_id, Location.user_id == user.id))
@@ -274,8 +274,8 @@ async def delete_location(
 async def create_location_share(
     location_id: int,
     share_data: LocationShareCreate,
-    user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_db)
+    user: User = Depends(get_current_user_dependency()),
+    session: AsyncSession = Depends(get_db_dependency())
 ):
     """Create a share code for a location"""
     # Verify user owns the location
@@ -313,8 +313,8 @@ async def create_location_share(
 @router.post("/accept-share", response_model=Dict[str, str])
 async def accept_location_share(
     share_data: ShareAccept,
-    user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_db)
+    user: User = Depends(get_current_user_dependency()),
+    session: AsyncSession = Depends(get_db_dependency())
 ):
     """Accept a location share using a share code"""
     # Find the share by code
@@ -357,8 +357,8 @@ async def accept_location_share(
 @router.get("/{location_id}/shares", response_model=List[LocationShareRead])
 async def list_location_shares(
     location_id: int,
-    user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_db)
+    user: User = Depends(get_current_user_dependency()),
+    session: AsyncSession = Depends(get_db_dependency())
 ):
     """List all shares for a location (owner only)"""
     # Verify ownership
@@ -403,8 +403,8 @@ async def list_location_shares(
 async def revoke_location_share(
     location_id: int,
     share_id: int,
-    user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_db)
+    user: User = Depends(get_current_user_dependency()),
+    session: AsyncSession = Depends(get_db_dependency())
 ):
     """Revoke a location share"""
     # Verify ownership and get share
@@ -434,8 +434,8 @@ async def update_location_share_permission(
     location_id: int,
     share_id: int,
     share_data: ShareUpdate,
-    user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_db)
+    user: User = Depends(get_current_user_dependency()),
+    session: AsyncSession = Depends(get_db_dependency())
 ):
     """Update the permission level of a location share"""
     # Validate permission level

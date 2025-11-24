@@ -22,16 +22,16 @@ from app.schemas import (
 router = APIRouter(tags=["logs"])
 
 
-def get_current_user():
-    """Import and return current_user dependency"""
+def get_db_dependency():
+    """Lazy import to avoid circular imports"""
+    from app.main import get_db
+    return get_db
+
+
+def get_current_user_dependency():
+    """Lazy import to avoid circular imports"""
     from app.main import current_user
     return current_user
-
-
-def get_db():
-    """Import and return get_db dependency"""
-    from app.main import get_db as _get_db
-    return _get_db
 
 
 # Plant Log Endpoints
@@ -42,7 +42,7 @@ async def upload_logs(
     logs: List[LogEntryCreate],
     api_key: str = Query(...),
     plant_id: Optional[str] = Query(None),
-    session: AsyncSession = Depends(get_db)
+    session: AsyncSession = Depends(get_db_dependency())
 ):
     """Upload log entries from a device"""
     # Verify device and API key
@@ -137,8 +137,8 @@ async def upload_logs(
 @router.get("/user/plants/{plant_id}/logs", response_model=List[LogEntryRead])
 async def get_plant_logs(
     plant_id: str,
-    user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user_dependency()),
+    session: AsyncSession = Depends(get_db_dependency()),
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
     event_type: Optional[str] = None,
@@ -204,7 +204,7 @@ async def upload_environment_data(
     device_id: str,
     data: EnvironmentDataCreate,
     api_key: str = Query(...),
-    session: AsyncSession = Depends(get_db)
+    session: AsyncSession = Depends(get_db_dependency())
 ):
     """Receive environment sensor data from device and return device settings"""
     # Verify device and API key
@@ -273,7 +273,7 @@ async def update_device_settings(
     device_id: str,
     settings_update: DeviceSettingsUpdate,
     api_key: str = Header(..., alias="X-API-Key"),
-    session: AsyncSession = Depends(get_db)
+    session: AsyncSession = Depends(get_db_dependency())
 ):
     """Update device settings (temperature unit, update interval, etc.)"""
     # Verify device exists and API key matches
@@ -317,8 +317,8 @@ async def update_device_settings(
 @router.get("/api/devices/{device_id}/environment/latest")
 async def get_latest_environment_data(
     device_id: str,
-    user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_db)
+    user: User = Depends(get_current_user_dependency()),
+    session: AsyncSession = Depends(get_db_dependency())
 ):
     """Get the latest environment sensor reading for a device"""
     # Verify device exists and user has access
