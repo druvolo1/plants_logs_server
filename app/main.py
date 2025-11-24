@@ -12,6 +12,7 @@ from dateutil import parser as date_parser
 from typing import List, Optional, Dict, Any
 from fastapi_users import FastAPIUsers, BaseUserManager, IntegerIDMixin, exceptions
 from fastapi_users.authentication import CookieTransport, AuthenticationBackend, JWTStrategy
+from fastapi_users.db import SQLAlchemyUserDatabase
 from fastapi.security import OAuth2PasswordRequestForm
 from httpx_oauth.clients.google import GoogleOAuth2
 from starlette.websockets import WebSocketDisconnect
