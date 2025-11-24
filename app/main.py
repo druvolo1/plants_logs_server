@@ -1,5 +1,5 @@
 # app/main.py - Full app with FastAPI-Users (async SQLAlchemy)
-from fastapi import FastAPI, Depends, HTTPException, Request, Form, Response, status, Body
+from fastapi import FastAPI, Depends, HTTPException, Request, Form, Response, status, Body, Header
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
