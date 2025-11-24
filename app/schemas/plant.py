@@ -44,16 +44,9 @@ class PlantCreateNew(BaseModel):
     """New plant creation without device assignment"""
     name: str  # Strain name
     batch_number: Optional[str] = None  # Batch number for seed-to-sale tracking
-    start_date: Optional[str] = None  # ISO format, defaults to now
-    phase: Optional[str] = 'clone'  # Initial phase: 'seed', 'clone', 'veg', 'flower', 'drying', 'curing'
+    location_id: Optional[int] = None  # Location assignment
+    starting_phase: Optional[str] = 'seed'  # Initial phase: 'seed', 'clone', 'veg', 'flower', 'drying', 'curing'
     template_id: Optional[int] = None  # Phase template to use
-    # Expected durations (override template if provided)
-    expected_seed_days: Optional[int] = None
-    expected_clone_days: Optional[int] = None
-    expected_veg_days: Optional[int] = None
-    expected_flower_days: Optional[int] = None
-    expected_drying_days: Optional[int] = None
-    expected_curing_days: Optional[int] = None
 
 
 class DeviceAssignmentCreate(BaseModel):
@@ -78,15 +71,17 @@ class AssignedDeviceInfo(BaseModel):
 
 
 class PlantRead(BaseModel):
+    id: int
     plant_id: str
     name: str
     batch_number: Optional[str]
     system_id: Optional[str]
     device_id: Optional[str]  # Device UUID for display (legacy, may be None for new plants)
+    device_name: Optional[str]  # Device name for display
+    location_id: Optional[int]
     start_date: datetime
     end_date: Optional[datetime]
     yield_grams: Optional[float]
-    is_active: bool  # Computed: True if end_date is None
     status: str  # 'created', 'feeding', 'harvested', 'curing', 'finished'
     current_phase: Optional[str]  # Current phase name
     harvest_date: Optional[datetime]
@@ -100,13 +95,33 @@ class PlantRead(BaseModel):
     expected_drying_days: Optional[int]
     expected_curing_days: Optional[int]
     template_id: Optional[int]
-    assigned_devices: List['AssignedDeviceInfo'] = []  # Currently assigned devices
+
+    class Config:
+        from_attributes = True
 
 
-class DeviceAssignmentRead(BaseModel):
+class PlantAssignmentRead(BaseModel):
+    """Read schema for plant-device assignments"""
     id: int
+    plant_id: str  # Plant UUID
     device_id: str  # Device UUID
     device_name: Optional[str]
-    phase: str
     assigned_at: datetime
     removed_at: Optional[datetime]
+    is_active: bool
+
+    class Config:
+        from_attributes = True
+
+
+class PhaseHistoryRead(BaseModel):
+    """Read schema for plant phase history"""
+    id: int
+    plant_id: str  # Plant UUID
+    phase: str
+    started_at: datetime
+    ended_at: Optional[datetime]
+    duration_days: Optional[int]
+
+    class Config:
+        from_attributes = True

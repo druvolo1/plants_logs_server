@@ -35,6 +35,8 @@ from .plant import (
     DeviceAssignmentCreate,
     DeviceAssignmentRead,
     AssignedDeviceInfo,
+    PlantAssignmentRead,
+    PhaseHistoryRead,
 )
 from .logs import (
     LogEntryCreate,
@@ -80,6 +82,8 @@ __all__ = [
     "DeviceAssignmentCreate",
     "DeviceAssignmentRead",
     "AssignedDeviceInfo",
+    "PlantAssignmentRead",
+    "PhaseHistoryRead",
     # Log schemas
     "LogEntryCreate",
     "LogEntryRead",
