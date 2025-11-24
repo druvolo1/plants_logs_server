@@ -401,9 +401,10 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
 # Include routers
-from app.routers import templates_router, locations_router
+from app.routers import templates_router, locations_router, admin_router
 app.include_router(templates_router)
 app.include_router(locations_router)
+app.include_router(admin_router)
 
 # Global exception handler for suspended/pending users
 @app.exception_handler(HTTPException)
@@ -863,185 +864,7 @@ async def templates_page(request: Request, user: User = Depends(current_user)):
     return templates.TemplateResponse("templates.html", {"request": request, "user": user})
 
 # Admin: Overview page
-@app.get("/admin/overview", response_class=HTMLResponse)
-async def admin_overview_page(request: Request, admin: User = Depends(current_admin)):
-    return templates.TemplateResponse("admin_overview.html", {"request": request, "user": admin})
-
-# Admin: Get all devices
-@app.get("/admin/all-devices")
-async def get_all_devices(admin: User = Depends(current_admin), session: AsyncSession = Depends(get_db)):
-    result = await session.execute(
-        select(Device, User.email)
-        .join(User, Device.user_id == User.id)
-        .order_by(Device.id.desc())
-    )
-
-    devices_list = []
-    for device, owner_email in result.all():
-        # Check for active plant assignment
-        assignment_result = await session.execute(
-            select(DeviceAssignment, Plant)
-            .join(Plant, DeviceAssignment.plant_id == Plant.id)
-            .where(
-                DeviceAssignment.device_id == device.id,
-                DeviceAssignment.removed_at == None
-            )
-        )
-        assignment_row = assignment_result.first()
-
-        active_plant_name = None
-        active_phase = None
-
-        if assignment_row:
-            assignment, plant = assignment_row
-            active_plant_name = plant.name
-            active_phase = assignment.phase
-
-        devices_list.append({
-            "device_id": device.device_id,
-            "name": device.name,
-            "owner_email": owner_email,
-            "device_type": device.device_type,
-            "is_online": device.is_online,
-            "active_plant_name": active_plant_name,
-            "active_phase": active_phase
-        })
-
-    return devices_list
-
-# Admin: Get all plants
-@app.get("/admin/all-plants")
-async def get_all_plants(admin: User = Depends(current_admin), session: AsyncSession = Depends(get_db)):
-    result = await session.execute(
-        select(Plant, User.email, Device.device_id)
-        .join(User, Plant.user_id == User.id)
-        .outerjoin(Device, Plant.device_id == Device.id)
-        .order_by(Plant.id.desc())
-    )
-
-    plants_list = []
-    for plant, owner_email, device_uuid in result.all():
-        plants_list.append({
-            "plant_id": plant.plant_id,
-            "name": plant.name,
-            "owner_email": owner_email,
-            "device_id": device_uuid,
-            "status": plant.status,
-            "current_phase": plant.current_phase,
-            "start_date": plant.start_date.isoformat() if plant.start_date else None,
-            "end_date": plant.end_date.isoformat() if plant.end_date else None,
-            "is_active": plant.end_date is None
-        })
-
-    return plants_list
-
-# Admin: Get user count
-@app.get("/admin/user-count")
-async def get_user_count(admin: User = Depends(current_admin), session: AsyncSession = Depends(get_db)):
-    result = await session.execute(select(func.count(User.id)))
-    count = result.scalar()
-    return {"count": count}
-
-# Admin: Users page
-@app.get("/admin/users", response_class=HTMLResponse)
-async def users_page(request: Request, admin: User = Depends(current_admin), session: AsyncSession = Depends(get_db)):
-    result = await session.execute(
-        select(User).options(selectinload(User.oauth_accounts))
-    )
-    users = result.scalars().all()
-    return templates.TemplateResponse("users.html", {"request": request, "user": admin, "users": users})
-
-# Admin: Add user
-@app.post("/admin/users")
-async def add_user(
-    user_data: UserCreate,
-    admin: User = Depends(current_admin),
-    manager: CustomUserManager = Depends(get_user_manager)
-):
-    try:
-        user = await manager.create(user_data)
-        return {"status": "success", "user_id": user.id}
-    except exceptions.UserAlreadyExists:
-        raise HTTPException(400, "User already exists")
-
-# Admin: Update user
-@app.patch("/admin/users/{user_id}")
-async def update_user(
-    user_id: int,
-    user_data: UserUpdate,
-    admin: User = Depends(current_admin),
-    manager: CustomUserManager = Depends(get_user_manager),
-    session: AsyncSession = Depends(get_db)
-):
-    user = await manager.user_db.get(user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    
-    update_dict = {}
-    if user_data.email is not None:
-        update_dict["email"] = user_data.email
-    if user_data.first_name is not None:
-        update_dict["first_name"] = user_data.first_name
-    if user_data.last_name is not None:
-        update_dict["last_name"] = user_data.last_name
-    if user_data.is_active is not None:
-        update_dict["is_active"] = user_data.is_active
-    if user_data.is_superuser is not None:
-        update_dict["is_superuser"] = user_data.is_superuser
-    
-    user = await manager.user_db.update(user, update_dict)
-    return {"status": "success"}
-
-# Admin: Reset password
-@app.post("/admin/users/{user_id}/reset-password")
-async def reset_password(user_id: int, password_reset: PasswordReset, admin: User = Depends(current_admin), manager: CustomUserManager = Depends(get_user_manager)):
-    user = await manager.user_db.get(user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    hashed_password = manager.password_helper.hash(password_reset.password)
-    update_dict = {"hashed_password": hashed_password}
-    user = await manager.user_db.update(user, update_dict)
-    return {"status": "success"}
-
-# Admin: Suspend user
-@app.post("/admin/users/{user_id}/suspend")
-async def suspend_user(user_id: int, admin: User = Depends(current_admin), manager: CustomUserManager = Depends(get_user_manager)):
-    user = await manager.user_db.get(user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    update_dict = {"is_suspended": True}
-    user = await manager.user_db.update(user, update_dict)
-    return {"status": "success"}
-
-# Admin: Unsuspend user
-@app.post("/admin/users/{user_id}/unsuspend")
-async def unsuspend_user(user_id: int, admin: User = Depends(current_admin), manager: CustomUserManager = Depends(get_user_manager)):
-    user = await manager.user_db.get(user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    update_dict = {"is_suspended": False}
-    user = await manager.user_db.update(user, update_dict)
-    return {"status": "success"}
-
-# Admin: Approve user (activate pending user)
-@app.post("/admin/users/{user_id}/approve")
-async def approve_user(user_id: int, admin: User = Depends(current_admin), manager: CustomUserManager = Depends(get_user_manager)):
-    user = await manager.user_db.get(user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    update_dict = {"is_active": True}
-    user = await manager.user_db.update(user, update_dict)
-    return {"status": "success"}
-
-# Admin: Delete user
-@app.delete("/admin/users/{user_id}")
-async def delete_user_admin(user_id: int, session: AsyncSession = Depends(get_db), admin: User = Depends(current_admin)):
-    user = await session.get(User, user_id)
-    if user:
-        await session.delete(user)
-        await session.commit()
-        return {"status": "success"}
-    raise HTTPException(404, "User not found")
+# Admin endpoints moved to app/routers/admin.py
 
 # Schemas imported above from app.schemas
 
@@ -2626,26 +2449,7 @@ async def reorder_plants(
 
     return {"status": "success", "message": f"Reordered {len(plant_order)} plants"}
 
-@app.delete("/admin/plants/{plant_id}", response_model=Dict[str, str])
-async def delete_plant_admin(
-    plant_id: str,
-    user: User = Depends(current_admin),
-    session: AsyncSession = Depends(get_db)
-):
-    # Get plant
-    result = await session.execute(
-        select(Plant).where(Plant.plant_id == plant_id)
-    )
-
-    plant = result.scalars().first()
-    if not plant:
-        raise HTTPException(404, "Plant not found")
-
-    # Delete plant (logs will be cascade deleted)
-    await session.delete(plant)
-    await session.commit()
-
-    return {"status": "success", "message": f"Plant '{plant.name}' and all associated logs deleted successfully"}
+# Admin plant delete endpoint moved to app/routers/admin.py
 
 # Log Management API Endpoints
 
