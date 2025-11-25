@@ -4,7 +4,7 @@ SQLAlchemy models for the plants logs server.
 """
 from .base import Base
 from .user import User, OAuthAccount
-from .device import Device, DeviceShare
+from .device import Device, DeviceShare, DeviceLink
 from .location import Location, LocationShare
 from .plant import Plant, PhaseTemplate, PhaseHistory, DeviceAssignment
 from .logs import LogEntry, EnvironmentLog
@@ -15,6 +15,7 @@ __all__ = [
     "OAuthAccount",
     "Device",
     "DeviceShare",
+    "DeviceLink",
     "Location",
     "LocationShare",
     "Plant",

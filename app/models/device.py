@@ -28,6 +28,21 @@ class Device(Base):
     plants = relationship("Plant", foreign_keys="Plant.device_id", cascade="all, delete-orphan", passive_deletes=False)
     device_assignments = relationship("DeviceAssignment", back_populates="device", cascade="all, delete-orphan")
 
+    # Device linking relationships (for feeding_system as parent)
+    linked_child_devices = relationship(
+        "DeviceLink",
+        foreign_keys="DeviceLink.parent_device_id",
+        back_populates="parent_device",
+        cascade="all, delete-orphan"
+    )
+    # Device linking relationships (for env sensors/valve controllers as child)
+    linked_parent_devices = relationship(
+        "DeviceLink",
+        foreign_keys="DeviceLink.child_device_id",
+        back_populates="child_device",
+        cascade="all, delete-orphan"
+    )
+
 
 class DeviceShare(Base):
     __tablename__ = "device_shares"
@@ -47,3 +62,26 @@ class DeviceShare(Base):
     device = relationship("Device", foreign_keys=[device_id])
     owner = relationship("User", foreign_keys=[owner_user_id])
     shared_with = relationship("User", foreign_keys=[shared_with_user_id])
+
+
+class DeviceLink(Base):
+    """
+    Links devices together. Used to associate environmental sensors and valve controllers
+    with feeding systems.
+
+    - parent_device: The feeding_system that acts as the hub
+    - child_device: The environmental sensor or valve controller being linked
+    - link_type: 'environmental' or 'valve_controller'
+    - is_location_inherited: True if auto-linked based on location hierarchy, False if explicitly linked
+    """
+    __tablename__ = "device_links"
+    id = Column(Integer, primary_key=True, index=True)
+    parent_device_id = Column(Integer, ForeignKey("devices.id", ondelete="CASCADE"), nullable=False)
+    child_device_id = Column(Integer, ForeignKey("devices.id", ondelete="CASCADE"), nullable=False)
+    link_type = Column(String(30), nullable=False)  # 'environmental', 'valve_controller'
+    is_location_inherited = Column(Boolean, default=False, nullable=False)  # True = auto from location, False = explicit
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    # Relationships
+    parent_device = relationship("Device", foreign_keys=[parent_device_id], back_populates="linked_child_devices")
+    child_device = relationship("Device", foreign_keys=[child_device_id], back_populates="linked_parent_devices")

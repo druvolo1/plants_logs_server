@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_
 import secrets
 
-from app.models import User, Device, DeviceShare, Plant, DeviceAssignment
+from app.models import User, Device, DeviceShare, DeviceLink, Plant, DeviceAssignment, Location
 from app.schemas import (
     DeviceCreate,
     DeviceUpdate,
@@ -20,6 +20,10 @@ from app.schemas import (
     ShareAccept,
     ShareUpdate,
     ShareRead,
+    DeviceLinkCreate,
+    DeviceLinkRead,
+    AvailableDeviceForLinking,
+    LinkedDeviceInfo,
 )
 
 router = APIRouter(prefix="/user/devices", tags=["devices"])
@@ -128,6 +132,25 @@ async def list_devices(
                 current_phase=plant.current_phase
             ))
 
+        # Get linked devices for feeding systems
+        linked_devices = []
+        if device.device_type == 'feeding_system':
+            links_result = await session.execute(
+                select(DeviceLink, Device)
+                .join(Device, DeviceLink.child_device_id == Device.id)
+                .where(DeviceLink.parent_device_id == device.id)
+            )
+            for link, child_device in links_result.all():
+                linked_devices.append(LinkedDeviceInfo(
+                    device_id=child_device.device_id,
+                    name=child_device.name,
+                    system_name=child_device.system_name,
+                    device_type=child_device.device_type,
+                    is_online=child_device.is_online,
+                    link_type=link.link_type,
+                    is_location_inherited=link.is_location_inherited
+                ))
+
         devices_list.append(DeviceRead(
             id=device.id,
             device_id=device.device_id,
@@ -139,7 +162,8 @@ async def list_devices(
             is_online=device.is_online,
             last_seen=device.last_seen,
             is_owner=True,
-            assigned_plants=assigned_plants
+            assigned_plants=assigned_plants,
+            linked_devices=linked_devices
         ))
 
     # Get shared devices (accepted and active)
@@ -487,6 +511,213 @@ async def update_device_share_permission(
     await session.commit()
 
     return {"status": "success", "permission_level": share.permission_level}
+
+
+# Device Linking Endpoints
+
+@router.get("/{device_id}/available-links", response_model=List[AvailableDeviceForLinking])
+async def get_available_devices_for_linking(
+    device_id: str,
+    user: User = Depends(get_current_user_dependency()),
+    session: AsyncSession = Depends(get_db_dependency())
+):
+    """
+    Get devices that can be linked to a feeding system.
+    Only returns environmental sensors and valve controllers that the user owns.
+    """
+    # Verify user owns the parent device and it's a feeding_system
+    result = await session.execute(
+        select(Device).where(Device.device_id == device_id, Device.user_id == user.id)
+    )
+    parent_device = result.scalars().first()
+
+    if not parent_device:
+        raise HTTPException(404, "Device not found or not owned by you")
+
+    if parent_device.device_type != 'feeding_system':
+        raise HTTPException(400, "Only feeding systems can have linked devices")
+
+    # Get all linkable devices (environmental and valve_controller) owned by user
+    linkable_result = await session.execute(
+        select(Device, Location)
+        .outerjoin(Location, Device.location_id == Location.id)
+        .where(
+            Device.user_id == user.id,
+            Device.device_type.in_(['environmental', 'valve_controller']),
+            Device.id != parent_device.id
+        )
+    )
+
+    # Get already linked device IDs
+    linked_result = await session.execute(
+        select(DeviceLink.child_device_id).where(DeviceLink.parent_device_id == parent_device.id)
+    )
+    already_linked_ids = {row[0] for row in linked_result.all()}
+
+    available = []
+    for device, location in linkable_result.all():
+        if device.id not in already_linked_ids:
+            available.append(AvailableDeviceForLinking(
+                device_id=device.device_id,
+                name=device.name,
+                system_name=device.system_name,
+                device_type=device.device_type,
+                is_online=device.is_online,
+                location_id=device.location_id,
+                location_name=location.name if location else None,
+                is_same_location=device.location_id == parent_device.location_id if parent_device.location_id else False
+            ))
+
+    return available
+
+
+@router.get("/{device_id}/links", response_model=List[DeviceLinkRead])
+async def get_device_links(
+    device_id: str,
+    user: User = Depends(get_current_user_dependency()),
+    session: AsyncSession = Depends(get_db_dependency())
+):
+    """Get all devices linked to a feeding system"""
+    # Verify user owns the device
+    result = await session.execute(
+        select(Device).where(Device.device_id == device_id, Device.user_id == user.id)
+    )
+    parent_device = result.scalars().first()
+
+    if not parent_device:
+        raise HTTPException(404, "Device not found or not owned by you")
+
+    # Get all links with child device info
+    links_result = await session.execute(
+        select(DeviceLink, Device)
+        .join(Device, DeviceLink.child_device_id == Device.id)
+        .where(DeviceLink.parent_device_id == parent_device.id)
+    )
+
+    links = []
+    for link, child_device in links_result.all():
+        links.append(DeviceLinkRead(
+            id=link.id,
+            link_type=link.link_type,
+            is_location_inherited=link.is_location_inherited,
+            created_at=link.created_at,
+            child_device_id=child_device.device_id,
+            child_device_name=child_device.name,
+            child_device_system_name=child_device.system_name,
+            child_device_type=child_device.device_type,
+            child_device_is_online=child_device.is_online
+        ))
+
+    return links
+
+
+@router.post("/{device_id}/links", response_model=DeviceLinkRead)
+async def create_device_link(
+    device_id: str,
+    link_data: DeviceLinkCreate,
+    user: User = Depends(get_current_user_dependency()),
+    session: AsyncSession = Depends(get_db_dependency())
+):
+    """Link an environmental sensor or valve controller to a feeding system"""
+    # Validate link type
+    if link_data.link_type not in ['environmental', 'valve_controller']:
+        raise HTTPException(400, "Invalid link type. Must be 'environmental' or 'valve_controller'")
+
+    # Verify user owns the parent device and it's a feeding_system
+    result = await session.execute(
+        select(Device).where(Device.device_id == device_id, Device.user_id == user.id)
+    )
+    parent_device = result.scalars().first()
+
+    if not parent_device:
+        raise HTTPException(404, "Parent device not found or not owned by you")
+
+    if parent_device.device_type != 'feeding_system':
+        raise HTTPException(400, "Only feeding systems can have linked devices")
+
+    # Find the child device
+    child_result = await session.execute(
+        select(Device).where(Device.device_id == link_data.child_device_id, Device.user_id == user.id)
+    )
+    child_device = child_result.scalars().first()
+
+    if not child_device:
+        raise HTTPException(404, "Child device not found or not owned by you")
+
+    # Validate device type matches link type
+    if link_data.link_type == 'environmental' and child_device.device_type != 'environmental':
+        raise HTTPException(400, "Device is not an environmental sensor")
+    if link_data.link_type == 'valve_controller' and child_device.device_type != 'valve_controller':
+        raise HTTPException(400, "Device is not a valve controller")
+
+    # Check if link already exists
+    existing = await session.execute(
+        select(DeviceLink).where(
+            DeviceLink.parent_device_id == parent_device.id,
+            DeviceLink.child_device_id == child_device.id
+        )
+    )
+    if existing.scalars().first():
+        raise HTTPException(400, "Device is already linked")
+
+    # Create link
+    link = DeviceLink(
+        parent_device_id=parent_device.id,
+        child_device_id=child_device.id,
+        link_type=link_data.link_type,
+        is_location_inherited=False  # Explicit link
+    )
+
+    session.add(link)
+    await session.commit()
+    await session.refresh(link)
+
+    return DeviceLinkRead(
+        id=link.id,
+        link_type=link.link_type,
+        is_location_inherited=link.is_location_inherited,
+        created_at=link.created_at,
+        child_device_id=child_device.device_id,
+        child_device_name=child_device.name,
+        child_device_system_name=child_device.system_name,
+        child_device_type=child_device.device_type,
+        child_device_is_online=child_device.is_online
+    )
+
+
+@router.delete("/{device_id}/links/{link_id}")
+async def delete_device_link(
+    device_id: str,
+    link_id: int,
+    user: User = Depends(get_current_user_dependency()),
+    session: AsyncSession = Depends(get_db_dependency())
+):
+    """Remove a device link"""
+    # Verify user owns the parent device
+    result = await session.execute(
+        select(Device).where(Device.device_id == device_id, Device.user_id == user.id)
+    )
+    parent_device = result.scalars().first()
+
+    if not parent_device:
+        raise HTTPException(404, "Device not found or not owned by you")
+
+    # Find and delete the link
+    link_result = await session.execute(
+        select(DeviceLink).where(
+            DeviceLink.id == link_id,
+            DeviceLink.parent_device_id == parent_device.id
+        )
+    )
+    link = link_result.scalars().first()
+
+    if not link:
+        raise HTTPException(404, "Link not found")
+
+    await session.delete(link)
+    await session.commit()
+
+    return {"status": "success", "message": "Device link removed"}
 
 
 # API Endpoints (for devices using API keys)

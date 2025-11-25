@@ -31,6 +31,17 @@ class DeviceSettingsUpdate(BaseModel):
     update_interval: Optional[int] = None
 
 
+class LinkedDeviceInfo(BaseModel):
+    """Summary info about a linked device for inclusion in DeviceRead"""
+    device_id: str
+    name: Optional[str] = None
+    system_name: Optional[str] = None
+    device_type: Optional[str] = None
+    is_online: bool = False
+    link_type: str
+    is_location_inherited: bool
+
+
 class DeviceRead(BaseModel):
     device_id: str
     name: Optional[str] = None  # User-set custom name
@@ -46,6 +57,8 @@ class DeviceRead(BaseModel):
     shared_by_email: Optional[str] = None  # Email of owner if shared device
     assigned_plants: List[AssignedPlantInfo] = []  # All plants currently assigned to device
     assigned_plant_count: int = 0  # Count of assigned plants
+    # Linked devices (env sensors, valve controllers linked to this feeding system)
+    linked_devices: List[LinkedDeviceInfo] = []
     # Legacy fields (kept for backward compatibility)
     active_plant_name: Optional[str] = None  # Name of first assigned plant
     active_plant_id: Optional[str] = None  # ID of first assigned plant
@@ -102,3 +115,36 @@ class DevicePairResponse(BaseModel):
 class DeviceSettingsResponse(BaseModel):
     use_fahrenheit: bool
     update_interval: int  # seconds
+
+
+# Device Linking Pydantic models
+class DeviceLinkCreate(BaseModel):
+    """Create a link between a feeding system and an env sensor or valve controller"""
+    child_device_id: str  # The device_id (UUID) of the device to link
+    link_type: str  # 'environmental' or 'valve_controller'
+
+
+class DeviceLinkRead(BaseModel):
+    """Read model for device links"""
+    id: int
+    link_type: str  # 'environmental' or 'valve_controller'
+    is_location_inherited: bool
+    created_at: datetime
+    # Child device info
+    child_device_id: str  # UUID
+    child_device_name: Optional[str] = None
+    child_device_system_name: Optional[str] = None
+    child_device_type: Optional[str] = None
+    child_device_is_online: bool = False
+
+
+class AvailableDeviceForLinking(BaseModel):
+    """Device that can be linked to a feeding system"""
+    device_id: str
+    name: Optional[str] = None
+    system_name: Optional[str] = None
+    device_type: str
+    is_online: bool = False
+    location_id: Optional[int] = None
+    location_name: Optional[str] = None
+    is_same_location: bool = False  # True if in same location as parent device

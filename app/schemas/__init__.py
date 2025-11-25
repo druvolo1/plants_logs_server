@@ -16,6 +16,10 @@ from .device import (
     ShareAccept,
     ShareUpdate,
     ShareRead,
+    DeviceLinkCreate,
+    DeviceLinkRead,
+    LinkedDeviceInfo,
+    AvailableDeviceForLinking,
 )
 from .location import (
     LocationCreate,
@@ -64,6 +68,10 @@ __all__ = [
     "ShareAccept",
     "ShareUpdate",
     "ShareRead",
+    "DeviceLinkCreate",
+    "DeviceLinkRead",
+    "LinkedDeviceInfo",
+    "AvailableDeviceForLinking",
     # Location schemas
     "LocationCreate",
     "LocationUpdate",

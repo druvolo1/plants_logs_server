@@ -200,6 +200,84 @@
             background: linear-gradient(135deg, #64748b 0%, #475569 100%);
             color: white;
         }
+
+        /* Linked Devices Section */
+        .linked-devices-section {
+            margin-top: 1rem;
+            padding: 1rem;
+            background: rgba(59, 130, 246, 0.1);
+            border-radius: 8px;
+            border-left: 3px solid #3b82f6;
+        }
+
+        .linked-devices-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+        }
+
+        .linked-devices-header h4 {
+            margin: 0;
+            color: #3b82f6;
+            font-size: 0.95rem;
+        }
+
+        .linked-device-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.4rem 0.75rem;
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 6px;
+            margin-right: 0.5rem;
+            margin-bottom: 0.5rem;
+            font-size: 0.85rem;
+        }
+
+        .linked-device-chip.online {
+            border-color: #10b981;
+        }
+
+        .linked-device-chip .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .linked-device-chip .status-dot.online {
+            background: #10b981;
+        }
+
+        .linked-device-chip .status-dot.offline {
+            background: #64748b;
+        }
+
+        .linked-device-chip .unlink-btn {
+            background: none;
+            border: none;
+            color: #ef4444;
+            cursor: pointer;
+            padding: 0;
+            margin-left: 0.25rem;
+            font-size: 1rem;
+            line-height: 1;
+        }
+
+        .linked-device-chip .unlink-btn:hover {
+            color: #dc2626;
+        }
+
+        .link-device-btn {
+            font-size: 0.8rem;
+            padding: 0.35rem 0.75rem;
+            background: #3b82f6;
+        }
+
+        .link-device-btn:hover {
+            background: #2563eb;
+        }
     </style>
 </head>
 <body>
@@ -333,11 +411,32 @@
         </div>
     </div>
 
+    <!-- Link Devices Modal -->
+    <div id="link-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 2000;">
+        <div style="position: relative; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #1e293b; padding: 2rem; border-radius: 12px; max-width: 600px; width: 90%; box-shadow: 0 8px 32px rgba(0,0,0,0.5); max-height: 80vh; overflow-y: auto;">
+            <h3 style="color: #3b82f6; margin-top: 0;">Link Environmental Sensors & Valve Controllers</h3>
+            <p style="color: #888; font-size: 0.9rem;" id="link-device-name"></p>
+
+            <div style="margin: 1.5rem 0;">
+                <h4 style="color: #10b981; margin-bottom: 0.75rem;">Available Devices to Link</h4>
+                <div id="available-links-list" style="margin-top: 1rem;"></div>
+            </div>
+
+            <div style="margin: 1.5rem 0;">
+                <h4 style="color: #3b82f6; margin-bottom: 0.75rem;">Currently Linked Devices</h4>
+                <div id="current-links-list" style="margin-top: 1rem;"></div>
+            </div>
+
+            <button onclick="closeLinkModal()" style="background: #64748b; margin-top: 1rem;">Close</button>
+        </div>
+    </div>
+
     <script>
         // Store WebSocket connections per device
         let wsMap = {};
         let currentShareDeviceId = null;
         let currentEditDeviceId = null;
+        let currentLinkDeviceId = null;
         let locationsMap = {};
         let allDevices = []; // Store all devices for filtering
 
@@ -529,6 +628,11 @@
                 ? `<button onclick="deleteDevice('${device.device_id}')">Delete</button>`
                 : '';
 
+            // Link button for feeding systems only
+            const linkButton = (device.is_owner && device.device_type === 'feeding_system')
+                ? `<button onclick="openLinkModal('${device.device_id}')" style="background: #3b82f6;">Link Devices</button>`
+                : '';
+
             // Device type icon bar
             const deviceType = device.device_type || 'feeding_system';
             const scope = device.scope || 'plant';
@@ -544,6 +648,34 @@
                 <div class="scope-text">${scopeText}</div>
             </div>`;
 
+            // Linked devices section for feeding systems
+            let linkedDevicesSection = '';
+            if (device.device_type === 'feeding_system' && device.linked_devices && device.linked_devices.length > 0) {
+                const linkedChips = device.linked_devices.map(linked => {
+                    const typeIcon = linked.device_type === 'environmental' ? '🌡️' : '🚿';
+                    const statusClass = linked.is_online ? 'online' : '';
+                    return `<span class="linked-device-chip ${statusClass}">
+                        <span class="status-dot ${statusClass}"></span>
+                        ${typeIcon} ${linked.name || linked.system_name || linked.device_id.substring(0, 8)}
+                    </span>`;
+                }).join('');
+
+                linkedDevicesSection = `
+                    <div class="linked-devices-section">
+                        <div class="linked-devices-header">
+                            <h4>🔗 Linked Devices</h4>
+                        </div>
+                        <div>${linkedChips}</div>
+                    </div>
+                `;
+            } else if (device.device_type === 'feeding_system' && device.is_owner) {
+                linkedDevicesSection = `
+                    <div class="linked-devices-section" style="background: rgba(100, 116, 139, 0.1); border-left-color: #64748b;">
+                        <p style="margin: 0; color: #64748b; font-size: 0.9rem;">No linked devices. Click "Link Devices" to add environmental sensors or valve controllers.</p>
+                    </div>
+                `;
+            }
+
             deviceDiv.innerHTML = `
                 ${deviceTypeBar}
                 ${ownershipInfo}
@@ -553,7 +685,9 @@
                 ${locationInfo}
                 <p><strong>Version:</strong> <span id="version-${device.device_id}">Loading...</span></p>
                 <p><strong>Online:</strong> <span id="online-${device.device_id}">${device.is_online ? 'Yes' : 'No'}</span></p>
+                ${linkedDevicesSection}
                 ${editButton}
+                ${linkButton}
                 <button onclick="updateDevice('${device.device_id}')" id="update-btn-${device.device_id}">Update Software</button>
                 <button onclick="restartService('${device.device_id}')" id="restart-btn-${device.device_id}">Restart Service</button>
                 <button onclick="rebootSystem('${device.device_id}')" id="reboot-btn-${device.device_id}" style="background: #dc2626;">Reboot System</button>
@@ -746,6 +880,158 @@
         function closeEditModal() {
             document.getElementById('edit-modal').style.display = 'none';
             currentEditDeviceId = null;
+        }
+
+        // Device Linking Functions
+        async function openLinkModal(device_id) {
+            currentLinkDeviceId = device_id;
+            document.getElementById('link-device-name').textContent = `Feeding System: ${device_id}`;
+            document.getElementById('link-modal').style.display = 'block';
+            await loadAvailableLinks(device_id);
+            await loadCurrentLinks(device_id);
+        }
+
+        function closeLinkModal() {
+            document.getElementById('link-modal').style.display = 'none';
+            currentLinkDeviceId = null;
+        }
+
+        async function loadAvailableLinks(device_id) {
+            const listDiv = document.getElementById('available-links-list');
+            listDiv.innerHTML = '<p style="color: #888;">Loading...</p>';
+
+            try {
+                const response = await fetch(`/user/devices/${device_id}/available-links`);
+                if (response.ok) {
+                    const available = await response.json();
+
+                    if (available.length === 0) {
+                        listDiv.innerHTML = '<p style="color: #888;">No devices available to link. Add environmental sensors or valve controllers first.</p>';
+                        return;
+                    }
+
+                    listDiv.innerHTML = '';
+                    available.forEach(device => {
+                        const deviceDiv = document.createElement('div');
+                        deviceDiv.style.cssText = 'padding: 0.75rem; margin-bottom: 0.5rem; background: rgba(100, 116, 139, 0.2); border-radius: 6px; display: flex; justify-content: space-between; align-items: center;';
+
+                        const typeIcon = device.device_type === 'environmental' ? '🌡️' : '🚿';
+                        const typeName = device.device_type === 'environmental' ? 'Environmental Sensor' : 'Valve Controller';
+                        const locationBadge = device.is_same_location
+                            ? '<span style="background: #10b98130; color: #10b981; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; margin-left: 0.5rem;">Same Location</span>'
+                            : '';
+
+                        deviceDiv.innerHTML = `
+                            <div>
+                                <p style="margin: 0; font-weight: 600; color: #fff;">${typeIcon} ${device.name || device.system_name || 'Unnamed Device'}${locationBadge}</p>
+                                <p style="margin: 0.25rem 0 0 0; font-size: 0.8rem; color: #888;">${typeName} • ${device.location_name || 'No location'}</p>
+                                <p style="margin: 0; font-size: 0.75rem; color: #64748b;">${device.device_id}</p>
+                            </div>
+                            <button onclick="linkDevice('${device.device_id}', '${device.device_type}')" style="background: #10b981; font-size: 0.85rem;">Link</button>
+                        `;
+                        listDiv.appendChild(deviceDiv);
+                    });
+                } else {
+                    listDiv.innerHTML = '<p style="color: #ef4444;">Failed to load available devices</p>';
+                }
+            } catch (error) {
+                listDiv.innerHTML = '<p style="color: #ef4444;">Error loading available devices</p>';
+            }
+        }
+
+        async function loadCurrentLinks(device_id) {
+            const listDiv = document.getElementById('current-links-list');
+            listDiv.innerHTML = '<p style="color: #888;">Loading...</p>';
+
+            try {
+                const response = await fetch(`/user/devices/${device_id}/links`);
+                if (response.ok) {
+                    const links = await response.json();
+
+                    if (links.length === 0) {
+                        listDiv.innerHTML = '<p style="color: #888;">No devices currently linked.</p>';
+                        return;
+                    }
+
+                    listDiv.innerHTML = '';
+                    links.forEach(link => {
+                        const linkDiv = document.createElement('div');
+                        linkDiv.style.cssText = 'padding: 0.75rem; margin-bottom: 0.5rem; background: rgba(59, 130, 246, 0.2); border-radius: 6px; display: flex; justify-content: space-between; align-items: center;';
+
+                        const typeIcon = link.child_device_type === 'environmental' ? '🌡️' : '🚿';
+                        const statusDot = link.child_device_is_online
+                            ? '<span style="width: 8px; height: 8px; background: #10b981; border-radius: 50%; display: inline-block; margin-right: 0.5rem;"></span>'
+                            : '<span style="width: 8px; height: 8px; background: #64748b; border-radius: 50%; display: inline-block; margin-right: 0.5rem;"></span>';
+                        const inheritedBadge = link.is_location_inherited
+                            ? '<span style="background: #f59e0b30; color: #f59e0b; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; margin-left: 0.5rem;">Auto (Location)</span>'
+                            : '';
+
+                        linkDiv.innerHTML = `
+                            <div>
+                                <p style="margin: 0; font-weight: 600; color: #fff;">${statusDot}${typeIcon} ${link.child_device_name || link.child_device_system_name || 'Unnamed Device'}${inheritedBadge}</p>
+                                <p style="margin: 0.25rem 0 0 0; font-size: 0.75rem; color: #64748b;">${link.child_device_id}</p>
+                            </div>
+                            <button onclick="unlinkDevice(${link.id})" style="background: #dc2626; font-size: 0.85rem;">Unlink</button>
+                        `;
+                        listDiv.appendChild(linkDiv);
+                    });
+                } else {
+                    listDiv.innerHTML = '<p style="color: #ef4444;">Failed to load linked devices</p>';
+                }
+            } catch (error) {
+                listDiv.innerHTML = '<p style="color: #ef4444;">Error loading linked devices</p>';
+            }
+        }
+
+        async function linkDevice(childDeviceId, deviceType) {
+            const linkType = deviceType === 'environmental' ? 'environmental' : 'valve_controller';
+
+            try {
+                const response = await fetch(`/user/devices/${currentLinkDeviceId}/links`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        child_device_id: childDeviceId,
+                        link_type: linkType
+                    })
+                });
+
+                if (response.ok) {
+                    // Reload both lists
+                    await loadAvailableLinks(currentLinkDeviceId);
+                    await loadCurrentLinks(currentLinkDeviceId);
+                    // Also refresh the main devices list to update the linked devices display
+                    fetchDevices();
+                } else {
+                    const error = await response.json();
+                    alert(`Failed to link device: ${error.detail || 'Unknown error'}`);
+                }
+            } catch (error) {
+                alert('Error linking device');
+            }
+        }
+
+        async function unlinkDevice(linkId) {
+            if (!confirm('Are you sure you want to unlink this device?')) return;
+
+            try {
+                const response = await fetch(`/user/devices/${currentLinkDeviceId}/links/${linkId}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    // Reload both lists
+                    await loadAvailableLinks(currentLinkDeviceId);
+                    await loadCurrentLinks(currentLinkDeviceId);
+                    // Also refresh the main devices list to update the linked devices display
+                    fetchDevices();
+                } else {
+                    const error = await response.json();
+                    alert(`Failed to unlink device: ${error.detail || 'Unknown error'}`);
+                }
+            } catch (error) {
+                alert('Error unlinking device');
+            }
         }
 
         async function saveDeviceEdit(event) {
