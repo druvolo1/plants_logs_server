@@ -714,6 +714,9 @@
         </main>
     </div>
 
+    <!-- Modals render outside the admin-layout to avoid stacking context issues -->
+    {% block modals %}{% endblock %}
+
     <script>
         // Global admin functions
         async function exitImpersonation() {
