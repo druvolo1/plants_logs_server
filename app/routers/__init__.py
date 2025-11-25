@@ -10,6 +10,7 @@ from .plants import router as plants_router, api_router as plants_api_router
 from .devices import router as devices_router, api_router as devices_api_router
 from .auth import router as auth_router, api_router as auth_api_router
 from .websocket import router as websocket_router, device_connections, user_connections
+from .pages import router as pages_router, pending_pairings
 
 __all__ = [
     "templates_router",
@@ -25,4 +26,6 @@ __all__ = [
     "websocket_router",
     "device_connections",
     "user_connections",
+    "pages_router",
+    "pending_pairings",
 ]

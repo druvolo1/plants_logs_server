@@ -400,7 +400,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
 # Include routers
-from app.routers import templates_router, locations_router, admin_router, logs_router, plants_router, plants_api_router, devices_router, devices_api_router, auth_router, auth_api_router, websocket_router
+from app.routers import templates_router, locations_router, admin_router, logs_router, plants_router, plants_api_router, devices_router, devices_api_router, auth_router, auth_api_router, websocket_router, pages_router
 app.include_router(templates_router)
 app.include_router(locations_router)
 app.include_router(admin_router)
@@ -412,6 +412,7 @@ app.include_router(devices_api_router)
 app.include_router(auth_router)
 app.include_router(auth_api_router)
 app.include_router(websocket_router)
+app.include_router(pages_router)
 
 # Global exception handler for suspended/pending users
 @app.exception_handler(HTTPException)
@@ -430,184 +431,7 @@ async def http_exception_handler(request: Request, exc: HTTPException):
     raise exc
 
 # Auth routes moved to app/routers/auth.py
-
-# Landing page - redirects based on authentication status and user type
-@app.get("/", response_class=HTMLResponse)
-async def root(request: Request):
-    # Try to get current user
-    cookie = request.cookies.get("auth_cookie")
-    
-    if not cookie:
-        # Not logged in, go to login page
-        return RedirectResponse("/login")
-    
-    # Try to decode token and get user
-    try:
-        async with async_session_maker() as session:
-            payload = jwt.decode(
-                cookie, 
-                SECRET, 
-                algorithms=["HS256"],
-                options={"verify_aud": False}
-            )
-            user_id = payload.get("sub")
-            
-            if user_id:
-                user_id = int(user_id)
-                result = await session.execute(select(User).where(User.id == user_id))
-                user = result.scalars().first()
-
-                if user:
-                    # Check if user is suspended (handle None as False)
-                    is_suspended = getattr(user, 'is_suspended', None)
-                    is_active = user.is_active
-
-                    print(f"Root route check for {user.email}: is_suspended={is_suspended}, is_active={is_active}")
-
-                    # Normalize is_suspended to boolean (handle None, 0, 1, True, False)
-                    if is_suspended is None or is_suspended is False or is_suspended == 0:
-                        is_suspended = False
-                    else:
-                        is_suspended = True
-
-                    if is_suspended:
-                        print(f"Root route: {user.email} is SUSPENDED - showing suspended page")
-                        response = templates.TemplateResponse("suspended.html", {"request": request}, status_code=403)
-                        response.delete_cookie("auth_cookie")
-                        return response
-
-                    # Check if user is pending approval
-                    if not is_active:
-                        print(f"Root route: {user.email} is PENDING - showing pending approval page")
-                        response = templates.TemplateResponse("pending_approval.html", {"request": request}, status_code=403)
-                        response.delete_cookie("auth_cookie")
-                        return response
-
-                    # User is active and not suspended - redirect to dashboard
-                    if user.is_superuser:
-                        return RedirectResponse("/dashboard")
-                    else:
-                        return RedirectResponse("/dashboard")
-    except:
-        pass
-
-    # If anything fails, go to login
-    return RedirectResponse("/login")
-
-# Login page
-@app.get("/login", response_class=HTMLResponse)
-async def login_page(request: Request, error: str = None):
-    return templates.TemplateResponse("login.html", {"request": request, "error": error})
-
-# Registration page
-@app.get("/register", response_class=HTMLResponse)
-async def register_page(request: Request):
-    return templates.TemplateResponse("register.html", {"request": request})
-
-# Temporary storage for pending device pairings (device_id -> device_info)
-# This avoids sessionStorage issues when redirecting to login
-pending_pairings = {}
-
-# Device pairing initiation (no auth required - stores params server-side)
-@app.get("/pair-device", response_class=HTMLResponse)
-async def device_pair_initiation(request: Request):
-    """Device pairing initiation - stores device info server-side and shows login or pairing page"""
-    # Get device info from query params
-    device_id = request.query_params.get('device_id')
-    device_name = request.query_params.get('name', 'Environment Sensor')
-    mac_address = request.query_params.get('mac')
-    model = request.query_params.get('model', 'HNENVCO2')
-    manufacturer = request.query_params.get('manufacturer', 'HerbNerdz')
-    sw_version = request.query_params.get('sw_version', '2.0')
-    hw_version = request.query_params.get('hw_version', '1')
-
-    if not device_id or not mac_address:
-        return templates.TemplateResponse("error.html", {
-            "request": request,
-            "error": "Invalid pairing request - missing device information"
-        })
-
-    # Store device info server-side with timestamp for cleanup
-    pending_pairings[device_id] = {
-        "device_id": device_id,
-        "device_name": device_name,
-        "mac_address": mac_address,
-        "model": model,
-        "manufacturer": manufacturer,
-        "sw_version": sw_version,
-        "hw_version": hw_version,
-        "timestamp": datetime.utcnow()
-    }
-
-    # Check if user is already authenticated
-    try:
-        auth_cookie = request.cookies.get("auth_cookie")
-        if auth_cookie:
-            try:
-                user = await current_user(request)
-                # User is authenticated - show pairing page directly
-                return templates.TemplateResponse("device_pair.html", {
-                    "request": request,
-                    "user": user,
-                    "device_info": pending_pairings[device_id]
-                })
-            except:
-                pass
-    except:
-        pass
-
-    # Not authenticated - redirect to login with device_id in URL
-    return RedirectResponse(url=f"/login?next=/pair-device-auth&device_id={device_id}", status_code=302)
-
-# Device pairing page (requires authentication)
-@app.get("/pair-device-auth", response_class=HTMLResponse)
-async def device_pair_page(request: Request, user: User = Depends(current_user)):
-    """Device pairing page for environment sensors - requires authentication"""
-    device_id = request.query_params.get('device_id')
-
-    # Get device info from server storage
-    if not device_id or device_id not in pending_pairings:
-        return templates.TemplateResponse("error.html", {
-            "request": request,
-            "error": "Device pairing session expired or not found. Please start the pairing process again from your sensor."
-        })
-
-    device_info = pending_pairings[device_id]
-
-    # Create a copy of device_info without the timestamp (not JSON serializable)
-    device_info_for_template = {k: v for k, v in device_info.items() if k != 'timestamp'}
-
-    return templates.TemplateResponse("device_pair.html", {
-        "request": request,
-        "user": user,
-        "device_info": device_info_for_template
-    })
-
-# Dashboard
-@app.get("/dashboard", response_class=HTMLResponse)
-async def dashboard(request: Request, user: User = Depends(current_user)):
-    return templates.TemplateResponse("dashboard.html", {"request": request, "user": user})
-
-# Devices page
-@app.get("/devices", response_class=HTMLResponse)
-async def devices_page(request: Request, user: User = Depends(current_user)):
-    return templates.TemplateResponse("devices.html", {"request": request, "user": user})
-
-# Plants page
-@app.get("/plants", response_class=HTMLResponse)
-async def plants_page(request: Request, user: User = Depends(current_user)):
-    return templates.TemplateResponse("plants.html", {"request": request, "user": user})
-
-# Locations page
-@app.get("/locations", response_class=HTMLResponse)
-async def locations_page(request: Request, user: User = Depends(current_user)):
-    return templates.TemplateResponse("locations.html", {"request": request, "user": user})
-
-# Templates page
-@app.get("/templates", response_class=HTMLResponse)
-async def templates_page(request: Request, user: User = Depends(current_user)):
-    return templates.TemplateResponse("templates.html", {"request": request, "user": user})
-
+# Page routes moved to app/routers/pages.py
 # WebSocket endpoints moved to app/routers/websocket.py
 
 @app.exception_handler(HTTPException)
