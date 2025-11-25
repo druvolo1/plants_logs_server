@@ -737,8 +737,49 @@ async def pair_device(
     existing_device = result.scalars().first()
 
     if existing_device:
-        # Device already paired - return error
-        raise HTTPException(400, "Device already paired to an account")
+        # Device exists - check if it belongs to this user
+        if existing_device.user_id == user.id:
+            # Same user re-pairing their own device (e.g., after factory reset)
+            # Generate new API key and update the existing device
+            api_key = secrets.token_hex(32)
+            existing_device.api_key = api_key
+            existing_device.name = pair_request.device_name or existing_device.name
+            existing_device.is_online = True
+            existing_device.last_seen = datetime.utcnow()
+
+            # Update location if provided
+            if pair_request.location_id:
+                existing_device.location_id = pair_request.location_id
+            elif pair_request.location_name:
+                new_location = Location(
+                    name=pair_request.location_name,
+                    user_id=user.id
+                )
+                session.add(new_location)
+                await session.flush()
+                existing_device.location_id = new_location.id
+
+            await session.commit()
+            await session.refresh(existing_device)
+
+            # Store result for device to retrieve
+            pairing_results[pair_request.device_id] = {
+                "success": True,
+                "api_key": api_key,
+                "user_email": user.email,
+                "message": "Device re-paired successfully (API key updated)"
+            }
+
+            return DevicePairResponse(
+                success=True,
+                api_key=api_key,
+                device_id=pair_request.device_id,
+                server_url="",
+                message="Device re-paired successfully"
+            )
+        else:
+            # Device belongs to another user
+            raise HTTPException(400, "Device already paired to another account")
 
     # Generate API key for the device
     api_key = secrets.token_hex(32)
