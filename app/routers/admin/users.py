@@ -31,7 +31,7 @@ def _get_user_manager():
     return get_user_manager
 
 
-def __get_templates():
+def _get_templates():
     from app.main import templates
     return templates
 
