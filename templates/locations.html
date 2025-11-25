@@ -509,21 +509,26 @@
         }
 
         .modal-overlay.active {
-            display: flex;
+            display: flex !important;
         }
 
-        .modal {
-            background: #1e293b;
-            border: 2px solid #10b981;
+        #location-modal .modal {
+            background: #1e293b !important;
+            border: 2px solid #10b981 !important;
             border-radius: 12px;
             width: 90%;
             max-width: 480px;
+            min-height: 200px;
             max-height: 90vh;
             overflow-y: auto;
             box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(16, 185, 129, 0.3);
             position: relative;
             z-index: 2001;
             animation: modalFadeIn 0.2s ease-out;
+            margin: auto;
+            display: block !important;
+            visibility: visible !important;
+            opacity: 1 !important;
         }
 
         @keyframes modalFadeIn {
@@ -871,8 +876,8 @@
     </div>
 
     <!-- Add/Edit Location Modal -->
-    <div class="modal-overlay" id="location-modal">
-        <div class="modal">
+    <div class="modal-overlay" id="location-modal" onclick="if(event.target === this) closeModal()">
+        <div class="modal" onclick="event.stopPropagation()">
             <div class="modal-header">
                 <h2 id="modal-title">Add Location</h2>
                 <button class="modal-close" onclick="closeModal()">&times;</button>
@@ -897,8 +902,8 @@
                 </form>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
-                <button class="btn btn-primary" onclick="document.getElementById('location-form').requestSubmit()">Save</button>
+                <button class="btn btn-secondary" type="button" onclick="closeModal()">Cancel</button>
+                <button class="btn btn-primary" type="button" onclick="document.getElementById('location-form').requestSubmit()">Save</button>
             </div>
         </div>
     </div>
