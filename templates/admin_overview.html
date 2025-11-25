@@ -918,27 +918,50 @@
 
             const summaryHtml = `
                 <div class="data-summary-item">
-                    <div class="data-summary-value">${data.log_entries.total_count}</div>
+                    <div class="data-summary-value">${data.log_entries.total_count.toLocaleString()}</div>
                     <div class="data-summary-label">Total Log Entries</div>
                 </div>
                 <div class="data-summary-item">
-                    <div class="data-summary-value">${data.environment_logs.total_count}</div>
+                    <div class="data-summary-value">${data.environment_logs.total_count.toLocaleString()}</div>
                     <div class="data-summary-label">Total Env Logs</div>
                 </div>
             `;
             document.getElementById('device-data-summary').innerHTML = summaryHtml;
 
+            // Format dates nicely
+            const formatDate = (isoStr) => isoStr ? new Date(isoStr).toLocaleDateString() : 'N/A';
+            const formatDateForInput = (isoStr) => isoStr ? isoStr.split('T')[0] : '';
+
+            // Pre-fill date inputs with the data range
+            if (data.log_entries.oldest) {
+                document.getElementById('data-start-date').value = formatDateForInput(data.log_entries.oldest);
+            }
+            if (data.log_entries.newest) {
+                document.getElementById('data-end-date').value = formatDateForInput(data.log_entries.newest);
+            }
+
             const detailsHtml = `
-                <h4>Log Entries</h4>
-                <p>Oldest: ${data.log_entries.oldest || 'N/A'}</p>
-                <p>Newest: ${data.log_entries.newest || 'N/A'}</p>
-                <p>By Event Type: ${JSON.stringify(data.log_entries.by_event_type)}</p>
-                <p>By Sensor: ${JSON.stringify(data.log_entries.by_sensor)}</p>
-                <h4>Environment Logs</h4>
-                <p>Oldest: ${data.environment_logs.oldest || 'N/A'}</p>
-                <p>Newest: ${data.environment_logs.newest || 'N/A'}</p>
+                <h4 style="color: #10b981; margin-bottom: 0.5rem;">Log Entries</h4>
+                <p><strong>Date Range:</strong> ${formatDate(data.log_entries.oldest)} to ${formatDate(data.log_entries.newest)}</p>
+                <p><strong>By Event Type:</strong></p>
+                <ul style="margin: 0.25rem 0 0.5rem 1.5rem;">
+                    ${Object.entries(data.log_entries.by_event_type || {}).map(([type, count]) =>
+                        `<li>${type}: ${count.toLocaleString()}</li>`
+                    ).join('')}
+                </ul>
+                <p><strong>By Sensor:</strong></p>
+                <ul style="margin: 0.25rem 0 0.5rem 1.5rem;">
+                    ${Object.entries(data.log_entries.by_sensor || {}).map(([sensor, count]) =>
+                        `<li>${sensor}: ${count.toLocaleString()}</li>`
+                    ).join('')}
+                </ul>
+                <h4 style="color: #10b981; margin: 1rem 0 0.5rem;">Environment Logs</h4>
+                <p><strong>Date Range:</strong> ${formatDate(data.environment_logs.oldest)} to ${formatDate(data.environment_logs.newest)}</p>
+                <p style="color: #94a3b8; font-size: 0.85rem; margin-top: 1rem;">
+                    💡 Date fields above have been pre-filled with the data range. Click "Load Data" to view entries.
+                </p>
             `;
-            document.getElementById('log-entries-list').innerHTML = `<pre>${detailsHtml}</pre>`;
+            document.getElementById('log-entries-list').innerHTML = detailsHtml;
             document.getElementById('env-logs-list').innerHTML = '';
             document.getElementById('assignments-list').innerHTML = '';
         }
