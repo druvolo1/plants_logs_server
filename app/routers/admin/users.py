@@ -330,41 +330,7 @@ async def get_all_plants(
 
 
 # Impersonation Endpoints
-
-@router.post("/impersonate/{user_id}")
-async def start_impersonation(
-    user_id: int,
-    request: Request,
-    response: Response,
-    admin: User = Depends(_get_current_admin()),
-    session: AsyncSession = Depends(_get_db())
-):
-    """Start impersonating a user - admin can view as this user"""
-    # Verify target user exists
-    target_user = await session.get(User, user_id)
-    if not target_user:
-        raise HTTPException(404, "User not found")
-
-    # Don't allow impersonating yourself
-    if target_user.id == admin.id:
-        raise HTTPException(400, "Cannot impersonate yourself")
-
-    # Store impersonation session
-    impersonation_sessions[admin.id] = user_id
-
-    # Set a cookie to track impersonation across requests
-    response.set_cookie(
-        key="impersonate_user_id",
-        value=str(user_id),
-        httponly=True,
-        max_age=3600,  # 1 hour max
-        samesite="lax"
-    )
-
-    print(f"[ADMIN] {admin.email} started impersonating user {target_user.email}")
-
-    return {"status": "success", "impersonating": target_user.email}
-
+# NOTE: Static routes (/exit, /status) must be defined BEFORE dynamic route (/{user_id})
 
 @router.post("/impersonate/exit")
 async def exit_impersonation(
@@ -409,6 +375,41 @@ async def get_impersonation_status(
             pass
 
     return {"impersonating": False}
+
+
+@router.post("/impersonate/{user_id}")
+async def start_impersonation(
+    user_id: int,
+    request: Request,
+    response: Response,
+    admin: User = Depends(_get_current_admin()),
+    session: AsyncSession = Depends(_get_db())
+):
+    """Start impersonating a user - admin can view as this user"""
+    # Verify target user exists
+    target_user = await session.get(User, user_id)
+    if not target_user:
+        raise HTTPException(404, "User not found")
+
+    # Don't allow impersonating yourself
+    if target_user.id == admin.id:
+        raise HTTPException(400, "Cannot impersonate yourself")
+
+    # Store impersonation session
+    impersonation_sessions[admin.id] = user_id
+
+    # Set a cookie to track impersonation across requests
+    response.set_cookie(
+        key="impersonate_user_id",
+        value=str(user_id),
+        httponly=True,
+        max_age=3600,  # 1 hour max
+        samesite="lax"
+    )
+
+    print(f"[ADMIN] {admin.email} started impersonating user {target_user.email}")
+
+    return {"status": "success", "impersonating": target_user.email}
 
 
 def get_impersonated_user_id(request: Request) -> int | None:

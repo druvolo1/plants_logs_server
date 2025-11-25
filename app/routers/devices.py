@@ -4,7 +4,7 @@ Device management endpoints including CRUD, pairing, and sharing.
 """
 from typing import List, Dict
 from datetime import datetime, timedelta
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_
 import secrets
@@ -40,6 +40,28 @@ def get_db_dependency():
     """Import and return get_db dependency"""
     from app.main import get_db
     return get_db
+
+
+async def get_effective_user(
+    request: Request,
+    user: User,
+    session: AsyncSession
+) -> User:
+    """
+    Get the effective user for data display.
+    If admin is impersonating another user, return that user.
+    Otherwise return the actual logged-in user.
+    """
+    if user.is_superuser:
+        impersonated_id = request.cookies.get("impersonate_user_id")
+        if impersonated_id:
+            try:
+                target = await session.get(User, int(impersonated_id))
+                if target:
+                    return target
+            except (ValueError, TypeError):
+                pass
+    return user
 
 
 # Temporary storage for pairing results (device_id -> pairing result)
@@ -104,14 +126,18 @@ async def add_device(
 
 @router.get("", response_model=List[DeviceRead])
 async def list_devices(
+    request: Request,
     user: User = Depends(get_current_user_dependency()),
     session: AsyncSession = Depends(get_db_dependency())
 ):
     """List all devices owned by or shared with the user"""
+    # Get effective user (handles impersonation)
+    effective_user = await get_effective_user(request, user, session)
+
     devices_list = []
 
     # Get owned devices
-    owned_result = await session.execute(select(Device).where(Device.user_id == user.id))
+    owned_result = await session.execute(select(Device).where(Device.user_id == effective_user.id))
     for device in owned_result.scalars().all():
         # Get active plant assignments
         assignments_result = await session.execute(
@@ -171,7 +197,7 @@ async def list_devices(
         select(DeviceShare, Device)
         .join(Device, DeviceShare.device_id == Device.id)
         .where(
-            DeviceShare.shared_with_user_id == user.id,
+            DeviceShare.shared_with_user_id == effective_user.id,
             DeviceShare.is_active == True,
             DeviceShare.accepted_at != None,
             DeviceShare.revoked_at == None,

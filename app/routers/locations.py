@@ -4,7 +4,7 @@ Location management endpoints including CRUD and sharing.
 """
 from typing import List, Dict
 from datetime import datetime, timedelta
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_
 
@@ -32,6 +32,28 @@ def get_db_dependency():
     """Import and return get_db dependency"""
     from app.main import get_db
     return get_db
+
+
+async def get_effective_user(
+    request: Request,
+    user: User,
+    session: AsyncSession
+) -> User:
+    """
+    Get the effective user for data display.
+    If admin is impersonating another user, return that user.
+    Otherwise return the actual logged-in user.
+    """
+    if user.is_superuser:
+        impersonated_id = request.cookies.get("impersonate_user_id")
+        if impersonated_id:
+            try:
+                target = await session.get(User, int(impersonated_id))
+                if target:
+                    return target
+            except (ValueError, TypeError):
+                pass
+    return user
 
 
 async def generate_share_code(session: AsyncSession) -> str:
@@ -89,14 +111,18 @@ async def create_location(
 
 @router.get("", response_model=List[LocationRead])
 async def list_locations(
+    request: Request,
     user: User = Depends(get_current_user_dependency()),
     session: AsyncSession = Depends(get_db_dependency())
 ):
     """List all locations owned by or shared with the user"""
+    # Get effective user (handles impersonation)
+    effective_user = await get_effective_user(request, user, session)
+
     locations_list = []
 
     # Get owned locations
-    owned_result = await session.execute(select(Location).where(Location.user_id == user.id))
+    owned_result = await session.execute(select(Location).where(Location.user_id == effective_user.id))
     for location in owned_result.scalars().all():
         locations_list.append(LocationRead(
             id=location.id,
@@ -113,7 +139,7 @@ async def list_locations(
     shared_result = await session.execute(
         select(LocationShare)
         .where(
-            LocationShare.shared_with_user_id == user.id,
+            LocationShare.shared_with_user_id == effective_user.id,
             LocationShare.is_active == True,
             LocationShare.accepted_at != None,
             LocationShare.revoked_at == None,
