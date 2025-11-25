@@ -425,6 +425,14 @@ async def init_database():
             except Exception as e:
                 print(f"  Note: Foreign key may already exist or error: {e}")
 
+            # Add created_at column to log_entries if it doesn't exist
+            await check_and_add_column(
+                conn,
+                'log_entries',
+                'created_at',
+                "created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP AFTER timestamp"
+            )
+
             print("\nChecking 'device_links' table...")
 
             # Add removed_at column to device_links table if it doesn't exist
