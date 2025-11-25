@@ -283,6 +283,7 @@ async def environment_heartbeat(
 
     # Cache the real-time sensor data for dashboard display
     environment_cache[device_id] = {
+        "firmware_version": data.firmware_version,
         "co2": data.co2,
         "temperature": data.temperature,
         "humidity": data.humidity,
@@ -474,6 +475,7 @@ async def get_latest_environment_data(
             "has_data": True,
             "is_online": device.is_online,
             "last_seen": device.last_seen,
+            "firmware_version": cached_data.get("firmware_version"),
             "use_fahrenheit": cached_data.get("use_fahrenheit", False),
             "co2": cached_data.get("co2"),
             "temperature": cached_data.get("temperature"),

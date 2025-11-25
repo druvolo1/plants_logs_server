@@ -48,6 +48,8 @@ class LogEntryRead(BaseModel):
 
 
 class EnvironmentDataCreate(BaseModel):
+    # Device info
+    firmware_version: Optional[str] = None
     # Air Quality
     co2: Optional[int] = None
     temperature: Optional[float] = None

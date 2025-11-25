@@ -821,12 +821,49 @@
                 <div id="update-status-${device.device_id}" style="margin-top: 0.5rem; color: #10b981;"></div>
             `;
 
-            // Auto-connect to WebSocket for status updates
-            if (device.is_online) {
+            // Auto-connect to WebSocket for status updates (feeding systems)
+            if (device.is_online && device.device_type !== 'environmental') {
                 connectToDevice(device.device_id);
             }
 
+            // For environmental sensors, fetch version from environment/latest endpoint
+            if (device.device_type === 'environmental') {
+                fetchEnvironmentalVersion(device.device_id);
+            }
+
             return deviceDiv;
+        }
+
+        // Fetch firmware version for environmental sensors
+        async function fetchEnvironmentalVersion(device_id) {
+            try {
+                const response = await fetch(`/api/devices/${device_id}/environment/latest`);
+                if (response.ok) {
+                    const data = await response.json();
+                    const versionElem = document.getElementById(`version-${device_id}`);
+                    if (versionElem && data.firmware_version) {
+                        versionElem.textContent = data.firmware_version;
+                        // Update in allDevices array for search
+                        const deviceIndex = allDevices.findIndex(d => d.device_id === device_id);
+                        if (deviceIndex !== -1) {
+                            allDevices[deviceIndex].version = data.firmware_version;
+                        }
+                    } else if (versionElem) {
+                        versionElem.textContent = 'N/A';
+                    }
+                } else {
+                    const versionElem = document.getElementById(`version-${device_id}`);
+                    if (versionElem) {
+                        versionElem.textContent = 'N/A';
+                    }
+                }
+            } catch (error) {
+                console.error(`Error fetching version for ${device_id}:`, error);
+                const versionElem = document.getElementById(`version-${device_id}`);
+                if (versionElem) {
+                    versionElem.textContent = 'N/A';
+                }
+            }
         }
 
         // Share Management Functions
