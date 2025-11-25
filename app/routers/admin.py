@@ -515,6 +515,12 @@ async def get_device_data_summary(
     )
     sensor_counts = {row[0] or 'unknown': row[1] for row in sensor_result.all()}
 
+    # Also count legacy logs (logs with no device_id) for troubleshooting
+    legacy_count_result = await session.execute(
+        select(func.count(LogEntry.id)).where(LogEntry.device_id.is_(None))
+    )
+    legacy_count = legacy_count_result.scalar() or 0
+
     return {
         "device_id": device_id,
         "device_name": device.name,
@@ -530,7 +536,8 @@ async def get_device_data_summary(
             "total_count": env_count,
             "oldest": env_min_date,
             "newest": env_max_date
-        }
+        },
+        "legacy_logs_total": legacy_count
     }
 
 

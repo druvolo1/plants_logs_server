@@ -919,48 +919,80 @@
             const summaryHtml = `
                 <div class="data-summary-item">
                     <div class="data-summary-value">${data.log_entries.total_count.toLocaleString()}</div>
-                    <div class="data-summary-label">Total Log Entries</div>
+                    <div class="data-summary-label">Log Entries (this device)</div>
                 </div>
                 <div class="data-summary-item">
                     <div class="data-summary-value">${data.environment_logs.total_count.toLocaleString()}</div>
-                    <div class="data-summary-label">Total Env Logs</div>
+                    <div class="data-summary-label">Env Logs (this device)</div>
+                </div>
+                <div class="data-summary-item">
+                    <div class="data-summary-value" style="color: ${data.legacy_logs_total > 0 ? '#f59e0b' : '#10b981'}">${(data.legacy_logs_total || 0).toLocaleString()}</div>
+                    <div class="data-summary-label">Legacy Logs (no device)</div>
                 </div>
             `;
             document.getElementById('device-data-summary').innerHTML = summaryHtml;
 
             // Format dates nicely
-            const formatDate = (isoStr) => isoStr ? new Date(isoStr).toLocaleDateString() : 'N/A';
+            const formatDate = (isoStr) => isoStr ? new Date(isoStr).toLocaleDateString() : 'None';
             const formatDateForInput = (isoStr) => isoStr ? isoStr.split('T')[0] : '';
 
-            // Pre-fill date inputs with the data range
-            if (data.log_entries.oldest) {
+            // Pre-fill date inputs with the data range (only if valid dates exist)
+            if (data.log_entries.oldest && data.log_entries.oldest !== 'null') {
                 document.getElementById('data-start-date').value = formatDateForInput(data.log_entries.oldest);
             }
-            if (data.log_entries.newest) {
+            if (data.log_entries.newest && data.log_entries.newest !== 'null') {
                 document.getElementById('data-end-date').value = formatDateForInput(data.log_entries.newest);
             }
 
-            const detailsHtml = `
-                <h4 style="color: #10b981; margin-bottom: 0.5rem;">Log Entries</h4>
-                <p><strong>Date Range:</strong> ${formatDate(data.log_entries.oldest)} to ${formatDate(data.log_entries.newest)}</p>
-                <p><strong>By Event Type:</strong></p>
-                <ul style="margin: 0.25rem 0 0.5rem 1.5rem;">
-                    ${Object.entries(data.log_entries.by_event_type || {}).map(([type, count]) =>
-                        `<li>${type}: ${count.toLocaleString()}</li>`
-                    ).join('')}
-                </ul>
-                <p><strong>By Sensor:</strong></p>
-                <ul style="margin: 0.25rem 0 0.5rem 1.5rem;">
-                    ${Object.entries(data.log_entries.by_sensor || {}).map(([sensor, count]) =>
-                        `<li>${sensor}: ${count.toLocaleString()}</li>`
-                    ).join('')}
-                </ul>
-                <h4 style="color: #10b981; margin: 1rem 0 0.5rem;">Environment Logs</h4>
-                <p><strong>Date Range:</strong> ${formatDate(data.environment_logs.oldest)} to ${formatDate(data.environment_logs.newest)}</p>
-                <p style="color: #94a3b8; font-size: 0.85rem; margin-top: 1rem;">
-                    💡 Date fields above have been pre-filled with the data range. Click "Load Data" to view entries.
-                </p>
-            `;
+            // Check if this device has no logs but there are legacy logs
+            const hasNoDeviceLogs = data.log_entries.total_count === 0;
+            const hasLegacyLogs = (data.legacy_logs_total || 0) > 0;
+
+            let detailsHtml = '';
+
+            if (hasNoDeviceLogs && hasLegacyLogs) {
+                detailsHtml = `
+                    <div style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 6px; padding: 1rem; margin-bottom: 1rem;">
+                        <h4 style="color: #f59e0b; margin: 0 0 0.5rem;">⚠️ No Logs for This Device</h4>
+                        <p style="margin: 0; color: #fbbf24;">
+                            This device has 0 log entries, but there are <strong>${data.legacy_logs_total.toLocaleString()}</strong> legacy logs in the system
+                            that don't have a device_id assigned.
+                        </p>
+                        <p style="margin: 0.5rem 0 0; color: #94a3b8; font-size: 0.85rem;">
+                            Use the <strong>Legacy Log Management</strong> section below to view and associate these logs to a device.
+                        </p>
+                    </div>
+                `;
+            } else if (data.log_entries.total_count > 0) {
+                detailsHtml = `
+                    <h4 style="color: #10b981; margin-bottom: 0.5rem;">Log Entries</h4>
+                    <p><strong>Date Range:</strong> ${formatDate(data.log_entries.oldest)} to ${formatDate(data.log_entries.newest)}</p>
+                    <p><strong>By Event Type:</strong></p>
+                    <ul style="margin: 0.25rem 0 0.5rem 1.5rem;">
+                        ${Object.entries(data.log_entries.by_event_type || {}).map(([type, count]) =>
+                            `<li>${type}: ${count.toLocaleString()}</li>`
+                        ).join('') || '<li>None</li>'}
+                    </ul>
+                    <p><strong>By Sensor:</strong></p>
+                    <ul style="margin: 0.25rem 0 0.5rem 1.5rem;">
+                        ${Object.entries(data.log_entries.by_sensor || {}).map(([sensor, count]) =>
+                            `<li>${sensor}: ${count.toLocaleString()}</li>`
+                        ).join('') || '<li>None</li>'}
+                    </ul>
+                    <h4 style="color: #10b981; margin: 1rem 0 0.5rem;">Environment Logs</h4>
+                    <p><strong>Date Range:</strong> ${formatDate(data.environment_logs.oldest)} to ${formatDate(data.environment_logs.newest)}</p>
+                    <p style="color: #94a3b8; font-size: 0.85rem; margin-top: 1rem;">
+                        💡 Date fields above have been pre-filled with the data range. Click "Load Data" to view entries.
+                    </p>
+                `;
+            } else {
+                detailsHtml = `
+                    <div class="empty-state">
+                        <p>No log entries found for this device.</p>
+                    </div>
+                `;
+            }
+
             document.getElementById('log-entries-list').innerHTML = detailsHtml;
             document.getElementById('env-logs-list').innerHTML = '';
             document.getElementById('assignments-list').innerHTML = '';
