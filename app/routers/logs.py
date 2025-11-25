@@ -449,13 +449,23 @@ async def get_latest_environment_data(
     )
     env_log = env_result.scalars().first()
 
+    # Get device settings for temperature unit
+    settings = {}
+    if device.settings:
+        try:
+            settings = json.loads(device.settings)
+        except:
+            settings = {}
+    use_fahrenheit = settings.get("use_fahrenheit", False)
+
     if not env_log:
         # No data yet
         return {
             "device_id": device_id,
             "has_data": False,
             "is_online": device.is_online,
-            "last_seen": device.last_seen
+            "last_seen": device.last_seen,
+            "use_fahrenheit": use_fahrenheit
         }
 
     # Return the latest data
@@ -464,6 +474,7 @@ async def get_latest_environment_data(
         "has_data": True,
         "is_online": device.is_online,
         "last_seen": device.last_seen,
+        "use_fahrenheit": use_fahrenheit,
         "co2": env_log.co2,
         "temperature": env_log.temperature,
         "humidity": env_log.humidity,

@@ -2030,7 +2030,13 @@
 
             // Update all sensor values with proper formatting and units
             if (data.temperature !== null && data.temperature !== undefined) {
-                document.getElementById(`env-temp-${device_id}`).textContent = `${data.temperature.toFixed(1)}°C`;
+                let temp = data.temperature;
+                let unit = '°C';
+                if (data.use_fahrenheit) {
+                    temp = temp * 9 / 5 + 32;
+                    unit = '°F';
+                }
+                document.getElementById(`env-temp-${device_id}`).textContent = `${temp.toFixed(1)}${unit}`;
             }
             if (data.humidity !== null && data.humidity !== undefined) {
                 document.getElementById(`env-humidity-${device_id}`).textContent = `${data.humidity.toFixed(1)}%`;
