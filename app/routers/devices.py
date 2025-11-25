@@ -747,7 +747,7 @@ async def pair_device(
     new_device = Device(
         device_id=pair_request.device_id,
         api_key=api_key,
-        name=pair_request.name or f"Sensor {pair_request.device_id[:8]}",
+        name=pair_request.device_name or f"Sensor {pair_request.device_id[:8]}",
         device_type='environmental',
         scope='room',
         user_id=user.id,
@@ -769,6 +769,8 @@ async def pair_device(
     return DevicePairResponse(
         success=True,
         api_key=api_key,
+        device_id=pair_request.device_id,
+        server_url="",  # Device already knows the server URL it's pairing to
         message="Device paired successfully"
     )
 
