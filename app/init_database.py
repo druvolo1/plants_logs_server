@@ -555,6 +555,49 @@ async def init_database():
             except Exception as e:
                 print(f"  Note: Error modifying plant_id: {e}")
 
+            # Fix foreign key on log_entries.plant_id to allow cascade delete
+            # First drop the old constraint, then add new one with ON DELETE SET NULL
+            try:
+                # Find existing foreign key constraint name
+                result = await conn.execute(text("""
+                    SELECT CONSTRAINT_NAME
+                    FROM information_schema.KEY_COLUMN_USAGE
+                    WHERE TABLE_SCHEMA = DATABASE()
+                    AND TABLE_NAME = 'log_entries'
+                    AND COLUMN_NAME = 'plant_id'
+                    AND REFERENCED_TABLE_NAME = 'plants'
+                """))
+                row = result.fetchone()
+
+                if row:
+                    constraint_name = row[0]
+                    # Check if it already has ON DELETE SET NULL by checking DELETE_RULE
+                    rule_result = await conn.execute(text(f"""
+                        SELECT DELETE_RULE
+                        FROM information_schema.REFERENTIAL_CONSTRAINTS
+                        WHERE CONSTRAINT_SCHEMA = DATABASE()
+                        AND CONSTRAINT_NAME = '{constraint_name}'
+                    """))
+                    rule_row = rule_result.fetchone()
+
+                    if rule_row and rule_row[0] != 'SET NULL':
+                        print(f"  Updating foreign key constraint '{constraint_name}' to use ON DELETE SET NULL...")
+                        # Drop old constraint
+                        await conn.execute(text(f"ALTER TABLE log_entries DROP FOREIGN KEY {constraint_name}"))
+                        # Add new constraint with ON DELETE SET NULL
+                        await conn.execute(text("""
+                            ALTER TABLE log_entries
+                            ADD CONSTRAINT fk_log_entries_plant
+                            FOREIGN KEY (plant_id) REFERENCES plants(id) ON DELETE SET NULL
+                        """))
+                        print("  ✓ Foreign key constraint updated")
+                    else:
+                        print("  ✓ Foreign key constraint already has ON DELETE SET NULL")
+                else:
+                    print("  Note: No foreign key found on log_entries.plant_id")
+            except Exception as e:
+                print(f"  Note: Error updating foreign key constraint: {e}")
+
             print("\nChecking 'device_links' table...")
 
             # Add removed_at column to device_links table if it doesn't exist
