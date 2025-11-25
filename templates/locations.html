@@ -535,6 +535,48 @@
             color: #64748b;
         }
 
+        /* Linked Devices */
+        .device-linked {
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+            padding-top: 0.5rem;
+            border-top: 1px solid #334155;
+        }
+
+        .linked-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.35rem;
+        }
+
+        .linked-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            padding: 0.25rem 0.5rem;
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            color: #cbd5e1;
+        }
+
+        .linked-chip.online {
+            border-color: #3b82f6;
+        }
+
+        .linked-status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #64748b;
+        }
+
+        .linked-status-dot.online {
+            background: #10b981;
+        }
+
         /* Child Locations */
         .child-locations {
             display: flex;
@@ -1088,6 +1130,23 @@
             return date.toLocaleDateString();
         }
 
+        // Get all descendant location IDs (recursive)
+        function getDescendantIds(locationId) {
+            const descendants = [];
+            const children = locations.filter(l => l.parent_id === locationId);
+            children.forEach(child => {
+                descendants.push(child.id);
+                descendants.push(...getDescendantIds(child.id));
+            });
+            return descendants;
+        }
+
+        // Get cumulative device count (this location + all descendants)
+        function getCumulativeDeviceCount(locationId) {
+            const allLocationIds = [locationId, ...getDescendantIds(locationId)];
+            return devices.filter(d => allLocationIds.includes(d.location_id)).length;
+        }
+
         // Fetch data
         async function fetchData() {
             const [locationsRes, devicesRes] = await Promise.all([
@@ -1143,7 +1202,7 @@
             const hasChildren = location.children && location.children.length > 0;
             const isExpanded = expandedNodes.has(location.id);
             const isSelected = selectedLocationId === location.id;
-            const deviceCount = devices.filter(d => d.location_id === location.id).length;
+            const deviceCount = getCumulativeDeviceCount(location.id);
 
             let html = `
                 <div class="tree-node" data-id="${location.id}">
@@ -1324,6 +1383,21 @@
                                                 <div class="device-plants">
                                                     <span class="device-info-label">Plants</span>
                                                     <span class="device-info-value">${device.assigned_plant_count} assigned</span>
+                                                </div>
+                                            ` : ''}
+
+                                            ${device.device_type === 'feeding_system' && device.linked_devices && device.linked_devices.length > 0 ? `
+                                                <div class="device-linked">
+                                                    <span class="device-info-label">Linked Devices</span>
+                                                    <div class="linked-chips">
+                                                        ${device.linked_devices.map(linked => `
+                                                            <span class="linked-chip ${linked.is_online ? 'online' : ''}">
+                                                                <span class="linked-status-dot ${linked.is_online ? 'online' : ''}"></span>
+                                                                ${linked.device_type === 'environmental' ? '🌡️' : '🚿'}
+                                                                ${linked.name || linked.system_name || linked.device_id.substring(0, 8)}
+                                                            </span>
+                                                        `).join('')}
+                                                    </div>
                                                 </div>
                                             ` : ''}
 
