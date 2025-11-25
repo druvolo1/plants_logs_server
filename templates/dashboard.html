@@ -902,6 +902,28 @@
     </style>
 </head>
 <body>
+    {% if impersonating_user %}
+    <!-- Impersonation Banner -->
+    <div style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: #000; padding: 0.75rem 2rem; display: flex; justify-content: space-between; align-items: center; font-weight: 600; position: sticky; top: 0; z-index: 1001;">
+        <span>👁️ Viewing as: <strong>{{ impersonating_user.email }}</strong></span>
+        <button onclick="exitImpersonation()" style="background: #000; color: #f59e0b; border: none; padding: 0.35rem 1rem; border-radius: 4px; font-weight: 600; cursor: pointer;">
+            Exit View Mode
+        </button>
+    </div>
+    <script>
+        async function exitImpersonation() {
+            try {
+                const response = await fetch('/admin/impersonate/exit', { method: 'POST' });
+                if (response.ok) {
+                    window.location.href = '/admin/users';
+                }
+            } catch (error) {
+                console.error('Error exiting impersonation:', error);
+            }
+        }
+    </script>
+    {% endif %}
+
     <!-- Navigation Bar -->
     <nav class="navbar">
         <div class="navbar-container">

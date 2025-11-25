@@ -199,7 +199,33 @@ async def device_pair_page(request: Request, user: User = Depends(get_current_us
 # Dashboard
 @router.get("/dashboard", response_class=HTMLResponse)
 async def dashboard(request: Request, user: User = Depends(get_current_user_dependency())):
-    return templates.TemplateResponse("dashboard.html", {"request": request, "user": user})
+    # Check for impersonation mode (admin viewing as another user)
+    impersonating_user = None
+    display_user = user  # The user whose data to display
+
+    if user.is_superuser:
+        impersonated_id = request.cookies.get("impersonate_user_id")
+        if impersonated_id:
+            try:
+                from app.main import get_db
+                from sqlalchemy.ext.asyncio import AsyncSession
+
+                # Get impersonated user from database
+                async for session in get_db():
+                    target = await session.get(User, int(impersonated_id))
+                    if target:
+                        impersonating_user = target  # The user being impersonated
+                        display_user = target  # Show their data
+                    break
+            except Exception as e:
+                print(f"Error loading impersonated user: {e}")
+
+    return templates.TemplateResponse("dashboard.html", {
+        "request": request,
+        "user": display_user,
+        "actual_user": user,  # The real admin user
+        "impersonating_user": impersonating_user  # Set if in impersonation mode
+    })
 
 
 # Devices page

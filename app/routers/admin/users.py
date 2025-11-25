@@ -2,9 +2,9 @@
 """
 User management endpoints for admin portal.
 """
-from typing import Dict
-from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.responses import HTMLResponse
+from typing import Dict, List
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
@@ -14,6 +14,10 @@ from app.models import User, Device, Plant
 from app.schemas import UserCreate, UserUpdate, PasswordReset
 
 router = APIRouter()
+
+# In-memory impersonation store (in production, use Redis or session store)
+# Format: {admin_user_id: impersonated_user_id}
+impersonation_sessions = {}
 
 
 def _get_current_admin():
@@ -65,7 +69,7 @@ async def users_page(
     )
     pending_count = pending_result.scalar() or 0
 
-    return _get_templates().TemplateResponse("users.html", {
+    return _get_templates().TemplateResponse("admin_users.html", {
         "request": request,
         "user": admin,
         "users": users,
@@ -294,3 +298,125 @@ async def get_all_plants(
         })
 
     return plants_list
+
+
+# User counts API for the admin users table
+@router.get("/api/users/counts")
+async def get_users_counts(
+    admin: User = Depends(_get_current_admin()),
+    session: AsyncSession = Depends(_get_db())
+):
+    """Get device and plant counts for all users"""
+    # Get all users with their device and plant counts
+    users_result = await session.execute(select(User))
+    users = users_result.scalars().all()
+
+    counts = []
+    for user in users:
+        device_result = await session.execute(
+            select(func.count(Device.id)).where(Device.user_id == user.id)
+        )
+        plant_result = await session.execute(
+            select(func.count(Plant.id)).where(Plant.user_id == user.id)
+        )
+
+        counts.append({
+            "id": user.id,
+            "device_count": device_result.scalar() or 0,
+            "plant_count": plant_result.scalar() or 0
+        })
+
+    return counts
+
+
+# Impersonation Endpoints
+
+@router.post("/impersonate/{user_id}")
+async def start_impersonation(
+    user_id: int,
+    request: Request,
+    response: Response,
+    admin: User = Depends(_get_current_admin()),
+    session: AsyncSession = Depends(_get_db())
+):
+    """Start impersonating a user - admin can view as this user"""
+    # Verify target user exists
+    target_user = await session.get(User, user_id)
+    if not target_user:
+        raise HTTPException(404, "User not found")
+
+    # Don't allow impersonating yourself
+    if target_user.id == admin.id:
+        raise HTTPException(400, "Cannot impersonate yourself")
+
+    # Store impersonation session
+    impersonation_sessions[admin.id] = user_id
+
+    # Set a cookie to track impersonation across requests
+    response.set_cookie(
+        key="impersonate_user_id",
+        value=str(user_id),
+        httponly=True,
+        max_age=3600,  # 1 hour max
+        samesite="lax"
+    )
+
+    print(f"[ADMIN] {admin.email} started impersonating user {target_user.email}")
+
+    return {"status": "success", "impersonating": target_user.email}
+
+
+@router.post("/impersonate/exit")
+async def exit_impersonation(
+    request: Request,
+    response: Response,
+    admin: User = Depends(_get_current_admin())
+):
+    """Exit impersonation mode"""
+    # Remove from in-memory store
+    if admin.id in impersonation_sessions:
+        del impersonation_sessions[admin.id]
+
+    # Clear cookie
+    response.delete_cookie("impersonate_user_id")
+
+    print(f"[ADMIN] {admin.email} exited impersonation mode")
+
+    return {"status": "success"}
+
+
+@router.get("/impersonate/status")
+async def get_impersonation_status(
+    request: Request,
+    admin: User = Depends(_get_current_admin()),
+    session: AsyncSession = Depends(_get_db())
+):
+    """Check if currently impersonating a user"""
+    impersonated_id = request.cookies.get("impersonate_user_id")
+
+    if impersonated_id:
+        try:
+            user_id = int(impersonated_id)
+            user = await session.get(User, user_id)
+            if user:
+                return {
+                    "impersonating": True,
+                    "user_id": user.id,
+                    "email": user.email,
+                    "name": f"{user.first_name or ''} {user.last_name or ''}".strip() or user.email
+                }
+        except (ValueError, TypeError):
+            pass
+
+    return {"impersonating": False}
+
+
+def get_impersonated_user_id(request: Request) -> int | None:
+    """Helper to get impersonated user ID from cookie"""
+    impersonated_id = request.cookies.get("impersonate_user_id")
+    if impersonated_id:
+        try:
+            return int(impersonated_id)
+        except (ValueError, TypeError):
+            pass
+    return None
