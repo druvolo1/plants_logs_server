@@ -33,8 +33,8 @@ class DeviceSettingsUpdate(BaseModel):
 
 class DeviceRead(BaseModel):
     device_id: str
-    name: Optional[str]  # User-set custom name
-    system_name: Optional[str]  # Device's self-reported name
+    name: Optional[str] = None  # User-set custom name
+    system_name: Optional[str] = None  # Device's self-reported name
     is_online: bool
     device_type: Optional[str] = 'feeding_system'  # Device type
     scope: Optional[str] = 'plant'  # 'plant' or 'room'
