@@ -243,6 +243,17 @@ async def environment_heartbeat(
     device = result.scalars().first()
 
     if not device:
+        # Debug: Check if device exists with different API key
+        check_result = await session.execute(
+            select(Device).where(Device.device_id == device_id)
+        )
+        existing = check_result.scalars().first()
+        if existing:
+            print(f"[Heartbeat] Device {device_id} exists but API key mismatch!")
+            print(f"[Heartbeat] Expected key length: {len(existing.api_key)}, Received key length: {len(api_key)}")
+            print(f"[Heartbeat] Expected key prefix: {existing.api_key[:8]}..., Received prefix: {api_key[:8]}...")
+        else:
+            print(f"[Heartbeat] Device {device_id} not found in database at all")
         raise HTTPException(404, "Device not found - please re-pair")
 
     # Verify device is an environmental sensor

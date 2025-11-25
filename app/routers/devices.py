@@ -743,6 +743,18 @@ async def pair_device(
     # Generate API key for the device
     api_key = secrets.token_hex(32)
 
+    # Handle location assignment
+    location_id = pair_request.location_id
+    if pair_request.location_name and not location_id:
+        # Create new location if name provided but no ID
+        new_location = Location(
+            name=pair_request.location_name,
+            user_id=user.id
+        )
+        session.add(new_location)
+        await session.flush()
+        location_id = new_location.id
+
     # Create new device
     new_device = Device(
         device_id=pair_request.device_id,
@@ -750,6 +762,7 @@ async def pair_device(
         name=pair_request.device_name or f"Sensor {pair_request.device_id[:8]}",
         device_type='environmental',
         scope='room',
+        location_id=location_id,
         user_id=user.id,
         is_online=True,
         last_seen=datetime.utcnow()
