@@ -576,38 +576,26 @@
             to { transform: rotate(360deg); }
         }
 
-        /* Modal Styles (global) */
-        .modal-overlay {
+        /* Modal Styles (global) - matching plants.html pattern */
+        .modal {
             display: none;
             position: fixed;
             top: 0;
             left: 0;
-            right: 0;
-            bottom: 0;
-            width: 100vw;
-            height: 100vh;
-            background: rgba(0, 0, 0, 0.7);
-            z-index: 9999;
-            justify-content: center;
-            align-items: center;
-            padding: 2rem;
-        }
-
-        .modal-overlay.active {
-            display: flex !important;
-        }
-
-        .modal {
-            background: #1e293b;
-            border-radius: 12px;
             width: 100%;
-            max-width: 600px;
-            max-height: 90vh;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 9999;
             overflow-y: auto;
-            border: 1px solid rgba(16, 185, 129, 0.3);
-            position: relative;
-            z-index: 10000;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+
+        .modal-content {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            margin: 2rem auto;
+            padding: 0;
+            border-radius: 12px;
+            max-width: 600px;
+            border: 2px solid #10b981;
         }
 
         .modal-header {

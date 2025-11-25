@@ -207,8 +207,8 @@
 
 {% block modals %}
 <!-- Add User Modal -->
-<div class="modal-overlay" id="add-user-modal">
-    <div class="modal">
+<div class="modal" id="add-user-modal">
+    <div class="modal-content">
         <div class="modal-header">
             <h2 class="modal-title">Add New User</h2>
             <button class="modal-close" onclick="closeModal('add-user-modal')">&times;</button>
@@ -253,8 +253,8 @@
 </div>
 
 <!-- Edit User Modal -->
-<div class="modal-overlay" id="edit-user-modal">
-    <div class="modal">
+<div class="modal" id="edit-user-modal">
+    <div class="modal-content">
         <div class="modal-header">
             <h2 class="modal-title">Edit User</h2>
             <button class="modal-close" onclick="closeModal('edit-user-modal')">&times;</button>
@@ -296,8 +296,8 @@
 </div>
 
 <!-- Impersonation Confirmation Modal -->
-<div class="modal-overlay" id="impersonate-modal">
-    <div class="modal">
+<div class="modal" id="impersonate-modal">
+    <div class="modal-content">
         <div class="modal-header">
             <h2 class="modal-title">View As User</h2>
             <button class="modal-close" onclick="closeModal('impersonate-modal')">&times;</button>
@@ -380,11 +380,11 @@ roleFilter.addEventListener('change', filterUsers);
 
 // Modal functions
 function openModal(modalId) {
-    document.getElementById(modalId).classList.add('active');
+    document.getElementById(modalId).style.display = 'block';
 }
 
 function closeModal(modalId) {
-    document.getElementById(modalId).classList.remove('active');
+    document.getElementById(modalId).style.display = 'none';
 }
 
 function openAddUserModal() {
@@ -545,10 +545,10 @@ async function deleteUser(userId, email) {
 }
 
 // Close modals on backdrop click
-document.querySelectorAll('.modal-overlay').forEach(overlay => {
-    overlay.addEventListener('click', (e) => {
-        if (e.target === overlay) {
-            overlay.classList.remove('active');
+document.querySelectorAll('.modal').forEach(modal => {
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            modal.style.display = 'none';
         }
     });
 });
