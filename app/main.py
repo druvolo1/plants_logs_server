@@ -430,6 +430,26 @@ async def http_exception_handler(request: Request, exc: HTTPException):
     # Re-raise other HTTP exceptions
     raise exc
 
+# Validation exception handler to debug 422 errors
+from fastapi.exceptions import RequestValidationError
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    # Log the validation errors and request body for debugging
+    print(f"[VALIDATION ERROR] URL: {request.url}")
+    print(f"[VALIDATION ERROR] Method: {request.method}")
+    try:
+        body = await request.body()
+        body_str = body.decode('utf-8')[:2000]  # Limit to first 2000 chars
+        print(f"[VALIDATION ERROR] Body (first 2000 chars): {body_str}")
+    except Exception as e:
+        print(f"[VALIDATION ERROR] Could not read body: {e}")
+    print(f"[VALIDATION ERROR] Errors: {exc.errors()}")
+
+    return JSONResponse(
+        status_code=422,
+        content={"detail": exc.errors()}
+    )
+
 # Auth routes moved to app/routers/auth.py
 # Page routes moved to app/routers/pages.py
 # WebSocket endpoints moved to app/routers/websocket.py

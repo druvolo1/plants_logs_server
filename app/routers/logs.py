@@ -36,6 +36,8 @@ def get_current_user_dependency():
 
 # Plant Log Endpoints
 
+from fastapi import Request
+
 @router.post("/api/devices/{device_id}/logs", response_model=Dict[str, str])
 async def upload_logs(
     device_id: str,
@@ -45,6 +47,7 @@ async def upload_logs(
     session: AsyncSession = Depends(get_db_dependency())
 ):
     """Upload log entries from a device"""
+    print(f"[LOG UPLOAD] Received {len(logs)} log entries from device {device_id}")
     # Verify device and API key
     result = await session.execute(select(Device).where(Device.device_id == device_id, Device.api_key == api_key))
     device = result.scalars().first()

@@ -7,6 +7,9 @@ from datetime import datetime
 from pydantic import BaseModel
 
 
+from typing import Union, Any
+from pydantic import field_validator
+
 class LogEntryCreate(BaseModel):
     event_type: str  # 'sensor' or 'dosing'
     sensor_name: Optional[str] = None
@@ -14,6 +17,24 @@ class LogEntryCreate(BaseModel):
     dose_type: Optional[str] = None
     dose_amount_ml: Optional[float] = None
     timestamp: str  # ISO format datetime string
+
+    @field_validator('value', mode='before')
+    @classmethod
+    def parse_value(cls, v):
+        """Handle 'N/A' or other non-numeric values gracefully"""
+        if v is None:
+            return None
+        if isinstance(v, (int, float)):
+            return float(v)
+        if isinstance(v, str):
+            # Handle 'N/A', 'null', empty strings, etc.
+            if v.lower() in ('n/a', 'na', 'null', 'none', ''):
+                return None
+            try:
+                return float(v)
+            except ValueError:
+                return None
+        return None
 
 
 class LogEntryRead(BaseModel):
