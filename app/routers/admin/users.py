@@ -211,6 +211,35 @@ async def delete_user_admin(
     raise HTTPException(404, "User not found")
 
 
+# User counts API for the admin users table (must be before {user_id} route)
+@router.get("/api/users/counts")
+async def get_users_counts(
+    admin: User = Depends(_get_current_admin()),
+    session: AsyncSession = Depends(_get_db())
+):
+    """Get device and plant counts for all users"""
+    # Get all users with their device and plant counts
+    users_result = await session.execute(select(User))
+    users = users_result.scalars().all()
+
+    counts = []
+    for user in users:
+        device_result = await session.execute(
+            select(func.count(Device.id)).where(Device.user_id == user.id)
+        )
+        plant_result = await session.execute(
+            select(func.count(Plant.id)).where(Plant.user_id == user.id)
+        )
+
+        counts.append({
+            "id": user.id,
+            "device_count": device_result.scalar() or 0,
+            "plant_count": plant_result.scalar() or 0
+        })
+
+    return counts
+
+
 # User details API for admin
 @router.get("/api/users/{user_id}")
 async def get_user_details(
@@ -298,35 +327,6 @@ async def get_all_plants(
         })
 
     return plants_list
-
-
-# User counts API for the admin users table
-@router.get("/api/users/counts")
-async def get_users_counts(
-    admin: User = Depends(_get_current_admin()),
-    session: AsyncSession = Depends(_get_db())
-):
-    """Get device and plant counts for all users"""
-    # Get all users with their device and plant counts
-    users_result = await session.execute(select(User))
-    users = users_result.scalars().all()
-
-    counts = []
-    for user in users:
-        device_result = await session.execute(
-            select(func.count(Device.id)).where(Device.user_id == user.id)
-        )
-        plant_result = await session.execute(
-            select(func.count(Plant.id)).where(Plant.user_id == user.id)
-        )
-
-        counts.append({
-            "id": user.id,
-            "device_count": device_result.scalar() or 0,
-            "plant_count": plant_result.scalar() or 0
-        })
-
-    return counts
 
 
 # Impersonation Endpoints
