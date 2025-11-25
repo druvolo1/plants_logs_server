@@ -11,15 +11,24 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 
 from app.models import User, Device, Plant, DeviceAssignment, LogEntry, EnvironmentLog
-from app.routers.admin import get_current_admin_dependency, get_db_dependency, get_templates
 
 router = APIRouter()
 
 
+def _get_current_admin():
+    from app.main import current_admin
+    return current_admin
+
+
+def _get_db():
+    from app.main import get_db
+    return get_db
+
+
 @router.get("/all-devices")
 async def get_all_devices(
-    admin: User = Depends(get_current_admin_dependency()),
-    session: AsyncSession = Depends(get_db_dependency())
+    admin: User = Depends(_get_current_admin()),
+    session: AsyncSession = Depends(_get_db())
 ):
     """Get all devices in the system"""
     result = await session.execute(
@@ -66,8 +75,8 @@ async def get_all_devices(
 @router.get("/devices/{device_id}/data")
 async def get_device_data(
     device_id: str,
-    admin: User = Depends(get_current_admin_dependency()),
-    session: AsyncSession = Depends(get_db_dependency()),
+    admin: User = Depends(_get_current_admin()),
+    session: AsyncSession = Depends(_get_db()),
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
     limit: int = 1000
@@ -206,8 +215,8 @@ async def get_device_data(
 @router.get("/devices/{device_id}/data/summary")
 async def get_device_data_summary(
     device_id: str,
-    admin: User = Depends(get_current_admin_dependency()),
-    session: AsyncSession = Depends(get_db_dependency())
+    admin: User = Depends(_get_current_admin()),
+    session: AsyncSession = Depends(_get_db())
 ):
     """Get a summary of all data stored for a device."""
     # Get device
@@ -296,8 +305,8 @@ async def get_device_data_summary(
 @router.get("/devices/{device_id}/heartbeat-settings")
 async def get_device_heartbeat_settings(
     device_id: str,
-    admin: User = Depends(get_current_admin_dependency()),
-    session: AsyncSession = Depends(get_db_dependency())
+    admin: User = Depends(_get_current_admin()),
+    session: AsyncSession = Depends(_get_db())
 ):
     """Get heartbeat settings for a device (admin only)."""
     result = await session.execute(
@@ -329,8 +338,8 @@ async def get_device_heartbeat_settings(
 @router.put("/devices/{device_id}/heartbeat-settings")
 async def update_device_heartbeat_settings(
     device_id: str,
-    admin: User = Depends(get_current_admin_dependency()),
-    session: AsyncSession = Depends(get_db_dependency()),
+    admin: User = Depends(_get_current_admin()),
+    session: AsyncSession = Depends(_get_db()),
     use_fahrenheit: Optional[bool] = None,
     update_interval: Optional[int] = None,
     log_interval: Optional[int] = None

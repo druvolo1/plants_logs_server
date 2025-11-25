@@ -9,17 +9,26 @@ from sqlalchemy import select, func, update, delete
 
 from app.models import User, Device, Plant, LogEntry, EnvironmentLog, PlantReport
 from app.services.data_retention import get_purge_candidates, purge_old_data
-from app.routers.admin import get_current_admin_dependency, get_db_dependency
 
 router = APIRouter()
+
+
+def _get_current_admin():
+    from app.main import current_admin
+    return current_admin
+
+
+def _get_db():
+    from app.main import get_db
+    return get_db
 
 
 # Data Retention Management
 
 @router.get("/data-retention/preview")
 async def preview_data_purge(
-    admin: User = Depends(get_current_admin_dependency()),
-    session: AsyncSession = Depends(get_db_dependency()),
+    admin: User = Depends(_get_current_admin()),
+    session: AsyncSession = Depends(_get_db()),
     retention_days: int = 30
 ):
     """Preview what data would be purged based on retention policy."""
@@ -40,8 +49,8 @@ async def preview_data_purge(
 
 @router.post("/data-retention/purge")
 async def execute_data_purge(
-    admin: User = Depends(get_current_admin_dependency()),
-    session: AsyncSession = Depends(get_db_dependency()),
+    admin: User = Depends(_get_current_admin()),
+    session: AsyncSession = Depends(_get_db()),
     retention_days: int = 30,
     confirm: bool = False
 ):
@@ -71,8 +80,8 @@ async def execute_data_purge(
 
 @router.get("/data-retention/stats")
 async def get_data_retention_stats(
-    admin: User = Depends(get_current_admin_dependency()),
-    session: AsyncSession = Depends(get_db_dependency())
+    admin: User = Depends(_get_current_admin()),
+    session: AsyncSession = Depends(_get_db())
 ):
     """Get overall data retention statistics."""
     # Total log entries
@@ -130,8 +139,8 @@ async def get_data_retention_stats(
 
 @router.get("/legacy-logs/summary")
 async def get_legacy_logs_summary(
-    admin: User = Depends(get_current_admin_dependency()),
-    session: AsyncSession = Depends(get_db_dependency())
+    admin: User = Depends(_get_current_admin()),
+    session: AsyncSession = Depends(_get_db())
 ):
     """Get summary of legacy log entries that have plant_id but no device_id."""
     # Count logs with plant_id but no device_id (legacy logs)
@@ -201,8 +210,8 @@ async def get_legacy_logs_summary(
 @router.get("/legacy-logs/by-plant/{plant_id}")
 async def get_legacy_logs_for_plant(
     plant_id: str,
-    admin: User = Depends(get_current_admin_dependency()),
-    session: AsyncSession = Depends(get_db_dependency()),
+    admin: User = Depends(_get_current_admin()),
+    session: AsyncSession = Depends(_get_db()),
     limit: int = 100
 ):
     """Get legacy log entries for a specific plant."""
@@ -250,8 +259,8 @@ async def get_legacy_logs_for_plant(
 async def associate_legacy_logs_to_device(
     plant_id: str,
     device_id: str,
-    admin: User = Depends(get_current_admin_dependency()),
-    session: AsyncSession = Depends(get_db_dependency())
+    admin: User = Depends(_get_current_admin()),
+    session: AsyncSession = Depends(_get_db())
 ):
     """Associate legacy log entries to a device."""
     # Get plant
@@ -300,8 +309,8 @@ async def associate_legacy_logs_to_device(
 
 @router.delete("/legacy-logs/purge")
 async def purge_legacy_logs(
-    admin: User = Depends(get_current_admin_dependency()),
-    session: AsyncSession = Depends(get_db_dependency()),
+    admin: User = Depends(_get_current_admin()),
+    session: AsyncSession = Depends(_get_db()),
     plant_id: Optional[str] = None,
     confirm: bool = False
 ):

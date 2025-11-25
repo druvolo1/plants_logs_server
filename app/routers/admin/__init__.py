@@ -43,6 +43,27 @@ def get_templates():
     return templates
 
 
+# Main dashboard page (registered directly on admin router to avoid empty path issue)
+@router.get("", response_class=HTMLResponse)
+async def admin_dashboard_page(
+    request: Request,
+    admin: User = Depends(get_current_admin_dependency()),
+    session: AsyncSession = Depends(get_db_dependency())
+):
+    """Admin dashboard page"""
+    pending_result = await session.execute(
+        select(func.count(User.id)).where(User.is_active == False)
+    )
+    pending_count = pending_result.scalar() or 0
+
+    return get_templates().TemplateResponse("admin_dashboard.html", {
+        "request": request,
+        "user": admin,
+        "active_page": "dashboard",
+        "pending_users_count": pending_count
+    })
+
+
 # Import and include sub-routers
 from app.routers.admin.dashboard import router as dashboard_router
 from app.routers.admin.users import router as users_router

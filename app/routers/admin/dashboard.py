@@ -1,44 +1,31 @@
 # app/routers/admin/dashboard.py
 """
-Admin dashboard page and stats API endpoints.
+Admin dashboard stats API endpoints.
 """
 from datetime import datetime, timedelta
-from fastapi import APIRouter, Depends, Request
-from fastapi.responses import HTMLResponse
+from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 
 from app.models import User, Device, Plant, LogEntry, EnvironmentLog, Location
-from app.routers.admin import get_current_admin_dependency, get_db_dependency, get_templates
 
 router = APIRouter()
 
 
-@router.get("", response_class=HTMLResponse)
-async def admin_dashboard_page(
-    request: Request,
-    admin: User = Depends(get_current_admin_dependency()),
-    session: AsyncSession = Depends(get_db_dependency())
-):
-    """Admin dashboard page"""
-    # Count pending users for sidebar badge
-    pending_result = await session.execute(
-        select(func.count(User.id)).where(User.is_active == False)
-    )
-    pending_count = pending_result.scalar() or 0
+def _get_current_admin():
+    from app.main import current_admin
+    return current_admin
 
-    return get_templates().TemplateResponse("admin_dashboard.html", {
-        "request": request,
-        "user": admin,
-        "active_page": "dashboard",
-        "pending_users_count": pending_count
-    })
+
+def _get_db():
+    from app.main import get_db
+    return get_db
 
 
 @router.get("/api/dashboard/stats")
 async def get_dashboard_stats(
-    admin: User = Depends(get_current_admin_dependency()),
-    session: AsyncSession = Depends(get_db_dependency())
+    admin: User = Depends(_get_current_admin()),
+    session: AsyncSession = Depends(_get_db())
 ):
     """Get dashboard statistics"""
     # Users
@@ -83,8 +70,8 @@ async def get_dashboard_stats(
 
 @router.get("/api/dashboard/alerts")
 async def get_dashboard_alerts(
-    admin: User = Depends(get_current_admin_dependency()),
-    session: AsyncSession = Depends(get_db_dependency())
+    admin: User = Depends(_get_current_admin()),
+    session: AsyncSession = Depends(_get_db())
 ):
     """Get system alerts"""
     alerts = []
@@ -150,8 +137,8 @@ async def get_dashboard_alerts(
 
 @router.get("/api/dashboard/activity")
 async def get_dashboard_activity(
-    admin: User = Depends(get_current_admin_dependency()),
-    session: AsyncSession = Depends(get_db_dependency())
+    admin: User = Depends(_get_current_admin()),
+    session: AsyncSession = Depends(_get_db())
 ):
     """Get recent activity feed"""
     activities = []
@@ -191,8 +178,8 @@ async def get_dashboard_activity(
 
 @router.get("/api/dashboard/device-status")
 async def get_dashboard_device_status(
-    admin: User = Depends(get_current_admin_dependency()),
-    session: AsyncSession = Depends(get_db_dependency())
+    admin: User = Depends(_get_current_admin()),
+    session: AsyncSession = Depends(_get_db())
 ):
     """Get device status breakdown"""
     # Online/offline counts
@@ -228,8 +215,8 @@ async def get_dashboard_device_status(
 
 @router.get("/api/dashboard/firmware-status")
 async def get_dashboard_firmware_status(
-    admin: User = Depends(get_current_admin_dependency()),
-    session: AsyncSession = Depends(get_db_dependency())
+    admin: User = Depends(_get_current_admin()),
+    session: AsyncSession = Depends(_get_db())
 ):
     """Get firmware deployment status"""
     try:
@@ -276,8 +263,8 @@ async def get_dashboard_firmware_status(
 
 @router.get("/api/dashboard/recent-users")
 async def get_dashboard_recent_users(
-    admin: User = Depends(get_current_admin_dependency()),
-    session: AsyncSession = Depends(get_db_dependency())
+    admin: User = Depends(_get_current_admin()),
+    session: AsyncSession = Depends(_get_db())
 ):
     """Get recent users with device counts"""
     users_result = await session.execute(
@@ -305,8 +292,8 @@ async def get_dashboard_recent_users(
 
 @router.get("/api/dashboard/recent-devices")
 async def get_dashboard_recent_devices(
-    admin: User = Depends(get_current_admin_dependency()),
-    session: AsyncSession = Depends(get_db_dependency())
+    admin: User = Depends(_get_current_admin()),
+    session: AsyncSession = Depends(_get_db())
 ):
     """Get recent devices"""
     devices_result = await session.execute(
