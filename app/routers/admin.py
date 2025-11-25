@@ -13,8 +13,9 @@ from fastapi_users import exceptions
 from app.models import User, Device, Plant, DeviceAssignment, LogEntry, EnvironmentLog
 from app.schemas import UserCreate, UserUpdate, PasswordReset
 from app.services.data_retention import get_purge_candidates, purge_old_data
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime, timedelta
+from sqlalchemy import update, delete, or_, and_
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -659,4 +660,243 @@ async def get_data_retention_stats(
             "finished": finished_plants,
             "with_frozen_reports": reports_count
         }
+    }
+
+
+# Legacy Log Management (orphaned logs without device_id)
+
+@router.get("/legacy-logs/summary")
+async def get_legacy_logs_summary(
+    admin: User = Depends(get_current_admin_dependency()),
+    session: AsyncSession = Depends(get_db_dependency())
+):
+    """
+    Get summary of legacy log entries that have plant_id but no device_id.
+    These are from before the device-centric logging architecture.
+    """
+    # Count logs with plant_id but no device_id (legacy logs)
+    legacy_count_result = await session.execute(
+        select(func.count(LogEntry.id)).where(
+            LogEntry.device_id.is_(None)
+        )
+    )
+    legacy_count = legacy_count_result.scalar() or 0
+
+    # Count logs with device_id (new format)
+    new_count_result = await session.execute(
+        select(func.count(LogEntry.id)).where(
+            LogEntry.device_id.isnot(None)
+        )
+    )
+    new_count = new_count_result.scalar() or 0
+
+    # Get breakdown by plant for legacy logs
+    by_plant = []
+    try:
+        plant_breakdown_result = await session.execute(
+            select(
+                Plant.plant_id,
+                Plant.name,
+                func.count(LogEntry.id).label('log_count'),
+                func.min(LogEntry.timestamp).label('oldest_log'),
+                func.max(LogEntry.timestamp).label('newest_log')
+            )
+            .select_from(LogEntry)
+            .join(Plant, LogEntry.plant_id == Plant.id)
+            .where(LogEntry.device_id.is_(None))
+            .group_by(Plant.id, Plant.plant_id, Plant.name)
+            .order_by(func.count(LogEntry.id).desc())
+        )
+        for row in plant_breakdown_result.all():
+            by_plant.append({
+                "plant_id": row[0],
+                "plant_name": row[1],
+                "log_count": row[2],
+                "oldest_log": row[3].isoformat() if row[3] else None,
+                "newest_log": row[4].isoformat() if row[4] else None
+            })
+    except Exception as e:
+        print(f"Note: Could not get plant breakdown: {e}")
+
+    # Get date range of legacy logs
+    date_range_result = await session.execute(
+        select(func.min(LogEntry.timestamp), func.max(LogEntry.timestamp))
+        .where(LogEntry.device_id.is_(None))
+    )
+    date_range = date_range_result.first()
+
+    return {
+        "total_legacy_logs": legacy_count,
+        "plants_affected": len(by_plant),
+        "new_log_count": new_count,
+        "total_log_count": legacy_count + new_count,
+        "by_plant": by_plant,
+        "legacy_date_range": {
+            "oldest": date_range[0].isoformat() if date_range[0] else None,
+            "newest": date_range[1].isoformat() if date_range[1] else None
+        }
+    }
+
+
+@router.get("/legacy-logs/by-plant/{plant_id}")
+async def get_legacy_logs_for_plant(
+    plant_id: str,
+    admin: User = Depends(get_current_admin_dependency()),
+    session: AsyncSession = Depends(get_db_dependency()),
+    limit: int = 100
+):
+    """
+    Get legacy log entries for a specific plant.
+    """
+    # Get plant
+    plant_result = await session.execute(
+        select(Plant).where(Plant.plant_id == plant_id)
+    )
+    plant = plant_result.scalars().first()
+
+    if not plant:
+        raise HTTPException(404, "Plant not found")
+
+    # Get legacy logs for this plant
+    logs_result = await session.execute(
+        select(LogEntry)
+        .where(
+            LogEntry.plant_id == plant.id,
+            LogEntry.device_id.is_(None)
+        )
+        .order_by(LogEntry.timestamp.desc())
+        .limit(limit)
+    )
+
+    logs = []
+    for log in logs_result.scalars().all():
+        logs.append({
+            "id": log.id,
+            "event_type": log.event_type,
+            "sensor_name": log.sensor_name,
+            "value": log.value,
+            "dose_type": log.dose_type,
+            "dose_amount_ml": log.dose_amount_ml,
+            "timestamp": log.timestamp.isoformat()
+        })
+
+    return {
+        "plant_id": plant_id,
+        "plant_name": plant.name,
+        "logs": logs,
+        "count": len(logs)
+    }
+
+
+@router.post("/legacy-logs/associate")
+async def associate_legacy_logs_to_device(
+    plant_id: str,
+    device_id: str,
+    admin: User = Depends(get_current_admin_dependency()),
+    session: AsyncSession = Depends(get_db_dependency())
+):
+    """
+    Associate legacy log entries (with plant_id but no device_id) to a device.
+    This migrates old data to the new device-centric format.
+    """
+    # Get plant
+    plant_result = await session.execute(
+        select(Plant).where(Plant.plant_id == plant_id)
+    )
+    plant = plant_result.scalars().first()
+
+    if not plant:
+        raise HTTPException(404, "Plant not found")
+
+    # Get device
+    device_result = await session.execute(
+        select(Device).where(Device.device_id == device_id)
+    )
+    device = device_result.scalars().first()
+
+    if not device:
+        raise HTTPException(404, "Device not found")
+
+    # Update all legacy logs for this plant to use the device_id
+    update_result = await session.execute(
+        update(LogEntry)
+        .where(
+            LogEntry.plant_id == plant.id,
+            LogEntry.device_id.is_(None)
+        )
+        .values(device_id=device.id)
+    )
+
+    await session.commit()
+
+    updated_count = update_result.rowcount
+
+    print(f"[LEGACY MIGRATION] Admin {admin.email} associated {updated_count} logs "
+          f"from plant '{plant.name}' to device '{device.name or device.device_id}'")
+
+    return {
+        "status": "success",
+        "message": f"Associated {updated_count} log entries to device",
+        "plant_id": plant_id,
+        "device_id": device_id,
+        "updated_count": updated_count
+    }
+
+
+@router.delete("/legacy-logs/purge")
+async def purge_legacy_logs(
+    admin: User = Depends(get_current_admin_dependency()),
+    session: AsyncSession = Depends(get_db_dependency()),
+    plant_id: Optional[str] = None,
+    confirm: bool = False
+):
+    """
+    Purge legacy log entries (with no device_id).
+
+    If plant_id is provided, only purges logs for that plant.
+    Otherwise purges ALL legacy logs.
+
+    CAUTION: This is irreversible!
+    """
+    if not confirm:
+        return {
+            "error": "Must set confirm=true to execute purge",
+            "message": "Use /admin/legacy-logs/summary to see what would be deleted first"
+        }
+
+    if plant_id:
+        # Get plant
+        plant_result = await session.execute(
+            select(Plant).where(Plant.plant_id == plant_id)
+        )
+        plant = plant_result.scalars().first()
+
+        if not plant:
+            raise HTTPException(404, "Plant not found")
+
+        # Delete legacy logs for this plant only
+        delete_result = await session.execute(
+            delete(LogEntry).where(
+                LogEntry.plant_id == plant.id,
+                LogEntry.device_id.is_(None)
+            )
+        )
+        deleted_count = delete_result.rowcount
+        message = f"Purged {deleted_count} legacy logs for plant '{plant.name}'"
+    else:
+        # Delete ALL legacy logs
+        delete_result = await session.execute(
+            delete(LogEntry).where(LogEntry.device_id.is_(None))
+        )
+        deleted_count = delete_result.rowcount
+        message = f"Purged {deleted_count} legacy logs (all plants)"
+
+    await session.commit()
+
+    print(f"[LEGACY PURGE] Admin {admin.email}: {message}")
+
+    return {
+        "status": "success",
+        "message": message,
+        "deleted_count": deleted_count
     }

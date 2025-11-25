@@ -604,6 +604,66 @@
                 </div>
             </div>
         </div>
+
+        <!-- Legacy Log Management Section -->
+        <div class="section">
+            <div class="section-header">
+                <h2 class="section-title">Legacy Log Management</h2>
+            </div>
+            <div class="data-viewer">
+                <p style="color: #94a3b8; margin-bottom: 1rem;">
+                    Manage log entries from the old schema that have plant_id but no device_id.
+                    You can associate them with a device or purge them.
+                </p>
+
+                <div class="data-summary" id="legacy-stats">
+                    <div class="data-summary-item">
+                        <div class="data-summary-value" id="legacy-total-logs">-</div>
+                        <div class="data-summary-label">Total Legacy Logs</div>
+                    </div>
+                    <div class="data-summary-item">
+                        <div class="data-summary-value" id="legacy-plants-affected">-</div>
+                        <div class="data-summary-label">Plants Affected</div>
+                    </div>
+                </div>
+
+                <div class="data-viewer-controls">
+                    <button class="btn btn-primary" onclick="loadLegacyLogsSummary()">Load Summary</button>
+                    <button class="btn btn-danger" onclick="purgeAllLegacyLogs()">Purge All Legacy Logs</button>
+                </div>
+
+                <div id="legacy-logs-results" style="display: none; margin-top: 1rem;">
+                    <h4 style="color: #10b981; margin-bottom: 0.5rem;">Legacy Logs by Plant</h4>
+                    <div class="data-results" id="legacy-logs-list" style="max-height: 300px;"></div>
+                </div>
+
+                <div id="legacy-associate-form" style="display: none; margin-top: 1rem; padding: 1rem; background: #0f172a; border-radius: 6px;">
+                    <h4 style="color: #10b981; margin-bottom: 0.5rem;">Associate Legacy Logs to Device</h4>
+                    <div class="data-viewer-controls">
+                        <div class="form-group">
+                            <label>Plant</label>
+                            <select id="legacy-plant-select">
+                                <option value="">-- Select a plant --</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Target Device</label>
+                            <select id="legacy-device-select">
+                                <option value="">-- Select a device --</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-primary" onclick="associateLegacyLogs()">Associate</button>
+                        <button class="btn btn-danger" onclick="purgePlantLegacyLogs()">Purge Plant's Logs</button>
+                    </div>
+                </div>
+
+                <div class="retention-warning" style="margin-top: 1rem;">
+                    <strong>⚠️ Note:</strong> Legacy logs are from the old plant-centric schema.
+                    Associating them to a device will set their device_id field.
+                    Purging will permanently delete the log entries.
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -1000,6 +1060,156 @@
 
         // Load retention stats on page load
         loadRetentionStats();
+
+        // Legacy Log Management functions
+        async function loadLegacyLogsSummary() {
+            try {
+                const response = await fetch('/admin/legacy-logs/summary');
+                if (response.ok) {
+                    const data = await response.json();
+                    displayLegacyLogsSummary(data);
+                } else {
+                    const error = await response.json();
+                    alert('Error: ' + (error.detail || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error loading legacy logs summary');
+            }
+        }
+
+        function displayLegacyLogsSummary(data) {
+            document.getElementById('legacy-total-logs').textContent = data.total_legacy_logs.toLocaleString();
+            document.getElementById('legacy-plants-affected').textContent = data.plants_affected;
+
+            document.getElementById('legacy-logs-results').style.display = 'block';
+
+            if (data.plants_affected === 0) {
+                document.getElementById('legacy-logs-list').innerHTML = '<div class="empty-state">No legacy logs found. All logs have been migrated to device-centric format.</div>';
+                document.getElementById('legacy-associate-form').style.display = 'none';
+                return;
+            }
+
+            // Show the association form
+            document.getElementById('legacy-associate-form').style.display = 'block';
+
+            // Populate plant select dropdown
+            const plantSelect = document.getElementById('legacy-plant-select');
+            plantSelect.innerHTML = '<option value="">-- Select a plant --</option>';
+            data.by_plant.forEach(plant => {
+                const option = document.createElement('option');
+                option.value = plant.plant_id;
+                option.textContent = `${plant.plant_name} (${plant.plant_id}) - ${plant.log_count} logs`;
+                plantSelect.appendChild(option);
+            });
+
+            // Populate device select (use existing devices from main dropdown)
+            const deviceSelect = document.getElementById('legacy-device-select');
+            const mainDeviceSelect = document.getElementById('device-select');
+            deviceSelect.innerHTML = mainDeviceSelect.innerHTML;
+
+            // Display plant list
+            const listHtml = data.by_plant.map(plant => `
+                <div class="log-entry">
+                    <strong>${plant.plant_name}</strong> (${plant.plant_id})<br>
+                    <span style="color: #94a3b8;">Log entries: ${plant.log_count.toLocaleString()}</span>
+                    ${plant.oldest_log ? `<br><span style="color: #64748b; font-size: 0.8rem;">Oldest: ${new Date(plant.oldest_log).toLocaleDateString()} | Newest: ${new Date(plant.newest_log).toLocaleDateString()}</span>` : ''}
+                </div>
+            `).join('');
+            document.getElementById('legacy-logs-list').innerHTML = listHtml;
+        }
+
+        async function associateLegacyLogs() {
+            const plantId = document.getElementById('legacy-plant-select').value;
+            const deviceId = document.getElementById('legacy-device-select').value;
+
+            if (!plantId) {
+                alert('Please select a plant');
+                return;
+            }
+            if (!deviceId) {
+                alert('Please select a device');
+                return;
+            }
+
+            if (!confirm(`Associate all legacy logs from plant ${plantId} to device ${deviceId}?`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/admin/legacy-logs/associate?plant_id=${plantId}&device_id=${deviceId}`, {
+                    method: 'POST'
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    alert(`Success!\n\nUpdated ${data.updated_count} log entries.`);
+                    loadLegacyLogsSummary();  // Refresh the list
+                } else {
+                    const error = await response.json();
+                    alert('Error: ' + (error.detail || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error associating legacy logs');
+            }
+        }
+
+        async function purgePlantLegacyLogs() {
+            const plantId = document.getElementById('legacy-plant-select').value;
+
+            if (!plantId) {
+                alert('Please select a plant');
+                return;
+            }
+
+            if (!confirm(`Are you sure you want to PERMANENTLY DELETE all legacy logs for plant ${plantId}? This cannot be undone.`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/admin/legacy-logs/purge?plant_id=${plantId}&confirm=true`, {
+                    method: 'DELETE'
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    alert(`Purge complete!\n\nDeleted ${data.deleted_count} log entries.`);
+                    loadLegacyLogsSummary();  // Refresh the list
+                } else {
+                    const error = await response.json();
+                    alert('Error: ' + (error.detail || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error purging legacy logs');
+            }
+        }
+
+        async function purgeAllLegacyLogs() {
+            if (!confirm('Are you sure you want to PERMANENTLY DELETE ALL legacy logs? This cannot be undone.')) {
+                return;
+            }
+
+            if (!confirm('This is your FINAL warning. ALL legacy logs will be permanently deleted. Continue?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch('/admin/legacy-logs/purge?confirm=true', {
+                    method: 'DELETE'
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    alert(`Purge complete!\n\nDeleted ${data.deleted_count} log entries.`);
+                    loadLegacyLogsSummary();  // Refresh the list
+                } else {
+                    const error = await response.json();
+                    alert('Error: ' + (error.detail || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error purging legacy logs');
+            }
+        }
     </script>
 </body>
 </html>

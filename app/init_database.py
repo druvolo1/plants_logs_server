@@ -371,6 +371,60 @@ async def init_database():
             except Exception as e:
                 print(f"  Note: Foreign key constraint may already exist or error occurred: {e}")
 
+            print("\nChecking 'log_entries' table schema...")
+
+            # Add device_id column to log_entries table if it doesn't exist
+            # This is for the new device-centric logging architecture
+            await check_and_add_column(
+                conn,
+                'log_entries',
+                'device_id',
+                "device_id INT NULL AFTER id"
+            )
+
+            # Add index on device_id for log_entries if column was just added
+            try:
+                result = await conn.execute(text("""
+                    SELECT COUNT(*) as count
+                    FROM information_schema.STATISTICS
+                    WHERE TABLE_SCHEMA = DATABASE()
+                    AND TABLE_NAME = 'log_entries'
+                    AND INDEX_NAME = 'idx_log_entries_device_id'
+                """))
+                row = result.fetchone()
+                if row[0] == 0:
+                    print("  Adding index on log_entries.device_id...")
+                    await conn.execute(text("CREATE INDEX idx_log_entries_device_id ON log_entries(device_id)"))
+                    print("  ✓ Index added")
+                else:
+                    print("  ✓ Index on device_id already exists")
+            except Exception as e:
+                print(f"  Note: Index may already exist: {e}")
+
+            # Add foreign key for log_entries.device_id if it doesn't exist
+            try:
+                result = await conn.execute(text("""
+                    SELECT COUNT(*) as count
+                    FROM information_schema.KEY_COLUMN_USAGE
+                    WHERE TABLE_SCHEMA = DATABASE()
+                    AND TABLE_NAME = 'log_entries'
+                    AND COLUMN_NAME = 'device_id'
+                    AND REFERENCED_TABLE_NAME = 'devices'
+                """))
+                row = result.fetchone()
+                if row[0] == 0:
+                    print("  Adding foreign key constraint for log_entries.device_id...")
+                    await conn.execute(text("""
+                        ALTER TABLE log_entries
+                        ADD CONSTRAINT fk_log_entries_device
+                        FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE CASCADE
+                    """))
+                    print("  ✓ Foreign key constraint added")
+                else:
+                    print("  ✓ Foreign key constraint already exists")
+            except Exception as e:
+                print(f"  Note: Foreign key may already exist or error: {e}")
+
             print("\nChecking 'device_links' table...")
 
             # Add removed_at column to device_links table if it doesn't exist

@@ -15,7 +15,9 @@ class LogEntry(Base):
     """
     __tablename__ = "log_entries"
     id = Column(Integer, primary_key=True, index=True)
-    device_id = Column(Integer, ForeignKey("devices.id"), nullable=False, index=True)
+    device_id = Column(Integer, ForeignKey("devices.id"), nullable=True, index=True)  # Nullable for legacy data
+    # Legacy field - kept for backward compatibility with old data
+    plant_id = Column(Integer, ForeignKey("plants.id"), nullable=True, index=True)
     event_type = Column(String(20), nullable=False)  # 'sensor' or 'dosing'
     sensor_name = Column(String(50), nullable=True)  # e.g., 'ph', 'ec', 'humidity', 'temperature'
     value = Column(Float, nullable=True)  # pH reading, humidity %, temp, etc.
@@ -26,6 +28,7 @@ class LogEntry(Base):
 
     # Relationships
     device = relationship("Device")
+    plant = relationship("Plant")  # Legacy relationship for querying old data
 
 
 class EnvironmentLog(Base):
