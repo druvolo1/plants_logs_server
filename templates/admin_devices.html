@@ -65,7 +65,7 @@
         width: 100vw;
         height: 100vh;
         background: rgba(0, 0, 0, 0.7);
-        z-index: 2000;
+        z-index: 9999;
         justify-content: center;
         align-items: center;
         padding: 2rem;
@@ -84,8 +84,9 @@
         overflow-y: auto;
         border: 1px solid rgba(16, 185, 129, 0.3);
         position: relative;
-        z-index: 2001;
+        z-index: 10000;
         box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        transform: translateZ(0);
     }
 
     .modal-header {
@@ -583,56 +584,64 @@ async function viewDevice(deviceId) {
 
     document.getElementById('modal-device-name').textContent = device.name || 'Unnamed Device';
 
-    // Load device details
+    // Hide live data section by default
+    document.getElementById('live-data-section').style.display = 'none';
+
+    // Set basic device info immediately
+    let logCount = '-';
+    let envLogCount = '-';
+
+    // Try to load additional details
     try {
         const response = await fetch(`/admin/devices/${deviceId}/data/summary`);
         if (response.ok) {
             const data = await response.json();
-
-            document.getElementById('device-details').innerHTML = `
-                <div class="detail-item">
-                    <div class="detail-label">Device ID</div>
-                    <div class="detail-value mono">${deviceId}</div>
-                </div>
-                <div class="detail-item">
-                    <div class="detail-label">Type</div>
-                    <div class="detail-value">${device.device_type || 'Unknown'}</div>
-                </div>
-                <div class="detail-item">
-                    <div class="detail-label">Owner</div>
-                    <div class="detail-value">${device.owner_email}</div>
-                </div>
-                <div class="detail-item">
-                    <div class="detail-label">Status</div>
-                    <div class="detail-value">${device.is_online ? '🟢 Online' : '🔴 Offline'}</div>
-                </div>
-                <div class="detail-item">
-                    <div class="detail-label">Log Entries</div>
-                    <div class="detail-value">${formatNumber(data.log_entries?.total_count || 0)}</div>
-                </div>
-                <div class="detail-item">
-                    <div class="detail-label">Environment Logs</div>
-                    <div class="detail-value">${formatNumber(data.environment_logs?.total_count || 0)}</div>
-                </div>
-            `;
+            logCount = formatNumber(data.log_entries?.total_count || 0);
+            envLogCount = formatNumber(data.environment_logs?.total_count || 0);
 
             // Load live data for environmental sensors
             if (device.device_type === 'environmental' && device.is_online) {
                 loadLiveData(deviceId);
-            } else {
-                document.getElementById('live-data-section').style.display = 'none';
             }
         }
     } catch (error) {
         console.error('Error loading device details:', error);
     }
 
+    // Always populate the modal with available info
+    document.getElementById('device-details').innerHTML = `
+        <div class="detail-item">
+            <div class="detail-label">Device ID</div>
+            <div class="detail-value mono">${deviceId}</div>
+        </div>
+        <div class="detail-item">
+            <div class="detail-label">Type</div>
+            <div class="detail-value">${device.device_type || 'Unknown'}</div>
+        </div>
+        <div class="detail-item">
+            <div class="detail-label">Owner</div>
+            <div class="detail-value">${device.owner_email}</div>
+        </div>
+        <div class="detail-item">
+            <div class="detail-label">Status</div>
+            <div class="detail-value">${device.is_online ? '🟢 Online' : '🔴 Offline'}</div>
+        </div>
+        <div class="detail-item">
+            <div class="detail-label">Log Entries</div>
+            <div class="detail-value">${logCount}</div>
+        </div>
+        <div class="detail-item">
+            <div class="detail-label">Environment Logs</div>
+            <div class="detail-value">${envLogCount}</div>
+        </div>
+    `;
+
     openModal('device-modal');
 }
 
 async function loadLiveData(deviceId) {
     try {
-        const response = await fetch(`/api/devices/${deviceId}/environment/current`);
+        const response = await fetch(`/api/devices/${deviceId}/environment/latest`);
         if (response.ok) {
             const data = await response.json();
             const section = document.getElementById('live-data-section');

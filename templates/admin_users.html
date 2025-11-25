@@ -35,7 +35,7 @@
         width: 100vw;
         height: 100vh;
         background: rgba(0, 0, 0, 0.7);
-        z-index: 2000;
+        z-index: 9999;
         justify-content: center;
         align-items: center;
         padding: 2rem;
@@ -54,8 +54,9 @@
         overflow-y: auto;
         border: 1px solid rgba(16, 185, 129, 0.3);
         position: relative;
-        z-index: 2001;
+        z-index: 10000;
         box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        transform: translateZ(0);
     }
 
     .modal-header {
