@@ -103,4 +103,4 @@ class PlantReport(Base):
     aggregated_stats = Column(Text, nullable=True)  # JSON blob
 
     # Relationships
-    plant = relationship("Plant")
+    plant = relationship("Plant", back_populates="report")

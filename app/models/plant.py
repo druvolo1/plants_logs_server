@@ -62,9 +62,10 @@ class Plant(Base):
     device = relationship("Device", foreign_keys=[device_id], back_populates="plants")
     user = relationship("User", foreign_keys=[user_id])
     location = relationship("Location", back_populates="plants")
-    logs = relationship("LogEntry", back_populates="plant", cascade="all, delete-orphan")
+    # Note: logs are now device-centric, accessed via DeviceAssignment history
     device_assignments = relationship("DeviceAssignment", back_populates="plant", cascade="all, delete-orphan")
     phase_history = relationship("PhaseHistory", back_populates="plant", cascade="all, delete-orphan")
+    report = relationship("PlantReport", back_populates="plant", uselist=False, cascade="all, delete-orphan")
 
 
 class DeviceAssignment(Base):
