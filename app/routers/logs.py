@@ -220,13 +220,72 @@ async def get_plant_logs(
 # Environment Sensor Endpoints
 
 @router.post("/api/devices/{device_id}/environment", response_model=DeviceSettingsResponse)
-async def upload_environment_data(
+async def environment_heartbeat(
     device_id: str,
     data: EnvironmentDataCreate,
     api_key: str = Query(...),
     session: AsyncSession = Depends(get_db_dependency())
 ):
-    """Receive environment sensor data from device and return device settings"""
+    """
+    Environment sensor heartbeat - updates device status and returns settings.
+
+    This endpoint is called frequently (default: every 30 seconds) to:
+    - Update device online status and last_seen timestamp
+    - Receive current sensor data for real-time display (not logged to DB)
+    - Return device settings (including log_interval for when to actually log)
+
+    Note: This does NOT log data to the database. Use /environment/log for that.
+    """
+    # Verify device and API key
+    result = await session.execute(
+        select(Device).where(Device.device_id == device_id, Device.api_key == api_key)
+    )
+    device = result.scalars().first()
+
+    if not device:
+        raise HTTPException(404, "Device not found - please re-pair")
+
+    # Verify device is an environmental sensor
+    if device.device_type != 'environmental':
+        raise HTTPException(400, "This endpoint is only for environmental sensors")
+
+    # Update device last_seen and is_online status
+    await session.execute(
+        update(Device)
+        .where(Device.device_id == device_id)
+        .values(is_online=True, last_seen=datetime.utcnow())
+    )
+    await session.commit()
+
+    # Load device settings and return to device
+    settings = {}
+    if device.settings:
+        try:
+            settings = json.loads(device.settings)
+        except:
+            settings = {}
+
+    # Return settings to device (defaults: 30s heartbeat, 3600s/1hr logging)
+    return DeviceSettingsResponse(
+        use_fahrenheit=settings.get("use_fahrenheit", False),
+        update_interval=settings.get("update_interval", 30),
+        log_interval=settings.get("log_interval", 3600)
+    )
+
+
+@router.post("/api/devices/{device_id}/environment/log", response_model=DeviceSettingsResponse)
+async def log_environment_data(
+    device_id: str,
+    data: EnvironmentDataCreate,
+    api_key: str = Query(...),
+    session: AsyncSession = Depends(get_db_dependency())
+):
+    """
+    Log environment sensor data to the database.
+
+    This endpoint is called less frequently (default: every 60 minutes) to
+    actually persist sensor data to the database for historical tracking.
+    """
     # Verify device and API key
     result = await session.execute(
         select(Device).where(Device.device_id == device_id, Device.api_key == api_key)
@@ -284,7 +343,8 @@ async def upload_environment_data(
     # Return settings to device
     return DeviceSettingsResponse(
         use_fahrenheit=settings.get("use_fahrenheit", False),
-        update_interval=settings.get("update_interval", 60)
+        update_interval=settings.get("update_interval", 30),
+        log_interval=settings.get("log_interval", 3600)
     )
 
 
@@ -295,7 +355,7 @@ async def update_device_settings(
     api_key: str = Header(..., alias="X-API-Key"),
     session: AsyncSession = Depends(get_db_dependency())
 ):
-    """Update device settings (temperature unit, update interval, etc.)"""
+    """Update device settings (temperature unit, update interval, log interval, etc.)"""
     # Verify device exists and API key matches
     result = await session.execute(
         select(Device).where(Device.device_id == device_id)
@@ -321,7 +381,11 @@ async def update_device_settings(
 
     if settings_update.update_interval is not None:
         settings["update_interval"] = settings_update.update_interval
-        print(f"[Device {device_id}] Update interval updated to: {settings_update.update_interval}s")
+        print(f"[Device {device_id}] Heartbeat interval updated to: {settings_update.update_interval}s")
+
+    if settings_update.log_interval is not None:
+        settings["log_interval"] = settings_update.log_interval
+        print(f"[Device {device_id}] Log interval updated to: {settings_update.log_interval}s")
 
     # Save updated settings
     device.settings = json.dumps(settings)
@@ -330,7 +394,8 @@ async def update_device_settings(
     # Return current settings
     return DeviceSettingsResponse(
         use_fahrenheit=settings.get("use_fahrenheit", False),
-        update_interval=settings.get("update_interval", 60)
+        update_interval=settings.get("update_interval", 30),
+        log_interval=settings.get("log_interval", 3600)
     )
 
 

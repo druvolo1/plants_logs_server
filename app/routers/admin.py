@@ -907,3 +907,127 @@ async def purge_legacy_logs(
         "message": message,
         "deleted_count": deleted_count
     }
+
+
+# Device Heartbeat Settings (Admin Only)
+
+@router.get("/devices/{device_id}/heartbeat-settings")
+async def get_device_heartbeat_settings(
+    device_id: str,
+    admin: User = Depends(get_current_admin_dependency()),
+    session: AsyncSession = Depends(get_db_dependency())
+):
+    """
+    Get heartbeat settings for a device (admin only).
+    These settings are sent to the device during heartbeat responses.
+    """
+    import json
+
+    result = await session.execute(
+        select(Device).where(Device.device_id == device_id)
+    )
+    device = result.scalars().first()
+
+    if not device:
+        raise HTTPException(404, "Device not found")
+
+    # Load device settings
+    settings = {}
+    if device.settings:
+        try:
+            settings = json.loads(device.settings)
+        except:
+            settings = {}
+
+    return {
+        "device_id": device_id,
+        "device_name": device.name,
+        "device_type": device.device_type,
+        "use_fahrenheit": settings.get("use_fahrenheit", False),
+        "update_interval": settings.get("update_interval", 30),  # Heartbeat interval
+        "log_interval": settings.get("log_interval", 3600)  # Logging interval (1 hour default)
+    }
+
+
+@router.put("/devices/{device_id}/heartbeat-settings")
+async def update_device_heartbeat_settings(
+    device_id: str,
+    admin: User = Depends(get_current_admin_dependency()),
+    session: AsyncSession = Depends(get_db_dependency()),
+    use_fahrenheit: Optional[bool] = None,
+    update_interval: Optional[int] = None,
+    log_interval: Optional[int] = None
+):
+    """
+    Update heartbeat settings for a device (admin only).
+
+    These settings are pushed to the device during the next heartbeat:
+    - use_fahrenheit: Display temperature in Fahrenheit
+    - update_interval: How often device sends heartbeat (seconds, default: 30)
+    - log_interval: How often device logs to database (seconds, default: 3600 = 1 hour)
+    """
+    import json
+
+    result = await session.execute(
+        select(Device).where(Device.device_id == device_id)
+    )
+    device = result.scalars().first()
+
+    if not device:
+        raise HTTPException(404, "Device not found")
+
+    # Load existing settings
+    settings = {}
+    if device.settings:
+        try:
+            settings = json.loads(device.settings)
+        except:
+            settings = {}
+
+    # Track what changed for logging
+    changes = []
+
+    # Update only provided fields
+    if use_fahrenheit is not None:
+        old_val = settings.get("use_fahrenheit", False)
+        settings["use_fahrenheit"] = use_fahrenheit
+        if old_val != use_fahrenheit:
+            changes.append(f"use_fahrenheit: {old_val} -> {use_fahrenheit}")
+
+    if update_interval is not None:
+        if update_interval < 5:
+            raise HTTPException(400, "update_interval must be at least 5 seconds")
+        if update_interval > 3600:
+            raise HTTPException(400, "update_interval must be at most 3600 seconds (1 hour)")
+        old_val = settings.get("update_interval", 30)
+        settings["update_interval"] = update_interval
+        if old_val != update_interval:
+            changes.append(f"update_interval: {old_val}s -> {update_interval}s")
+
+    if log_interval is not None:
+        if log_interval < 60:
+            raise HTTPException(400, "log_interval must be at least 60 seconds (1 minute)")
+        if log_interval > 86400:
+            raise HTTPException(400, "log_interval must be at most 86400 seconds (24 hours)")
+        old_val = settings.get("log_interval", 3600)
+        settings["log_interval"] = log_interval
+        if old_val != log_interval:
+            changes.append(f"log_interval: {old_val}s -> {log_interval}s")
+
+    # Save updated settings
+    device.settings = json.dumps(settings)
+    await session.commit()
+
+    if changes:
+        print(f"[ADMIN] {admin.email} updated heartbeat settings for device {device_id}: {', '.join(changes)}")
+
+    return {
+        "status": "success",
+        "device_id": device_id,
+        "message": f"Settings updated. Changes will apply on next device heartbeat.",
+        "settings": {
+            "use_fahrenheit": settings.get("use_fahrenheit", False),
+            "update_interval": settings.get("update_interval", 30),
+            "log_interval": settings.get("log_interval", 3600)
+        }
+    }

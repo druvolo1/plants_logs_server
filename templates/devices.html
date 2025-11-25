@@ -278,6 +278,78 @@
         .link-device-btn:hover {
             background: #2563eb;
         }
+
+        /* Heartbeat Settings Button (Admin Only) */
+        .heartbeat-btn {
+            background: none;
+            border: none;
+            color: #f59e0b;
+            font-size: 1.2rem;
+            cursor: pointer;
+            padding: 0.25rem 0.5rem;
+            margin-left: 0.5rem;
+            transition: all 0.2s;
+            vertical-align: middle;
+        }
+        .heartbeat-btn:hover {
+            color: #fbbf24;
+            transform: scale(1.1);
+        }
+        .heartbeat-btn:disabled {
+            color: #64748b;
+            cursor: not-allowed;
+        }
+
+        /* Heartbeat Settings Modal */
+        .heartbeat-modal-content {
+            position: relative;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #1e293b;
+            padding: 2rem;
+            border-radius: 12px;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+        }
+        .heartbeat-setting {
+            margin-bottom: 1.5rem;
+        }
+        .heartbeat-setting label {
+            display: block;
+            color: #94a3b8;
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+        }
+        .heartbeat-setting input[type="number"],
+        .heartbeat-setting select {
+            width: 100%;
+            padding: 0.75rem;
+            border-radius: 6px;
+            border: 1px solid #374151;
+            background: #0f172a;
+            color: #fff;
+            font-size: 1rem;
+        }
+        .heartbeat-setting .hint {
+            color: #64748b;
+            font-size: 0.8rem;
+            margin-top: 0.25rem;
+        }
+        .heartbeat-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .heartbeat-header h3 {
+            margin: 0;
+            color: #f59e0b;
+        }
+        .heartbeat-header .bolt-icon {
+            font-size: 1.5rem;
+        }
     </style>
 </head>
 <body>
@@ -431,12 +503,60 @@
         </div>
     </div>
 
+    <!-- Heartbeat Settings Modal (Admin Only) -->
+    {% if user.is_superuser %}
+    <div id="heartbeat-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 2000;">
+        <div class="heartbeat-modal-content">
+            <div class="heartbeat-header">
+                <span class="bolt-icon">⚡</span>
+                <h3>Heartbeat Settings</h3>
+            </div>
+            <p style="color: #888; font-size: 0.9rem; margin-bottom: 1.5rem;" id="heartbeat-device-name"></p>
+
+            <div class="heartbeat-setting">
+                <label for="heartbeat-use-fahrenheit">Temperature Unit</label>
+                <select id="heartbeat-use-fahrenheit">
+                    <option value="false">Celsius (°C)</option>
+                    <option value="true">Fahrenheit (°F)</option>
+                </select>
+                <p class="hint">How temperature is displayed on the device</p>
+            </div>
+
+            <div class="heartbeat-setting">
+                <label for="heartbeat-update-interval">Heartbeat Interval (seconds)</label>
+                <input type="number" id="heartbeat-update-interval" min="5" max="3600" value="30">
+                <p class="hint">How often the device sends status updates (5-3600 seconds). Lower = more responsive UI but more network traffic.</p>
+            </div>
+
+            <div class="heartbeat-setting">
+                <label for="heartbeat-log-interval">Logging Interval (seconds)</label>
+                <input type="number" id="heartbeat-log-interval" min="60" max="86400" value="3600">
+                <p class="hint">How often the device saves data to the database (60-86400 seconds). Default: 3600 (1 hour).</p>
+            </div>
+
+            <div style="background: rgba(245, 158, 11, 0.1); padding: 1rem; border-radius: 6px; margin-bottom: 1.5rem; border-left: 3px solid #f59e0b;">
+                <p style="margin: 0; color: #f59e0b; font-size: 0.9rem;">
+                    <strong>Note:</strong> Changes will take effect on the device's next heartbeat (within the current heartbeat interval).
+                </p>
+            </div>
+
+            <div style="display: flex; gap: 0.5rem;">
+                <button onclick="saveHeartbeatSettings()" style="background: #f59e0b; flex: 1;">Save Settings</button>
+                <button onclick="closeHeartbeatModal()" style="background: #64748b; flex: 1;">Cancel</button>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
     <script>
+        // Admin status
+        const isAdmin = {{ 'true' if user.is_superuser else 'false' }};
         // Store WebSocket connections per device
         let wsMap = {};
         let currentShareDeviceId = null;
         let currentEditDeviceId = null;
         let currentLinkDeviceId = null;
+        let currentHeartbeatDeviceId = null;
         let locationsMap = {};
         let allDevices = []; // Store all devices for filtering
 
@@ -633,6 +753,11 @@
                 ? `<button onclick="openLinkModal('${device.device_id}')" style="background: #3b82f6;">Link Devices</button>`
                 : '';
 
+            // Heartbeat settings button (admin only, environmental sensors only)
+            const heartbeatButton = (isAdmin && device.device_type === 'environmental')
+                ? `<button class="heartbeat-btn" onclick="openHeartbeatModal('${device.device_id}')" title="Heartbeat Settings (Admin)">⚡</button>`
+                : '';
+
             // Device type icon bar
             const deviceType = device.device_type || 'feeding_system';
             const scope = device.scope || 'plant';
@@ -680,7 +805,7 @@
                 ${deviceTypeBar}
                 ${ownershipInfo}
                 ${plantInfo}
-                <p><strong>System Name:</strong> <span id="name-${device.device_id}">${device.name || 'Loading...'}</span></p>
+                <p><strong>System Name:</strong> <span id="name-${device.device_id}">${device.name || 'Loading...'}</span>${heartbeatButton}</p>
                 <p><strong>Device ID:</strong> ${device.device_id}</p>
                 ${locationInfo}
                 <p><strong>Version:</strong> <span id="version-${device.device_id}">Loading...</span></p>
@@ -1031,6 +1156,85 @@
                 }
             } catch (error) {
                 alert('Error unlinking device');
+            }
+        }
+
+        // Heartbeat Settings Functions (Admin Only)
+        async function openHeartbeatModal(device_id) {
+            if (!isAdmin) return;
+
+            currentHeartbeatDeviceId = device_id;
+            document.getElementById('heartbeat-device-name').textContent = `Device: ${device_id}`;
+            document.getElementById('heartbeat-modal').style.display = 'block';
+
+            // Load current settings
+            try {
+                const response = await fetch(`/admin/devices/${device_id}/heartbeat-settings`);
+                if (response.ok) {
+                    const data = await response.json();
+                    document.getElementById('heartbeat-use-fahrenheit').value = data.use_fahrenheit ? 'true' : 'false';
+                    document.getElementById('heartbeat-update-interval').value = data.update_interval || 30;
+                    document.getElementById('heartbeat-log-interval').value = data.log_interval || 3600;
+
+                    // Update device name display if available
+                    if (data.device_name) {
+                        document.getElementById('heartbeat-device-name').textContent = `Device: ${data.device_name} (${device_id.substring(0, 8)}...)`;
+                    }
+                } else {
+                    alert('Failed to load heartbeat settings');
+                    closeHeartbeatModal();
+                }
+            } catch (error) {
+                console.error('Error loading heartbeat settings:', error);
+                alert('Error loading heartbeat settings');
+                closeHeartbeatModal();
+            }
+        }
+
+        function closeHeartbeatModal() {
+            document.getElementById('heartbeat-modal').style.display = 'none';
+            currentHeartbeatDeviceId = null;
+        }
+
+        async function saveHeartbeatSettings() {
+            if (!currentHeartbeatDeviceId) return;
+
+            const useFahrenheit = document.getElementById('heartbeat-use-fahrenheit').value === 'true';
+            const updateInterval = parseInt(document.getElementById('heartbeat-update-interval').value);
+            const logInterval = parseInt(document.getElementById('heartbeat-log-interval').value);
+
+            // Validate inputs
+            if (updateInterval < 5 || updateInterval > 3600) {
+                alert('Heartbeat interval must be between 5 and 3600 seconds');
+                return;
+            }
+            if (logInterval < 60 || logInterval > 86400) {
+                alert('Logging interval must be between 60 and 86400 seconds');
+                return;
+            }
+
+            try {
+                const params = new URLSearchParams({
+                    use_fahrenheit: useFahrenheit,
+                    update_interval: updateInterval,
+                    log_interval: logInterval
+                });
+
+                const response = await fetch(`/admin/devices/${currentHeartbeatDeviceId}/heartbeat-settings?${params}`, {
+                    method: 'PUT'
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    alert('Heartbeat settings saved! Changes will apply on the device\'s next heartbeat.');
+                    closeHeartbeatModal();
+                } else {
+                    const error = await response.json();
+                    alert(`Failed to save settings: ${error.detail || 'Unknown error'}`);
+                }
+            } catch (error) {
+                console.error('Error saving heartbeat settings:', error);
+                alert('Error saving heartbeat settings');
             }
         }
 

@@ -28,7 +28,8 @@ class DeviceUpdate(BaseModel):
 
 class DeviceSettingsUpdate(BaseModel):
     use_fahrenheit: Optional[bool] = None
-    update_interval: Optional[int] = None
+    update_interval: Optional[int] = None  # Heartbeat interval in seconds
+    log_interval: Optional[int] = None  # Database logging interval in seconds
 
 
 class LinkedDeviceInfo(BaseModel):
@@ -114,7 +115,8 @@ class DevicePairResponse(BaseModel):
 
 class DeviceSettingsResponse(BaseModel):
     use_fahrenheit: bool
-    update_interval: int  # seconds
+    update_interval: int  # Heartbeat interval in seconds (default: 30)
+    log_interval: int  # Database logging interval in seconds (default: 3600 = 1 hour)
 
 
 # Device Linking Pydantic models
