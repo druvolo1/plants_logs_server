@@ -69,10 +69,24 @@ def calculate_checksum(file_path: str) -> str:
 @router.get("/admin/firmware", response_class=HTMLResponse)
 async def firmware_management_page(
     request: Request,
-    admin: User = Depends(get_current_admin_dependency())
+    admin: User = Depends(get_current_admin_dependency()),
+    session: AsyncSession = Depends(get_db_dependency())
 ):
     """Firmware management page (admin only)"""
-    return get_templates().TemplateResponse("firmware.html", {"request": request, "user": admin})
+    from sqlalchemy import func
+
+    # Count pending users for sidebar badge
+    pending_result = await session.execute(
+        select(func.count(User.id)).where(User.is_active == False)
+    )
+    pending_count = pending_result.scalar() or 0
+
+    return get_templates().TemplateResponse("admin_firmware.html", {
+        "request": request,
+        "user": admin,
+        "active_page": "firmware",
+        "pending_users_count": pending_count
+    })
 
 
 # API Endpoints - Admin Only

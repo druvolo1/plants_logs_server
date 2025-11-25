@@ -25,6 +25,33 @@ def _get_db():
     return get_db
 
 
+def _get_templates():
+    from app.main import templates
+    return templates
+
+
+# HTML Page
+@router.get("/devices", response_class=HTMLResponse)
+async def admin_devices_page(
+    request: Request,
+    admin: User = Depends(_get_current_admin()),
+    session: AsyncSession = Depends(_get_db())
+):
+    """Admin devices management page"""
+    # Count pending users for sidebar badge
+    pending_result = await session.execute(
+        select(func.count(User.id)).where(User.is_active == False)
+    )
+    pending_count = pending_result.scalar() or 0
+
+    return _get_templates().TemplateResponse("admin_devices.html", {
+        "request": request,
+        "user": admin,
+        "active_page": "devices",
+        "pending_users_count": pending_count
+    })
+
+
 @router.get("/all-devices")
 async def get_all_devices(
     admin: User = Depends(_get_current_admin()),

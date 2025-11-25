@@ -3,7 +3,8 @@
 Database management, data retention, and legacy log management endpoints.
 """
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import HTMLResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, update, delete
 
@@ -21,6 +22,34 @@ def _get_current_admin():
 def _get_db():
     from app.main import get_db
     return get_db
+
+
+def _get_templates():
+    from app.main import templates
+    return templates
+
+
+# HTML Page
+
+@router.get("/database", response_class=HTMLResponse)
+async def admin_database_page(
+    request: Request,
+    admin: User = Depends(_get_current_admin()),
+    session: AsyncSession = Depends(_get_db())
+):
+    """Admin database management page"""
+    # Count pending users for sidebar badge
+    pending_result = await session.execute(
+        select(func.count(User.id)).where(User.is_active == False)
+    )
+    pending_count = pending_result.scalar() or 0
+
+    return _get_templates().TemplateResponse("admin_database.html", {
+        "request": request,
+        "user": admin,
+        "active_page": "database",
+        "pending_users_count": pending_count
+    })
 
 
 # Data Retention Management

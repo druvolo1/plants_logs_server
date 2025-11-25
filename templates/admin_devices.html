@@ -1,0 +1,736 @@
+<!-- templates/admin_devices.html - Admin Devices Management -->
+{% extends "admin_base.html" %}
+
+{% block title %}Devices{% endblock %}
+{% block page_title %}Device Management{% endblock %}
+
+{% block header_actions %}
+<button class="admin-header-btn admin-header-btn-secondary" onclick="refreshDevices()">
+    Refresh
+</button>
+{% endblock %}
+
+{% block extra_styles %}
+<style>
+    .device-type-icon {
+        font-size: 1.5rem;
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 8px;
+        background: rgba(16, 185, 129, 0.1);
+    }
+
+    .device-info {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .device-name {
+        font-weight: 500;
+    }
+
+    .device-id {
+        color: #64748b;
+        font-size: 0.8rem;
+        font-family: monospace;
+    }
+
+    .owner-cell {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .owner-email {
+        font-size: 0.85rem;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 0.35rem;
+        flex-wrap: wrap;
+    }
+
+    /* Modal Styles */
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.7);
+        z-index: 2000;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .modal-overlay.active {
+        display: flex;
+    }
+
+    .modal {
+        background: #1e293b;
+        border-radius: 12px;
+        width: 90%;
+        max-width: 600px;
+        max-height: 90vh;
+        overflow-y: auto;
+        border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    .modal-header {
+        padding: 1.25rem 1.5rem;
+        border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .modal-title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: #10b981;
+    }
+
+    .modal-close {
+        background: none;
+        border: none;
+        color: #94a3b8;
+        font-size: 1.5rem;
+        cursor: pointer;
+    }
+
+    .modal-close:hover {
+        color: #ef4444;
+    }
+
+    .modal-body {
+        padding: 1.5rem;
+    }
+
+    .modal-footer {
+        padding: 1rem 1.5rem;
+        border-top: 1px solid rgba(148, 163, 184, 0.1);
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.75rem;
+    }
+
+    .btn {
+        padding: 0.6rem 1.25rem;
+        border: none;
+        border-radius: 6px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .btn-primary {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+    }
+
+    .btn-secondary {
+        background: #374151;
+        color: #e2e8f0;
+    }
+
+    .btn-danger {
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        color: white;
+    }
+
+    /* Device details */
+    .detail-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+    }
+
+    .detail-item {
+        background: #0f172a;
+        padding: 1rem;
+        border-radius: 8px;
+    }
+
+    .detail-label {
+        color: #64748b;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        margin-bottom: 0.35rem;
+    }
+
+    .detail-value {
+        color: #e2e8f0;
+        font-size: 1rem;
+        font-weight: 500;
+    }
+
+    .detail-value.mono {
+        font-family: monospace;
+        font-size: 0.85rem;
+    }
+
+    /* Live data section */
+    .live-data-section {
+        margin-top: 1.5rem;
+        padding-top: 1.5rem;
+        border-top: 1px solid rgba(148, 163, 184, 0.1);
+    }
+
+    .live-data-title {
+        color: #10b981;
+        font-weight: 600;
+        margin-bottom: 1rem;
+    }
+
+    .live-data-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+        gap: 0.75rem;
+    }
+
+    .live-data-item {
+        background: #0f172a;
+        padding: 0.75rem;
+        border-radius: 6px;
+        text-align: center;
+    }
+
+    .live-data-value {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: #10b981;
+    }
+
+    .live-data-label {
+        font-size: 0.7rem;
+        color: #64748b;
+        text-transform: uppercase;
+    }
+
+    /* Settings form */
+    .form-group {
+        margin-bottom: 1rem;
+    }
+
+    .form-label {
+        display: block;
+        margin-bottom: 0.5rem;
+        color: #94a3b8;
+        font-size: 0.85rem;
+    }
+
+    .form-input, .form-select {
+        width: 100%;
+        padding: 0.75rem 1rem;
+        background: #0f172a;
+        border: 1px solid rgba(148, 163, 184, 0.2);
+        border-radius: 6px;
+        color: #e2e8f0;
+        font-size: 0.95rem;
+    }
+
+    .form-input:focus, .form-select:focus {
+        outline: none;
+        border-color: #10b981;
+    }
+
+    .form-row {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Stats Cards -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-card-value" id="total-devices">-</div>
+        <div class="stat-card-label">Total Devices</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-card-value" id="online-devices" style="color: #10b981;">-</div>
+        <div class="stat-card-label">Online</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-card-value" id="offline-devices" style="color: #ef4444;">-</div>
+        <div class="stat-card-label">Offline</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-card-value" id="device-types">-</div>
+        <div class="stat-card-label">Device Types</div>
+    </div>
+</div>
+
+<!-- Devices Table -->
+<div class="data-table-container">
+    <div class="data-table-header">
+        <div class="data-table-title">All Devices</div>
+        <div class="data-table-filters">
+            <input type="text" class="data-table-search" id="device-search" placeholder="Search devices or owners...">
+            <select class="data-table-select" id="type-filter">
+                <option value="">All Types</option>
+                <option value="doser">Doser</option>
+                <option value="environmental">Environmental</option>
+                <option value="valve_controller">Valve Controller</option>
+            </select>
+            <select class="data-table-select" id="status-filter">
+                <option value="">All Status</option>
+                <option value="online">Online</option>
+                <option value="offline">Offline</option>
+            </select>
+        </div>
+    </div>
+
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Device</th>
+                <th>Owner</th>
+                <th>Type</th>
+                <th>Status</th>
+                <th>Last Seen</th>
+                <th>Plant</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="devices-table-body">
+            <tr>
+                <td colspan="7" class="loading">
+                    <div class="loading-spinner"></div>
+                    <div style="margin-top: 0.5rem;">Loading devices...</div>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="data-table-footer">
+        <span id="table-info">Loading...</span>
+        <div class="pagination" id="pagination"></div>
+    </div>
+</div>
+
+<!-- Device Details Modal -->
+<div class="modal-overlay" id="device-modal">
+    <div class="modal">
+        <div class="modal-header">
+            <h2 class="modal-title" id="modal-device-name">Device Details</h2>
+            <button class="modal-close" onclick="closeModal('device-modal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="detail-grid" id="device-details">
+                <!-- Populated by JS -->
+            </div>
+
+            <div class="live-data-section" id="live-data-section" style="display: none;">
+                <div class="live-data-title">Live Data</div>
+                <div class="live-data-grid" id="live-data-grid">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('device-modal')">Close</button>
+            <button class="btn btn-primary" onclick="openSettingsModal()">Settings</button>
+        </div>
+    </div>
+</div>
+
+<!-- Device Settings Modal -->
+<div class="modal-overlay" id="settings-modal">
+    <div class="modal">
+        <div class="modal-header">
+            <h2 class="modal-title">Device Settings</h2>
+            <button class="modal-close" onclick="closeModal('settings-modal')">&times;</button>
+        </div>
+        <form id="settings-form">
+            <div class="modal-body">
+                <input type="hidden" id="settings-device-id">
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Heartbeat Interval (seconds)</label>
+                        <input type="number" class="form-input" id="settings-update-interval" min="5" max="3600" value="30">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Log Interval (seconds)</label>
+                        <input type="number" class="form-input" id="settings-log-interval" min="60" max="86400" value="3600">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">
+                        <input type="checkbox" id="settings-fahrenheit" style="margin-right: 0.5rem;">
+                        Use Fahrenheit
+                    </label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('settings-modal')">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Settings</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+let allDevices = [];
+let currentPage = 1;
+const pageSize = 20;
+let currentDeviceId = null;
+
+// Load devices
+async function loadDevices() {
+    try {
+        const response = await fetch('/admin/all-devices');
+        if (response.ok) {
+            allDevices = await response.json();
+            updateStats();
+            renderDevices();
+        }
+    } catch (error) {
+        console.error('Error loading devices:', error);
+        document.getElementById('devices-table-body').innerHTML = `
+            <tr><td colspan="7" class="empty-state">Error loading devices</td></tr>
+        `;
+    }
+}
+
+function updateStats() {
+    const online = allDevices.filter(d => d.is_online).length;
+    const types = new Set(allDevices.map(d => d.device_type)).size;
+
+    document.getElementById('total-devices').textContent = allDevices.length;
+    document.getElementById('online-devices').textContent = online;
+    document.getElementById('offline-devices').textContent = allDevices.length - online;
+    document.getElementById('device-types').textContent = types;
+}
+
+function getDeviceIcon(type) {
+    const icons = {
+        'doser': '💧',
+        'environmental': '🌡️',
+        'valve_controller': '🚰',
+        'unknown': '📱'
+    };
+    return icons[type] || icons['unknown'];
+}
+
+function renderDevices() {
+    const searchTerm = document.getElementById('device-search').value.toLowerCase();
+    const typeFilter = document.getElementById('type-filter').value;
+    const statusFilter = document.getElementById('status-filter').value;
+
+    let filtered = allDevices.filter(device => {
+        const matchesSearch = !searchTerm ||
+            (device.name || '').toLowerCase().includes(searchTerm) ||
+            device.device_id.toLowerCase().includes(searchTerm) ||
+            device.owner_email.toLowerCase().includes(searchTerm);
+
+        const matchesType = !typeFilter || device.device_type === typeFilter;
+        const matchesStatus = !statusFilter ||
+            (statusFilter === 'online' && device.is_online) ||
+            (statusFilter === 'offline' && !device.is_online);
+
+        return matchesSearch && matchesType && matchesStatus;
+    });
+
+    // Pagination
+    const totalPages = Math.ceil(filtered.length / pageSize);
+    const start = (currentPage - 1) * pageSize;
+    const pageDevices = filtered.slice(start, start + pageSize);
+
+    const tbody = document.getElementById('devices-table-body');
+
+    if (pageDevices.length === 0) {
+        tbody.innerHTML = `
+            <tr><td colspan="7" class="empty-state">
+                <div class="empty-state-icon">📱</div>
+                No devices found
+            </td></tr>
+        `;
+    } else {
+        tbody.innerHTML = pageDevices.map(device => `
+            <tr data-device-id="${device.device_id}">
+                <td>
+                    <div class="device-info">
+                        <div class="device-type-icon">${getDeviceIcon(device.device_type)}</div>
+                        <div>
+                            <div class="device-name">${device.name || 'Unnamed'}</div>
+                            <div class="device-id">${device.device_id.substring(0, 8)}...</div>
+                        </div>
+                    </div>
+                </td>
+                <td>
+                    <div class="owner-cell">
+                        <span class="owner-email">${device.owner_email}</span>
+                    </div>
+                </td>
+                <td>
+                    <span class="badge badge-info">${device.device_type || 'unknown'}</span>
+                </td>
+                <td>
+                    ${device.is_online
+                        ? '<span class="badge badge-success">Online</span>'
+                        : '<span class="badge badge-danger">Offline</span>'}
+                </td>
+                <td>
+                    ${device.last_seen ? formatDateTime(device.last_seen) : '-'}
+                </td>
+                <td>
+                    ${device.active_plant_name
+                        ? `<span title="${device.active_phase || ''}">${device.active_plant_name}</span>`
+                        : '<span style="color: #64748b;">-</span>'}
+                </td>
+                <td>
+                    <div class="action-buttons">
+                        <button class="action-btn action-btn-primary" onclick="viewDevice('${device.device_id}')" title="View details">
+                            👁️
+                        </button>
+                        <button class="action-btn action-btn-warning" onclick="viewDeviceSettings('${device.device_id}')" title="Settings">
+                            ⚙️
+                        </button>
+                        <button class="action-btn action-btn-info" onclick="viewDeviceData('${device.device_id}')" title="View data">
+                            📊
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    // Update info
+    document.getElementById('table-info').textContent =
+        `Showing ${start + 1}-${Math.min(start + pageSize, filtered.length)} of ${filtered.length} devices`;
+
+    // Render pagination
+    renderPagination(totalPages);
+}
+
+function renderPagination(totalPages) {
+    const pagination = document.getElementById('pagination');
+    if (totalPages <= 1) {
+        pagination.innerHTML = '';
+        return;
+    }
+
+    let html = '';
+    html += `<button class="pagination-btn" onclick="goToPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>&lt;</button>`;
+
+    for (let i = 1; i <= totalPages; i++) {
+        if (i === 1 || i === totalPages || (i >= currentPage - 1 && i <= currentPage + 1)) {
+            html += `<button class="pagination-btn ${i === currentPage ? 'active' : ''}" onclick="goToPage(${i})">${i}</button>`;
+        } else if (i === currentPage - 2 || i === currentPage + 2) {
+            html += `<span style="padding: 0.5rem;">...</span>`;
+        }
+    }
+
+    html += `<button class="pagination-btn" onclick="goToPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>&gt;</button>`;
+    pagination.innerHTML = html;
+}
+
+function goToPage(page) {
+    const totalPages = Math.ceil(allDevices.length / pageSize);
+    if (page >= 1 && page <= totalPages) {
+        currentPage = page;
+        renderDevices();
+    }
+}
+
+// Filter event listeners
+document.getElementById('device-search').addEventListener('input', debounce(() => {
+    currentPage = 1;
+    renderDevices();
+}, 300));
+
+document.getElementById('type-filter').addEventListener('change', () => {
+    currentPage = 1;
+    renderDevices();
+});
+
+document.getElementById('status-filter').addEventListener('change', () => {
+    currentPage = 1;
+    renderDevices();
+});
+
+// Modal functions
+function openModal(modalId) {
+    document.getElementById(modalId).classList.add('active');
+}
+
+function closeModal(modalId) {
+    document.getElementById(modalId).classList.remove('active');
+}
+
+async function viewDevice(deviceId) {
+    currentDeviceId = deviceId;
+    const device = allDevices.find(d => d.device_id === deviceId);
+    if (!device) return;
+
+    document.getElementById('modal-device-name').textContent = device.name || 'Unnamed Device';
+
+    // Load device details
+    try {
+        const response = await fetch(`/admin/devices/${deviceId}/data/summary`);
+        if (response.ok) {
+            const data = await response.json();
+
+            document.getElementById('device-details').innerHTML = `
+                <div class="detail-item">
+                    <div class="detail-label">Device ID</div>
+                    <div class="detail-value mono">${deviceId}</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Type</div>
+                    <div class="detail-value">${device.device_type || 'Unknown'}</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Owner</div>
+                    <div class="detail-value">${device.owner_email}</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Status</div>
+                    <div class="detail-value">${device.is_online ? '🟢 Online' : '🔴 Offline'}</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Log Entries</div>
+                    <div class="detail-value">${formatNumber(data.log_entries?.total_count || 0)}</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Environment Logs</div>
+                    <div class="detail-value">${formatNumber(data.environment_logs?.total_count || 0)}</div>
+                </div>
+            `;
+
+            // Load live data for environmental sensors
+            if (device.device_type === 'environmental' && device.is_online) {
+                loadLiveData(deviceId);
+            } else {
+                document.getElementById('live-data-section').style.display = 'none';
+            }
+        }
+    } catch (error) {
+        console.error('Error loading device details:', error);
+    }
+
+    openModal('device-modal');
+}
+
+async function loadLiveData(deviceId) {
+    try {
+        const response = await fetch(`/api/devices/${deviceId}/environment/current`);
+        if (response.ok) {
+            const data = await response.json();
+            const section = document.getElementById('live-data-section');
+            const grid = document.getElementById('live-data-grid');
+
+            section.style.display = 'block';
+            grid.innerHTML = `
+                ${data.temperature !== undefined ? `
+                <div class="live-data-item">
+                    <div class="live-data-value">${data.temperature?.toFixed(1) || '-'}°</div>
+                    <div class="live-data-label">Temp</div>
+                </div>` : ''}
+                ${data.humidity !== undefined ? `
+                <div class="live-data-item">
+                    <div class="live-data-value">${data.humidity?.toFixed(1) || '-'}%</div>
+                    <div class="live-data-label">Humidity</div>
+                </div>` : ''}
+                ${data.co2 !== undefined ? `
+                <div class="live-data-item">
+                    <div class="live-data-value">${data.co2 || '-'}</div>
+                    <div class="live-data-label">CO2</div>
+                </div>` : ''}
+                ${data.vpd !== undefined ? `
+                <div class="live-data-item">
+                    <div class="live-data-value">${data.vpd?.toFixed(2) || '-'}</div>
+                    <div class="live-data-label">VPD</div>
+                </div>` : ''}
+            `;
+        }
+    } catch (error) {
+        console.error('Error loading live data:', error);
+    }
+}
+
+async function viewDeviceSettings(deviceId) {
+    currentDeviceId = deviceId;
+    document.getElementById('settings-device-id').value = deviceId;
+
+    try {
+        const response = await fetch(`/admin/devices/${deviceId}/heartbeat-settings`);
+        if (response.ok) {
+            const settings = await response.json();
+            document.getElementById('settings-update-interval').value = settings.update_interval || 30;
+            document.getElementById('settings-log-interval').value = settings.log_interval || 3600;
+            document.getElementById('settings-fahrenheit').checked = settings.use_fahrenheit || false;
+        }
+    } catch (error) {
+        console.error('Error loading settings:', error);
+    }
+
+    openModal('settings-modal');
+}
+
+function openSettingsModal() {
+    closeModal('device-modal');
+    viewDeviceSettings(currentDeviceId);
+}
+
+document.getElementById('settings-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const deviceId = document.getElementById('settings-device-id').value;
+
+    const params = new URLSearchParams({
+        update_interval: document.getElementById('settings-update-interval').value,
+        log_interval: document.getElementById('settings-log-interval').value,
+        use_fahrenheit: document.getElementById('settings-fahrenheit').checked
+    });
+
+    try {
+        const response = await fetch(`/admin/devices/${deviceId}/heartbeat-settings?${params}`, {
+            method: 'PUT'
+        });
+
+        if (response.ok) {
+            closeModal('settings-modal');
+            alert('Settings saved. Changes will apply on next device heartbeat.');
+        } else {
+            const error = await response.json();
+            alert('Failed to save settings: ' + (error.detail || 'Unknown error'));
+        }
+    } catch (error) {
+        console.error('Error saving settings:', error);
+        alert('Failed to save settings');
+    }
+});
+
+function viewDeviceData(deviceId) {
+    // Open device data in new tab or modal
+    window.open(`/admin/overview?device=${deviceId}`, '_blank');
+}
+
+function refreshDevices() {
+    loadDevices();
+}
+
+// Close modals on backdrop click
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+    overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) {
+            overlay.classList.remove('active');
+        }
+    });
+});
+
+// Initial load
+loadDevices();
+{% endblock %}

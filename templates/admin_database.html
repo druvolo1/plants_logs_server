@@ -1,0 +1,847 @@
+<!-- templates/admin_database.html - Admin Database Management -->
+{% extends "admin_base.html" %}
+
+{% block title %}Database{% endblock %}
+{% block page_title %}Database Management{% endblock %}
+
+{% block extra_styles %}
+<style>
+    /* Tabs */
+    .tabs {
+        display: flex;
+        gap: 0.5rem;
+        margin-bottom: 2rem;
+        border-bottom: 2px solid #334155;
+    }
+
+    .tab {
+        padding: 0.75rem 1.5rem;
+        background: transparent;
+        border: none;
+        color: #94a3b8;
+        font-size: 1rem;
+        cursor: pointer;
+        border-bottom: 3px solid transparent;
+        margin-bottom: -2px;
+        transition: all 0.2s;
+    }
+
+    .tab:hover {
+        color: #10b981;
+    }
+
+    .tab.active {
+        color: #10b981;
+        border-bottom-color: #10b981;
+    }
+
+    .tab-content {
+        display: none;
+    }
+
+    .tab-content.active {
+        display: block;
+    }
+
+    /* Stats Section */
+    .stats-section {
+        margin-bottom: 2rem;
+    }
+
+    .stats-section-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #e2e8f0;
+        margin-bottom: 1rem;
+    }
+
+    .stats-grid-3 {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 1rem;
+    }
+
+    .mini-stat {
+        background: #1e293b;
+        border: 1px solid rgba(148, 163, 184, 0.1);
+        border-radius: 8px;
+        padding: 1rem;
+        text-align: center;
+    }
+
+    .mini-stat-value {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: #10b981;
+    }
+
+    .mini-stat-label {
+        color: #64748b;
+        font-size: 0.8rem;
+        margin-top: 0.25rem;
+    }
+
+    /* Section Card */
+    .section-card {
+        background: #1e293b;
+        border: 1px solid rgba(148, 163, 184, 0.1);
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .section-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 1px solid #334155;
+    }
+
+    .section-card-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #10b981;
+        margin: 0;
+    }
+
+    .section-card-description {
+        color: #64748b;
+        font-size: 0.9rem;
+        margin-bottom: 1.5rem;
+    }
+
+    /* Retention Form */
+    .retention-form {
+        display: flex;
+        gap: 1rem;
+        align-items: flex-end;
+        flex-wrap: wrap;
+    }
+
+    .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .form-label {
+        color: #94a3b8;
+        font-size: 0.85rem;
+    }
+
+    .form-input, .form-select {
+        padding: 0.75rem;
+        background: #0f172a;
+        border: 1px solid #374151;
+        border-radius: 6px;
+        color: #fff;
+        font-size: 1rem;
+    }
+
+    .form-input:focus, .form-select:focus {
+        outline: none;
+        border-color: #10b981;
+    }
+
+    /* Preview Box */
+    .preview-box {
+        background: #0f172a;
+        border: 1px solid #334155;
+        border-radius: 8px;
+        padding: 1.25rem;
+        margin-top: 1.5rem;
+    }
+
+    .preview-title {
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: #f59e0b;
+        margin-bottom: 1rem;
+    }
+
+    .preview-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.5rem 0;
+        border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+    }
+
+    .preview-row:last-child {
+        border-bottom: none;
+    }
+
+    .preview-row-label {
+        color: #94a3b8;
+    }
+
+    .preview-row-value {
+        font-weight: 600;
+        color: #e2e8f0;
+    }
+
+    .preview-row-value.danger {
+        color: #ef4444;
+    }
+
+    /* Legacy Logs Table */
+    .legacy-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 1rem;
+    }
+
+    .legacy-table th,
+    .legacy-table td {
+        padding: 0.75rem;
+        text-align: left;
+        border-bottom: 1px solid #334155;
+    }
+
+    .legacy-table th {
+        color: #94a3b8;
+        font-weight: 500;
+        font-size: 0.85rem;
+    }
+
+    .legacy-table td {
+        color: #e2e8f0;
+    }
+
+    .legacy-table tr:hover {
+        background: rgba(16, 185, 129, 0.05);
+    }
+
+    /* Buttons */
+    .btn {
+        padding: 0.75rem 1.5rem;
+        border: none;
+        border-radius: 6px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .btn-primary {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+    }
+
+    .btn-danger {
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        color: white;
+    }
+
+    .btn-secondary {
+        background: #374151;
+        color: #e2e8f0;
+    }
+
+    .btn:hover {
+        transform: translateY(-1px);
+    }
+
+    .btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+    }
+
+    /* Messages */
+    .message {
+        padding: 1rem;
+        border-radius: 6px;
+        margin-bottom: 1rem;
+    }
+
+    .message-success {
+        background: #10b98120;
+        border: 1px solid #10b981;
+        color: #10b981;
+    }
+
+    .message-error {
+        background: #ef444420;
+        border: 1px solid #ef4444;
+        color: #ef4444;
+    }
+
+    .message-warning {
+        background: #f59e0b20;
+        border: 1px solid #f59e0b;
+        color: #f59e0b;
+    }
+
+    /* Breakdown by Type */
+    .breakdown-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 1rem;
+        margin-top: 1rem;
+    }
+
+    .breakdown-item {
+        background: #0f172a;
+        border-radius: 6px;
+        padding: 0.75rem;
+        text-align: center;
+    }
+
+    .breakdown-item-label {
+        color: #64748b;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+    }
+
+    .breakdown-item-value {
+        color: #fff;
+        font-size: 1.25rem;
+        font-weight: 600;
+        margin-top: 0.25rem;
+    }
+
+    /* Confirmation Dialog */
+    .confirm-dialog {
+        background: #ef444420;
+        border: 2px solid #ef4444;
+        border-radius: 8px;
+        padding: 1.25rem;
+        margin-top: 1rem;
+    }
+
+    .confirm-dialog-title {
+        color: #ef4444;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+    }
+
+    .confirm-dialog-text {
+        color: #e2e8f0;
+        margin-bottom: 1rem;
+    }
+
+    .confirm-dialog-actions {
+        display: flex;
+        gap: 1rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Tabs -->
+<div class="tabs">
+    <button class="tab active" onclick="showTab('overview')">Overview</button>
+    <button class="tab" onclick="showTab('retention')">Data Retention</button>
+    <button class="tab" onclick="showTab('legacy')">Legacy Logs</button>
+</div>
+
+<!-- Overview Tab -->
+<div id="tab-overview" class="tab-content active">
+    <div id="overview-message"></div>
+
+    <!-- Database Stats -->
+    <div class="stats-section">
+        <div class="stats-section-title">Database Overview</div>
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-card-value" id="stat-total-logs">-</div>
+                <div class="stat-card-label">Total Log Entries</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-card-value" id="stat-env-logs">-</div>
+                <div class="stat-card-label">Environment Logs</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-card-value" id="stat-active-plants">-</div>
+                <div class="stat-card-label">Active Plants</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-card-value" id="stat-frozen-reports">-</div>
+                <div class="stat-card-label">Frozen Reports</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Logs by Device Type -->
+    <div class="section-card">
+        <div class="section-card-header">
+            <h3 class="section-card-title">Logs by Device Type</h3>
+            <button class="action-btn action-btn-primary" onclick="loadOverview()">Refresh</button>
+        </div>
+        <div id="logs-by-type" class="breakdown-grid">
+            <div class="loading">
+                <div class="loading-spinner"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Plant Summary -->
+    <div class="section-card">
+        <div class="section-card-header">
+            <h3 class="section-card-title">Plants Summary</h3>
+        </div>
+        <div class="stats-grid-3">
+            <div class="mini-stat">
+                <div class="mini-stat-value" id="stat-plants-active">-</div>
+                <div class="mini-stat-label">Active Plants</div>
+            </div>
+            <div class="mini-stat">
+                <div class="mini-stat-value" id="stat-plants-finished">-</div>
+                <div class="mini-stat-label">Finished Plants</div>
+            </div>
+            <div class="mini-stat">
+                <div class="mini-stat-value" id="stat-plants-reports">-</div>
+                <div class="mini-stat-label">With Frozen Reports</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Data Retention Tab -->
+<div id="tab-retention" class="tab-content">
+    <div id="retention-message"></div>
+
+    <div class="section-card">
+        <div class="section-card-header">
+            <h3 class="section-card-title">Data Retention Policy</h3>
+        </div>
+        <p class="section-card-description">
+            Configure how long to keep historical data. Older data will be permanently deleted.
+            This helps manage database size and improve performance.
+        </p>
+
+        <div class="retention-form">
+            <div class="form-group">
+                <label class="form-label">Retention Period</label>
+                <select class="form-select" id="retention-days">
+                    <option value="7">7 days</option>
+                    <option value="14">14 days</option>
+                    <option value="30" selected>30 days</option>
+                    <option value="60">60 days</option>
+                    <option value="90">90 days</option>
+                    <option value="180">180 days (6 months)</option>
+                    <option value="365">365 days (1 year)</option>
+                </select>
+            </div>
+            <button class="btn btn-primary" onclick="previewPurge()">Preview Purge</button>
+        </div>
+
+        <div id="purge-preview" style="display: none;">
+            <div class="preview-box">
+                <div class="preview-title">Purge Preview</div>
+                <div class="preview-row">
+                    <span class="preview-row-label">Cutoff Date</span>
+                    <span class="preview-row-value" id="preview-cutoff">-</span>
+                </div>
+                <div class="preview-row">
+                    <span class="preview-row-label">Log Entries to Delete</span>
+                    <span class="preview-row-value danger" id="preview-logs">-</span>
+                </div>
+                <div class="preview-row">
+                    <span class="preview-row-label">Environment Logs to Delete</span>
+                    <span class="preview-row-value danger" id="preview-env">-</span>
+                </div>
+                <div class="preview-row">
+                    <span class="preview-row-label">Devices Analyzed</span>
+                    <span class="preview-row-value" id="preview-devices">-</span>
+                </div>
+            </div>
+
+            <div class="confirm-dialog" id="purge-confirm" style="display: none;">
+                <div class="confirm-dialog-title">Confirm Data Purge</div>
+                <div class="confirm-dialog-text">
+                    This action cannot be undone. All data older than the retention period will be permanently deleted.
+                </div>
+                <div class="confirm-dialog-actions">
+                    <button class="btn btn-danger" onclick="executePurge()">Delete Data Permanently</button>
+                    <button class="btn btn-secondary" onclick="cancelPurge()">Cancel</button>
+                </div>
+            </div>
+
+            <div style="margin-top: 1rem;">
+                <button class="btn btn-danger" id="show-purge-confirm" onclick="showPurgeConfirm()">Proceed with Purge</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Legacy Logs Tab -->
+<div id="tab-legacy" class="tab-content">
+    <div id="legacy-message"></div>
+
+    <div class="section-card">
+        <div class="section-card-header">
+            <h3 class="section-card-title">Legacy Log Entries</h3>
+            <button class="action-btn action-btn-primary" onclick="loadLegacySummary()">Refresh</button>
+        </div>
+        <p class="section-card-description">
+            Legacy logs are entries that were created before device tracking was implemented.
+            These logs have a plant association but no device association. You can either
+            associate them with a device or purge them if no longer needed.
+        </p>
+
+        <div class="stats-grid-3">
+            <div class="mini-stat">
+                <div class="mini-stat-value" id="stat-legacy-count">-</div>
+                <div class="mini-stat-label">Legacy Logs</div>
+            </div>
+            <div class="mini-stat">
+                <div class="mini-stat-value" id="stat-new-count">-</div>
+                <div class="mini-stat-label">Modern Logs (with device)</div>
+            </div>
+            <div class="mini-stat">
+                <div class="mini-stat-value" id="stat-legacy-plants">-</div>
+                <div class="mini-stat-label">Plants Affected</div>
+            </div>
+        </div>
+
+        <div id="legacy-date-range" style="margin-top: 1rem; color: #64748b; font-size: 0.9rem;"></div>
+    </div>
+
+    <div class="section-card">
+        <div class="section-card-header">
+            <h3 class="section-card-title">Affected Plants</h3>
+        </div>
+        <div id="legacy-plants-table">
+            <div class="loading">
+                <div class="loading-spinner"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="section-card">
+        <div class="section-card-header">
+            <h3 class="section-card-title">Associate Legacy Logs to Device</h3>
+        </div>
+        <p class="section-card-description">
+            Migrate legacy logs to be associated with a device. This is useful if you know which device was generating the logs.
+        </p>
+
+        <div class="retention-form">
+            <div class="form-group">
+                <label class="form-label">Plant</label>
+                <select class="form-select" id="associate-plant">
+                    <option value="">Select plant...</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Device</label>
+                <select class="form-select" id="associate-device">
+                    <option value="">Select device...</option>
+                </select>
+            </div>
+            <button class="btn btn-primary" onclick="associateLogs()">Associate Logs</button>
+        </div>
+    </div>
+
+    <div class="section-card">
+        <div class="section-card-header">
+            <h3 class="section-card-title">Purge Legacy Logs</h3>
+        </div>
+        <p class="section-card-description">
+            Permanently delete legacy log entries. You can purge all legacy logs or just for a specific plant.
+        </p>
+
+        <div class="retention-form">
+            <div class="form-group">
+                <label class="form-label">Scope</label>
+                <select class="form-select" id="purge-scope">
+                    <option value="all">All Legacy Logs</option>
+                    <option value="plant">Specific Plant Only</option>
+                </select>
+            </div>
+            <div class="form-group" id="purge-plant-select" style="display: none;">
+                <label class="form-label">Plant</label>
+                <select class="form-select" id="purge-plant">
+                    <option value="">Select plant...</option>
+                </select>
+            </div>
+            <button class="btn btn-danger" onclick="purgeLegacyLogs()">Purge Legacy Logs</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+// Tab switching
+function showTab(tabName) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+
+    document.querySelector(`[onclick="showTab('${tabName}')"]`).classList.add('active');
+    document.getElementById(`tab-${tabName}`).classList.add('active');
+
+    if (tabName === 'overview') loadOverview();
+    if (tabName === 'retention') {}
+    if (tabName === 'legacy') loadLegacySummary();
+}
+
+// Load overview stats
+async function loadOverview() {
+    try {
+        const response = await fetch('/admin/data-retention/stats');
+        const stats = await response.json();
+
+        document.getElementById('stat-total-logs').textContent = formatNumber(stats.total_log_entries || 0);
+        document.getElementById('stat-env-logs').textContent = formatNumber(stats.total_environment_logs || 0);
+        document.getElementById('stat-active-plants').textContent = stats.plants?.active || 0;
+        document.getElementById('stat-frozen-reports').textContent = stats.plants?.with_frozen_reports || 0;
+
+        document.getElementById('stat-plants-active').textContent = stats.plants?.active || 0;
+        document.getElementById('stat-plants-finished').textContent = stats.plants?.finished || 0;
+        document.getElementById('stat-plants-reports').textContent = stats.plants?.with_frozen_reports || 0;
+
+        // Logs by device type
+        const byType = stats.logs_by_device_type || {};
+        const typeContainer = document.getElementById('logs-by-type');
+
+        if (Object.keys(byType).length === 0) {
+            typeContainer.innerHTML = '<p style="color: #64748b;">No device log data available</p>';
+        } else {
+            let html = '';
+            for (const [type, count] of Object.entries(byType)) {
+                const label = type === 'environmental' ? 'Environmental' :
+                             type === 'valve_controller' ? 'Valve Controller' :
+                             type === 'doser' ? 'Doser' : type;
+                html += `
+                    <div class="breakdown-item">
+                        <div class="breakdown-item-label">${label}</div>
+                        <div class="breakdown-item-value">${formatNumber(count)}</div>
+                    </div>
+                `;
+            }
+            typeContainer.innerHTML = html;
+        }
+    } catch (error) {
+        document.getElementById('overview-message').innerHTML =
+            `<div class="message message-error">Error loading stats: ${error.message}</div>`;
+    }
+}
+
+// Preview data purge
+async function previewPurge() {
+    const days = document.getElementById('retention-days').value;
+    const messageDiv = document.getElementById('retention-message');
+
+    try {
+        const response = await fetch(`/admin/data-retention/preview?retention_days=${days}`);
+        const data = await response.json();
+
+        document.getElementById('preview-cutoff').textContent = data.summary?.cutoff_date
+            ? new Date(data.summary.cutoff_date).toLocaleDateString() : '-';
+        document.getElementById('preview-logs').textContent =
+            formatNumber(data.summary?.total_log_entries_purgeable || 0);
+        document.getElementById('preview-env').textContent =
+            formatNumber(data.summary?.total_environment_logs_purgeable || 0);
+        document.getElementById('preview-devices').textContent =
+            data.summary?.devices_analyzed || 0;
+
+        document.getElementById('purge-preview').style.display = 'block';
+        document.getElementById('purge-confirm').style.display = 'none';
+
+        messageDiv.innerHTML = '';
+    } catch (error) {
+        messageDiv.innerHTML = `<div class="message message-error">Error: ${error.message}</div>`;
+    }
+}
+
+function showPurgeConfirm() {
+    document.getElementById('purge-confirm').style.display = 'block';
+    document.getElementById('show-purge-confirm').style.display = 'none';
+}
+
+function cancelPurge() {
+    document.getElementById('purge-confirm').style.display = 'none';
+    document.getElementById('show-purge-confirm').style.display = 'block';
+}
+
+async function executePurge() {
+    const days = document.getElementById('retention-days').value;
+    const messageDiv = document.getElementById('retention-message');
+
+    try {
+        const response = await fetch(`/admin/data-retention/purge?retention_days=${days}&confirm=true`, {
+            method: 'POST'
+        });
+        const data = await response.json();
+
+        if (response.ok) {
+            messageDiv.innerHTML = `
+                <div class="message message-success">
+                    Data purge complete! Deleted ${formatNumber(data.deleted?.log_entries || 0)} log entries
+                    and ${formatNumber(data.deleted?.environment_logs || 0)} environment logs.
+                </div>
+            `;
+            document.getElementById('purge-preview').style.display = 'none';
+            loadOverview(); // Refresh stats
+        } else {
+            messageDiv.innerHTML = `<div class="message message-error">Error: ${data.detail || data.error}</div>`;
+        }
+    } catch (error) {
+        messageDiv.innerHTML = `<div class="message message-error">Error: ${error.message}</div>`;
+    }
+}
+
+// Legacy logs
+async function loadLegacySummary() {
+    const messageDiv = document.getElementById('legacy-message');
+
+    try {
+        const response = await fetch('/admin/legacy-logs/summary');
+        const data = await response.json();
+
+        document.getElementById('stat-legacy-count').textContent = formatNumber(data.total_legacy_logs || 0);
+        document.getElementById('stat-new-count').textContent = formatNumber(data.new_log_count || 0);
+        document.getElementById('stat-legacy-plants').textContent = data.plants_affected || 0;
+
+        // Date range
+        const dateRange = data.legacy_date_range;
+        if (dateRange?.oldest) {
+            document.getElementById('legacy-date-range').innerHTML = `
+                <strong>Date Range:</strong>
+                ${new Date(dateRange.oldest).toLocaleDateString()} -
+                ${new Date(dateRange.newest).toLocaleDateString()}
+            `;
+        } else {
+            document.getElementById('legacy-date-range').innerHTML = '<em>No legacy logs found</em>';
+        }
+
+        // Plants table
+        const tableContainer = document.getElementById('legacy-plants-table');
+        const plants = data.by_plant || [];
+
+        if (plants.length === 0) {
+            tableContainer.innerHTML = '<p style="color: #64748b;">No legacy logs found</p>';
+        } else {
+            let html = `
+                <table class="legacy-table">
+                    <thead>
+                        <tr>
+                            <th>Plant</th>
+                            <th>Log Count</th>
+                            <th>Date Range</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            plants.forEach(p => {
+                const oldest = p.oldest_log ? new Date(p.oldest_log).toLocaleDateString() : '-';
+                const newest = p.newest_log ? new Date(p.newest_log).toLocaleDateString() : '-';
+                html += `
+                    <tr>
+                        <td><strong>${p.plant_name}</strong> <span style="color: #64748b;">(${p.plant_id})</span></td>
+                        <td>${formatNumber(p.log_count)}</td>
+                        <td>${oldest} - ${newest}</td>
+                    </tr>
+                `;
+            });
+
+            html += '</tbody></table>';
+            tableContainer.innerHTML = html;
+
+            // Populate plant dropdowns
+            const plantOptions = '<option value="">Select plant...</option>' +
+                plants.map(p => `<option value="${p.plant_id}">${p.plant_name}</option>`).join('');
+            document.getElementById('associate-plant').innerHTML = plantOptions;
+            document.getElementById('purge-plant').innerHTML = plantOptions;
+        }
+
+        // Load devices for association dropdown
+        await loadDevicesForAssociation();
+
+    } catch (error) {
+        messageDiv.innerHTML = `<div class="message message-error">Error: ${error.message}</div>`;
+    }
+}
+
+async function loadDevicesForAssociation() {
+    try {
+        const response = await fetch('/admin/all-devices');
+        const devices = await response.json();
+
+        const select = document.getElementById('associate-device');
+        select.innerHTML = '<option value="">Select device...</option>';
+
+        devices.forEach(d => {
+            const name = d.name || d.device_id.substring(0, 8);
+            select.innerHTML += `<option value="${d.device_id}">${name} (${d.device_type}) - ${d.owner_email}</option>`;
+        });
+    } catch (error) {
+        console.error('Error loading devices:', error);
+    }
+}
+
+async function associateLogs() {
+    const plantId = document.getElementById('associate-plant').value;
+    const deviceId = document.getElementById('associate-device').value;
+    const messageDiv = document.getElementById('legacy-message');
+
+    if (!plantId || !deviceId) {
+        messageDiv.innerHTML = '<div class="message message-warning">Please select both a plant and a device</div>';
+        return;
+    }
+
+    try {
+        const response = await fetch(`/admin/legacy-logs/associate?plant_id=${plantId}&device_id=${deviceId}`, {
+            method: 'POST'
+        });
+        const data = await response.json();
+
+        if (response.ok) {
+            messageDiv.innerHTML = `<div class="message message-success">${data.message}</div>`;
+            loadLegacySummary(); // Refresh
+        } else {
+            messageDiv.innerHTML = `<div class="message message-error">Error: ${data.detail}</div>`;
+        }
+    } catch (error) {
+        messageDiv.innerHTML = `<div class="message message-error">Error: ${error.message}</div>`;
+    }
+}
+
+// Purge scope toggle
+document.getElementById('purge-scope').addEventListener('change', (e) => {
+    document.getElementById('purge-plant-select').style.display =
+        e.target.value === 'plant' ? 'block' : 'none';
+});
+
+async function purgeLegacyLogs() {
+    const scope = document.getElementById('purge-scope').value;
+    const plantId = document.getElementById('purge-plant').value;
+    const messageDiv = document.getElementById('legacy-message');
+
+    if (scope === 'plant' && !plantId) {
+        messageDiv.innerHTML = '<div class="message message-warning">Please select a plant</div>';
+        return;
+    }
+
+    const confirmMsg = scope === 'all'
+        ? 'Are you sure you want to delete ALL legacy logs? This cannot be undone.'
+        : 'Are you sure you want to delete legacy logs for this plant? This cannot be undone.';
+
+    if (!confirm(confirmMsg)) return;
+
+    try {
+        let url = '/admin/legacy-logs/purge?confirm=true';
+        if (scope === 'plant') {
+            url += `&plant_id=${plantId}`;
+        }
+
+        const response = await fetch(url, { method: 'DELETE' });
+        const data = await response.json();
+
+        if (response.ok) {
+            messageDiv.innerHTML = `<div class="message message-success">${data.message}</div>`;
+            loadLegacySummary(); // Refresh
+        } else {
+            messageDiv.innerHTML = `<div class="message message-error">Error: ${data.detail || data.error}</div>`;
+        }
+    } catch (error) {
+        messageDiv.innerHTML = `<div class="message message-error">Error: ${error.message}</div>`;
+    }
+}
+
+// Initial load
+loadOverview();
+{% endblock %}
