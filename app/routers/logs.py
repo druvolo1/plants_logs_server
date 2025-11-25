@@ -21,6 +21,10 @@ from app.schemas import (
 
 router = APIRouter(tags=["logs"])
 
+# In-memory cache for real-time environment sensor data (updated by heartbeat)
+# Key: device_id (string), Value: dict with sensor data and timestamp
+environment_cache: Dict[str, Dict] = {}
+
 
 def get_db_dependency():
     """Lazy import to avoid circular imports"""
@@ -261,20 +265,38 @@ async def environment_heartbeat(
         raise HTTPException(400, "This endpoint is only for environmental sensors")
 
     # Update device last_seen and is_online status
+    now = datetime.utcnow()
     await session.execute(
         update(Device)
         .where(Device.device_id == device_id)
-        .values(is_online=True, last_seen=datetime.utcnow())
+        .values(is_online=True, last_seen=now)
     )
     await session.commit()
 
-    # Load device settings and return to device
+    # Load device settings
     settings = {}
     if device.settings:
         try:
             settings = json.loads(device.settings)
         except:
             settings = {}
+
+    # Cache the real-time sensor data for dashboard display
+    environment_cache[device_id] = {
+        "co2": data.co2,
+        "temperature": data.temperature,
+        "humidity": data.humidity,
+        "vpd": data.vpd,
+        "pressure": data.pressure,
+        "altitude": data.altitude,
+        "gas_resistance": data.gas_resistance,
+        "air_quality_score": data.air_quality_score,
+        "lux": data.lux,
+        "ppfd": data.ppfd,
+        "timestamp": data.timestamp,
+        "cached_at": now.isoformat(),
+        "use_fahrenheit": settings.get("use_fahrenheit", False)
+    }
 
     # Return settings to device (defaults: 30s heartbeat, 3600s/1hr logging)
     return DeviceSettingsResponse(
@@ -416,7 +438,11 @@ async def get_latest_environment_data(
     user: User = Depends(get_current_user_dependency()),
     session: AsyncSession = Depends(get_db_dependency())
 ):
-    """Get the latest environment sensor reading for a device"""
+    """Get the latest environment sensor reading for a device.
+
+    Returns real-time data from heartbeat cache if available,
+    otherwise falls back to the last logged database entry.
+    """
     # Verify device exists and user has access
     result = await session.execute(
         select(Device).where(Device.device_id == device_id)
@@ -440,7 +466,31 @@ async def get_latest_environment_data(
         if not share:
             raise HTTPException(403, "Access denied")
 
-    # Get latest environment log entry
+    # Check for real-time cached data from heartbeat first
+    cached_data = environment_cache.get(device_id)
+    if cached_data:
+        return {
+            "device_id": device_id,
+            "has_data": True,
+            "is_online": device.is_online,
+            "last_seen": device.last_seen,
+            "use_fahrenheit": cached_data.get("use_fahrenheit", False),
+            "co2": cached_data.get("co2"),
+            "temperature": cached_data.get("temperature"),
+            "humidity": cached_data.get("humidity"),
+            "vpd": cached_data.get("vpd"),
+            "pressure": cached_data.get("pressure"),
+            "altitude": cached_data.get("altitude"),
+            "gas_resistance": cached_data.get("gas_resistance"),
+            "air_quality_score": cached_data.get("air_quality_score"),
+            "lux": cached_data.get("lux"),
+            "ppfd": cached_data.get("ppfd"),
+            "timestamp": cached_data.get("timestamp"),
+            "cached_at": cached_data.get("cached_at"),
+            "source": "realtime"
+        }
+
+    # Fall back to latest database log entry
     env_result = await session.execute(
         select(EnvironmentLog)
         .where(EnvironmentLog.device_id == device.id)
@@ -468,7 +518,7 @@ async def get_latest_environment_data(
             "use_fahrenheit": use_fahrenheit
         }
 
-    # Return the latest data
+    # Return the latest logged data
     return {
         "device_id": device_id,
         "has_data": True,
@@ -486,5 +536,6 @@ async def get_latest_environment_data(
         "lux": env_log.lux,
         "ppfd": env_log.ppfd,
         "timestamp": env_log.timestamp,
-        "created_at": env_log.created_at
+        "created_at": env_log.created_at,
+        "source": "database"
     }

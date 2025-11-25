@@ -2029,14 +2029,10 @@
             }
 
             // Update all sensor values with proper formatting and units
+            // Temperature is stored as-is (already converted by device if Fahrenheit)
             if (data.temperature !== null && data.temperature !== undefined) {
-                let temp = data.temperature;
-                let unit = '°C';
-                if (data.use_fahrenheit) {
-                    temp = temp * 9 / 5 + 32;
-                    unit = '°F';
-                }
-                document.getElementById(`env-temp-${device_id}`).textContent = `${temp.toFixed(1)}${unit}`;
+                let unit = data.use_fahrenheit ? '°F' : '°C';
+                document.getElementById(`env-temp-${device_id}`).textContent = `${data.temperature.toFixed(1)}${unit}`;
             }
             if (data.humidity !== null && data.humidity !== undefined) {
                 document.getElementById(`env-humidity-${device_id}`).textContent = `${data.humidity.toFixed(1)}%`;
