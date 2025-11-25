@@ -10,13 +10,14 @@ from sqlalchemy import select, update, or_
 from dateutil import parser as date_parser
 import json
 
-from app.models import User, Device, Plant, LogEntry, EnvironmentLog, DeviceAssignment, DeviceShare
+from app.models import User, Device, Plant, LogEntry, EnvironmentLog, DeviceAssignment, DeviceShare, Firmware, DeviceFirmwareAssignment
 from app.schemas import (
     LogEntryCreate,
     LogEntryRead,
     EnvironmentDataCreate,
     DeviceSettingsUpdate,
     DeviceSettingsResponse,
+    FirmwareInfo,
 )
 
 router = APIRouter(tags=["logs"])
@@ -223,6 +224,93 @@ async def get_plant_logs(
 
 # Environment Sensor Endpoints
 
+async def get_firmware_info_for_device(
+    session: AsyncSession,
+    device: Device,
+    current_version: Optional[str]
+) -> Optional[FirmwareInfo]:
+    """
+    Check if a firmware update is available for a device.
+    Returns FirmwareInfo with update details, or None if no update available.
+    """
+    if not current_version:
+        return None
+
+    # Check for device-specific assignment first
+    assignment_result = await session.execute(
+        select(DeviceFirmwareAssignment, Firmware)
+        .join(Firmware, DeviceFirmwareAssignment.firmware_id == Firmware.id)
+        .where(DeviceFirmwareAssignment.device_id == device.id)
+    )
+    assignment_row = assignment_result.first()
+
+    if assignment_row:
+        assignment, firmware = assignment_row
+
+        # Device has a specific assignment
+        if firmware.version != current_version or assignment.force_update:
+            # Capture force_update value before clearing
+            should_force = assignment.force_update
+
+            # Clear force_update flag after sending it once
+            if assignment.force_update:
+                assignment.force_update = False
+                await session.commit()
+
+            return FirmwareInfo(
+                update_available=True,
+                current_version=current_version,
+                latest_version=firmware.version,
+                firmware_url=f"/api/firmware/download/{firmware.device_type}/{firmware.version}",
+                release_notes=firmware.release_notes,
+                force_update=should_force,
+                file_size=firmware.file_size,
+                checksum=firmware.checksum
+            )
+        else:
+            # Device is up to date with assigned version
+            return FirmwareInfo(
+                update_available=False,
+                current_version=current_version,
+                latest_version=firmware.version
+            )
+
+    # No specific assignment - check for latest firmware
+    latest_result = await session.execute(
+        select(Firmware).where(
+            Firmware.device_type == device.device_type,
+            Firmware.is_latest == True
+        )
+    )
+    latest_firmware = latest_result.scalars().first()
+
+    if not latest_firmware:
+        # No firmware uploaded for this device type yet
+        return FirmwareInfo(
+            update_available=False,
+            current_version=current_version
+        )
+
+    if latest_firmware.version != current_version:
+        return FirmwareInfo(
+            update_available=True,
+            current_version=current_version,
+            latest_version=latest_firmware.version,
+            firmware_url=f"/api/firmware/download/{latest_firmware.device_type}/{latest_firmware.version}",
+            release_notes=latest_firmware.release_notes,
+            force_update=False,
+            file_size=latest_firmware.file_size,
+            checksum=latest_firmware.checksum
+        )
+
+    # Device is up to date
+    return FirmwareInfo(
+        update_available=False,
+        current_version=current_version,
+        latest_version=latest_firmware.version
+    )
+
+
 @router.post("/api/devices/{device_id}/environment", response_model=DeviceSettingsResponse)
 async def environment_heartbeat(
     device_id: str,
@@ -299,11 +387,17 @@ async def environment_heartbeat(
         "use_fahrenheit": settings.get("use_fahrenheit", False)
     }
 
+    # Check for firmware updates
+    firmware_info = await get_firmware_info_for_device(
+        session, device, data.firmware_version
+    )
+
     # Return settings to device (defaults: 30s heartbeat, 3600s/1hr logging)
     return DeviceSettingsResponse(
         use_fahrenheit=settings.get("use_fahrenheit", False),
         update_interval=settings.get("update_interval", 30),
-        log_interval=settings.get("log_interval", 3600)
+        log_interval=settings.get("log_interval", 3600),
+        firmware=firmware_info
     )
 
 
@@ -374,11 +468,17 @@ async def log_environment_data(
         except:
             settings = {}
 
+    # Check for firmware updates
+    firmware_info = await get_firmware_info_for_device(
+        session, device, data.firmware_version
+    )
+
     # Return settings to device
     return DeviceSettingsResponse(
         use_fahrenheit=settings.get("use_fahrenheit", False),
         update_interval=settings.get("update_interval", 30),
-        log_interval=settings.get("log_interval", 3600)
+        log_interval=settings.get("log_interval", 3600),
+        firmware=firmware_info
     )
 
 

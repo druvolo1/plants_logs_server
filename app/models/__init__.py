@@ -8,6 +8,7 @@ from .device import Device, DeviceShare, DeviceLink
 from .location import Location, LocationShare
 from .plant import Plant, PhaseTemplate, PhaseHistory, DeviceAssignment
 from .logs import LogEntry, EnvironmentLog, PlantReport
+from .firmware import Firmware, DeviceFirmwareAssignment
 
 __all__ = [
     "Base",
@@ -25,4 +26,6 @@ __all__ = [
     "LogEntry",
     "EnvironmentLog",
     "PlantReport",
+    "Firmware",
+    "DeviceFirmwareAssignment",
 ]

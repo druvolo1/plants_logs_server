@@ -1,0 +1,904 @@
+<!-- templates/firmware.html - Admin firmware management page -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Firmware Management</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        /* Modern Navigation Bar */
+        .navbar {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            padding: 0;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            border-bottom: 2px solid #10b981;
+        }
+        .navbar-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 1.5rem;
+        }
+        .navbar-brand {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 1rem 0;
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #10b981;
+            text-decoration: none;
+        }
+        .navbar-menu {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+        .navbar-link {
+            padding: 1rem 1.25rem;
+            color: rgba(255, 255, 255, 0.9);
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.2s;
+            border-bottom: 3px solid transparent;
+        }
+        .navbar-link:hover {
+            background: rgba(16, 185, 129, 0.1);
+            border-bottom-color: #10b981;
+        }
+        .navbar-link.active {
+            background: rgba(16, 185, 129, 0.15);
+            border-bottom-color: #10b981;
+            color: #10b981;
+        }
+        .navbar-user {
+            padding: 1rem 1.25rem;
+            color: rgba(148, 163, 184, 0.9);
+            font-size: 0.9rem;
+            border-left: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        .navbar-logout {
+            padding: 0.5rem 1rem;
+            margin-left: 0.5rem;
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 0.85rem;
+        }
+
+        /* Page Layout */
+        .page-container {
+            padding: 2rem 1.5rem;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+
+        .page-title {
+            color: #f59e0b;
+            margin: 0;
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 2rem;
+            border-bottom: 2px solid #334155;
+        }
+
+        .tab {
+            padding: 0.75rem 1.5rem;
+            background: transparent;
+            border: none;
+            color: #94a3b8;
+            font-size: 1rem;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            margin-bottom: -2px;
+            transition: all 0.2s;
+        }
+
+        .tab:hover {
+            color: #f59e0b;
+        }
+
+        .tab.active {
+            color: #f59e0b;
+            border-bottom-color: #f59e0b;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Upload Form */
+        .upload-form {
+            background: #1e293b;
+            padding: 1.5rem;
+            border-radius: 12px;
+            max-width: 600px;
+        }
+
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+
+        .form-group label {
+            display: block;
+            color: #94a3b8;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 0.75rem;
+            border-radius: 6px;
+            border: 1px solid #374151;
+            background: #0f172a;
+            color: #fff;
+            font-size: 1rem;
+        }
+
+        .form-group textarea {
+            min-height: 150px;
+            resize: vertical;
+        }
+
+        .form-group input[type="file"] {
+            padding: 0.5rem;
+        }
+
+        .form-row {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .form-row .form-group {
+            flex: 1;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            width: auto;
+        }
+
+        .checkbox-group label {
+            margin: 0;
+            color: #fff;
+        }
+
+        /* Firmware List */
+        .firmware-grid {
+            display: grid;
+            gap: 1.5rem;
+        }
+
+        .device-type-section {
+            background: #1e293b;
+            border-radius: 12px;
+            padding: 1.5rem;
+        }
+
+        .device-type-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid #334155;
+        }
+
+        .device-type-title {
+            color: #f59e0b;
+            margin: 0;
+            font-size: 1.1rem;
+        }
+
+        .firmware-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .firmware-table th,
+        .firmware-table td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid #334155;
+        }
+
+        .firmware-table th {
+            color: #94a3b8;
+            font-weight: 500;
+            font-size: 0.85rem;
+        }
+
+        .firmware-table td {
+            color: #fff;
+        }
+
+        .version-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .badge {
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .badge-latest {
+            background: #10b98130;
+            color: #10b981;
+        }
+
+        .badge-prerelease {
+            background: #f59e0b30;
+            color: #f59e0b;
+        }
+
+        .action-btn {
+            padding: 0.35rem 0.75rem;
+            border: none;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            margin-right: 0.25rem;
+        }
+
+        .action-btn-primary {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .action-btn-success {
+            background: #10b981;
+            color: white;
+        }
+
+        .action-btn-danger {
+            background: #ef4444;
+            color: white;
+        }
+
+        .action-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Assignment Section */
+        .assignment-card {
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .assignment-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .assignment-device {
+            font-weight: 600;
+            color: #fff;
+        }
+
+        .assignment-version {
+            color: #10b981;
+        }
+
+        .assignment-notes {
+            color: #64748b;
+            font-size: 0.85rem;
+            margin-top: 0.5rem;
+        }
+
+        /* Modal for release notes */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 2000;
+        }
+
+        .modal-content {
+            position: relative;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #1e293b;
+            padding: 2rem;
+            border-radius: 12px;
+            max-width: 700px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            color: #94a3b8;
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+
+        .release-notes-content {
+            background: #0f172a;
+            padding: 1rem;
+            border-radius: 6px;
+            white-space: pre-wrap;
+            font-family: monospace;
+            line-height: 1.5;
+        }
+
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 3rem;
+            color: #64748b;
+        }
+
+        .empty-state-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        /* Success/Error messages */
+        .message {
+            padding: 1rem;
+            border-radius: 6px;
+            margin-bottom: 1rem;
+        }
+
+        .message-success {
+            background: #10b98120;
+            border: 1px solid #10b981;
+            color: #10b981;
+        }
+
+        .message-error {
+            background: #ef444420;
+            border: 1px solid #ef4444;
+            color: #ef4444;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+        <div class="navbar-container">
+            <a href="/dashboard" class="navbar-brand">Plant Monitor</a>
+            <div class="navbar-menu">
+                <a href="/dashboard" class="navbar-link">Dashboard</a>
+                <a href="/devices" class="navbar-link">Devices</a>
+                <a href="/plants" class="navbar-link">Plants</a>
+                <a href="/locations" class="navbar-link">Locations</a>
+                <a href="/admin/overview" class="navbar-link">Admin Overview</a>
+                <a href="/admin/users" class="navbar-link">Users</a>
+                <a href="/admin/firmware" class="navbar-link active">Firmware</a>
+                <span class="navbar-user">{{ user.email }}</span>
+                <a href="/auth/logout" class="navbar-logout">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="page-container">
+        <div class="page-header">
+            <h2 class="page-title">Firmware Management</h2>
+        </div>
+
+        <!-- Tabs -->
+        <div class="tabs">
+            <button class="tab active" onclick="showTab('upload')">Upload Firmware</button>
+            <button class="tab" onclick="showTab('versions')">Firmware Versions</button>
+            <button class="tab" onclick="showTab('assignments')">Device Assignments</button>
+        </div>
+
+        <!-- Upload Tab -->
+        <div id="tab-upload" class="tab-content active">
+            <div class="upload-form">
+                <h3 style="color: #fff; margin-top: 0;">Upload New Firmware</h3>
+                <div id="upload-message"></div>
+
+                <form id="upload-form" enctype="multipart/form-data">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Device Type</label>
+                            <select name="device_type" required>
+                                <option value="">Select device type...</option>
+                                <option value="environmental">Environmental Sensor</option>
+                                <option value="valve_controller">Valve Controller</option>
+                                <option value="feeding_system">Feeding System</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Version</label>
+                            <input type="text" name="version" placeholder="e.g., 2.1.0 or 2.2.0-beta.1" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Release Notes (Markdown supported)</label>
+                        <textarea name="release_notes" placeholder="## What's New&#10;- Feature 1&#10;- Bug fix 2&#10;&#10;## Breaking Changes&#10;- None"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Firmware Binary (.bin file)</label>
+                        <input type="file" name="file" accept=".bin" required>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <div class="checkbox-group">
+                                <input type="checkbox" name="is_prerelease" id="is_prerelease">
+                                <label for="is_prerelease">Pre-release / Beta version</label>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <div class="checkbox-group">
+                                <input type="checkbox" name="set_as_latest" id="set_as_latest">
+                                <label for="set_as_latest">Set as latest stable release</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="submit" style="width: 100%;">Upload Firmware</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Versions Tab -->
+        <div id="tab-versions" class="tab-content">
+            <div id="firmware-list"></div>
+        </div>
+
+        <!-- Assignments Tab -->
+        <div id="tab-assignments" class="tab-content">
+            <div style="background: #1e293b; padding: 1.5rem; border-radius: 12px; margin-bottom: 1.5rem;">
+                <h3 style="color: #fff; margin-top: 0;">Create New Assignment</h3>
+                <p style="color: #64748b; font-size: 0.9rem;">Assign a specific firmware version to a device. This overrides the "latest" firmware for testing or rollback purposes.</p>
+
+                <form id="assignment-form">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Device</label>
+                            <select name="device_identifier" id="assignment-device" required>
+                                <option value="">Select device...</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Firmware Version</label>
+                            <select name="firmware_id" id="assignment-firmware" required>
+                                <option value="">Select firmware...</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Notes (optional)</label>
+                        <input type="text" name="notes" placeholder="e.g., Testing new humidity calibration">
+                    </div>
+
+                    <div class="form-group">
+                        <div class="checkbox-group">
+                            <input type="checkbox" name="force_update" id="assignment-force">
+                            <label for="assignment-force">Force update on next heartbeat</label>
+                        </div>
+                    </div>
+
+                    <button type="submit">Create Assignment</button>
+                </form>
+            </div>
+
+            <h3 style="color: #fff;">Current Assignments</h3>
+            <div id="assignments-list"></div>
+        </div>
+    </div>
+
+    <!-- Release Notes Modal -->
+    <div id="release-notes-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modal-title" style="color: #f59e0b; margin: 0;">Release Notes</h3>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div id="modal-body" class="release-notes-content"></div>
+            <button onclick="closeModal()" style="margin-top: 1rem;">Close</button>
+        </div>
+    </div>
+
+    <script>
+        // Tab switching
+        function showTab(tabName) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+
+            document.querySelector(`[onclick="showTab('${tabName}')"]`).classList.add('active');
+            document.getElementById(`tab-${tabName}`).classList.add('active');
+
+            // Load data for the tab
+            if (tabName === 'versions') loadFirmwareList();
+            if (tabName === 'assignments') {
+                loadAssignments();
+                loadDevicesForAssignment();
+                loadFirmwareForAssignment();
+            }
+        }
+
+        // Upload firmware
+        document.getElementById('upload-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const messageDiv = document.getElementById('upload-message');
+
+            try {
+                const response = await fetch('/admin/firmware/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    messageDiv.innerHTML = `<div class="message message-success">Firmware uploaded successfully! Version ${data.version} (${data.file_size} bytes)</div>`;
+                    e.target.reset();
+                } else {
+                    messageDiv.innerHTML = `<div class="message message-error">Error: ${data.detail}</div>`;
+                }
+            } catch (error) {
+                messageDiv.innerHTML = `<div class="message message-error">Error uploading firmware: ${error.message}</div>`;
+            }
+        });
+
+        // Load firmware list
+        async function loadFirmwareList() {
+            const container = document.getElementById('firmware-list');
+            container.innerHTML = '<p style="color: #64748b;">Loading...</p>';
+
+            try {
+                const response = await fetch('/admin/firmware/list');
+                const firmwareList = await response.json();
+
+                if (firmwareList.length === 0) {
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-state-icon">📦</div>
+                            <p>No firmware uploaded yet</p>
+                            <p>Upload your first firmware in the "Upload Firmware" tab</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                // Group by device type
+                const grouped = {};
+                firmwareList.forEach(fw => {
+                    if (!grouped[fw.device_type]) grouped[fw.device_type] = [];
+                    grouped[fw.device_type].push(fw);
+                });
+
+                let html = '<div class="firmware-grid">';
+
+                for (const [deviceType, versions] of Object.entries(grouped)) {
+                    const typeLabel = {
+                        'environmental': 'Environmental Sensor',
+                        'valve_controller': 'Valve Controller',
+                        'feeding_system': 'Feeding System'
+                    }[deviceType] || deviceType;
+
+                    html += `
+                        <div class="device-type-section">
+                            <div class="device-type-header">
+                                <h3 class="device-type-title">${typeLabel}</h3>
+                                <span style="color: #64748b;">${versions.length} version(s)</span>
+                            </div>
+                            <table class="firmware-table">
+                                <thead>
+                                    <tr>
+                                        <th>Version</th>
+                                        <th>Size</th>
+                                        <th>Uploaded</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                    `;
+
+                    versions.forEach(fw => {
+                        const badges = [];
+                        if (fw.is_latest) badges.push('<span class="badge badge-latest">LATEST</span>');
+                        if (fw.is_prerelease) badges.push('<span class="badge badge-prerelease">PRE-RELEASE</span>');
+
+                        const size = fw.file_size ? `${(fw.file_size / 1024).toFixed(1)} KB` : 'Unknown';
+                        const date = new Date(fw.created_at).toLocaleDateString();
+
+                        html += `
+                            <tr>
+                                <td>
+                                    <span class="version-badge">
+                                        v${fw.version}
+                                        ${badges.join(' ')}
+                                    </span>
+                                </td>
+                                <td>${size}</td>
+                                <td>${date}</td>
+                                <td>
+                                    <button class="action-btn action-btn-primary" onclick="viewReleaseNotes(${fw.id})">Notes</button>
+                                    ${!fw.is_latest ? `<button class="action-btn action-btn-success" onclick="setAsLatest(${fw.id})">Set Latest</button>` : ''}
+                                    <button class="action-btn action-btn-danger" onclick="deleteFirmware(${fw.id})">Delete</button>
+                                </td>
+                            </tr>
+                        `;
+                    });
+
+                    html += '</tbody></table></div>';
+                }
+
+                html += '</div>';
+                container.innerHTML = html;
+
+            } catch (error) {
+                container.innerHTML = `<div class="message message-error">Error loading firmware: ${error.message}</div>`;
+            }
+        }
+
+        // View release notes
+        async function viewReleaseNotes(firmwareId) {
+            try {
+                const response = await fetch(`/admin/firmware/${firmwareId}`);
+                const firmware = await response.json();
+
+                document.getElementById('modal-title').textContent = `Release Notes - v${firmware.version}`;
+                document.getElementById('modal-body').textContent = firmware.release_notes || 'No release notes available';
+                document.getElementById('release-notes-modal').style.display = 'block';
+            } catch (error) {
+                alert('Error loading release notes: ' + error.message);
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('release-notes-modal').style.display = 'none';
+        }
+
+        // Set as latest
+        async function setAsLatest(firmwareId) {
+            if (!confirm('Set this version as the latest stable release?')) return;
+
+            try {
+                const response = await fetch(`/admin/firmware/${firmwareId}/set-latest`, { method: 'PUT' });
+                const data = await response.json();
+
+                if (response.ok) {
+                    alert(data.message);
+                    loadFirmwareList();
+                } else {
+                    alert('Error: ' + data.detail);
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+
+        // Delete firmware
+        async function deleteFirmware(firmwareId) {
+            if (!confirm('Are you sure you want to delete this firmware? This cannot be undone.')) return;
+
+            try {
+                const response = await fetch(`/admin/firmware/${firmwareId}`, { method: 'DELETE' });
+                const data = await response.json();
+
+                if (response.ok) {
+                    alert('Firmware deleted');
+                    loadFirmwareList();
+                } else {
+                    alert('Error: ' + data.detail);
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+
+        // Load devices for assignment dropdown
+        async function loadDevicesForAssignment() {
+            try {
+                const response = await fetch('/admin/all-devices');
+                const devices = await response.json();
+
+                const select = document.getElementById('assignment-device');
+                select.innerHTML = '<option value="">Select device...</option>';
+
+                // Filter to only environmental sensors and valve controllers (ESP32 devices)
+                const espDevices = devices.filter(d =>
+                    d.device_type === 'environmental' || d.device_type === 'valve_controller'
+                );
+
+                espDevices.forEach(device => {
+                    const name = device.name || device.device_id.substring(0, 8);
+                    const type = device.device_type === 'environmental' ? 'Env Sensor' : 'Valve Ctrl';
+                    select.innerHTML += `<option value="${device.device_id}">${name} (${type}) - ${device.owner_email}</option>`;
+                });
+            } catch (error) {
+                console.error('Error loading devices:', error);
+            }
+        }
+
+        // Load firmware for assignment dropdown
+        async function loadFirmwareForAssignment() {
+            try {
+                const response = await fetch('/admin/firmware/list');
+                const firmwareList = await response.json();
+
+                const select = document.getElementById('assignment-firmware');
+                select.innerHTML = '<option value="">Select firmware...</option>';
+
+                firmwareList.forEach(fw => {
+                    const badges = [];
+                    if (fw.is_latest) badges.push('[LATEST]');
+                    if (fw.is_prerelease) badges.push('[BETA]');
+                    select.innerHTML += `<option value="${fw.id}">${fw.device_type} v${fw.version} ${badges.join(' ')}</option>`;
+                });
+            } catch (error) {
+                console.error('Error loading firmware:', error);
+            }
+        }
+
+        // Load assignments
+        async function loadAssignments() {
+            const container = document.getElementById('assignments-list');
+
+            try {
+                const response = await fetch('/admin/firmware/assignments');
+                const assignments = await response.json();
+
+                if (assignments.length === 0) {
+                    container.innerHTML = '<p style="color: #64748b;">No device-specific assignments. All devices will use the latest firmware for their type.</p>';
+                    return;
+                }
+
+                let html = '';
+                assignments.forEach(a => {
+                    html += `
+                        <div class="assignment-card">
+                            <div class="assignment-header">
+                                <span class="assignment-device">${a.device_name || a.device_identifier}</span>
+                                <span class="assignment-version">v${a.firmware_version}</span>
+                            </div>
+                            <div style="font-size: 0.85rem; color: #64748b;">
+                                Type: ${a.firmware_device_type} |
+                                Force update: ${a.force_update ? '<span style="color: #f59e0b;">Yes</span>' : 'No'}
+                            </div>
+                            ${a.notes ? `<div class="assignment-notes">${a.notes}</div>` : ''}
+                            <div style="margin-top: 0.75rem;">
+                                ${!a.force_update ? `<button class="action-btn action-btn-primary" onclick="setForceUpdate(${a.id}, true)">Force Update</button>` : `<button class="action-btn" onclick="setForceUpdate(${a.id}, false)" style="background: #64748b; color: white;">Cancel Force</button>`}
+                                <button class="action-btn action-btn-danger" onclick="deleteAssignment(${a.id})">Remove</button>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                container.innerHTML = html;
+            } catch (error) {
+                container.innerHTML = `<div class="message message-error">Error loading assignments: ${error.message}</div>`;
+            }
+        }
+
+        // Create assignment
+        document.getElementById('assignment-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+
+            try {
+                const response = await fetch('/admin/firmware/assignments', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    alert(data.message);
+                    e.target.reset();
+                    loadAssignments();
+                } else {
+                    alert('Error: ' + data.detail);
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        });
+
+        // Set force update
+        async function setForceUpdate(assignmentId, force) {
+            try {
+                const response = await fetch(`/admin/firmware/assignments/${assignmentId}/force-update?force=${force}`, {
+                    method: 'PUT'
+                });
+                const data = await response.json();
+
+                if (response.ok) {
+                    loadAssignments();
+                } else {
+                    alert('Error: ' + data.detail);
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+
+        // Delete assignment
+        async function deleteAssignment(assignmentId) {
+            if (!confirm('Remove this assignment? The device will revert to using the latest firmware.')) return;
+
+            try {
+                const response = await fetch(`/admin/firmware/assignments/${assignmentId}`, {
+                    method: 'DELETE'
+                });
+                const data = await response.json();
+
+                if (response.ok) {
+                    loadAssignments();
+                } else {
+                    alert('Error: ' + data.detail);
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+
+        // Close modal on outside click
+        document.getElementById('release-notes-modal').addEventListener('click', (e) => {
+            if (e.target === document.getElementById('release-notes-modal')) {
+                closeModal();
+            }
+        });
+    </script>
+</body>
+</html>

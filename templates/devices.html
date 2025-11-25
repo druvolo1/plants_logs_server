@@ -534,6 +534,14 @@
                 <p class="hint">How often the device saves data to the database (60-86400 seconds). Default: 3600 (1 hour).</p>
             </div>
 
+            <!-- Firmware Update Section -->
+            <div id="firmware-section" style="background: rgba(59, 130, 246, 0.1); padding: 1rem; border-radius: 6px; margin-bottom: 1.5rem; border-left: 3px solid #3b82f6;">
+                <h4 style="margin: 0 0 0.75rem 0; color: #3b82f6;">Firmware Update</h4>
+                <div id="firmware-status">
+                    <p style="margin: 0; color: #888; font-size: 0.9rem;">Loading firmware info...</p>
+                </div>
+            </div>
+
             <div style="background: rgba(245, 158, 11, 0.1); padding: 1rem; border-radius: 6px; margin-bottom: 1.5rem; border-left: 3px solid #f59e0b;">
                 <p style="margin: 0; color: #f59e0b; font-size: 0.9rem;">
                     <strong>Note:</strong> Changes will take effect on the device's next heartbeat (within the current heartbeat interval).
@@ -808,7 +816,7 @@
                 <p><strong>System Name:</strong> <span id="name-${device.device_id}">${device.name || 'Loading...'}</span>${heartbeatButton}</p>
                 <p><strong>Device ID:</strong> ${device.device_id}</p>
                 ${locationInfo}
-                <p><strong>Version:</strong> <span id="version-${device.device_id}">Loading...</span></p>
+                <p><strong>Version:</strong> <span id="version-${device.device_id}">Loading...</span> <span id="update-badge-${device.device_id}"></span></p>
                 <p><strong>Online:</strong> <span id="online-${device.device_id}">${device.is_online ? 'Yes' : 'No'}</span></p>
                 ${linkedDevicesSection}
                 ${editButton}
@@ -841,6 +849,7 @@
                 if (response.ok) {
                     const data = await response.json();
                     const versionElem = document.getElementById(`version-${device_id}`);
+                    const updateBadge = document.getElementById(`update-badge-${device_id}`);
                     if (versionElem && data.firmware_version) {
                         versionElem.textContent = data.firmware_version;
                         // Update in allDevices array for search
@@ -848,6 +857,8 @@
                         if (deviceIndex !== -1) {
                             allDevices[deviceIndex].version = data.firmware_version;
                         }
+                        // Check for firmware updates
+                        checkForFirmwareUpdate(device_id, data.firmware_version, updateBadge);
                     } else if (versionElem) {
                         versionElem.textContent = 'N/A';
                     }
@@ -864,6 +875,29 @@
                     versionElem.textContent = 'N/A';
                 }
             }
+        }
+
+        // Check if firmware update is available
+        async function checkForFirmwareUpdate(device_id, current_version, badgeElem) {
+            if (!badgeElem) return;
+
+            try {
+                const response = await fetch(`/api/firmware/check/${device_id}?current_version=${current_version}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.update_available) {
+                        badgeElem.innerHTML = `<span style="background: #f59e0b; color: #000; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600; cursor: pointer;" onclick="showUpdateInfo('${device_id}', '${data.latest_version}', \`${(data.release_notes || '').replace(/`/g, '\\`').replace(/\n/g, '\\n')}\`)">UPDATE v${data.latest_version}</span>`;
+                    }
+                }
+            } catch (error) {
+                console.error(`Error checking firmware update for ${device_id}:`, error);
+            }
+        }
+
+        // Show update info in alert (or could be a modal)
+        function showUpdateInfo(device_id, version, release_notes) {
+            const message = `Firmware Update Available\n\nDevice: ${device_id.substring(0, 8)}...\nNew Version: v${version}\n\n${release_notes ? 'Release Notes:\n' + release_notes : 'No release notes available.'}\n\nTo update, go to the heartbeat settings (⚡ button) and click "Force Update Now".`;
+            alert(message);
         }
 
         // Share Management Functions
@@ -1203,6 +1237,7 @@
             currentHeartbeatDeviceId = device_id;
             document.getElementById('heartbeat-device-name').textContent = `Device: ${device_id}`;
             document.getElementById('heartbeat-modal').style.display = 'block';
+            document.getElementById('firmware-status').innerHTML = '<p style="margin: 0; color: #888; font-size: 0.9rem;">Loading firmware info...</p>';
 
             // Load current settings
             try {
@@ -1217,6 +1252,9 @@
                     if (data.device_name) {
                         document.getElementById('heartbeat-device-name').textContent = `Device: ${data.device_name} (${device_id.substring(0, 8)}...)`;
                     }
+
+                    // Load firmware info
+                    loadFirmwareInfo(device_id);
                 } else {
                     alert('Failed to load heartbeat settings');
                     closeHeartbeatModal();
@@ -1225,6 +1263,84 @@
                 console.error('Error loading heartbeat settings:', error);
                 alert('Error loading heartbeat settings');
                 closeHeartbeatModal();
+            }
+        }
+
+        async function loadFirmwareInfo(device_id) {
+            const statusDiv = document.getElementById('firmware-status');
+
+            try {
+                // Get device's current firmware version from environment/latest
+                const envResponse = await fetch(`/api/devices/${device_id}/environment/latest`);
+                let currentVersion = 'Unknown';
+
+                if (envResponse.ok) {
+                    const envData = await envResponse.json();
+                    currentVersion = envData.firmware_version || 'Unknown';
+                }
+
+                // Check for firmware updates
+                const fwResponse = await fetch(`/api/firmware/check/${device_id}?current_version=${currentVersion}`);
+
+                if (fwResponse.ok) {
+                    const fwData = await fwResponse.json();
+
+                    if (fwData.update_available) {
+                        statusDiv.innerHTML = `
+                            <p style="margin: 0 0 0.5rem 0; color: #fff;">
+                                <strong>Current:</strong> v${fwData.current_version || 'Unknown'}
+                            </p>
+                            <p style="margin: 0 0 0.5rem 0; color: #10b981;">
+                                <strong>Available:</strong> v${fwData.latest_version}
+                                ${fwData.force_update ? '<span style="background: #f59e0b30; color: #f59e0b; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; margin-left: 0.5rem;">FORCE PENDING</span>' : ''}
+                            </p>
+                            ${fwData.release_notes ? `<p style="margin: 0.5rem 0; color: #888; font-size: 0.85rem; max-height: 100px; overflow-y: auto; background: #0f172a; padding: 0.5rem; border-radius: 4px;">${fwData.release_notes.substring(0, 200)}${fwData.release_notes.length > 200 ? '...' : ''}</p>` : ''}
+                            <button onclick="forceDeviceUpdate()" style="margin-top: 0.75rem; background: #3b82f6;">Force Update Now</button>
+                        `;
+                    } else {
+                        statusDiv.innerHTML = `
+                            <p style="margin: 0; color: #10b981;">
+                                Device is up to date (v${fwData.current_version || currentVersion})
+                            </p>
+                        `;
+                    }
+                } else {
+                    statusDiv.innerHTML = `
+                        <p style="margin: 0; color: #888;">
+                            Current version: v${currentVersion}<br>
+                            <span style="font-size: 0.85rem;">No firmware uploaded for this device type yet.</span>
+                        </p>
+                    `;
+                }
+            } catch (error) {
+                console.error('Error loading firmware info:', error);
+                statusDiv.innerHTML = `<p style="margin: 0; color: #ef4444;">Error loading firmware info</p>`;
+            }
+        }
+
+        async function forceDeviceUpdate() {
+            if (!currentHeartbeatDeviceId) return;
+
+            if (!confirm('Force firmware update on next heartbeat? The device will restart during the update.')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/admin/devices/${currentHeartbeatDeviceId}/force-firmware-update`, {
+                    method: 'PUT'
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    alert(data.message);
+                    loadFirmwareInfo(currentHeartbeatDeviceId);
+                } else {
+                    const error = await response.json();
+                    alert(`Error: ${error.detail || 'Unknown error'}`);
+                }
+            } catch (error) {
+                console.error('Error forcing update:', error);
+                alert('Error forcing update');
             }
         }
 

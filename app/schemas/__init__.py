@@ -20,6 +20,7 @@ from .device import (
     DeviceLinkRead,
     LinkedDeviceInfo,
     AvailableDeviceForLinking,
+    FirmwareInfo,
 )
 from .location import (
     LocationCreate,
@@ -47,6 +48,14 @@ from .logs import (
     EnvironmentDataCreate,
     EnvironmentLogRead,
 )
+from .firmware import (
+    FirmwareCreate,
+    FirmwareRead,
+    FirmwareListItem,
+    DeviceFirmwareAssignmentCreate,
+    DeviceFirmwareAssignmentRead,
+    FirmwareUpdateInfo,
+)
 
 __all__ = [
     # User schemas
@@ -72,6 +81,7 @@ __all__ = [
     "DeviceLinkRead",
     "LinkedDeviceInfo",
     "AvailableDeviceForLinking",
+    "FirmwareInfo",
     # Location schemas
     "LocationCreate",
     "LocationUpdate",
@@ -95,4 +105,11 @@ __all__ = [
     "LogEntryRead",
     "EnvironmentDataCreate",
     "EnvironmentLogRead",
+    # Firmware schemas
+    "FirmwareCreate",
+    "FirmwareRead",
+    "FirmwareListItem",
+    "DeviceFirmwareAssignmentCreate",
+    "DeviceFirmwareAssignmentRead",
+    "FirmwareUpdateInfo",
 ]

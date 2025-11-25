@@ -113,10 +113,24 @@ class DevicePairResponse(BaseModel):
     message: str
 
 
+class FirmwareInfo(BaseModel):
+    """Firmware update information included in heartbeat response."""
+    update_available: bool = False
+    current_version: Optional[str] = None
+    latest_version: Optional[str] = None
+    firmware_url: Optional[str] = None
+    release_notes: Optional[str] = None
+    force_update: bool = False
+    file_size: Optional[int] = None
+    checksum: Optional[str] = None
+
+
 class DeviceSettingsResponse(BaseModel):
     use_fahrenheit: bool
     update_interval: int  # Heartbeat interval in seconds (default: 30)
     log_interval: int  # Database logging interval in seconds (default: 3600 = 1 hour)
+    # Firmware update info
+    firmware: Optional[FirmwareInfo] = None
 
 
 # Device Linking Pydantic models
