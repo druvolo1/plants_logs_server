@@ -400,7 +400,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
 # Include routers
-from app.routers import templates_router, locations_router, admin_router, logs_router, plants_router, plants_api_router, devices_router, devices_api_router
+from app.routers import templates_router, locations_router, admin_router, logs_router, plants_router, plants_api_router, devices_router, devices_api_router, auth_router, auth_api_router
 app.include_router(templates_router)
 app.include_router(locations_router)
 app.include_router(admin_router)
@@ -409,6 +409,8 @@ app.include_router(plants_router)
 app.include_router(plants_api_router)
 app.include_router(devices_router)
 app.include_router(devices_api_router)
+app.include_router(auth_router)
+app.include_router(auth_api_router)
 
 # Global exception handler for suspended/pending users
 @app.exception_handler(HTTPException)
@@ -426,126 +428,7 @@ async def http_exception_handler(request: Request, exc: HTTPException):
     # Re-raise other HTTP exceptions
     raise exc
 
-# Auth routes - We have custom registration, so don't include the register router
-# app.include_router(
-#     fastapi_users.get_register_router(UserRead, UserCreate),
-#     prefix="/auth",
-#     tags=["auth"],
-# )
-
-# OAuth router - use custom route to handle pending users
-# app.include_router(
-#     fastapi_users.get_oauth_router(google_oauth_client, auth_backend, SECRET, associate_by_email=True),
-#     prefix="/auth/google",
-#     tags=["auth"],
-# )
-
-# Custom OAuth routes to handle pending user flow
-@app.get("/auth/google/authorize", response_model=dict)
-async def google_authorize_custom(request: Request):
-    redirect_uri = request.url_for("auth:google.callback")
-    auth_url = await google_oauth_client.get_authorization_url(
-        str(redirect_uri),
-        state=None,
-        scope=["openid", "email", "profile"]
-    )
-    # Return in the format expected by the frontend
-    # auth_url is a string, not a dict
-    return {"authorization_url": auth_url}
-
-# Custom callback that handles pending users properly
-@app.get("/auth/google/callback", name="auth:google.callback")
-async def google_callback_custom(
-    request: Request,
-    code: str,
-    state: str = None,
-    manager: CustomUserManager = Depends(get_user_manager),
-    strategy: JWTStrategy = Depends(get_jwt_strategy),
-):
-    try:
-        # Get OAuth token
-        token = await google_oauth_client.get_access_token(code, request.url_for("auth:google.callback"))
-
-        # Get user info
-        user_info = await google_oauth_client.get_id_email(token["access_token"])
-        account_id = user_info[0]
-        account_email = user_info[1]
-
-        # Call our oauth_callback to create/get user
-        user = await manager.oauth_callback(
-            oauth_name="google",
-            access_token=token["access_token"],
-            account_id=account_id,
-            account_email=account_email,
-            expires_at=token.get("expires_at"),
-            refresh_token=token.get("refresh_token"),
-            associate_by_email=True,
-            is_verified_by_default=False,
-        )
-
-        print(f"OAuth callback returned user: {user.email}, is_active={user.is_active}, is_suspended={getattr(user, 'is_suspended', None)}")
-
-        # Check if user is suspended
-        is_suspended = getattr(user, 'is_suspended', None)
-        if is_suspended is None or is_suspended is False or is_suspended == 0:
-            is_suspended = False
-        else:
-            is_suspended = True
-
-        if is_suspended:
-            return templates.TemplateResponse("suspended.html", {"request": request})
-
-        # Check if user is pending approval
-        if not user.is_active:
-            return templates.TemplateResponse("pending_approval.html", {"request": request})
-
-        # User is active - log them in
-        token_str = await strategy.write_token(user)
-
-        html_content = f"""
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset="UTF-8">
-            <title>Login Successful</title>
-            <style>
-                body {{ font-family: Arial, sans-serif; text-align: center; padding: 50px; }}
-                .spinner {{ border: 4px solid #f3f3f3; border-top: 4px solid #3498db;
-                           border-radius: 50%; width: 40px; height: 40px;
-                           animation: spin 1s linear infinite; margin: 20px auto; }}
-                @keyframes spin {{ 0% {{ transform: rotate(0deg); }} 100% {{ transform: rotate(360deg); }} }}
-            </style>
-        </head>
-        <body>
-            <h1>Login Successful!</h1>
-            <div class="spinner"></div>
-            <p>Redirecting...</p>
-            <script>
-                setTimeout(function() {{
-                    window.location.href = '/dashboard';
-                }}, 500);
-            </script>
-        </body>
-        </html>
-        """
-
-        response = HTMLResponse(content=html_content, status_code=200)
-        response.set_cookie(
-            key="auth_cookie",
-            value=token_str,
-            httponly=True,
-            max_age=3600,
-            samesite="lax"
-        )
-        return response
-
-    except Exception as e:
-        print(f"ERROR in OAuth callback endpoint: {type(e).__name__}: {e}")
-        import traceback
-        traceback.print_exc()
-        return templates.TemplateResponse("login.html", {"request": request, "error": "oauth_failed"})
-
-# Note: OAuth middleware removed - custom callback handles everything
+# Auth routes moved to app/routers/auth.py
 
 # Landing page - redirects based on authentication status and user type
 @app.get("/", response_class=HTMLResponse)
@@ -698,149 +581,6 @@ async def device_pair_page(request: Request, user: User = Depends(current_user))
         "user": user,
         "device_info": device_info_for_template
     })
-
-# Registration form handler
-@app.post("/auth/register")
-async def register_user(
-    request: Request,
-    email: str = Form(...),
-    password: str = Form(...),
-    first_name: str = Form(...),
-    last_name: str = Form(...),
-    manager: CustomUserManager = Depends(get_user_manager)
-):
-    try:
-        user_create = UserCreate(
-            email=email,
-            password=password,
-            first_name=first_name,
-            last_name=last_name,
-            is_active=False,  # Pending approval
-            is_verified=False,
-            is_suspended=False  # Explicitly set not suspended
-        )
-        await manager.create(user_create)
-        return templates.TemplateResponse("registration_pending.html", {"request": request})
-    except exceptions.UserAlreadyExists:
-        return templates.TemplateResponse("register.html", {
-            "request": request, 
-            "error": "A user with this email already exists"
-        })
-    except Exception as e:
-        return templates.TemplateResponse("register.html", {
-            "request": request, 
-            "error": "Registration failed. Please try again."
-        })
-
-# JWT login form handler (for admin password login)
-@app.post("/auth/jwt/login")
-async def login(
-    request: Request,
-    username: str = Form(...),
-    password: str = Form(...),
-    next: str = Form(None),
-    device_id: str = Form(None),
-    manager: CustomUserManager = Depends(get_user_manager),
-    strategy: JWTStrategy = Depends(get_jwt_strategy)
-):
-    from fastapi.security import OAuth2PasswordRequestForm
-
-    # Create credentials object
-    credentials = OAuth2PasswordRequestForm(username=username, password=password, scope="")
-
-    try:
-        user = await manager.authenticate(credentials)
-
-        if user is None:
-            return RedirectResponse("/login?error=invalid_credentials", status_code=303)
-
-        # Create token
-        token = await strategy.write_token(user)
-
-        # Redirect based on next parameter if present, otherwise dashboard
-        redirect_url = "/dashboard"
-        if next and device_id:
-            redirect_url = f"{next}?device_id={device_id}"
-        elif next:
-            redirect_url = next
-
-        response = RedirectResponse(redirect_url, status_code=303)
-        response.set_cookie(
-            key="auth_cookie",
-            value=token,
-            httponly=True,
-            max_age=3600,
-            samesite="lax"
-        )
-        return response
-
-    except HTTPException as e:
-        if e.detail == "PENDING_APPROVAL":
-            return templates.TemplateResponse("pending_approval.html", {"request": request})
-        elif e.detail == "SUSPENDED":
-            return templates.TemplateResponse("suspended.html", {"request": request})
-        return RedirectResponse("/login?error=invalid_credentials", status_code=303)
-    except Exception as e:
-        print(f"Login error: {e}")
-        return RedirectResponse("/login?error=server_error", status_code=303)
-
-# Logout
-@app.get("/auth/logout")
-async def logout():
-    response = RedirectResponse("/login", status_code=303)
-    response.delete_cookie("auth_cookie")
-    return response
-
-# Get current user info API
-@app.get("/api/user/me")
-async def get_current_user_info(user: User = Depends(current_user)):
-    return {
-        "email": user.email,
-        "first_name": user.first_name,
-        "last_name": user.last_name,
-        "is_superuser": user.is_superuser,
-        "is_active": user.is_active
-    }
-
-# Get dashboard preferences
-@app.get("/api/user/dashboard-preferences")
-async def get_dashboard_preferences(
-    user: User = Depends(current_user),
-    session: AsyncSession = Depends(get_db)
-):
-    # Refresh user from database to get latest preferences
-    result = await session.execute(select(User).where(User.id == user.id))
-    db_user = result.scalars().first()
-
-    if db_user and db_user.dashboard_preferences:
-        try:
-            import json
-            return json.loads(db_user.dashboard_preferences)
-        except:
-            return {}
-    return {}
-
-# Save dashboard preferences
-@app.post("/api/user/dashboard-preferences")
-async def save_dashboard_preferences(
-    preferences: Dict[str, Any],
-    user: User = Depends(current_user),
-    session: AsyncSession = Depends(get_db)
-):
-    import json
-
-    # Get user from database
-    result = await session.execute(select(User).where(User.id == user.id))
-    db_user = result.scalars().first()
-
-    if not db_user:
-        raise HTTPException(404, "User not found")
-
-    # Save preferences as JSON string
-    db_user.dashboard_preferences = json.dumps(preferences)
-    await session.commit()
-
-    return {"status": "success", "message": "Preferences saved"}
 
 # Dashboard
 @app.get("/dashboard", response_class=HTMLResponse)
