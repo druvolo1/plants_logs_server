@@ -8,7 +8,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_
 
-from app.models import User, Device, Plant, DeviceAssignment, PhaseHistory, PhaseTemplate, DeviceShare
+from app.models import User, Device, Plant, DeviceAssignment, PhaseHistory, PhaseTemplate, DeviceShare, PlantReport
+from app.services.reports import generate_plant_report, get_live_plant_report
 from app.schemas import (
     PlantCreate,
     PlantCreateNew,
@@ -578,6 +579,34 @@ async def get_phase_history(
     return history_list
 
 
+# Plant Report Endpoints
+
+@router.get("/{plant_id}/report")
+async def get_plant_report(
+    plant_id: str,
+    user: User = Depends(get_current_user_dependency()),
+    session: AsyncSession = Depends(get_db_dependency())
+):
+    """
+    Get the report for a plant.
+
+    Returns a frozen report for finished plants, or a live report for active plants.
+    """
+    # Verify plant exists and user has access
+    result = await session.execute(
+        select(Plant).where(Plant.plant_id == plant_id, Plant.user_id == user.id)
+    )
+    plant = result.scalars().first()
+
+    if not plant:
+        raise HTTPException(404, "Plant not found")
+
+    # Get report (live or frozen)
+    report = await get_live_plant_report(session, plant)
+
+    return report
+
+
 # Plant Finish/Completion Endpoints
 
 @router.post("/{plant_id}/finish", response_model=Dict[str, str])
@@ -586,7 +615,7 @@ async def finish_plant(
     user: User = Depends(get_current_user_dependency()),
     session: AsyncSession = Depends(get_db_dependency())
 ):
-    """Mark a plant as finished"""
+    """Mark a plant as finished and generate frozen report"""
     # Verify plant exists and user has access
     result = await session.execute(
         select(Plant).where(Plant.plant_id == plant_id, Plant.user_id == user.id)
@@ -628,6 +657,14 @@ async def finish_plant(
         assignment.removed_at = datetime.utcnow()
 
     await session.commit()
+
+    # Generate frozen plant report
+    try:
+        report = await generate_plant_report(session, plant)
+        print(f"[PLANT FINISH] Generated report for plant '{plant.name}' (report_id={report.id})")
+    except Exception as e:
+        print(f"[PLANT FINISH] Error generating report for plant '{plant.name}': {e}")
+        # Don't fail the finish operation if report generation fails
 
     return {"status": "success", "message": f"Plant '{plant.name}' marked as finished"}
 
@@ -814,7 +851,7 @@ async def finish_plant_device(
     api_key: str = Query(...),
     session: AsyncSession = Depends(get_db_dependency())
 ):
-    """Finish a plant from a device using API key"""
+    """Finish a plant from a device using API key and generate frozen report"""
     # Verify device and API key
     result = await session.execute(select(Device).where(Device.device_id == device_id, Device.api_key == api_key))
     device = result.scalars().first()
@@ -863,5 +900,13 @@ async def finish_plant_device(
         assignment.removed_at = datetime.utcnow()
 
     await session.commit()
+
+    # Generate frozen plant report
+    try:
+        report = await generate_plant_report(session, plant)
+        print(f"[PLANT FINISH API] Generated report for plant '{plant.name}' (report_id={report.id})")
+    except Exception as e:
+        print(f"[PLANT FINISH API] Error generating report for plant '{plant.name}': {e}")
+        # Don't fail the finish operation if report generation fails
 
     return {"status": "success", "message": f"Plant '{plant.name}' marked as finished"}

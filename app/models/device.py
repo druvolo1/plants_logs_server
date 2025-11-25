@@ -81,6 +81,7 @@ class DeviceLink(Base):
     link_type = Column(String(30), nullable=False)  # 'environmental', 'valve_controller'
     is_location_inherited = Column(Boolean, default=False, nullable=False)  # True = auto from location, False = explicit
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    removed_at = Column(DateTime, nullable=True)  # NULL = active link, set when link is removed for history tracking
 
     # Relationships
     parent_device = relationship("Device", foreign_keys=[parent_device_id], back_populates="linked_child_devices")

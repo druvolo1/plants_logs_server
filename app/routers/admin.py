@@ -10,8 +10,11 @@ from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
 from fastapi_users import exceptions
 
-from app.models import User, Device, Plant, DeviceAssignment
+from app.models import User, Device, Plant, DeviceAssignment, LogEntry, EnvironmentLog
 from app.schemas import UserCreate, UserUpdate, PasswordReset
+from app.services.data_retention import get_purge_candidates, purge_old_data
+from typing import Optional
+from datetime import datetime, timedelta
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -299,3 +302,361 @@ async def delete_plant_admin(
     await session.commit()
 
     return {"status": "success", "message": f"Plant '{plant.name}' and all associated logs deleted successfully"}
+
+
+# Device Data View (for troubleshooting)
+
+@router.get("/devices/{device_id}/data")
+async def get_device_data(
+    device_id: str,
+    admin: User = Depends(get_current_admin_dependency()),
+    session: AsyncSession = Depends(get_db_dependency()),
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    limit: int = 1000
+):
+    """
+    Get all log data for a specific device.
+    Used for troubleshooting and data verification.
+    """
+    from dateutil import parser as date_parser
+
+    # Get device
+    result = await session.execute(
+        select(Device, User.email)
+        .join(User, Device.user_id == User.id)
+        .where(Device.device_id == device_id)
+    )
+    row = result.first()
+
+    if not row:
+        raise HTTPException(404, "Device not found")
+
+    device, owner_email = row
+
+    # Parse date filters
+    start_dt = None
+    end_dt = None
+
+    if start_date:
+        try:
+            start_dt = date_parser.isoparse(start_date)
+        except Exception:
+            raise HTTPException(400, "Invalid start_date format")
+
+    if end_date:
+        try:
+            end_dt = date_parser.isoparse(end_date)
+        except Exception:
+            raise HTTPException(400, "Invalid end_date format")
+
+    # Default to last 7 days if no date range specified
+    if not start_dt and not end_dt:
+        end_dt = datetime.utcnow()
+        start_dt = end_dt - timedelta(days=7)
+
+    # Get log entries for this device
+    log_query = select(LogEntry).where(LogEntry.device_id == device.id)
+
+    if start_dt:
+        log_query = log_query.where(LogEntry.timestamp >= start_dt)
+    if end_dt:
+        log_query = log_query.where(LogEntry.timestamp <= end_dt)
+
+    log_query = log_query.order_by(LogEntry.timestamp.desc()).limit(limit)
+    log_result = await session.execute(log_query)
+
+    log_entries = []
+    for log in log_result.scalars().all():
+        log_entries.append({
+            "id": log.id,
+            "event_type": log.event_type,
+            "sensor_name": log.sensor_name,
+            "value": log.value,
+            "dose_type": log.dose_type,
+            "dose_amount_ml": log.dose_amount_ml,
+            "timestamp": log.timestamp.isoformat(),
+            "created_at": log.created_at.isoformat() if log.created_at else None
+        })
+
+    # Get environment logs for this device (if environmental sensor)
+    env_entries = []
+    if device.device_type == 'environmental':
+        env_query = select(EnvironmentLog).where(EnvironmentLog.device_id == device.id)
+
+        if start_dt:
+            env_query = env_query.where(EnvironmentLog.timestamp >= start_dt)
+        if end_dt:
+            env_query = env_query.where(EnvironmentLog.timestamp <= end_dt)
+
+        env_query = env_query.order_by(EnvironmentLog.timestamp.desc()).limit(limit)
+        env_result = await session.execute(env_query)
+
+        for env in env_result.scalars().all():
+            env_entries.append({
+                "id": env.id,
+                "co2": env.co2,
+                "temperature": env.temperature,
+                "humidity": env.humidity,
+                "vpd": env.vpd,
+                "pressure": env.pressure,
+                "altitude": env.altitude,
+                "lux": env.lux,
+                "ppfd": env.ppfd,
+                "timestamp": env.timestamp.isoformat(),
+                "created_at": env.created_at.isoformat() if env.created_at else None
+            })
+
+    # Get device assignment history
+    assignment_result = await session.execute(
+        select(DeviceAssignment, Plant)
+        .join(Plant, DeviceAssignment.plant_id == Plant.id)
+        .where(DeviceAssignment.device_id == device.id)
+        .order_by(DeviceAssignment.assigned_at.desc())
+    )
+
+    assignments = []
+    for assignment, plant in assignment_result.all():
+        assignments.append({
+            "plant_id": plant.plant_id,
+            "plant_name": plant.name,
+            "assigned_at": assignment.assigned_at.isoformat(),
+            "removed_at": assignment.removed_at.isoformat() if assignment.removed_at else None,
+            "is_active": assignment.removed_at is None
+        })
+
+    return {
+        "device": {
+            "device_id": device.device_id,
+            "name": device.name,
+            "device_type": device.device_type,
+            "owner_email": owner_email,
+            "is_online": device.is_online,
+            "last_seen": device.last_seen.isoformat() if device.last_seen else None
+        },
+        "date_range": {
+            "start": start_dt.isoformat() if start_dt else None,
+            "end": end_dt.isoformat() if end_dt else None
+        },
+        "log_entries": log_entries,
+        "environment_logs": env_entries,
+        "plant_assignments": assignments,
+        "counts": {
+            "log_entries": len(log_entries),
+            "environment_logs": len(env_entries),
+            "plant_assignments": len(assignments)
+        }
+    }
+
+
+@router.get("/devices/{device_id}/data/summary")
+async def get_device_data_summary(
+    device_id: str,
+    admin: User = Depends(get_current_admin_dependency()),
+    session: AsyncSession = Depends(get_db_dependency())
+):
+    """
+    Get a summary of all data stored for a device.
+    Useful for understanding data volume and date ranges.
+    """
+    # Get device
+    result = await session.execute(
+        select(Device).where(Device.device_id == device_id)
+    )
+    device = result.scalars().first()
+
+    if not device:
+        raise HTTPException(404, "Device not found")
+
+    # Count log entries
+    log_count_result = await session.execute(
+        select(func.count(LogEntry.id)).where(LogEntry.device_id == device.id)
+    )
+    log_count = log_count_result.scalar()
+
+    # Get log entry date range
+    log_range_result = await session.execute(
+        select(func.min(LogEntry.timestamp), func.max(LogEntry.timestamp))
+        .where(LogEntry.device_id == device.id)
+    )
+    log_range = log_range_result.first()
+    log_min_date = log_range[0].isoformat() if log_range[0] else None
+    log_max_date = log_range[1].isoformat() if log_range[1] else None
+
+    # Count environment logs
+    env_count_result = await session.execute(
+        select(func.count(EnvironmentLog.id)).where(EnvironmentLog.device_id == device.id)
+    )
+    env_count = env_count_result.scalar()
+
+    # Get environment log date range
+    env_range_result = await session.execute(
+        select(func.min(EnvironmentLog.timestamp), func.max(EnvironmentLog.timestamp))
+        .where(EnvironmentLog.device_id == device.id)
+    )
+    env_range = env_range_result.first()
+    env_min_date = env_range[0].isoformat() if env_range[0] else None
+    env_max_date = env_range[1].isoformat() if env_range[1] else None
+
+    # Count by event type for log entries
+    event_type_result = await session.execute(
+        select(LogEntry.event_type, func.count(LogEntry.id))
+        .where(LogEntry.device_id == device.id)
+        .group_by(LogEntry.event_type)
+    )
+    event_type_counts = {row[0]: row[1] for row in event_type_result.all()}
+
+    # Count by sensor name for sensor events
+    sensor_result = await session.execute(
+        select(LogEntry.sensor_name, func.count(LogEntry.id))
+        .where(LogEntry.device_id == device.id, LogEntry.event_type == 'sensor')
+        .group_by(LogEntry.sensor_name)
+    )
+    sensor_counts = {row[0] or 'unknown': row[1] for row in sensor_result.all()}
+
+    return {
+        "device_id": device_id,
+        "device_name": device.name,
+        "device_type": device.device_type,
+        "log_entries": {
+            "total_count": log_count,
+            "oldest": log_min_date,
+            "newest": log_max_date,
+            "by_event_type": event_type_counts,
+            "by_sensor": sensor_counts
+        },
+        "environment_logs": {
+            "total_count": env_count,
+            "oldest": env_min_date,
+            "newest": env_max_date
+        }
+    }
+
+
+# Data Retention Management
+
+@router.get("/data-retention/preview")
+async def preview_data_purge(
+    admin: User = Depends(get_current_admin_dependency()),
+    session: AsyncSession = Depends(get_db_dependency()),
+    retention_days: int = 30
+):
+    """
+    Preview what data would be purged based on retention policy.
+
+    Returns a list of data that can be safely deleted:
+    - Data from finished plants with frozen reports past the retention buffer
+    - Orphaned data from devices with no plant assignments
+    """
+    candidates = await get_purge_candidates(session, retention_days)
+    return {
+        "retention_days": retention_days,
+        "preview": True,
+        "summary": {
+            "total_log_entries_purgeable": candidates["total_purgeable_log_entries"],
+            "total_environment_logs_purgeable": candidates["total_purgeable_environment_logs"],
+            "devices_analyzed": candidates["devices_analyzed"],
+            "cutoff_date": candidates["cutoff_date"]
+        },
+        "log_entries": candidates["log_entries"],
+        "environment_logs": candidates["environment_logs"]
+    }
+
+
+@router.post("/data-retention/purge")
+async def execute_data_purge(
+    admin: User = Depends(get_current_admin_dependency()),
+    session: AsyncSession = Depends(get_db_dependency()),
+    retention_days: int = 30,
+    confirm: bool = False
+):
+    """
+    Execute data purge based on retention policy.
+
+    CAUTION: This permanently deletes data. Use preview endpoint first.
+
+    Args:
+        retention_days: Number of days to keep data after plant is finished (default 30)
+        confirm: Must be True to actually delete data
+    """
+    if not confirm:
+        return {
+            "error": "Must set confirm=true to execute purge",
+            "message": "Use /admin/data-retention/preview to see what would be deleted first"
+        }
+
+    results = await purge_old_data(session, retention_days, dry_run=False)
+
+    print(f"[DATA PURGE] Admin {admin.email} executed purge: "
+          f"{results['log_entries_deleted']} log entries, "
+          f"{results['environment_logs_deleted']} environment logs deleted")
+
+    return {
+        "status": "success",
+        "retention_days": retention_days,
+        "deleted": {
+            "log_entries": results["log_entries_deleted"],
+            "environment_logs": results["environment_logs_deleted"]
+        },
+        "details": results["details"]
+    }
+
+
+@router.get("/data-retention/stats")
+async def get_data_retention_stats(
+    admin: User = Depends(get_current_admin_dependency()),
+    session: AsyncSession = Depends(get_db_dependency())
+):
+    """
+    Get overall data retention statistics.
+    """
+    # Total log entries
+    total_logs_result = await session.execute(
+        select(func.count(LogEntry.id))
+    )
+    total_logs = total_logs_result.scalar()
+
+    # Total environment logs
+    total_env_result = await session.execute(
+        select(func.count(EnvironmentLog.id))
+    )
+    total_env = total_env_result.scalar()
+
+    # Logs by device type
+    logs_by_device_result = await session.execute(
+        select(Device.device_type, func.count(LogEntry.id))
+        .join(Device, LogEntry.device_id == Device.id)
+        .group_by(Device.device_type)
+    )
+    logs_by_device = {row[0] or 'unknown': row[1] for row in logs_by_device_result.all()}
+
+    # Plants with reports vs without
+    plants_with_reports_result = await session.execute(
+        select(func.count(Plant.id))
+        .where(Plant.end_date.isnot(None))
+    )
+    finished_plants = plants_with_reports_result.scalar()
+
+    from app.models import PlantReport
+    reports_count_result = await session.execute(
+        select(func.count(PlantReport.id))
+    )
+    reports_count = reports_count_result.scalar()
+
+    # Active plants
+    active_plants_result = await session.execute(
+        select(func.count(Plant.id))
+        .where(Plant.end_date.is_(None))
+    )
+    active_plants = active_plants_result.scalar()
+
+    return {
+        "total_log_entries": total_logs,
+        "total_environment_logs": total_env,
+        "logs_by_device_type": logs_by_device,
+        "plants": {
+            "active": active_plants,
+            "finished": finished_plants,
+            "with_frozen_reports": reports_count
+        }
+    }

@@ -43,63 +43,26 @@ async def upload_logs(
     device_id: str,
     logs: List[LogEntryCreate],
     api_key: str = Query(...),
-    plant_id: Optional[str] = Query(None),
     session: AsyncSession = Depends(get_db_dependency())
 ):
-    """Upload log entries from a device"""
+    """
+    Upload log entries from a device.
+
+    Logs are now device-centric - stored once per device reading.
+    Plant associations are determined via DeviceAssignment history when generating reports.
+    """
     print(f"[LOG UPLOAD] Received {len(logs)} log entries from device {device_id}")
+
     # Verify device and API key
-    result = await session.execute(select(Device).where(Device.device_id == device_id, Device.api_key == api_key))
+    result = await session.execute(
+        select(Device).where(Device.device_id == device_id, Device.api_key == api_key)
+    )
     device = result.scalars().first()
 
     if not device:
         raise HTTPException(401, "Invalid device or API key")
 
-    # Get target plants - either specific plant or all assigned plants
-    target_plants = []
-
-    if plant_id:
-        # Legacy mode: specific plant_id provided (backward compatibility)
-        # Try legacy direct assignment first
-        result = await session.execute(select(Plant).where(Plant.plant_id == plant_id, Plant.device_id == device.id))
-        plant = result.scalars().first()
-
-        # If not found via legacy direct assignment, try DeviceAssignment table
-        if not plant:
-            result = await session.execute(
-                select(Plant)
-                .join(DeviceAssignment, DeviceAssignment.plant_id == Plant.id)
-                .where(
-                    Plant.plant_id == plant_id,
-                    DeviceAssignment.device_id == device.id,
-                    DeviceAssignment.removed_at == None
-                )
-            )
-            plant = result.scalars().first()
-
-        if not plant:
-            print(f"[LOG UPLOAD ERROR] Plant not found: plant_id={plant_id}, device.id={device.id}")
-            raise HTTPException(404, f"Plant {plant_id} not found for device {device_id}")
-
-        target_plants = [plant]
-    else:
-        # New mode: log for ALL plants currently assigned to this device
-        result = await session.execute(
-            select(Plant)
-            .join(DeviceAssignment, DeviceAssignment.plant_id == Plant.id)
-            .where(
-                DeviceAssignment.device_id == device.id,
-                DeviceAssignment.removed_at == None,
-                Plant.end_date == None  # Active plants have no end_date
-            )
-        )
-        target_plants = result.scalars().all()
-
-        if not target_plants:
-            print(f"[LOG UPLOAD] No active plants assigned to device {device_id}")
-            return {"status": "success", "message": "No active plants to log for"}
-
-    # Insert log entries for each target plant (skip duplicates)
+    # Insert log entries for the device (skip duplicates)
     log_count = 0
     skipped_count = 0
 
@@ -108,44 +71,41 @@ async def upload_logs(
             # Parse timestamp
             timestamp = date_parser.isoparse(log_data.timestamp)
 
-            # Create log entry for each target plant
-            for plant in target_plants:
-                # Check if this log entry already exists (duplicate detection)
-                duplicate_check = await session.execute(
-                    select(LogEntry).where(
-                        LogEntry.plant_id == plant.id,
-                        LogEntry.timestamp == timestamp,
-                        LogEntry.event_type == log_data.event_type
-                    )
+            # Check if this log entry already exists (duplicate detection by device + timestamp + event_type)
+            duplicate_check = await session.execute(
+                select(LogEntry).where(
+                    LogEntry.device_id == device.id,
+                    LogEntry.timestamp == timestamp,
+                    LogEntry.event_type == log_data.event_type,
+                    LogEntry.sensor_name == log_data.sensor_name if log_data.sensor_name else LogEntry.sensor_name.is_(None)
                 )
-                existing_entry = duplicate_check.scalars().first()
+            )
+            existing_entry = duplicate_check.scalars().first()
 
-                if existing_entry:
-                    skipped_count += 1
-                    continue
+            if existing_entry:
+                skipped_count += 1
+                continue
 
-                # Create log entry
-                log_entry = LogEntry(
-                    plant_id=plant.id,
-                    event_type=log_data.event_type,
-                    sensor_name=log_data.sensor_name,
-                    value=log_data.value,
-                    dose_type=log_data.dose_type,
-                    dose_amount_ml=log_data.dose_amount_ml,
-                    timestamp=timestamp,
-                    phase=plant.current_phase
-                )
+            # Create log entry for the device
+            log_entry = LogEntry(
+                device_id=device.id,
+                event_type=log_data.event_type,
+                sensor_name=log_data.sensor_name,
+                value=log_data.value,
+                dose_type=log_data.dose_type,
+                dose_amount_ml=log_data.dose_amount_ml,
+                timestamp=timestamp
+            )
 
-                session.add(log_entry)
-                log_count += 1
+            session.add(log_entry)
+            log_count += 1
 
         except Exception as e:
             print(f"Error inserting log entry: {e}")
 
     await session.commit()
 
-    plants_count = len(target_plants)
-    message = f"Uploaded {log_count} log entries for {plants_count} plant(s)"
+    message = f"Uploaded {log_count} log entries"
     if skipped_count > 0:
         message += f", skipped {skipped_count} duplicates"
     return {"status": "success", "message": message}
@@ -161,7 +121,13 @@ async def get_plant_logs(
     event_type: Optional[str] = None,
     limit: int = 1000
 ):
-    """Get logs for a specific plant"""
+    """
+    Get logs for a specific plant.
+
+    Logs are now device-centric - this endpoint queries logs from all devices
+    that were assigned to the plant during the relevant time periods using
+    DeviceAssignment history.
+    """
     # Verify plant exists and user has access
     result = await session.execute(
         select(Plant, Device)
@@ -178,40 +144,77 @@ async def get_plant_logs(
 
     plant, device = row
 
-    # Build query
-    query = select(LogEntry).where(LogEntry.plant_id == plant.id)
+    # Get all device assignments for this plant (including historical)
+    assignments_result = await session.execute(
+        select(DeviceAssignment).where(DeviceAssignment.plant_id == plant.id)
+    )
+    assignments = assignments_result.scalars().all()
 
-    # Apply filters
+    if not assignments:
+        return []
+
+    # Parse date filters
+    start_dt = None
+    end_dt = None
     if start_date:
         try:
             start_dt = date_parser.isoparse(start_date)
-            query = query.where(LogEntry.timestamp >= start_dt)
         except Exception as e:
-            print(f"Error parsing start_date: {e}")
             raise HTTPException(400, f"Invalid start_date format: {str(e)}")
 
     if end_date:
         try:
             end_dt = date_parser.isoparse(end_date)
-            query = query.where(LogEntry.timestamp <= end_dt)
         except Exception as e:
-            print(f"Error parsing end_date: {e}")
             raise HTTPException(400, f"Invalid end_date format: {str(e)}")
 
-    if event_type:
-        query = query.where(LogEntry.event_type == event_type)
+    # Build a query that gets logs from all assigned devices within their assignment periods
+    # For each assignment, we need logs where:
+    # - device_id matches
+    # - timestamp >= assignment.assigned_at
+    # - timestamp <= assignment.removed_at (or now if still active)
+    all_logs = []
 
-    # Order by timestamp and limit
-    query = query.order_by(LogEntry.timestamp.desc()).limit(limit)
+    for assignment in assignments:
+        # Determine the time window for this assignment
+        assign_start = assignment.assigned_at
+        assign_end = assignment.removed_at or datetime.utcnow()
 
-    try:
-        result = await session.execute(query)
-        logs = result.scalars().all()
-    except Exception as e:
-        print(f"Error executing logs query: {e}")
-        raise HTTPException(500, "Error retrieving logs")
+        # Apply user's date filters within the assignment window
+        query_start = assign_start
+        query_end = assign_end
 
-    return logs
+        if start_dt and start_dt > query_start:
+            query_start = start_dt
+        if end_dt and end_dt < query_end:
+            query_end = end_dt
+
+        # Skip if window is invalid
+        if query_start > query_end:
+            continue
+
+        # Query logs for this device during this time window
+        query = select(LogEntry).where(
+            LogEntry.device_id == assignment.device_id,
+            LogEntry.timestamp >= query_start,
+            LogEntry.timestamp <= query_end
+        )
+
+        if event_type:
+            query = query.where(LogEntry.event_type == event_type)
+
+        try:
+            result = await session.execute(query)
+            logs = result.scalars().all()
+            all_logs.extend(logs)
+        except Exception as e:
+            print(f"Error querying logs for assignment {assignment.id}: {e}")
+
+    # Sort by timestamp descending and apply limit
+    all_logs.sort(key=lambda x: x.timestamp, reverse=True)
+    all_logs = all_logs[:limit]
+
+    return all_logs
 
 
 # Environment Sensor Endpoints
