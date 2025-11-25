@@ -4,7 +4,7 @@ API route handlers organized by domain.
 """
 from .templates import router as templates_router
 from .locations import router as locations_router
-from .admin import router as admin_router
+from .admin import router as admin_router  # Now imports from admin/ package
 from .logs import router as logs_router
 from .plants import router as plants_router, api_router as plants_api_router
 from .devices import router as devices_router, api_router as devices_api_router

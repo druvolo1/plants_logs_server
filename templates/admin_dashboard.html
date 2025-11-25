@@ -1,0 +1,550 @@
+{% extends "admin_base.html" %}
+
+{% block title %}Dashboard{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+
+{% set active_page = 'dashboard' %}
+
+{% block header_actions %}
+<span class="back-to-app">
+    Last updated: <span id="last-updated">-</span>
+</span>
+<button class="admin-header-btn admin-header-btn-primary" onclick="refreshAllStats()">
+    🔄 Refresh
+</button>
+{% endblock %}
+
+{% block extra_styles %}
+<style>
+    .dashboard-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .activity-feed {
+        max-height: 400px;
+        overflow-y: auto;
+    }
+
+    .activity-item {
+        display: flex;
+        gap: 1rem;
+        padding: 0.75rem 0;
+        border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+    }
+
+    .activity-item:last-child {
+        border-bottom: none;
+    }
+
+    .activity-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+    .activity-icon-user {
+        background: rgba(59, 130, 246, 0.2);
+    }
+
+    .activity-icon-device {
+        background: rgba(16, 185, 129, 0.2);
+    }
+
+    .activity-icon-alert {
+        background: rgba(239, 68, 68, 0.2);
+    }
+
+    .activity-content {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .activity-title {
+        color: #e2e8f0;
+        font-size: 0.9rem;
+    }
+
+    .activity-time {
+        color: #64748b;
+        font-size: 0.75rem;
+        margin-top: 0.25rem;
+    }
+
+    .alert-card {
+        background: rgba(239, 68, 68, 0.1);
+        border: 1px solid rgba(239, 68, 68, 0.3);
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 0.75rem;
+    }
+
+    .alert-card-warning {
+        background: rgba(245, 158, 11, 0.1);
+        border-color: rgba(245, 158, 11, 0.3);
+    }
+
+    .alert-title {
+        color: #ef4444;
+        font-weight: 600;
+        font-size: 0.9rem;
+        margin-bottom: 0.25rem;
+    }
+
+    .alert-card-warning .alert-title {
+        color: #f59e0b;
+    }
+
+    .alert-description {
+        color: #94a3b8;
+        font-size: 0.8rem;
+    }
+
+    .quick-stats {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+    }
+
+    .quick-stat {
+        text-align: center;
+        padding: 1rem;
+        background: rgba(0, 0, 0, 0.2);
+        border-radius: 8px;
+    }
+
+    .quick-stat-value {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #10b981;
+    }
+
+    .quick-stat-label {
+        color: #64748b;
+        font-size: 0.75rem;
+        margin-top: 0.25rem;
+    }
+
+    .device-type-breakdown {
+        margin-top: 1rem;
+    }
+
+    .breakdown-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.5rem 0;
+        border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+    }
+
+    .breakdown-item:last-child {
+        border-bottom: none;
+    }
+
+    .breakdown-label {
+        color: #94a3b8;
+        font-size: 0.85rem;
+    }
+
+    .breakdown-value {
+        font-weight: 600;
+    }
+
+    .online-indicator {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        margin-right: 0.5rem;
+    }
+
+    .online-indicator.online {
+        background: #10b981;
+    }
+
+    .online-indicator.offline {
+        background: #ef4444;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Stats Grid -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-card-value" id="stat-users">-</div>
+        <div class="stat-card-label">Total Users</div>
+        <div class="stat-card-change positive" id="stat-users-pending">- pending approval</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-card-value" id="stat-devices">-</div>
+        <div class="stat-card-label">Total Devices</div>
+        <div class="stat-card-change" id="stat-devices-online">- online now</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-card-value" id="stat-plants">-</div>
+        <div class="stat-card-label">Total Plants</div>
+        <div class="stat-card-change positive" id="stat-plants-active">- active</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-card-value" id="stat-locations">-</div>
+        <div class="stat-card-label">Locations</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-card-value" id="stat-logs">-</div>
+        <div class="stat-card-label">Log Entries</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-card-value" id="stat-env-logs">-</div>
+        <div class="stat-card-label">Environment Logs</div>
+    </div>
+</div>
+
+<!-- Dashboard Grid -->
+<div class="dashboard-grid">
+    <!-- Alerts Card -->
+    <div class="card">
+        <div class="card-header">⚠️ Alerts & Issues</div>
+        <div class="card-body" id="alerts-container">
+            <div class="loading">
+                <div class="loading-spinner"></div>
+                <p>Loading alerts...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Activity Card -->
+    <div class="card">
+        <div class="card-header">📋 Recent Activity</div>
+        <div class="card-body">
+            <div class="activity-feed" id="activity-feed">
+                <div class="loading">
+                    <div class="loading-spinner"></div>
+                    <p>Loading activity...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Device Status Card -->
+    <div class="card">
+        <div class="card-header">📱 Device Status</div>
+        <div class="card-body">
+            <div class="quick-stats">
+                <div class="quick-stat">
+                    <div class="quick-stat-value" id="devices-online-count">-</div>
+                    <div class="quick-stat-label">Online</div>
+                </div>
+                <div class="quick-stat">
+                    <div class="quick-stat-value" id="devices-offline-count">-</div>
+                    <div class="quick-stat-label">Offline</div>
+                </div>
+            </div>
+            <div class="device-type-breakdown" id="device-breakdown">
+                <!-- Populated by JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Firmware Status Card -->
+    <div class="card">
+        <div class="card-header">⬆️ Firmware Status</div>
+        <div class="card-body" id="firmware-status">
+            <div class="loading">
+                <div class="loading-spinner"></div>
+                <p>Loading firmware info...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Users Table -->
+<div class="data-table-container" style="margin-bottom: 2rem;">
+    <div class="data-table-header">
+        <span class="data-table-title">Recent Users</span>
+        <a href="/admin/users" class="action-btn action-btn-primary">View All →</a>
+    </div>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Email</th>
+                <th>Status</th>
+                <th>Devices</th>
+                <th>Registered</th>
+            </tr>
+        </thead>
+        <tbody id="recent-users-tbody">
+            <tr>
+                <td colspan="4" class="loading">Loading...</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<!-- Recent Devices Table -->
+<div class="data-table-container">
+    <div class="data-table-header">
+        <span class="data-table-title">Recent Devices</span>
+        <a href="/admin/devices" class="action-btn action-btn-primary">View All →</a>
+    </div>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Device</th>
+                <th>Owner</th>
+                <th>Type</th>
+                <th>Status</th>
+                <th>Last Seen</th>
+            </tr>
+        </thead>
+        <tbody id="recent-devices-tbody">
+            <tr>
+                <td colspan="5" class="loading">Loading...</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    // Load all dashboard data
+    async function loadDashboard() {
+        await Promise.all([
+            loadStats(),
+            loadAlerts(),
+            loadRecentActivity(),
+            loadDeviceStatus(),
+            loadFirmwareStatus(),
+            loadRecentUsers(),
+            loadRecentDevices()
+        ]);
+        document.getElementById('last-updated').textContent = new Date().toLocaleTimeString();
+    }
+
+    async function refreshAllStats() {
+        document.getElementById('last-updated').textContent = 'Refreshing...';
+        await loadDashboard();
+    }
+
+    async function loadStats() {
+        try {
+            const response = await fetch('/admin/api/dashboard/stats');
+            if (response.ok) {
+                const data = await response.json();
+                document.getElementById('stat-users').textContent = formatNumber(data.users.total);
+                document.getElementById('stat-users-pending').textContent = `${data.users.pending} pending approval`;
+                document.getElementById('stat-devices').textContent = formatNumber(data.devices.total);
+                document.getElementById('stat-devices-online').textContent = `${data.devices.online} online now`;
+                document.getElementById('stat-plants').textContent = formatNumber(data.plants.total);
+                document.getElementById('stat-plants-active').textContent = `${data.plants.active} active`;
+                document.getElementById('stat-locations').textContent = formatNumber(data.locations || 0);
+                document.getElementById('stat-logs').textContent = formatNumber(data.logs.log_entries || 0);
+                document.getElementById('stat-env-logs').textContent = formatNumber(data.logs.environment_logs || 0);
+            }
+        } catch (error) {
+            console.error('Error loading stats:', error);
+        }
+    }
+
+    async function loadAlerts() {
+        try {
+            const response = await fetch('/admin/api/dashboard/alerts');
+            const container = document.getElementById('alerts-container');
+
+            if (response.ok) {
+                const alerts = await response.json();
+
+                if (alerts.length === 0) {
+                    container.innerHTML = '<div class="empty-state"><p>No alerts - system healthy!</p></div>';
+                    return;
+                }
+
+                container.innerHTML = alerts.map(alert => `
+                    <div class="alert-card ${alert.level === 'warning' ? 'alert-card-warning' : ''}">
+                        <div class="alert-title">${alert.title}</div>
+                        <div class="alert-description">${alert.description}</div>
+                    </div>
+                `).join('');
+            }
+        } catch (error) {
+            console.error('Error loading alerts:', error);
+            document.getElementById('alerts-container').innerHTML = '<div class="empty-state">Error loading alerts</div>';
+        }
+    }
+
+    async function loadRecentActivity() {
+        try {
+            const response = await fetch('/admin/api/dashboard/activity');
+            const container = document.getElementById('activity-feed');
+
+            if (response.ok) {
+                const activities = await response.json();
+
+                if (activities.length === 0) {
+                    container.innerHTML = '<div class="empty-state"><p>No recent activity</p></div>';
+                    return;
+                }
+
+                container.innerHTML = activities.map(activity => `
+                    <div class="activity-item">
+                        <div class="activity-icon activity-icon-${activity.type}">
+                            ${activity.type === 'user' ? '👤' : activity.type === 'device' ? '📱' : '⚠️'}
+                        </div>
+                        <div class="activity-content">
+                            <div class="activity-title">${activity.message}</div>
+                            <div class="activity-time">${formatDateTime(activity.timestamp)}</div>
+                        </div>
+                    </div>
+                `).join('');
+            }
+        } catch (error) {
+            console.error('Error loading activity:', error);
+            document.getElementById('activity-feed').innerHTML = '<div class="empty-state">Error loading activity</div>';
+        }
+    }
+
+    async function loadDeviceStatus() {
+        try {
+            const response = await fetch('/admin/api/dashboard/device-status');
+
+            if (response.ok) {
+                const data = await response.json();
+                document.getElementById('devices-online-count').textContent = data.online;
+                document.getElementById('devices-offline-count').textContent = data.offline;
+
+                const breakdownHtml = Object.entries(data.by_type).map(([type, counts]) => `
+                    <div class="breakdown-item">
+                        <span class="breakdown-label">${type.replace('_', ' ')}</span>
+                        <span class="breakdown-value">
+                            <span class="online-indicator online"></span>${counts.online}
+                            <span style="color: #64748b; margin: 0 0.25rem;">/</span>
+                            <span class="online-indicator offline"></span>${counts.offline}
+                        </span>
+                    </div>
+                `).join('');
+
+                document.getElementById('device-breakdown').innerHTML = breakdownHtml;
+            }
+        } catch (error) {
+            console.error('Error loading device status:', error);
+        }
+    }
+
+    async function loadFirmwareStatus() {
+        try {
+            const response = await fetch('/admin/api/dashboard/firmware-status');
+            const container = document.getElementById('firmware-status');
+
+            if (response.ok) {
+                const data = await response.json();
+
+                if (data.device_types.length === 0) {
+                    container.innerHTML = '<div class="empty-state"><p>No firmware uploaded yet</p><a href="/admin/firmware" class="action-btn action-btn-primary" style="margin-top: 0.5rem;">Upload Firmware</a></div>';
+                    return;
+                }
+
+                let html = '';
+                data.device_types.forEach(dt => {
+                    html += `
+                        <div class="breakdown-item">
+                            <span class="breakdown-label">${dt.type.replace('_', ' ')}</span>
+                            <span class="breakdown-value">v${dt.latest_version}</span>
+                        </div>
+                        <div style="padding-left: 1rem; margin-bottom: 0.5rem;">
+                            <span style="color: #10b981; font-size: 0.8rem;">${dt.devices_up_to_date} up to date</span>
+                            ${dt.devices_need_update > 0 ? `<span style="color: #f59e0b; font-size: 0.8rem; margin-left: 0.5rem;">${dt.devices_need_update} need update</span>` : ''}
+                        </div>
+                    `;
+                });
+
+                container.innerHTML = html;
+            }
+        } catch (error) {
+            console.error('Error loading firmware status:', error);
+            document.getElementById('firmware-status').innerHTML = '<div class="empty-state">Error loading firmware status</div>';
+        }
+    }
+
+    async function loadRecentUsers() {
+        try {
+            const response = await fetch('/admin/api/dashboard/recent-users');
+            const tbody = document.getElementById('recent-users-tbody');
+
+            if (response.ok) {
+                const users = await response.json();
+
+                if (users.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="4" class="empty-state">No users found</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = users.map(user => `
+                    <tr>
+                        <td>${user.email}</td>
+                        <td>
+                            ${user.is_active ?
+                                '<span class="badge badge-success">Active</span>' :
+                                '<span class="badge badge-warning">Pending</span>'}
+                            ${user.is_suspended ? '<span class="badge badge-danger">Suspended</span>' : ''}
+                            ${user.is_superuser ? '<span class="badge badge-info">Admin</span>' : ''}
+                        </td>
+                        <td>${user.device_count || 0}</td>
+                        <td>${formatDate(user.created_at)}</td>
+                    </tr>
+                `).join('');
+            }
+        } catch (error) {
+            console.error('Error loading recent users:', error);
+            document.getElementById('recent-users-tbody').innerHTML = '<tr><td colspan="4">Error loading users</td></tr>';
+        }
+    }
+
+    async function loadRecentDevices() {
+        try {
+            const response = await fetch('/admin/api/dashboard/recent-devices');
+            const tbody = document.getElementById('recent-devices-tbody');
+
+            if (response.ok) {
+                const devices = await response.json();
+
+                if (devices.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No devices found</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = devices.map(device => `
+                    <tr>
+                        <td>
+                            <strong>${device.name || device.device_id.substring(0, 8) + '...'}</strong>
+                        </td>
+                        <td style="color: #60a5fa;">${device.owner_email}</td>
+                        <td>${device.device_type || 'feeding_system'}</td>
+                        <td>
+                            ${device.is_online ?
+                                '<span class="badge badge-success">🟢 Online</span>' :
+                                '<span class="badge badge-danger">🔴 Offline</span>'}
+                        </td>
+                        <td>${formatDateTime(device.last_seen)}</td>
+                    </tr>
+                `).join('');
+            }
+        } catch (error) {
+            console.error('Error loading recent devices:', error);
+            document.getElementById('recent-devices-tbody').innerHTML = '<tr><td colspan="5">Error loading devices</td></tr>';
+        }
+    }
+
+    // Load dashboard on page load
+    loadDashboard();
+
+    // Auto-refresh every 30 seconds
+    setInterval(loadDashboard, 30000);
+</script>
+{% endblock %}
