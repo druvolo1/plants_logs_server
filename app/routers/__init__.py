@@ -9,6 +9,7 @@ from .logs import router as logs_router
 from .plants import router as plants_router, api_router as plants_api_router
 from .devices import router as devices_router, api_router as devices_api_router
 from .auth import router as auth_router, api_router as auth_api_router
+from .websocket import router as websocket_router, device_connections, user_connections
 
 __all__ = [
     "templates_router",
@@ -21,4 +22,7 @@ __all__ = [
     "devices_api_router",
     "auth_router",
     "auth_api_router",
+    "websocket_router",
+    "device_connections",
+    "user_connections",
 ]
