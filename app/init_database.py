@@ -210,12 +210,110 @@ async def init_database():
 
             print("\nChecking 'plants' table schema...")
 
+            # Add batch_number column if it doesn't exist
+            await check_and_add_column(
+                conn,
+                'plants',
+                'batch_number',
+                "batch_number VARCHAR(100) NULL AFTER name"
+            )
+
             # Add display_order column if it doesn't exist
             await check_and_add_column(
                 conn,
                 'plants',
                 'display_order',
                 "display_order INT NULL DEFAULT 0 AFTER yield_grams"
+            )
+
+            # Add status column if it doesn't exist
+            await check_and_add_column(
+                conn,
+                'plants',
+                'status',
+                "status VARCHAR(50) NOT NULL DEFAULT 'created' AFTER display_order"
+            )
+
+            # Add current_phase column if it doesn't exist
+            await check_and_add_column(
+                conn,
+                'plants',
+                'current_phase',
+                "current_phase VARCHAR(50) NULL AFTER status"
+            )
+
+            # Add harvest_date column if it doesn't exist
+            await check_and_add_column(
+                conn,
+                'plants',
+                'harvest_date',
+                "harvest_date DATETIME NULL AFTER current_phase"
+            )
+
+            # Add cure_start_date column if it doesn't exist
+            await check_and_add_column(
+                conn,
+                'plants',
+                'cure_start_date',
+                "cure_start_date DATETIME NULL AFTER harvest_date"
+            )
+
+            # Add cure_end_date column if it doesn't exist
+            await check_and_add_column(
+                conn,
+                'plants',
+                'cure_end_date',
+                "cure_end_date DATETIME NULL AFTER cure_start_date"
+            )
+
+            # Add expected phase duration columns if they don't exist
+            await check_and_add_column(
+                conn,
+                'plants',
+                'expected_seed_days',
+                "expected_seed_days INT NULL AFTER cure_end_date"
+            )
+
+            await check_and_add_column(
+                conn,
+                'plants',
+                'expected_clone_days',
+                "expected_clone_days INT NULL AFTER expected_seed_days"
+            )
+
+            await check_and_add_column(
+                conn,
+                'plants',
+                'expected_veg_days',
+                "expected_veg_days INT NULL AFTER expected_clone_days"
+            )
+
+            await check_and_add_column(
+                conn,
+                'plants',
+                'expected_flower_days',
+                "expected_flower_days INT NULL AFTER expected_veg_days"
+            )
+
+            await check_and_add_column(
+                conn,
+                'plants',
+                'expected_drying_days',
+                "expected_drying_days INT NULL AFTER expected_flower_days"
+            )
+
+            await check_and_add_column(
+                conn,
+                'plants',
+                'expected_curing_days',
+                "expected_curing_days INT NULL AFTER expected_drying_days"
+            )
+
+            await check_and_add_column(
+                conn,
+                'plants',
+                'template_id',
+                "template_id INT NULL AFTER expected_curing_days"
             )
 
             print("\nChecking 'device_shares' table...")
@@ -432,6 +530,30 @@ async def init_database():
                 'created_at',
                 "created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP AFTER timestamp"
             )
+
+            # Make plant_id nullable (for new device-centric logging where plant_id is not required)
+            try:
+                result = await conn.execute(text("""
+                    SELECT IS_NULLABLE
+                    FROM information_schema.COLUMNS
+                    WHERE TABLE_SCHEMA = DATABASE()
+                    AND TABLE_NAME = 'log_entries'
+                    AND COLUMN_NAME = 'plant_id'
+                """))
+                row = result.fetchone()
+                if row and row[0] == 'NO':
+                    print("  Making log_entries.plant_id nullable for device-centric logging...")
+                    await conn.execute(text("""
+                        ALTER TABLE log_entries
+                        MODIFY COLUMN plant_id INT NULL
+                    """))
+                    print("  ✓ log_entries.plant_id is now nullable")
+                elif row:
+                    print("  ✓ log_entries.plant_id is already nullable")
+                else:
+                    print("  Note: plant_id column not found in log_entries")
+            except Exception as e:
+                print(f"  Note: Error modifying plant_id: {e}")
 
             print("\nChecking 'device_links' table...")
 

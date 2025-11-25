@@ -788,7 +788,11 @@
             devices.forEach(device => {
                 const option = document.createElement('option');
                 option.value = device.device_id;
-                option.textContent = `${device.name || device.device_id} (${device.device_type || 'feeding_system'})`;
+                // Show friendly name first, then type, then short UUID for identification
+                const shortUuid = device.device_id.substring(0, 8);
+                const displayName = device.name ? device.name : `${device.device_type || 'Device'} [${shortUuid}]`;
+                const ownerInfo = device.owner_email ? ` - ${device.owner_email}` : '';
+                option.textContent = `${displayName}${ownerInfo}`;
                 select.appendChild(option);
             });
         }
