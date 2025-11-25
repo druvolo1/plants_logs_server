@@ -4,7 +4,7 @@ Phase template management endpoints.
 """
 from typing import List
 from datetime import datetime
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
@@ -26,15 +26,41 @@ def get_db_dependency():
     return get_db
 
 
+async def get_effective_user(
+    request: Request,
+    user: User,
+    session: AsyncSession
+) -> User:
+    """
+    Get the effective user for data display.
+    If admin is impersonating another user, return that user.
+    Otherwise return the actual logged-in user.
+    """
+    if user.is_superuser:
+        impersonated_id = request.cookies.get("impersonate_user_id")
+        if impersonated_id:
+            try:
+                target = await session.get(User, int(impersonated_id))
+                if target:
+                    return target
+            except (ValueError, TypeError):
+                pass
+    return user
+
+
 @router.get("", response_model=List[PhaseTemplateRead])
 async def list_phase_templates(
+    request: Request,
     user: User = Depends(get_current_user_dependency()),
     session: AsyncSession = Depends(get_db_dependency())
 ):
     """Get all phase templates for the current user"""
+    # Get effective user (handles impersonation)
+    effective_user = await get_effective_user(request, user, session)
+
     result = await session.execute(
         select(PhaseTemplate)
-        .where(PhaseTemplate.user_id == user.id)
+        .where(PhaseTemplate.user_id == effective_user.id)
         .order_by(PhaseTemplate.name)
     )
     templates = result.scalars().all()

@@ -4,7 +4,7 @@ Plant management endpoints including CRUD, device assignments, and phase managem
 """
 from typing import List, Dict
 from datetime import datetime
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_
 
@@ -32,6 +32,28 @@ def get_db_dependency():
     """Import and return get_db dependency"""
     from app.main import get_db
     return get_db
+
+
+async def get_effective_user(
+    request: Request,
+    user: User,
+    session: AsyncSession
+) -> User:
+    """
+    Get the effective user for data display.
+    If admin is impersonating another user, return that user.
+    Otherwise return the actual logged-in user.
+    """
+    if user.is_superuser:
+        impersonated_id = request.cookies.get("impersonate_user_id")
+        if impersonated_id:
+            try:
+                target = await session.get(User, int(impersonated_id))
+                if target:
+                    return target
+            except (ValueError, TypeError):
+                pass
+    return user
 
 
 # Plant CRUD Endpoints
@@ -168,16 +190,20 @@ async def create_plant_new(
 
 @router.get("", response_model=List[PlantRead])
 async def list_plants(
+    request: Request,
     user: User = Depends(get_current_user_dependency()),
     session: AsyncSession = Depends(get_db_dependency())
 ):
     """List all plants owned by or shared with the user"""
+    # Get effective user (handles impersonation)
+    effective_user = await get_effective_user(request, user, session)
+
     # Get plants owned by user or where user has access through device sharing
     result = await session.execute(
         select(Plant, Device)
         .outerjoin(Device, Plant.device_id == Device.id)
         .where(
-            or_(Plant.user_id == user.id, Device.user_id == user.id)
+            or_(Plant.user_id == effective_user.id, Device.user_id == effective_user.id)
         )
         .order_by(Plant.display_order.asc(), Plant.id.desc())
     )

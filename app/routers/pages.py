@@ -228,25 +228,56 @@ async def dashboard(request: Request, user: User = Depends(get_current_user_depe
     })
 
 
+# Helper to get impersonation context for pages
+async def get_impersonation_context(request: Request, user: User) -> dict:
+    """Get impersonation context for page templates."""
+    context = {
+        "user": user,
+        "actual_user": user,
+        "impersonating_user": None
+    }
+
+    if user.is_superuser:
+        impersonated_id = request.cookies.get("impersonate_user_id")
+        if impersonated_id:
+            try:
+                from app.main import get_db
+
+                async for session in get_db():
+                    target = await session.get(User, int(impersonated_id))
+                    if target:
+                        context["impersonating_user"] = target
+                        context["user"] = target  # Display as impersonated user
+                    break
+            except Exception as e:
+                print(f"Error loading impersonated user: {e}")
+
+    return context
+
+
 # Devices page
 @router.get("/devices", response_class=HTMLResponse)
 async def devices_page(request: Request, user: User = Depends(get_current_user_dependency())):
-    return templates.TemplateResponse("devices.html", {"request": request, "user": user})
+    context = await get_impersonation_context(request, user)
+    return templates.TemplateResponse("devices.html", {"request": request, **context})
 
 
 # Plants page
 @router.get("/plants", response_class=HTMLResponse)
 async def plants_page(request: Request, user: User = Depends(get_current_user_dependency())):
-    return templates.TemplateResponse("plants.html", {"request": request, "user": user})
+    context = await get_impersonation_context(request, user)
+    return templates.TemplateResponse("plants.html", {"request": request, **context})
 
 
 # Locations page
 @router.get("/locations", response_class=HTMLResponse)
 async def locations_page(request: Request, user: User = Depends(get_current_user_dependency())):
-    return templates.TemplateResponse("locations.html", {"request": request, "user": user})
+    context = await get_impersonation_context(request, user)
+    return templates.TemplateResponse("locations.html", {"request": request, **context})
 
 
 # Templates page
 @router.get("/templates", response_class=HTMLResponse)
 async def templates_page_route(request: Request, user: User = Depends(get_current_user_dependency())):
-    return templates.TemplateResponse("templates.html", {"request": request, "user": user})
+    context = await get_impersonation_context(request, user)
+    return templates.TemplateResponse("templates.html", {"request": request, **context})
