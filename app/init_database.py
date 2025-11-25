@@ -371,6 +371,41 @@ async def init_database():
             except Exception as e:
                 print(f"  Note: Foreign key constraint may already exist or error occurred: {e}")
 
+            print("\nChecking 'device_links' table...")
+
+            # Add removed_at column to device_links table if it doesn't exist
+            await check_and_add_column(
+                conn,
+                'device_links',
+                'removed_at',
+                "removed_at DATETIME NULL AFTER created_at"
+            )
+
+            print("\nChecking 'plant_reports' table...")
+
+            # Create plant_reports table if it doesn't exist
+            await check_and_create_table(
+                conn,
+                'plant_reports',
+                """
+                CREATE TABLE plant_reports (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    plant_id INT NOT NULL UNIQUE,
+                    generated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    report_version INT NOT NULL DEFAULT 1,
+                    plant_name VARCHAR(255) NOT NULL,
+                    strain VARCHAR(255) NULL,
+                    start_date DATETIME NULL,
+                    end_date DATETIME NULL,
+                    final_phase VARCHAR(50) NULL,
+                    raw_data LONGTEXT NOT NULL COMMENT 'JSON blob with all raw data',
+                    aggregated_stats TEXT NULL COMMENT 'JSON blob with aggregated statistics',
+                    INDEX idx_plant_id (plant_id),
+                    FOREIGN KEY (plant_id) REFERENCES plants(id) ON DELETE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+                """
+            )
+
             print("\nChecking 'environment_logs' table...")
 
             # Create environment_logs table if it doesn't exist

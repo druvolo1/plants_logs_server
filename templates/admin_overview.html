@@ -206,6 +206,206 @@
             padding: 3rem;
             color: #64748b;
         }
+
+        /* Device Data Viewer */
+        .data-viewer {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .data-viewer-controls {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            align-items: flex-end;
+            margin-bottom: 1rem;
+        }
+
+        .data-viewer-controls .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .data-viewer-controls label {
+            font-size: 0.85rem;
+            color: #94a3b8;
+        }
+
+        .data-viewer-controls input,
+        .data-viewer-controls select {
+            padding: 0.5rem 0.75rem;
+            background: #0f172a;
+            border: 1px solid rgba(148, 163, 184, 0.3);
+            border-radius: 6px;
+            color: #e2e8f0;
+            font-size: 0.9rem;
+        }
+
+        .data-viewer-controls input:focus,
+        .data-viewer-controls select:focus {
+            outline: none;
+            border-color: #10b981;
+        }
+
+        .btn {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #059669 0%, #047857 100%);
+            transform: translateY(-1px);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #475569 0%, #334155 100%);
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: linear-gradient(135deg, #334155 0%, #1e293b 100%);
+        }
+
+        .data-results {
+            background: #0f172a;
+            border-radius: 6px;
+            padding: 1rem;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .data-results pre {
+            margin: 0;
+            font-size: 0.85rem;
+            color: #e2e8f0;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        .data-summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .data-summary-item {
+            background: #0f172a;
+            padding: 1rem;
+            border-radius: 6px;
+            text-align: center;
+        }
+
+        .data-summary-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #10b981;
+        }
+
+        .data-summary-label {
+            font-size: 0.8rem;
+            color: #94a3b8;
+        }
+
+        .retention-warning {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            border-radius: 6px;
+            padding: 1rem;
+            margin-top: 1rem;
+            color: #fca5a5;
+        }
+
+        .log-entry {
+            padding: 0.5rem;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+            font-size: 0.85rem;
+        }
+
+        .log-entry:last-child {
+            border-bottom: none;
+        }
+
+        .log-entry .timestamp {
+            color: #94a3b8;
+            font-family: monospace;
+        }
+
+        .log-entry .event-type {
+            display: inline-block;
+            padding: 0.1rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin: 0 0.5rem;
+        }
+
+        .log-entry .event-sensor {
+            background: rgba(59, 130, 246, 0.2);
+            color: #60a5fa;
+        }
+
+        .log-entry .event-dosing {
+            background: rgba(245, 158, 11, 0.2);
+            color: #fbbf24;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+        }
+
+        .tab {
+            padding: 0.75rem 1.5rem;
+            background: transparent;
+            border: none;
+            color: #94a3b8;
+            cursor: pointer;
+            font-weight: 500;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -1px;
+        }
+
+        .tab:hover {
+            color: #e2e8f0;
+        }
+
+        .tab.active {
+            color: #10b981;
+            border-bottom-color: #10b981;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
     </style>
 </head>
 <body>
@@ -309,6 +509,101 @@
                 </table>
             </div>
         </div>
+
+        <!-- Device Data Viewer Section -->
+        <div class="section">
+            <div class="section-header">
+                <h2 class="section-title">Device Data Viewer</h2>
+            </div>
+            <div class="data-viewer">
+                <div class="data-viewer-controls">
+                    <div class="form-group">
+                        <label>Select Device</label>
+                        <select id="device-select">
+                            <option value="">-- Select a device --</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Start Date</label>
+                        <input type="date" id="data-start-date">
+                    </div>
+                    <div class="form-group">
+                        <label>End Date</label>
+                        <input type="date" id="data-end-date">
+                    </div>
+                    <button class="btn btn-primary" onclick="loadDeviceData()">Load Data</button>
+                    <button class="btn btn-secondary" onclick="loadDeviceSummary()">Summary Only</button>
+                </div>
+                <div id="device-data-results" style="display: none;">
+                    <div class="data-summary" id="device-data-summary"></div>
+                    <div class="tabs">
+                        <button class="tab active" onclick="showDataTab('logs')">Log Entries</button>
+                        <button class="tab" onclick="showDataTab('env')">Environment Logs</button>
+                        <button class="tab" onclick="showDataTab('assignments')">Plant Assignments</button>
+                    </div>
+                    <div id="data-tab-logs" class="tab-content active">
+                        <div class="data-results" id="log-entries-list"></div>
+                    </div>
+                    <div id="data-tab-env" class="tab-content">
+                        <div class="data-results" id="env-logs-list"></div>
+                    </div>
+                    <div id="data-tab-assignments" class="tab-content">
+                        <div class="data-results" id="assignments-list"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Data Retention Section -->
+        <div class="section">
+            <div class="section-header">
+                <h2 class="section-title">Data Retention</h2>
+            </div>
+            <div class="data-viewer">
+                <div class="data-summary" id="retention-stats">
+                    <div class="data-summary-item">
+                        <div class="data-summary-value" id="total-log-entries">-</div>
+                        <div class="data-summary-label">Total Log Entries</div>
+                    </div>
+                    <div class="data-summary-item">
+                        <div class="data-summary-value" id="total-env-logs">-</div>
+                        <div class="data-summary-label">Total Environment Logs</div>
+                    </div>
+                    <div class="data-summary-item">
+                        <div class="data-summary-value" id="active-plants-count">-</div>
+                        <div class="data-summary-label">Active Plants</div>
+                    </div>
+                    <div class="data-summary-item">
+                        <div class="data-summary-value" id="finished-plants-count">-</div>
+                        <div class="data-summary-label">Finished Plants</div>
+                    </div>
+                    <div class="data-summary-item">
+                        <div class="data-summary-value" id="frozen-reports-count">-</div>
+                        <div class="data-summary-label">Frozen Reports</div>
+                    </div>
+                </div>
+
+                <div class="data-viewer-controls">
+                    <div class="form-group">
+                        <label>Retention Buffer (days)</label>
+                        <input type="number" id="retention-days" value="30" min="1" max="365">
+                    </div>
+                    <button class="btn btn-secondary" onclick="previewPurge()">Preview Purge</button>
+                    <button class="btn btn-danger" onclick="executePurge()">Execute Purge</button>
+                </div>
+
+                <div id="purge-preview" style="display: none;">
+                    <h4 style="color: #f59e0b; margin: 1rem 0 0.5rem;">Purge Preview</h4>
+                    <div class="data-summary" id="purge-summary"></div>
+                    <div class="data-results" id="purge-details"></div>
+                </div>
+
+                <div class="retention-warning">
+                    <strong>⚠️ Warning:</strong> Data purge is irreversible. Only data from finished plants with frozen reports
+                    and past the retention buffer will be purged. Always preview before executing.
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -320,6 +615,7 @@
                     const devices = await devicesResponse.json();
                     renderDevices(devices);
                     updateDeviceStats(devices);
+                    populateDeviceSelect(devices);
                 }
 
                 // Load plants
@@ -424,6 +720,286 @@
 
         // Load data on page load
         loadOverview();
+
+        // Populate device select dropdown
+        function populateDeviceSelect(devices) {
+            const select = document.getElementById('device-select');
+            select.innerHTML = '<option value="">-- Select a device --</option>';
+            devices.forEach(device => {
+                const option = document.createElement('option');
+                option.value = device.device_id;
+                option.textContent = `${device.name || device.device_id} (${device.device_type || 'feeding_system'})`;
+                select.appendChild(option);
+            });
+        }
+
+        // Device Data Viewer functions
+        async function loadDeviceData() {
+            const deviceId = document.getElementById('device-select').value;
+            if (!deviceId) {
+                alert('Please select a device');
+                return;
+            }
+
+            const startDate = document.getElementById('data-start-date').value;
+            const endDate = document.getElementById('data-end-date').value;
+
+            let url = `/admin/devices/${deviceId}/data?`;
+            if (startDate) url += `start_date=${startDate}&`;
+            if (endDate) url += `end_date=${endDate}&`;
+
+            try {
+                const response = await fetch(url);
+                if (response.ok) {
+                    const data = await response.json();
+                    displayDeviceData(data);
+                } else {
+                    alert('Error loading device data');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error loading device data');
+            }
+        }
+
+        async function loadDeviceSummary() {
+            const deviceId = document.getElementById('device-select').value;
+            if (!deviceId) {
+                alert('Please select a device');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/admin/devices/${deviceId}/data/summary`);
+                if (response.ok) {
+                    const data = await response.json();
+                    displayDeviceSummary(data);
+                } else {
+                    alert('Error loading device summary');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error loading device summary');
+            }
+        }
+
+        function displayDeviceData(data) {
+            document.getElementById('device-data-results').style.display = 'block';
+
+            // Summary
+            const summaryHtml = `
+                <div class="data-summary-item">
+                    <div class="data-summary-value">${data.counts.log_entries}</div>
+                    <div class="data-summary-label">Log Entries</div>
+                </div>
+                <div class="data-summary-item">
+                    <div class="data-summary-value">${data.counts.environment_logs}</div>
+                    <div class="data-summary-label">Environment Logs</div>
+                </div>
+                <div class="data-summary-item">
+                    <div class="data-summary-value">${data.counts.plant_assignments}</div>
+                    <div class="data-summary-label">Plant Assignments</div>
+                </div>
+            `;
+            document.getElementById('device-data-summary').innerHTML = summaryHtml;
+
+            // Log entries
+            if (data.log_entries.length > 0) {
+                const logsHtml = data.log_entries.map(log => `
+                    <div class="log-entry">
+                        <span class="timestamp">${new Date(log.timestamp).toLocaleString()}</span>
+                        <span class="event-type event-${log.event_type}">${log.event_type}</span>
+                        ${log.sensor_name ? `<strong>${log.sensor_name}:</strong> ${log.value}` : ''}
+                        ${log.dose_type ? `<strong>${log.dose_type}:</strong> ${log.dose_amount_ml} ml` : ''}
+                    </div>
+                `).join('');
+                document.getElementById('log-entries-list').innerHTML = logsHtml;
+            } else {
+                document.getElementById('log-entries-list').innerHTML = '<div class="empty-state">No log entries found</div>';
+            }
+
+            // Environment logs
+            if (data.environment_logs.length > 0) {
+                const envHtml = data.environment_logs.map(log => `
+                    <div class="log-entry">
+                        <span class="timestamp">${new Date(log.timestamp).toLocaleString()}</span>
+                        ${log.temperature !== null ? `<strong>Temp:</strong> ${log.temperature}° ` : ''}
+                        ${log.humidity !== null ? `<strong>RH:</strong> ${log.humidity}% ` : ''}
+                        ${log.co2 !== null ? `<strong>CO2:</strong> ${log.co2} ppm ` : ''}
+                        ${log.vpd !== null ? `<strong>VPD:</strong> ${log.vpd} ` : ''}
+                    </div>
+                `).join('');
+                document.getElementById('env-logs-list').innerHTML = envHtml;
+            } else {
+                document.getElementById('env-logs-list').innerHTML = '<div class="empty-state">No environment logs found</div>';
+            }
+
+            // Plant assignments
+            if (data.plant_assignments.length > 0) {
+                const assignHtml = data.plant_assignments.map(a => `
+                    <div class="log-entry">
+                        <strong>${a.plant_name}</strong> (${a.plant_id})<br>
+                        Assigned: ${new Date(a.assigned_at).toLocaleString()}
+                        ${a.removed_at ? `<br>Removed: ${new Date(a.removed_at).toLocaleString()}` : ' <span class="status-badge status-active">Active</span>'}
+                    </div>
+                `).join('');
+                document.getElementById('assignments-list').innerHTML = assignHtml;
+            } else {
+                document.getElementById('assignments-list').innerHTML = '<div class="empty-state">No plant assignments found</div>';
+            }
+        }
+
+        function displayDeviceSummary(data) {
+            document.getElementById('device-data-results').style.display = 'block';
+
+            const summaryHtml = `
+                <div class="data-summary-item">
+                    <div class="data-summary-value">${data.log_entries.total_count}</div>
+                    <div class="data-summary-label">Total Log Entries</div>
+                </div>
+                <div class="data-summary-item">
+                    <div class="data-summary-value">${data.environment_logs.total_count}</div>
+                    <div class="data-summary-label">Total Env Logs</div>
+                </div>
+            `;
+            document.getElementById('device-data-summary').innerHTML = summaryHtml;
+
+            const detailsHtml = `
+                <h4>Log Entries</h4>
+                <p>Oldest: ${data.log_entries.oldest || 'N/A'}</p>
+                <p>Newest: ${data.log_entries.newest || 'N/A'}</p>
+                <p>By Event Type: ${JSON.stringify(data.log_entries.by_event_type)}</p>
+                <p>By Sensor: ${JSON.stringify(data.log_entries.by_sensor)}</p>
+                <h4>Environment Logs</h4>
+                <p>Oldest: ${data.environment_logs.oldest || 'N/A'}</p>
+                <p>Newest: ${data.environment_logs.newest || 'N/A'}</p>
+            `;
+            document.getElementById('log-entries-list').innerHTML = `<pre>${detailsHtml}</pre>`;
+            document.getElementById('env-logs-list').innerHTML = '';
+            document.getElementById('assignments-list').innerHTML = '';
+        }
+
+        function showDataTab(tabName) {
+            // Update tab buttons
+            document.querySelectorAll('.tabs .tab').forEach(tab => tab.classList.remove('active'));
+            event.target.classList.add('active');
+
+            // Update tab content
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            document.getElementById(`data-tab-${tabName}`).classList.add('active');
+        }
+
+        // Data Retention functions
+        async function loadRetentionStats() {
+            try {
+                const response = await fetch('/admin/data-retention/stats');
+                if (response.ok) {
+                    const data = await response.json();
+                    document.getElementById('total-log-entries').textContent = data.total_log_entries.toLocaleString();
+                    document.getElementById('total-env-logs').textContent = data.total_environment_logs.toLocaleString();
+                    document.getElementById('active-plants-count').textContent = data.plants.active;
+                    document.getElementById('finished-plants-count').textContent = data.plants.finished;
+                    document.getElementById('frozen-reports-count').textContent = data.plants.with_frozen_reports;
+                }
+            } catch (error) {
+                console.error('Error loading retention stats:', error);
+            }
+        }
+
+        async function previewPurge() {
+            const retentionDays = document.getElementById('retention-days').value;
+
+            try {
+                const response = await fetch(`/admin/data-retention/preview?retention_days=${retentionDays}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    displayPurgePreview(data);
+                } else {
+                    alert('Error loading purge preview');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error loading purge preview');
+            }
+        }
+
+        function displayPurgePreview(data) {
+            document.getElementById('purge-preview').style.display = 'block';
+
+            const summaryHtml = `
+                <div class="data-summary-item">
+                    <div class="data-summary-value">${data.summary.total_log_entries_purgeable.toLocaleString()}</div>
+                    <div class="data-summary-label">Log Entries to Purge</div>
+                </div>
+                <div class="data-summary-item">
+                    <div class="data-summary-value">${data.summary.total_environment_logs_purgeable.toLocaleString()}</div>
+                    <div class="data-summary-label">Env Logs to Purge</div>
+                </div>
+                <div class="data-summary-item">
+                    <div class="data-summary-value">${data.summary.devices_analyzed}</div>
+                    <div class="data-summary-label">Devices Analyzed</div>
+                </div>
+            `;
+            document.getElementById('purge-summary').innerHTML = summaryHtml;
+
+            let detailsHtml = '';
+            if (data.log_entries.length > 0) {
+                detailsHtml += '<h4>Log Entries to Purge:</h4>';
+                data.log_entries.forEach(entry => {
+                    detailsHtml += `<div class="log-entry">
+                        <strong>${entry.device_name || entry.device_id}</strong>: ${entry.purgeable_count} entries
+                        (${entry.reason})
+                        ${entry.plant_name ? ` - Plant: ${entry.plant_name}` : ''}
+                    </div>`;
+                });
+            }
+            if (data.environment_logs.length > 0) {
+                detailsHtml += '<h4>Environment Logs to Purge:</h4>';
+                data.environment_logs.forEach(entry => {
+                    detailsHtml += `<div class="log-entry">
+                        <strong>${entry.device_name || entry.device_id}</strong>: ${entry.purgeable_count} entries
+                        (${entry.reason})
+                    </div>`;
+                });
+            }
+            if (!detailsHtml) {
+                detailsHtml = '<div class="empty-state">No data eligible for purging</div>';
+            }
+            document.getElementById('purge-details').innerHTML = detailsHtml;
+        }
+
+        async function executePurge() {
+            const retentionDays = document.getElementById('retention-days').value;
+
+            if (!confirm(`Are you sure you want to purge data older than ${retentionDays} days (for finished plants with reports)? This action is IRREVERSIBLE.`)) {
+                return;
+            }
+
+            if (!confirm('This is your FINAL warning. Data will be permanently deleted. Continue?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/admin/data-retention/purge?retention_days=${retentionDays}&confirm=true`, {
+                    method: 'POST'
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    alert(`Purge complete!\n\nDeleted:\n- ${data.deleted.log_entries} log entries\n- ${data.deleted.environment_logs} environment logs`);
+                    loadRetentionStats();
+                    document.getElementById('purge-preview').style.display = 'none';
+                } else {
+                    const error = await response.json();
+                    alert('Error: ' + (error.detail || error.message || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error executing purge');
+            }
+        }
+
+        // Load retention stats on page load
+        loadRetentionStats();
     </script>
 </body>
 </html>
