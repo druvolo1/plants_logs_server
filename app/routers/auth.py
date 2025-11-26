@@ -251,6 +251,52 @@ async def logout():
     return response
 
 
+# JSON login for AJAX requests (used by device pairing modal)
+@router.post("/auth/api/login")
+async def api_login(
+    request: Request,
+    username: str = Form(...),
+    password: str = Form(...),
+    manager = Depends(get_user_manager_dependency()),
+    strategy = Depends(get_jwt_strategy_dependency())
+):
+    from fastapi.responses import JSONResponse
+    from fastapi.security import OAuth2PasswordRequestForm
+
+    # Create credentials object
+    credentials = OAuth2PasswordRequestForm(username=username, password=password, scope="")
+
+    try:
+        user = await manager.authenticate(credentials)
+
+        if user is None:
+            return JSONResponse({"success": False, "detail": "Invalid email or password"}, status_code=401)
+
+        # Create token
+        token = await strategy.write_token(user)
+
+        # Return JSON response with cookie
+        response = JSONResponse({"success": True, "message": "Login successful"})
+        response.set_cookie(
+            key="auth_cookie",
+            value=token,
+            httponly=True,
+            max_age=3600,
+            samesite="lax"
+        )
+        return response
+
+    except HTTPException as e:
+        if e.detail == "PENDING_APPROVAL":
+            return JSONResponse({"success": False, "detail": "Account pending approval"}, status_code=403)
+        elif e.detail == "SUSPENDED":
+            return JSONResponse({"success": False, "detail": "Account suspended"}, status_code=403)
+        return JSONResponse({"success": False, "detail": "Invalid email or password"}, status_code=401)
+    except Exception as e:
+        print(f"API Login error: {e}")
+        return JSONResponse({"success": False, "detail": "Server error"}, status_code=500)
+
+
 # Get current user info API
 @api_router.get("/me")
 async def get_current_user_info(
