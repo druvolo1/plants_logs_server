@@ -587,14 +587,21 @@
             background: rgba(255, 255, 255, 0.2);
         }
 
+        .overflow-menu-container {
+            position: relative;
+        }
+
         .overflow-menu {
             display: none;
-            position: fixed;
+            position: absolute;
+            top: 100%;
+            right: 0;
+            margin-top: 4px;
             background: #1e293b;
-            border: 1px solid #334155;
+            border: 1px solid #475569;
             border-radius: 8px;
             min-width: 180px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
             z-index: 9999;
             overflow: hidden;
         }
@@ -1188,8 +1195,8 @@
                 </div>
                 <div class="device-card-actions">
                     ${actionButtons}
-                    <div class="overflow-menu-container">
-                        <button class="overflow-btn" onclick="toggleOverflowMenu('${device.device_id}', event)" title="More actions">⋮</button>
+                    <div class="overflow-menu-container" onclick="event.stopPropagation();">
+                        <button class="overflow-btn" onclick="var menu = document.getElementById('overflow-menu-${device.device_id}'); var wasOpen = menu.classList.contains('show'); closeAllOverflowMenus(); if (!wasOpen) menu.classList.add('show');" title="More actions">⋮</button>
                         <div class="overflow-menu" id="overflow-menu-${device.device_id}">
                             ${overflowItems}
                         </div>
@@ -1217,37 +1224,6 @@
             return deviceDiv;
         }
 
-        // Track currently open menu
-        let currentOpenMenu = null;
-
-        // Overflow menu toggle
-        function toggleOverflowMenu(deviceId, event) {
-            event.preventDefault();
-            event.stopPropagation();
-
-            const menu = document.getElementById(`overflow-menu-${deviceId}`);
-            const btn = event.currentTarget;
-
-            // If clicking the same menu that's open, close it
-            if (currentOpenMenu === menu && menu.classList.contains('show')) {
-                menu.classList.remove('show');
-                currentOpenMenu = null;
-                return;
-            }
-
-            // Close any currently open menu
-            if (currentOpenMenu) {
-                currentOpenMenu.classList.remove('show');
-            }
-
-            // Position and show the new menu
-            const rect = btn.getBoundingClientRect();
-            menu.style.right = (window.innerWidth - rect.right) + 'px';
-            menu.style.bottom = (window.innerHeight - rect.top + 5) + 'px';
-            menu.classList.add('show');
-            currentOpenMenu = menu;
-        }
-
         // Show status message for device card
         function showDeviceStatus(deviceId, message, color = '#10b981') {
             const statusDiv = document.getElementById(`update-status-${deviceId}`);
@@ -1258,18 +1234,14 @@
             }
         }
 
-        // Close overflow menus when clicking outside
-        document.addEventListener('click', function(event) {
-            // Don't close if clicking the overflow button (handled by toggleOverflowMenu)
-            if (event.target.closest('.overflow-btn')) {
-                return;
-            }
+        // Close all overflow menus
+        function closeAllOverflowMenus() {
+            document.querySelectorAll('.overflow-menu.show').forEach(m => m.classList.remove('show'));
+        }
 
-            // Close menu if clicking outside or on a menu item
-            if (currentOpenMenu) {
-                currentOpenMenu.classList.remove('show');
-                currentOpenMenu = null;
-            }
+        // Close menus when clicking anywhere
+        document.addEventListener('click', function() {
+            closeAllOverflowMenus();
         });
 
         // Fetch firmware version for environmental sensors
