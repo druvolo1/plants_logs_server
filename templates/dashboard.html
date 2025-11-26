@@ -1089,6 +1089,7 @@
                 }
 
                 devices.forEach(device => {
+                    console.log(`[Dashboard] Loading device: ${device.device_id}, type: ${device.device_type}`);
                     const deviceSection = document.createElement('div');
                     deviceSection.classList.add('device-section');
                     deviceSection.dataset.deviceId = device.device_id; // Store device ID for reordering
@@ -1096,6 +1097,7 @@
 
                     // Set colors based on device type (more prominent visual distinction)
                     const deviceType = device.device_type || 'feeding_system';
+                    console.log(`[Dashboard] Device ${device.device_id} treated as type: ${deviceType}`);
                     let headerBgColor, headerBorderColor, cardBgColor;
 
                     // Device type color schemes - Clean accent bar approach
@@ -2003,6 +2005,7 @@
         let envPollingIntervals = {};
 
         function connectToEnvironmentalSensor(device_id) {
+            console.log(`[EnvSensor] Setting up polling for ${device_id}`);
             // Fetch immediately, then poll every 30 seconds
             fetchEnvironmentData(device_id);
 
@@ -2011,8 +2014,10 @@
             }
 
             envPollingIntervals[device_id] = setInterval(() => {
+                console.log(`[EnvSensor] Polling ${device_id}...`);
                 fetchEnvironmentData(device_id);
             }, 30000); // Poll every 30 seconds
+            console.log(`[EnvSensor] Polling interval set for ${device_id}`);
         }
 
         async function fetchEnvironmentData(device_id) {

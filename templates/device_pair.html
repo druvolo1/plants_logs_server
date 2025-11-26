@@ -258,12 +258,21 @@
                 const result = await response.json();
 
                 if (response.ok && result.success) {
-                    showMessage('success', 'Device paired successfully! Your sensor will connect automatically in a few seconds. Redirecting...');
+                    // Hide the form and show success message
+                    document.getElementById('pair-form').style.display = 'none';
+                    document.querySelector('.device-info').style.display = 'none';
 
-                    // Redirect after 3 seconds
-                    setTimeout(() => {
-                        window.location.href = '/devices';
-                    }, 3000);
+                    // Show success with close button
+                    const successHtml = `
+                        <div style="text-align: center; padding: 2rem;">
+                            <div style="font-size: 4rem; margin-bottom: 1rem;">✓</div>
+                            <h2 style="color: #155724; margin-bottom: 1rem;">Device Paired Successfully!</h2>
+                            <p style="margin-bottom: 1.5rem;">Your sensor will connect automatically in a few seconds.</p>
+                            <p style="margin-bottom: 1rem;">You can close this window now.</p>
+                            <button onclick="window.close()" style="padding: 12px 30px; background: #28a745; color: white; border: none; border-radius: 8px; font-size: 1rem; cursor: pointer;">Close Window</button>
+                        </div>
+                    `;
+                    document.body.innerHTML = successHtml;
                 } else {
                     showMessage('error', result.message || 'Failed to pair device');
                 }

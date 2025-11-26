@@ -119,10 +119,9 @@ async def register_page(request: Request):
 
 
 # Device pairing initiation (no auth required - stores params server-side)
-# This now uses the standalone pairing page with built-in login
 @router.get("/pair-device", response_class=HTMLResponse)
 async def device_pair_initiation(request: Request):
-    """Device pairing initiation - shows standalone pairing page with login"""
+    """Device pairing initiation - stores device info server-side and shows login or pairing page"""
     # Get device info from query params
     device_id = request.query_params.get('device_id')
     device_name = request.query_params.get('name', 'Environment Sensor')
@@ -151,28 +150,25 @@ async def device_pair_initiation(request: Request):
     }
 
     # Check if user is already authenticated
-    is_authenticated = False
     try:
         auth_cookie = request.cookies.get("auth_cookie")
         if auth_cookie:
             try:
                 current_user = get_current_user_dependency()
                 user = await current_user(request)
-                is_authenticated = True
+                # User is authenticated - show pairing page directly
+                return templates.TemplateResponse("device_pair.html", {
+                    "request": request,
+                    "user": user,
+                    "device_info": pending_pairings[device_id]
+                })
             except:
                 pass
     except:
         pass
 
-    # Show standalone pairing page (handles both login and pairing)
-    # Filter out timestamp (not JSON serializable) before passing to template
-    device_info_for_template = {k: v for k, v in pending_pairings[device_id].items() if k != 'timestamp'}
-
-    return templates.TemplateResponse("device_pair_standalone.html", {
-        "request": request,
-        "device_info": device_info_for_template,
-        "is_authenticated": is_authenticated
-    })
+    # Not authenticated - redirect to login with device_id in URL
+    return RedirectResponse(url=f"/login?next=/pair-device-auth&device_id={device_id}", status_code=302)
 
 
 # Device pairing page (requires authentication) - legacy route
