@@ -598,12 +598,18 @@
             border-radius: 8px;
             min-width: 180px;
             box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.4);
-            z-index: 100;
+            z-index: 1000;
             overflow: hidden;
         }
 
         .overflow-menu.show {
             display: block;
+        }
+
+        /* Ensure card with open menu is above others */
+        .device-card:has(.overflow-menu.show) {
+            z-index: 100;
+            position: relative;
         }
 
         .overflow-menu-item {
