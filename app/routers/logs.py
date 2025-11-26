@@ -412,6 +412,7 @@ async def environment_heartbeat(
         "cached_at": now.isoformat(),
         "use_fahrenheit": settings.get("use_fahrenheit", False)
     }
+    print(f"[Cache] Updated cache for {device_id}: CO2={data.co2}, Temp={data.temperature}")
 
     # Check for firmware updates
     firmware_info = await get_firmware_info_for_device(
@@ -617,6 +618,7 @@ async def get_latest_environment_data(
 
     # Check for real-time cached data from heartbeat first
     cached_data = environment_cache.get(device_id)
+    print(f"[Cache] GET for {device_id}: cached_data={'exists' if cached_data else 'NONE'}, CO2={cached_data.get('co2') if cached_data else 'N/A'}")
     if cached_data:
         return {
             "device_id": device_id,
