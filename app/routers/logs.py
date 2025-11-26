@@ -620,6 +620,7 @@ async def get_latest_environment_data(
     cached_data = environment_cache.get(device_id)
     print(f"[Cache] GET for {device_id}: cached_data={'exists' if cached_data else 'NONE'}, CO2={cached_data.get('co2') if cached_data else 'N/A'}")
     if cached_data:
+        from datetime import datetime
         return {
             "device_id": device_id,
             "has_data": True,
@@ -639,6 +640,7 @@ async def get_latest_environment_data(
             "ppfd": cached_data.get("ppfd"),
             "timestamp": cached_data.get("timestamp"),
             "cached_at": cached_data.get("cached_at"),
+            "served_at": datetime.utcnow().isoformat(),
             "source": "realtime"
         }
 
