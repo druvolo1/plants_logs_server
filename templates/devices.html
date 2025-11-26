@@ -300,7 +300,231 @@
             cursor: not-allowed;
         }
 
-        /* Device Card Action Bar */
+        /* Compact Device Card */
+        .device-card {
+            display: flex;
+            align-items: stretch;
+            margin-bottom: 0.75rem;
+            border-radius: 8px;
+            background: rgba(30, 41, 59, 0.5);
+            border: 1px solid #334155;
+            overflow: hidden;
+            transition: border-color 0.2s;
+        }
+
+        .device-card:hover {
+            border-color: #475569;
+        }
+
+        .device-card.has-plant {
+            border-color: #10b981;
+            background: rgba(16, 185, 129, 0.05);
+        }
+
+        .device-card-type {
+            width: 42px;
+            min-width: 42px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+            writing-mode: vertical-rl;
+            text-orientation: mixed;
+            color: white;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+        }
+
+        .device-card-type.feeding { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
+        .device-card-type.environmental { background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); }
+        .device-card-type.valve { background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%); }
+
+        .device-card-content {
+            flex: 1;
+            padding: 0.75rem 1rem;
+            min-width: 0;
+        }
+
+        .device-card-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 0.35rem;
+            flex-wrap: wrap;
+        }
+
+        .device-card-name {
+            font-size: 1.05rem;
+            font-weight: 600;
+            color: #f1f5f9;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .device-card-owner {
+            font-size: 0.75rem;
+            color: #10b981;
+        }
+
+        .device-card-shared {
+            font-size: 0.75rem;
+            color: #f59e0b;
+        }
+
+        .device-card-online {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            font-size: 0.75rem;
+            margin-left: auto;
+        }
+
+        .device-card-online .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .device-card-online .dot.online { background: #10b981; }
+        .device-card-online .dot.offline { background: #64748b; }
+
+        .device-card-meta {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.8rem;
+            color: #94a3b8;
+            flex-wrap: wrap;
+        }
+
+        .device-card-meta .sep {
+            color: #475569;
+        }
+
+        .device-card-meta .device-id {
+            font-family: monospace;
+            font-size: 0.75rem;
+            color: #64748b;
+        }
+
+        .device-card-meta .version {
+            color: #94a3b8;
+        }
+
+        .device-card-meta .location {
+            color: #10b981;
+        }
+
+        .device-card-meta .update-badge {
+            background: #f59e0b;
+            color: #000;
+            padding: 1px 6px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .device-card-plant {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            font-size: 0.8rem;
+            color: #10b981;
+            font-weight: 500;
+            margin-top: 0.25rem;
+        }
+
+        .device-card-links {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            margin-top: 0.35rem;
+            flex-wrap: wrap;
+        }
+
+        .device-card-links .link-label {
+            font-size: 0.75rem;
+            color: #64748b;
+        }
+
+        .device-card-links .linked-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            padding: 0.15rem 0.5rem;
+            background: rgba(59, 130, 246, 0.2);
+            border-radius: 4px;
+            font-size: 0.75rem;
+            color: #93c5fd;
+        }
+
+        .device-card-links .linked-chip .dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #64748b;
+        }
+
+        .device-card-links .linked-chip .dot.online {
+            background: #10b981;
+        }
+
+        .device-card-actions {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 0.5rem;
+            gap: 0.35rem;
+            border-left: 1px solid #334155;
+            background: rgba(0,0,0,0.1);
+        }
+
+        .device-card-actions .action-btn {
+            padding: 0.4rem 0.6rem;
+            border: none;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s;
+            white-space: nowrap;
+        }
+
+        .device-card-actions .action-btn.primary {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .device-card-actions .action-btn.primary:hover {
+            background: #2563eb;
+        }
+
+        .device-card-actions .action-btn.secondary {
+            background: rgba(255,255,255,0.1);
+            color: #e2e8f0;
+        }
+
+        .device-card-actions .action-btn.secondary:hover {
+            background: rgba(255,255,255,0.2);
+        }
+
+        .device-card-actions .overflow-btn {
+            padding: 0.3rem 0.5rem;
+            font-size: 1.1rem;
+        }
+
+        .device-card-status {
+            font-size: 0.75rem;
+            color: #10b981;
+            padding: 0 1rem 0.5rem 1rem;
+        }
+
+        /* Device Card Action Bar - legacy, keep for modals */
         .device-actions {
             display: flex;
             align-items: center;
@@ -863,150 +1087,125 @@
 
         function createDeviceCard(device) {
             const deviceDiv = document.createElement('div');
-            deviceDiv.style.marginBottom = '1.5rem';
-            deviceDiv.style.padding = '1rem';
-            deviceDiv.style.paddingLeft = '70px';
-            deviceDiv.style.border = device.active_plant_name ? '2px solid #10b981' : '1px solid #ccc';
-            deviceDiv.style.borderRadius = '8px';
-            deviceDiv.style.background = device.active_plant_name ? 'rgba(16, 185, 129, 0.05)' : 'transparent';
-            deviceDiv.style.position = 'relative';
+            deviceDiv.className = `device-card${device.active_plant_name ? ' has-plant' : ''}`;
 
-            // Show ownership info
-            const ownershipInfo = device.is_owner
-                ? '<p style="color: #10b981; font-size: 0.9rem;">✓ You own this device</p>'
-                : `<p style="color: #f59e0b; font-size: 0.9rem;">🔗 Shared by ${device.shared_by_email} (${device.permission_level})</p>`;
-
-            // Show active plant info if in use
-            const plantInfo = device.active_plant_name
-                ? `<p style="color: #10b981; font-weight: bold; font-size: 1rem; margin: 0.5rem 0;">🌱 Monitoring: ${device.active_plant_name} (${device.active_phase})</p>`
-                : '';
-
-            // Show location info with full path
-            const locationPath = device.location_id ? getLocationPath(device.location_id) : 'Unassigned';
-            const locationInfo = `<p><strong>Location:</strong> <span style="color: ${device.location_id ? '#10b981' : '#6b7280'};">📍 ${locationPath}</span></p>`;
-
-            // Heartbeat settings button (admin only, environmental sensors only)
-            const heartbeatButton = (isAdmin && device.device_type === 'environmental')
-                ? `<button class="heartbeat-btn" onclick="openHeartbeatModal('${device.device_id}')" title="Heartbeat Settings (Admin)">⚡</button>`
-                : '';
-
-            // Build action bar with overflow menu
-            const buildActionBar = () => {
-                let primaryButtons = '';
-                let overflowItems = '';
-
-                if (device.is_owner) {
-                    // Primary action: Edit
-                    primaryButtons += `<button class="btn btn-primary" onclick="openEditModal('${device.device_id}')"><span class="icon">✏️</span> Edit</button>`;
-
-                    // Link Devices for feeding systems
-                    if (device.device_type === 'feeding_system') {
-                        primaryButtons += `<button class="btn btn-secondary" onclick="openLinkModal('${device.device_id}')"><span class="icon">🔗</span> Link</button>`;
-                    }
-                }
-
-                // Overflow menu items
-                if (device.device_type === 'environmental') {
-                    overflowItems += `
-                        <button class="overflow-menu-item" onclick="updateEnvironmentalFirmware('${device.device_id}')" id="update-btn-${device.device_id}">
-                            <span class="icon">⬆️</span> Update Software
-                        </button>
-                        <button class="overflow-menu-item" onclick="rebootEnvironmentalDevice('${device.device_id}')" id="reboot-btn-${device.device_id}">
-                            <span class="icon">🔄</span> Reboot System
-                        </button>`;
-                } else {
-                    overflowItems += `
-                        <button class="overflow-menu-item" onclick="updateDevice('${device.device_id}')" id="update-btn-${device.device_id}">
-                            <span class="icon">⬆️</span> Update Software
-                        </button>
-                        <button class="overflow-menu-item" onclick="restartService('${device.device_id}')" id="restart-btn-${device.device_id}">
-                            <span class="icon">🔃</span> Restart Service
-                        </button>
-                        <button class="overflow-menu-item" onclick="rebootSystem('${device.device_id}')" id="reboot-btn-${device.device_id}">
-                            <span class="icon">🔄</span> Reboot System
-                        </button>`;
-                }
-
-                if (device.is_owner) {
-                    overflowItems += `
-                        <div class="overflow-menu-divider"></div>
-                        <button class="overflow-menu-item" onclick="openShareModal('${device.device_id}')">
-                            <span class="icon">📤</span> Share Device
-                        </button>
-                        <button class="overflow-menu-item danger" onclick="deleteDevice('${device.device_id}')">
-                            <span class="icon">🗑️</span> Delete Device
-                        </button>`;
-                }
-
-                return `
-                    <div class="device-actions">
-                        ${primaryButtons}
-                        <div class="overflow-menu-container">
-                            <button class="overflow-btn" onclick="toggleOverflowMenu('${device.device_id}')" title="More actions">⋮</button>
-                            <div class="overflow-menu" id="overflow-menu-${device.device_id}">
-                                ${overflowItems}
-                            </div>
-                        </div>
-                    </div>
-                    <div id="update-status-${device.device_id}" style="margin-top: 0.5rem; color: #10b981; font-size: 0.9rem;"></div>
-                `;
-            };
-
-            // Device type icon bar
+            // Device type info
             const deviceType = device.device_type || 'feeding_system';
             const scope = device.scope || 'plant';
-            const typeMap = {
-                'feeding_system': { bgClass: 'device-type-feeding' },
-                'environmental': { bgClass: 'device-type-environmental' },
-                'valve_controller': { bgClass: 'device-type-valve' },
-                'other': { bgClass: 'device-type-other' }
-            };
-            const type = typeMap[deviceType] || typeMap['other'];
+            const typeClass = deviceType === 'environmental' ? 'environmental' :
+                              deviceType === 'valve_controller' ? 'valve' : 'feeding';
             const scopeText = scope === 'room' ? 'ROOM' : 'PLANT';
-            const deviceTypeBar = `<div class="device-type-icon-bar ${type.bgClass}">
-                <div class="scope-text">${scopeText}</div>
-            </div>`;
 
-            // Linked devices section for feeding systems
-            let linkedDevicesSection = '';
-            if (device.device_type === 'feeding_system' && device.linked_devices && device.linked_devices.length > 0) {
-                const linkedChips = device.linked_devices.map(linked => {
-                    const typeIcon = linked.device_type === 'environmental' ? '🌡️' : '🚿';
-                    const statusClass = linked.is_online ? 'online' : '';
-                    return `<span class="linked-device-chip ${statusClass}">
-                        <span class="status-dot ${statusClass}"></span>
-                        ${typeIcon} ${linked.name || linked.system_name || linked.device_id.substring(0, 8)}
-                    </span>`;
+            // Heartbeat button for admin
+            const heartbeatButton = (isAdmin && deviceType === 'environmental')
+                ? `<button class="heartbeat-btn" onclick="event.stopPropagation(); openHeartbeatModal('${device.device_id}')" title="Heartbeat Settings">⚡</button>`
+                : '';
+
+            // Ownership badge
+            const ownerBadge = device.is_owner
+                ? `<span class="device-card-owner">✓ Owner</span>`
+                : `<span class="device-card-shared">Shared by ${device.shared_by_email}</span>`;
+
+            // Location display (not showing if already grouped by location)
+            const locationPath = device.location_id ? getLocationPath(device.location_id) : null;
+
+            // Linked devices for feeding systems
+            let linkedChips = '';
+            if (deviceType === 'feeding_system' && device.linked_devices && device.linked_devices.length > 0) {
+                linkedChips = device.linked_devices.map(linked => {
+                    const icon = linked.device_type === 'environmental' ? '🌡️' : '🚿';
+                    const dotClass = linked.is_online ? 'online' : '';
+                    return `<span class="linked-chip"><span class="dot ${dotClass}"></span>${icon} ${linked.name || linked.device_id.substring(0, 8)}</span>`;
                 }).join('');
+            }
 
-                linkedDevicesSection = `
-                    <div class="linked-devices-section">
-                        <div class="linked-devices-header">
-                            <h4>🔗 Linked Devices</h4>
-                        </div>
-                        <div>${linkedChips}</div>
-                    </div>
-                `;
-            } else if (device.device_type === 'feeding_system' && device.is_owner) {
-                linkedDevicesSection = `
-                    <div class="linked-devices-section" style="background: rgba(100, 116, 139, 0.1); border-left-color: #64748b;">
-                        <p style="margin: 0; color: #64748b; font-size: 0.9rem;">No linked devices. Click "Link Devices" to add environmental sensors or valve controllers.</p>
-                    </div>
-                `;
+            // Plant info
+            const plantInfo = device.active_plant_name
+                ? `<div class="device-card-plant">🌱 ${device.active_plant_name} (${device.active_phase})</div>`
+                : '';
+
+            // Build overflow menu items
+            let overflowItems = '';
+            if (deviceType === 'environmental') {
+                overflowItems += `
+                    <button class="overflow-menu-item" onclick="updateEnvironmentalFirmware('${device.device_id}')" id="update-btn-${device.device_id}">
+                        <span class="icon">⬆️</span> Update Software
+                    </button>
+                    <button class="overflow-menu-item" onclick="rebootEnvironmentalDevice('${device.device_id}')" id="reboot-btn-${device.device_id}">
+                        <span class="icon">🔄</span> Reboot System
+                    </button>`;
+            } else {
+                overflowItems += `
+                    <button class="overflow-menu-item" onclick="updateDevice('${device.device_id}')" id="update-btn-${device.device_id}">
+                        <span class="icon">⬆️</span> Update Software
+                    </button>
+                    <button class="overflow-menu-item" onclick="restartService('${device.device_id}')" id="restart-btn-${device.device_id}">
+                        <span class="icon">🔃</span> Restart Service
+                    </button>
+                    <button class="overflow-menu-item" onclick="rebootSystem('${device.device_id}')" id="reboot-btn-${device.device_id}">
+                        <span class="icon">🔄</span> Reboot System
+                    </button>`;
+            }
+
+            if (device.is_owner) {
+                overflowItems += `
+                    <div class="overflow-menu-divider"></div>
+                    <button class="overflow-menu-item" onclick="openShareModal('${device.device_id}')">
+                        <span class="icon">📤</span> Share Device
+                    </button>
+                    <button class="overflow-menu-item danger" onclick="deleteDevice('${device.device_id}')">
+                        <span class="icon">🗑️</span> Delete Device
+                    </button>`;
+            }
+
+            // Action buttons
+            let actionButtons = '';
+            if (device.is_owner) {
+                actionButtons += `<button class="action-btn primary" onclick="openEditModal('${device.device_id}')">Edit</button>`;
+                if (deviceType === 'feeding_system') {
+                    actionButtons += `<button class="action-btn secondary" onclick="openLinkModal('${device.device_id}')">Link</button>`;
+                }
             }
 
             deviceDiv.innerHTML = `
-                ${deviceTypeBar}
-                ${ownershipInfo}
-                ${plantInfo}
-                <p><strong>System Name:</strong> <span id="name-${device.device_id}">${device.name || 'Loading...'}</span>${heartbeatButton}</p>
-                <p><strong>Device ID:</strong> ${device.device_id}</p>
-                ${locationInfo}
-                <p><strong>Version:</strong> <span id="version-${device.device_id}">Loading...</span> <span id="update-badge-${device.device_id}"></span></p>
-                <p><strong>Online:</strong> <span id="online-${device.device_id}">${device.is_online ? 'Yes' : 'No'}</span></p>
-                ${linkedDevicesSection}
-                ${buildActionBar()}
+                <div class="device-card-type ${typeClass}">${scopeText}</div>
+                <div class="device-card-content">
+                    <div class="device-card-header">
+                        <span class="device-card-name" id="name-${device.device_id}">${device.name || 'Unnamed Device'}</span>
+                        ${heartbeatButton}
+                        ${ownerBadge}
+                        <span class="device-card-online">
+                            <span class="dot ${device.is_online ? 'online' : 'offline'}"></span>
+                            <span id="online-${device.device_id}">${device.is_online ? 'Online' : 'Offline'}</span>
+                        </span>
+                    </div>
+                    <div class="device-card-meta">
+                        <span class="device-id">${device.device_id}</span>
+                        <span class="sep">·</span>
+                        <span class="version">v<span id="version-${device.device_id}">...</span></span>
+                        <span id="update-badge-${device.device_id}"></span>
+                        ${locationPath ? `<span class="sep">·</span><span class="location">📍 ${locationPath}</span>` : ''}
+                    </div>
+                    ${plantInfo}
+                    ${linkedChips ? `<div class="device-card-links"><span class="link-label">🔗</span>${linkedChips}</div>` : ''}
+                </div>
+                <div class="device-card-actions">
+                    ${actionButtons}
+                    <div class="overflow-menu-container">
+                        <button class="overflow-btn" onclick="toggleOverflowMenu('${device.device_id}')" title="More actions">⋮</button>
+                        <div class="overflow-menu" id="overflow-menu-${device.device_id}">
+                            ${overflowItems}
+                        </div>
+                    </div>
+                </div>
             `;
+
+            // Status div for feedback (appended outside main card for positioning)
+            const statusDiv = document.createElement('div');
+            statusDiv.id = `update-status-${device.device_id}`;
+            statusDiv.className = 'device-card-status';
+            statusDiv.style.display = 'none';
+            deviceDiv.appendChild(statusDiv);
 
             // Auto-connect to WebSocket for status updates (feeding systems)
             if (device.is_online && device.device_type !== 'environmental') {
@@ -1032,6 +1231,16 @@
             // Toggle this menu
             if (!wasOpen) {
                 menu.classList.add('show');
+            }
+        }
+
+        // Show status message for device card
+        function showDeviceStatus(deviceId, message, color = '#10b981') {
+            const statusDiv = document.getElementById(`update-status-${deviceId}`);
+            if (statusDiv) {
+                statusDiv.textContent = message;
+                statusDiv.style.color = color;
+                statusDiv.style.display = message ? 'block' : 'none';
             }
         }
 
@@ -1693,15 +1902,11 @@
 
                         // Check if this device was updating and clear the status message
                         if (localStorage.getItem(`updating_${device_id}`) === 'true') {
-                            const statusDiv = document.getElementById(`update-status-${device_id}`);
                             const updateBtn = document.getElementById(`update-btn-${device_id}`);
-                            if (statusDiv) {
-                                statusDiv.textContent = 'Update completed successfully!';
-                                statusDiv.style.color = '#10b981';
-                                setTimeout(() => {
-                                    statusDiv.textContent = '';
-                                }, 5000);
-                            }
+                            showDeviceStatus(device_id, 'Update completed successfully!', '#10b981');
+                            setTimeout(() => {
+                                showDeviceStatus(device_id, '', '#10b981');
+                            }, 5000);
                             if (updateBtn) {
                                 updateBtn.disabled = false;
                             }
@@ -1759,11 +1964,10 @@
                 return;
             }
 
-            const statusDiv = document.getElementById(`update-status-${device_id}`);
             const updateBtn = document.getElementById(`update-btn-${device_id}`);
 
-            statusDiv.textContent = 'Sending update command...';
-            updateBtn.disabled = true;
+            showDeviceStatus(device_id, 'Sending update command...', '#f59e0b');
+            if (updateBtn) updateBtn.disabled = true;
 
             // Send update command via WebSocket
             ws.send(JSON.stringify({
@@ -1772,13 +1976,13 @@
 
             // Show progress message
             setTimeout(() => {
-                statusDiv.textContent = 'Update in progress... The device will restart when complete.';
+                showDeviceStatus(device_id, 'Update in progress... The device will restart when complete.', '#f59e0b');
             }, 1000);
 
             // Re-enable button after 30 seconds
             setTimeout(() => {
-                updateBtn.disabled = false;
-                statusDiv.textContent = 'Update command sent. Please wait for the device to restart.';
+                if (updateBtn) updateBtn.disabled = false;
+                showDeviceStatus(device_id, 'Update command sent. Please wait for the device to restart.', '#10b981');
             }, 30000);
 
             // Mark that this device is updating so we can clear status when it reconnects
@@ -1797,12 +2001,10 @@
                 return;
             }
 
-            const statusDiv = document.getElementById(`update-status-${device_id}`);
             const restartBtn = document.getElementById(`restart-btn-${device_id}`);
 
-            statusDiv.textContent = 'Restarting service...';
-            statusDiv.style.color = '#f59e0b';
-            restartBtn.disabled = true;
+            showDeviceStatus(device_id, 'Restarting service...', '#f59e0b');
+            if (restartBtn) restartBtn.disabled = true;
 
             // Send restart command via WebSocket
             ws.send(JSON.stringify({
@@ -1811,11 +2013,10 @@
 
             // Re-enable button after 10 seconds
             setTimeout(() => {
-                restartBtn.disabled = false;
-                statusDiv.textContent = 'Service restart command sent.';
-                statusDiv.style.color = '#10b981';
+                if (restartBtn) restartBtn.disabled = false;
+                showDeviceStatus(device_id, 'Service restart command sent.', '#10b981');
                 setTimeout(() => {
-                    statusDiv.textContent = '';
+                    showDeviceStatus(device_id, '', '#10b981');
                 }, 3000);
             }, 10000);
         }
@@ -1832,12 +2033,10 @@
                 return;
             }
 
-            const statusDiv = document.getElementById(`update-status-${device_id}`);
             const rebootBtn = document.getElementById(`reboot-btn-${device_id}`);
 
-            statusDiv.textContent = 'Rebooting system...';
-            statusDiv.style.color = '#dc2626';
-            rebootBtn.disabled = true;
+            showDeviceStatus(device_id, 'Rebooting system...', '#dc2626');
+            if (rebootBtn) rebootBtn.disabled = true;
 
             // Send reboot command via WebSocket
             ws.send(JSON.stringify({
@@ -1846,11 +2045,10 @@
 
             // Re-enable button after 60 seconds (system reboot takes longer)
             setTimeout(() => {
-                rebootBtn.disabled = false;
-                statusDiv.textContent = 'System reboot command sent. Device will be offline briefly.';
-                statusDiv.style.color = '#10b981';
+                if (rebootBtn) rebootBtn.disabled = false;
+                showDeviceStatus(device_id, 'System reboot command sent. Device will be offline briefly.', '#10b981');
                 setTimeout(() => {
-                    statusDiv.textContent = '';
+                    showDeviceStatus(device_id, '', '#10b981');
                 }, 5000);
             }, 60000);
         }
@@ -1861,12 +2059,10 @@
                 return;
             }
 
-            const statusDiv = document.getElementById(`update-status-${device_id}`);
             const updateBtn = document.getElementById(`update-btn-${device_id}`);
 
-            statusDiv.textContent = 'Sending update command...';
-            statusDiv.style.color = '#f59e0b';
-            updateBtn.disabled = true;
+            showDeviceStatus(device_id, 'Sending update command...', '#f59e0b');
+            if (updateBtn) updateBtn.disabled = true;
 
             try {
                 const response = await fetch(`/admin/devices/${device_id}/force-firmware-update`, {
@@ -1874,22 +2070,18 @@
                 });
 
                 if (response.ok) {
-                    const data = await response.json();
-                    statusDiv.textContent = 'Update queued! Device will update on next heartbeat.';
-                    statusDiv.style.color = '#10b981';
+                    showDeviceStatus(device_id, 'Update queued! Device will update on next heartbeat.', '#10b981');
                 } else {
                     const error = await response.json();
-                    statusDiv.textContent = `Error: ${error.detail || 'Failed to queue update'}`;
-                    statusDiv.style.color = '#ef4444';
+                    showDeviceStatus(device_id, `Error: ${error.detail || 'Failed to queue update'}`, '#ef4444');
                 }
             } catch (error) {
-                statusDiv.textContent = 'Error sending update command';
-                statusDiv.style.color = '#ef4444';
+                showDeviceStatus(device_id, 'Error sending update command', '#ef4444');
             }
 
             // Re-enable button after 5 seconds
             setTimeout(() => {
-                updateBtn.disabled = false;
+                if (updateBtn) updateBtn.disabled = false;
             }, 5000);
         }
 
@@ -1899,12 +2091,10 @@
                 return;
             }
 
-            const statusDiv = document.getElementById(`update-status-${device_id}`);
             const rebootBtn = document.getElementById(`reboot-btn-${device_id}`);
 
-            statusDiv.textContent = 'Sending reboot command...';
-            statusDiv.style.color = '#dc2626';
-            rebootBtn.disabled = true;
+            showDeviceStatus(device_id, 'Sending reboot command...', '#dc2626');
+            if (rebootBtn) rebootBtn.disabled = true;
 
             try {
                 const response = await fetch(`/admin/devices/${device_id}/reboot`, {
@@ -1912,22 +2102,18 @@
                 });
 
                 if (response.ok) {
-                    const data = await response.json();
-                    statusDiv.textContent = 'Reboot queued! Device will restart on next heartbeat.';
-                    statusDiv.style.color = '#10b981';
+                    showDeviceStatus(device_id, 'Reboot queued! Device will restart on next heartbeat.', '#10b981');
                 } else {
                     const error = await response.json();
-                    statusDiv.textContent = `Error: ${error.detail || 'Failed to queue reboot'}`;
-                    statusDiv.style.color = '#ef4444';
+                    showDeviceStatus(device_id, `Error: ${error.detail || 'Failed to queue reboot'}`, '#ef4444');
                 }
             } catch (error) {
-                statusDiv.textContent = 'Error sending reboot command';
-                statusDiv.style.color = '#ef4444';
+                showDeviceStatus(device_id, 'Error sending reboot command', '#ef4444');
             }
 
             // Re-enable button after 5 seconds
             setTimeout(() => {
-                rebootBtn.disabled = false;
+                if (rebootBtn) rebootBtn.disabled = false;
             }, 5000);
         }
 
