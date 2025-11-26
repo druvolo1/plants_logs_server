@@ -1,0 +1,541 @@
+<!-- templates/device_pair_standalone.html - Self-contained device pairing (login + pair in one page) -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Pair Device - Herb Nerdz</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #1a472a 0%, #2d5a3d 100%);
+            min-height: 100vh;
+            padding: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            width: 100%;
+            max-width: 420px;
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #2d5a3d 0%, #1a472a 100%);
+            color: white;
+            padding: 1.5rem;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .header p {
+            opacity: 0.8;
+            font-size: 0.9rem;
+        }
+
+        .content {
+            padding: 1.5rem;
+        }
+
+        .device-info {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+            font-size: 0.9rem;
+        }
+
+        .device-info h3 {
+            color: #1a472a;
+            margin-bottom: 0.5rem;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .device-info p {
+            margin: 0.25rem 0;
+            color: #555;
+        }
+
+        .device-info strong {
+            color: #333;
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: #333;
+            font-size: 0.9rem;
+        }
+
+        input[type="text"],
+        input[type="email"],
+        input[type="password"],
+        select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.2s;
+        }
+
+        input:focus,
+        select:focus {
+            outline: none;
+            border-color: #2d5a3d;
+        }
+
+        button {
+            width: 100%;
+            padding: 0.875rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: #2d5a3d;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #1a472a;
+        }
+
+        .btn-primary:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+            margin-top: 0.5rem;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .message {
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+        }
+
+        .message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .message.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .divider {
+            text-align: center;
+            margin: 1rem 0;
+            color: #999;
+            font-size: 0.85rem;
+        }
+
+        .divider::before,
+        .divider::after {
+            content: '';
+            display: inline-block;
+            width: 30%;
+            height: 1px;
+            background: #ddd;
+            vertical-align: middle;
+            margin: 0 0.5rem;
+        }
+
+        .google-btn {
+            background: white;
+            border: 2px solid #e0e0e0;
+            color: #333;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .google-btn:hover {
+            background: #f8f9fa;
+            border-color: #ccc;
+        }
+
+        .google-btn img {
+            width: 20px;
+            height: 20px;
+        }
+
+        .create-location-toggle {
+            cursor: pointer;
+            color: #2d5a3d;
+            text-decoration: underline;
+            font-size: 0.85rem;
+            margin-top: 0.5rem;
+            display: inline-block;
+        }
+
+        .success-screen {
+            text-align: center;
+            padding: 2rem 1rem;
+        }
+
+        .success-screen .checkmark {
+            width: 80px;
+            height: 80px;
+            background: #d4edda;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1.5rem;
+            font-size: 2.5rem;
+        }
+
+        .success-screen h2 {
+            color: #155724;
+            margin-bottom: 0.5rem;
+        }
+
+        .success-screen p {
+            color: #666;
+            margin-bottom: 1.5rem;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #2d5a3d;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            vertical-align: middle;
+            margin-right: 0.5rem;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .loading-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Herb Nerdz</h1>
+            <p>Device Pairing</p>
+        </div>
+
+        <div class="content">
+            <div id="message" class="message hidden"></div>
+
+            <!-- Step 1: Login Form -->
+            <div id="login-section">
+                <div class="device-info">
+                    <h3>Device to Pair</h3>
+                    <p><strong>ID:</strong> <span id="display-device-id"></span></p>
+                    <p><strong>Model:</strong> <span id="display-model"></span></p>
+                    <p><strong>MAC:</strong> <span id="display-mac"></span></p>
+                </div>
+
+                <p style="margin-bottom: 1rem; color: #666; font-size: 0.9rem;">Sign in to your Herb Nerdz account to pair this device.</p>
+
+                <button type="button" class="google-btn" onclick="loginWithGoogle()">
+                    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google">
+                    Continue with Google
+                </button>
+
+                <div class="divider">or</div>
+
+                <form id="login-form">
+                    <div class="form-group">
+                        <label for="email">Email</label>
+                        <input type="email" id="email" name="email" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="password">Password</label>
+                        <input type="password" id="password" name="password" required>
+                    </div>
+
+                    <button type="submit" class="btn-primary" id="login-btn">Sign In</button>
+                </form>
+            </div>
+
+            <!-- Step 2: Pairing Form (shown after login) -->
+            <div id="pairing-section" class="hidden">
+                <div class="device-info">
+                    <h3>Device Information</h3>
+                    <p><strong>ID:</strong> <span id="pair-device-id"></span></p>
+                    <p><strong>Model:</strong> <span id="pair-model"></span></p>
+                    <p><strong>MAC:</strong> <span id="pair-mac"></span></p>
+                </div>
+
+                <form id="pair-form">
+                    <div class="form-group">
+                        <label for="device_name">Device Name</label>
+                        <input type="text" id="device_name" name="device_name" required placeholder="e.g., Grow Room Sensor">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="location_id">Location</label>
+                        <select id="location_id" name="location_id">
+                            <option value="">-- Select Location --</option>
+                        </select>
+                        <span class="create-location-toggle" onclick="toggleNewLocation()">Or create new location</span>
+                    </div>
+
+                    <div id="new-location-field" class="form-group hidden">
+                        <label for="location_name">New Location Name</label>
+                        <input type="text" id="location_name" name="location_name" placeholder="e.g., Grow Tent 1">
+                    </div>
+
+                    <button type="submit" class="btn-primary" id="pair-btn">Pair Device</button>
+                </form>
+            </div>
+
+            <!-- Step 3: Success Screen -->
+            <div id="success-section" class="hidden">
+                <div class="success-screen">
+                    <div class="checkmark">&#10003;</div>
+                    <h2>Device Paired!</h2>
+                    <p>Your sensor is now connected to your Herb Nerdz account. You can close this window.</p>
+                    <button type="button" class="btn-primary" onclick="window.close()">Close Window</button>
+                    <p style="margin-top: 1rem; font-size: 0.85rem; color: #999;">
+                        Window not closing? <a href="javascript:void(0)" onclick="window.close()">Click here</a> or close manually.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Device info from server
+        const deviceInfo = {{ device_info | tojson }};
+        const isAuthenticated = {{ 'true' if is_authenticated else 'false' }};
+
+        // Populate device info displays
+        document.getElementById('display-device-id').textContent = deviceInfo.device_id || 'Unknown';
+        document.getElementById('display-model').textContent = deviceInfo.model || 'Environment Sensor';
+        document.getElementById('display-mac').textContent = deviceInfo.mac_address || 'Unknown';
+        document.getElementById('pair-device-id').textContent = deviceInfo.device_id || 'Unknown';
+        document.getElementById('pair-model').textContent = deviceInfo.model || 'Environment Sensor';
+        document.getElementById('pair-mac').textContent = deviceInfo.mac_address || 'Unknown';
+        document.getElementById('device_name').value = deviceInfo.device_name || 'Environment Sensor';
+
+        // If already authenticated, skip to pairing
+        if (isAuthenticated) {
+            document.getElementById('login-section').classList.add('hidden');
+            document.getElementById('pairing-section').classList.remove('hidden');
+            loadLocations();
+        }
+
+        function showMessage(type, text) {
+            const msg = document.getElementById('message');
+            msg.className = 'message ' + type;
+            msg.textContent = text;
+            msg.classList.remove('hidden');
+        }
+
+        function hideMessage() {
+            document.getElementById('message').classList.add('hidden');
+        }
+
+        function setButtonLoading(btn, loading, text) {
+            if (loading) {
+                btn.disabled = true;
+                btn.innerHTML = '<span class="spinner"></span> ' + (text || 'Please wait...');
+            } else {
+                btn.disabled = false;
+                btn.textContent = text || btn.dataset.originalText;
+            }
+        }
+
+        // Google OAuth login
+        function loginWithGoogle() {
+            // Store device_id in session before redirecting
+            const deviceId = deviceInfo.device_id;
+            // Redirect to Google OAuth with pairing return URL
+            window.location.href = `/auth/google?next=/pair-device-standalone&device_id=${deviceId}`;
+        }
+
+        // Email/password login
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            hideMessage();
+
+            const btn = document.getElementById('login-btn');
+            btn.dataset.originalText = btn.textContent;
+            setButtonLoading(btn, true, 'Signing in...');
+
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            try {
+                const response = await fetch('/auth/jwt/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
+                    body: `username=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`
+                });
+
+                if (response.ok) {
+                    // Login successful - show pairing form
+                    document.getElementById('login-section').classList.add('hidden');
+                    document.getElementById('pairing-section').classList.remove('hidden');
+                    loadLocations();
+                } else {
+                    const data = await response.json();
+                    showMessage('error', data.detail || 'Invalid email or password');
+                    setButtonLoading(btn, false, 'Sign In');
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                showMessage('error', 'An error occurred. Please try again.');
+                setButtonLoading(btn, false, 'Sign In');
+            }
+        });
+
+        // Load user's locations
+        async function loadLocations() {
+            try {
+                const response = await fetch('/user/locations');
+                if (response.ok) {
+                    const locations = await response.json();
+                    const select = document.getElementById('location_id');
+
+                    locations.forEach(loc => {
+                        const option = document.createElement('option');
+                        option.value = loc.id;
+                        option.textContent = loc.name;
+                        select.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading locations:', error);
+            }
+        }
+
+        function toggleNewLocation() {
+            const newLocationField = document.getElementById('new-location-field');
+            const locationSelect = document.getElementById('location_id');
+
+            if (newLocationField.classList.contains('hidden')) {
+                newLocationField.classList.remove('hidden');
+                locationSelect.value = '';
+                locationSelect.disabled = true;
+            } else {
+                newLocationField.classList.add('hidden');
+                locationSelect.disabled = false;
+                document.getElementById('location_name').value = '';
+            }
+        }
+
+        // Pair device
+        document.getElementById('pair-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            hideMessage();
+
+            const locationId = document.getElementById('location_id').value;
+            const locationName = document.getElementById('location_name').value;
+
+            if (!locationId && !locationName) {
+                showMessage('error', 'Please select a location or create a new one');
+                return;
+            }
+
+            const btn = document.getElementById('pair-btn');
+            btn.dataset.originalText = btn.textContent;
+            setButtonLoading(btn, true, 'Pairing...');
+
+            const pairData = {
+                device_id: deviceInfo.device_id,
+                device_name: document.getElementById('device_name').value,
+                mac_address: deviceInfo.mac_address,
+                model: deviceInfo.model,
+                manufacturer: deviceInfo.manufacturer,
+                sw_version: deviceInfo.sw_version,
+                hw_version: deviceInfo.hw_version,
+                location_id: locationId ? parseInt(locationId) : null,
+                location_name: locationName || null
+            };
+
+            try {
+                const response = await fetch('/api/devices/pair', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(pairData)
+                });
+
+                const result = await response.json();
+
+                if (response.ok && result.success) {
+                    // Show success screen
+                    document.getElementById('pairing-section').classList.add('hidden');
+                    document.getElementById('success-section').classList.remove('hidden');
+                } else {
+                    showMessage('error', result.message || 'Failed to pair device');
+                    setButtonLoading(btn, false, 'Pair Device');
+                }
+            } catch (error) {
+                console.error('Pairing error:', error);
+                showMessage('error', 'An error occurred while pairing');
+                setButtonLoading(btn, false, 'Pair Device');
+            }
+        });
+    </script>
+</body>
+</html>

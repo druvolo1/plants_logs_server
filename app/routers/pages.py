@@ -119,9 +119,10 @@ async def register_page(request: Request):
 
 
 # Device pairing initiation (no auth required - stores params server-side)
+# This now uses the standalone pairing page with built-in login
 @router.get("/pair-device", response_class=HTMLResponse)
 async def device_pair_initiation(request: Request):
-    """Device pairing initiation - stores device info server-side and shows login or pairing page"""
+    """Device pairing initiation - shows standalone pairing page with login"""
     # Get device info from query params
     device_id = request.query_params.get('device_id')
     device_name = request.query_params.get('name', 'Environment Sensor')
@@ -150,28 +151,28 @@ async def device_pair_initiation(request: Request):
     }
 
     # Check if user is already authenticated
+    is_authenticated = False
     try:
         auth_cookie = request.cookies.get("auth_cookie")
         if auth_cookie:
             try:
                 current_user = get_current_user_dependency()
                 user = await current_user(request)
-                # User is authenticated - show pairing page directly
-                return templates.TemplateResponse("device_pair.html", {
-                    "request": request,
-                    "user": user,
-                    "device_info": pending_pairings[device_id]
-                })
+                is_authenticated = True
             except:
                 pass
     except:
         pass
 
-    # Not authenticated - redirect to login with device_id in URL
-    return RedirectResponse(url=f"/login?next=/pair-device-auth&device_id={device_id}", status_code=302)
+    # Show standalone pairing page (handles both login and pairing)
+    return templates.TemplateResponse("device_pair_standalone.html", {
+        "request": request,
+        "device_info": pending_pairings[device_id],
+        "is_authenticated": is_authenticated
+    })
 
 
-# Device pairing page (requires authentication)
+# Device pairing page (requires authentication) - legacy route
 @router.get("/pair-device-auth", response_class=HTMLResponse)
 async def device_pair_page(request: Request, user: User = Depends(get_current_user_dependency())):
     """Device pairing page for environment sensors - requires authentication"""
@@ -193,6 +194,43 @@ async def device_pair_page(request: Request, user: User = Depends(get_current_us
         "request": request,
         "user": user,
         "device_info": device_info_for_template
+    })
+
+
+# Standalone pairing page (after OAuth redirect)
+@router.get("/pair-device-standalone", response_class=HTMLResponse)
+async def device_pair_standalone(request: Request):
+    """Standalone pairing page - used after OAuth login redirect"""
+    device_id = request.query_params.get('device_id')
+
+    # Get device info from server storage
+    if not device_id or device_id not in pending_pairings:
+        return templates.TemplateResponse("error.html", {
+            "request": request,
+            "error": "Device pairing session expired or not found. Please start the pairing process again from your sensor."
+        })
+
+    # Check if user is authenticated (should be after OAuth)
+    is_authenticated = False
+    try:
+        auth_cookie = request.cookies.get("auth_cookie")
+        if auth_cookie:
+            try:
+                current_user = get_current_user_dependency()
+                user = await current_user(request)
+                is_authenticated = True
+            except:
+                pass
+    except:
+        pass
+
+    device_info = pending_pairings[device_id]
+    device_info_for_template = {k: v for k, v in device_info.items() if k != 'timestamp'}
+
+    return templates.TemplateResponse("device_pair_standalone.html", {
+        "request": request,
+        "device_info": device_info_for_template,
+        "is_authenticated": is_authenticated
     })
 
 
