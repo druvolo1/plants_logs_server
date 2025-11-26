@@ -5,6 +5,7 @@ Plant management endpoints including CRUD, device assignments, and phase managem
 from typing import List, Dict
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_
 
@@ -388,14 +389,20 @@ async def get_plant_assignments(
     return assignments_list
 
 
+class DeviceAssignRequest(BaseModel):
+    device_id: str
+
+
 @router.post("/{plant_id}/assign", response_model=Dict[str, str])
 async def assign_device_to_plant(
     plant_id: str,
-    device_id: str,
+    assign_data: DeviceAssignRequest,
     user: User = Depends(get_current_user_dependency()),
     session: AsyncSession = Depends(get_db_dependency())
 ):
     """Assign a device to a plant"""
+    device_id = assign_data.device_id
+
     # Verify plant exists and user has access
     result = await session.execute(
         select(Plant).where(Plant.plant_id == plant_id, Plant.user_id == user.id)
