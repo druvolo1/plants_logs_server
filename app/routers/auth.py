@@ -263,6 +263,8 @@ async def api_login(
     from fastapi.responses import JSONResponse
     from fastapi.security import OAuth2PasswordRequestForm
 
+    print(f"[API Login] Received login request for: {username}")
+
     # Create credentials object
     credentials = OAuth2PasswordRequestForm(username=username, password=password, scope="")
 
