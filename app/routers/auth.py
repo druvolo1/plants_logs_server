@@ -253,13 +253,34 @@ async def logout():
 
 # Get current user info API
 @api_router.get("/me")
-async def get_current_user_info(user: User = Depends(get_current_user_dependency())):
+async def get_current_user_info(
+    request: Request,
+    user: User = Depends(get_current_user_dependency()),
+    session: AsyncSession = Depends(get_db_dependency())
+):
+    # Check for impersonation - return impersonated user's info if active
+    effective_user = user
+    is_impersonating = False
+
+    if user.is_superuser:
+        impersonated_id = request.cookies.get("impersonate_user_id")
+        if impersonated_id:
+            try:
+                target = await session.get(User, int(impersonated_id))
+                if target:
+                    effective_user = target
+                    is_impersonating = True
+            except (ValueError, TypeError):
+                pass
+
     return {
-        "email": user.email,
-        "first_name": user.first_name,
-        "last_name": user.last_name,
-        "is_superuser": user.is_superuser,
-        "is_active": user.is_active
+        "email": effective_user.email,
+        "first_name": effective_user.first_name,
+        "last_name": effective_user.last_name,
+        "is_superuser": effective_user.is_superuser,
+        "is_active": effective_user.is_active,
+        "is_impersonating": is_impersonating,
+        "actual_user_email": user.email if is_impersonating else None
     }
 
 

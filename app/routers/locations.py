@@ -127,7 +127,10 @@ async def list_locations(
 
     # Get owned locations
     owned_result = await session.execute(select(Location).where(Location.user_id == effective_user.id))
-    for location in owned_result.scalars().all():
+    owned_locations = owned_result.scalars().all()
+    print(f"[LOCATIONS] Found {len(owned_locations)} owned locations for user_id={effective_user.id}")
+    for location in owned_locations:
+        print(f"[LOCATIONS]   - {location.name} (id={location.id}, user_id={location.user_id})")
         locations_list.append(LocationRead(
             id=location.id,
             name=location.name,
