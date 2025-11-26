@@ -961,8 +961,8 @@
                     // Update user email in nav
                     document.getElementById('userEmail').textContent = user.email;
 
-                    // Add admin links for admins
-                    if (isAdmin) {
+                    // Add admin links for admins (only if not impersonating)
+                    if (isAdmin && !user.is_impersonating) {
                         const plantsLink = document.querySelector('.navbar-link.active');
                         const userEmailSpan = document.getElementById('userEmail');
 

@@ -447,13 +447,35 @@
         let templates = [];
         let editingTemplateId = null;
 
-        // Load user info
+        // Load user info and set up admin links if needed
         async function loadUserInfo() {
             try {
-                const response = await fetch('/auth/userinfo');
+                const response = await fetch('/api/user/me');
                 if (response.ok) {
-                    const data = await response.json();
-                    document.getElementById('userEmail').textContent = data.email;
+                    const user = await response.json();
+                    document.getElementById('userEmail').textContent = user.email;
+
+                    // Add admin links for admins (only if not impersonating)
+                    if (user.is_superuser && !user.is_impersonating) {
+                        const templatesLink = document.querySelector('.navbar-link.active');
+                        const userEmailSpan = document.getElementById('userEmail');
+
+                        // Create Admin Overview link
+                        const overviewLink = document.createElement('a');
+                        overviewLink.href = '/admin/overview';
+                        overviewLink.className = 'navbar-link';
+                        overviewLink.textContent = 'Admin Overview';
+
+                        // Create Users link
+                        const usersLink = document.createElement('a');
+                        usersLink.href = '/admin/users';
+                        usersLink.className = 'navbar-link';
+                        usersLink.textContent = 'Users';
+
+                        // Insert before user email
+                        templatesLink.parentNode.insertBefore(overviewLink, userEmailSpan);
+                        templatesLink.parentNode.insertBefore(usersLink, userEmailSpan);
+                    }
                 }
             } catch (error) {
                 console.error('Error loading user info:', error);
