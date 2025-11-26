@@ -2039,6 +2039,7 @@
         }
 
         function updateEnvironmentDisplay(device_id, data) {
+            console.log(`[EnvSensor] Updating display for ${device_id}: CO2=${data.co2}, Temp=${data.temperature}`);
             // Update online status
             updateOnlineStatus(device_id, data.is_online);
 
@@ -2067,7 +2068,9 @@
                 document.getElementById(`env-humidity-${device_id}`).textContent = `${data.humidity.toFixed(1)}%`;
             }
             if (data.co2 !== null && data.co2 !== undefined) {
-                document.getElementById(`env-co2-${device_id}`).textContent = `${data.co2} ppm`;
+                const co2El = document.getElementById(`env-co2-${device_id}`);
+                console.log(`[EnvSensor] Setting CO2 element:`, co2El, `to ${data.co2} ppm`);
+                if (co2El) co2El.textContent = `${data.co2} ppm`;
             }
             if (data.vpd !== null && data.vpd !== undefined) {
                 document.getElementById(`env-vpd-${device_id}`).textContent = `${data.vpd.toFixed(2)} kPa`;
