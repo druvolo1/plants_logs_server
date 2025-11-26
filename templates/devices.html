@@ -589,27 +589,18 @@
 
         .overflow-menu {
             display: none;
-            position: absolute;
-            right: 0;
-            bottom: 100%;
-            margin-bottom: 0.5rem;
+            position: fixed;
             background: #1e293b;
             border: 1px solid #334155;
             border-radius: 8px;
             min-width: 180px;
-            box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.4);
-            z-index: 1000;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            z-index: 9999;
             overflow: hidden;
         }
 
         .overflow-menu.show {
             display: block;
-        }
-
-        /* Ensure card with open menu is above others */
-        .device-card.menu-open {
-            z-index: 100;
-            position: relative;
         }
 
         .overflow-menu-item {
@@ -1198,7 +1189,7 @@
                 <div class="device-card-actions">
                     ${actionButtons}
                     <div class="overflow-menu-container">
-                        <button class="overflow-btn" onclick="toggleOverflowMenu('${device.device_id}')" title="More actions">⋮</button>
+                        <button class="overflow-btn" onclick="toggleOverflowMenu('${device.device_id}', event)" title="More actions">⋮</button>
                         <div class="overflow-menu" id="overflow-menu-${device.device_id}">
                             ${overflowItems}
                         </div>
@@ -1227,20 +1218,25 @@
         }
 
         // Overflow menu toggle
-        function toggleOverflowMenu(deviceId) {
+        function toggleOverflowMenu(deviceId, event) {
             const menu = document.getElementById(`overflow-menu-${deviceId}`);
             const wasOpen = menu.classList.contains('show');
 
-            // Close all other menus and remove menu-open class from all cards
+            // Close all other menus
             document.querySelectorAll('.overflow-menu.show').forEach(m => {
                 m.classList.remove('show');
-                m.closest('.device-card')?.classList.remove('menu-open');
             });
 
             // Toggle this menu
             if (!wasOpen) {
+                // Get button position
+                const btn = event.currentTarget;
+                const rect = btn.getBoundingClientRect();
+
+                // Position menu above the button, aligned to right edge
+                menu.style.right = (window.innerWidth - rect.right) + 'px';
+                menu.style.bottom = (window.innerHeight - rect.top + 5) + 'px';
                 menu.classList.add('show');
-                menu.closest('.device-card')?.classList.add('menu-open');
             }
         }
 
@@ -1260,7 +1256,6 @@
             if (!event.target.closest('.overflow-menu-container') || event.target.closest('.overflow-menu-item')) {
                 document.querySelectorAll('.overflow-menu.show').forEach(m => {
                     m.classList.remove('show');
-                    m.closest('.device-card')?.classList.remove('menu-open');
                 });
             }
         });
