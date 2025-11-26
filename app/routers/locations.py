@@ -75,14 +75,18 @@ async def generate_share_code(session: AsyncSession) -> str:
 
 @router.post("", response_model=LocationRead)
 async def create_location(
+    request: Request,
     location: LocationCreate,
     user: User = Depends(get_current_user_dependency()),
     session: AsyncSession = Depends(get_db_dependency())
 ):
     """Create a new location"""
+    # Get effective user (handles impersonation)
+    effective_user = await get_effective_user(request, user, session)
+
     # Verify parent exists if parent_id is provided
     if location.parent_id:
-        parent_result = await session.execute(select(Location).where(Location.id == location.parent_id, Location.user_id == user.id))
+        parent_result = await session.execute(select(Location).where(Location.id == location.parent_id, Location.user_id == effective_user.id))
         parent = parent_result.scalars().first()
         if not parent:
             raise HTTPException(404, "Parent location not found")
@@ -91,7 +95,7 @@ async def create_location(
         name=location.name,
         description=location.description,
         parent_id=location.parent_id,
-        user_id=user.id
+        user_id=effective_user.id
     )
     session.add(new_location)
     await session.commit()
