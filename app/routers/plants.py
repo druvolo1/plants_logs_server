@@ -125,15 +125,19 @@ async def create_plant(
 
 @router.post("/new", response_model=Dict[str, str])
 async def create_plant_new(
+    request: Request,
     plant_data: PlantCreateNew,
     user: User = Depends(get_current_user_dependency()),
     session: AsyncSession = Depends(get_db_dependency())
 ):
     """Create a plant without device assignment - server-side creation"""
+    # Get effective user (handles impersonation)
+    effective_user = await get_effective_user(request, user, session)
+
     # Verify location if provided
     if plant_data.location_id:
         from app.models import Location
-        location_result = await session.execute(select(Location).where(Location.id == plant_data.location_id, Location.user_id == user.id))
+        location_result = await session.execute(select(Location).where(Location.id == plant_data.location_id, Location.user_id == effective_user.id))
         location = location_result.scalars().first()
         if not location:
             raise HTTPException(404, "Location not found or access denied")
@@ -147,7 +151,7 @@ async def create_plant_new(
         template_result = await session.execute(
             select(PhaseTemplate).where(
                 PhaseTemplate.id == plant_data.template_id,
-                PhaseTemplate.user_id == user.id
+                PhaseTemplate.user_id == effective_user.id
             )
         )
         template = template_result.scalars().first()
@@ -159,7 +163,7 @@ async def create_plant_new(
         plant_id=plant_id,
         name=plant_data.name,
         batch_number=plant_data.batch_number,
-        user_id=user.id,
+        user_id=effective_user.id,
         location_id=plant_data.location_id,
         start_date=datetime.utcnow(),
         status='created',
