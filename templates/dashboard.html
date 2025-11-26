@@ -2022,16 +2022,18 @@
 
         async function fetchEnvironmentData(device_id) {
             try {
+                console.log(`[EnvSensor] Fetching data for ${device_id}...`);
                 const response = await fetch(`/api/devices/${device_id}/environment/latest`);
                 if (response.ok) {
                     const data = await response.json();
+                    console.log(`[EnvSensor] Got data for ${device_id}:`, data);
                     updateEnvironmentDisplay(device_id, data);
                 } else {
-                    console.error(`Failed to fetch environment data for ${device_id}`);
+                    console.error(`[EnvSensor] Failed to fetch for ${device_id}: ${response.status}`);
                     updateOnlineStatus(device_id, false);
                 }
             } catch (error) {
-                console.error(`Error fetching environment data for ${device_id}:`, error);
+                console.error(`[EnvSensor] Error fetching ${device_id}:`, error);
                 updateOnlineStatus(device_id, false);
             }
         }
