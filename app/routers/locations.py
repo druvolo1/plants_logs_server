@@ -242,13 +242,17 @@ async def get_location(
 
 @router.put("/{location_id}", response_model=LocationRead)
 async def update_location(
+    request: Request,
     location_id: int,
     location_update: LocationUpdate,
     user: User = Depends(get_current_user_dependency()),
     session: AsyncSession = Depends(get_db_dependency())
 ):
     """Update a location"""
-    result = await session.execute(select(Location).where(Location.id == location_id, Location.user_id == user.id))
+    # Get effective user (handles impersonation)
+    effective_user = await get_effective_user(request, user, session)
+
+    result = await session.execute(select(Location).where(Location.id == location_id, Location.user_id == effective_user.id))
     location = result.scalars().first()
 
     if not location:
@@ -258,7 +262,7 @@ async def update_location(
     if location_update.parent_id is not None:
         if location_update.parent_id == location_id:
             raise HTTPException(400, "Location cannot be its own parent")
-        parent_result = await session.execute(select(Location).where(Location.id == location_update.parent_id, Location.user_id == user.id))
+        parent_result = await session.execute(select(Location).where(Location.id == location_update.parent_id, Location.user_id == effective_user.id))
         parent = parent_result.scalars().first()
         if not parent:
             raise HTTPException(404, "Parent location not found")
@@ -288,12 +292,16 @@ async def update_location(
 
 @router.delete("/{location_id}")
 async def delete_location(
+    request: Request,
     location_id: int,
     user: User = Depends(get_current_user_dependency()),
     session: AsyncSession = Depends(get_db_dependency())
 ):
     """Delete a location"""
-    result = await session.execute(select(Location).where(Location.id == location_id, Location.user_id == user.id))
+    # Get effective user (handles impersonation)
+    effective_user = await get_effective_user(request, user, session)
+
+    result = await session.execute(select(Location).where(Location.id == location_id, Location.user_id == effective_user.id))
     location = result.scalars().first()
 
     if not location:
