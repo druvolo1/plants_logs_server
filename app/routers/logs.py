@@ -4,7 +4,7 @@ Log management endpoints for plant logs and environment sensor data.
 """
 from typing import List, Dict, Optional
 from datetime import datetime
-from fastapi import APIRouter, Depends, HTTPException, Query, Header
+from fastapi import APIRouter, Depends, HTTPException, Query, Header, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, or_
 from dateutil import parser as date_parser
@@ -37,6 +37,28 @@ def get_current_user_dependency():
     """Lazy import to avoid circular imports"""
     from app.main import current_user
     return current_user
+
+
+async def get_effective_user(
+    request: Request,
+    user: User,
+    session: AsyncSession
+) -> User:
+    """
+    Get the effective user for data display.
+    If admin is impersonating another user, return that user.
+    Otherwise return the actual logged-in user.
+    """
+    if user.is_superuser:
+        impersonated_id = request.cookies.get("impersonate_user_id")
+        if impersonated_id:
+            try:
+                target = await session.get(User, int(impersonated_id))
+                if target:
+                    return target
+            except (ValueError, TypeError):
+                pass
+    return user
 
 
 # Plant Log Endpoints
@@ -118,6 +140,7 @@ async def upload_logs(
 
 @router.get("/user/plants/{plant_id}/logs", response_model=List[LogEntryRead])
 async def get_plant_logs(
+    request: Request,
     plant_id: str,
     user: User = Depends(get_current_user_dependency()),
     session: AsyncSession = Depends(get_db_dependency()),
@@ -133,13 +156,16 @@ async def get_plant_logs(
     that were assigned to the plant during the relevant time periods using
     DeviceAssignment history.
     """
+    # Get effective user (handles impersonation)
+    effective_user = await get_effective_user(request, user, session)
+
     # Verify plant exists and user has access
     result = await session.execute(
         select(Plant, Device)
         .outerjoin(Device, Plant.device_id == Device.id)
         .where(
             Plant.plant_id == plant_id,
-            or_(Plant.user_id == user.id, Device.user_id == user.id)
+            or_(Plant.user_id == effective_user.id, Device.user_id == effective_user.id)
         )
     )
 
