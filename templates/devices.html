@@ -587,65 +587,104 @@
             background: rgba(255, 255, 255, 0.2);
         }
 
-        .overflow-menu-container {
-            position: relative;
+        /* Device Actions Modal */
+        .actions-modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
         }
 
-        .overflow-menu {
-            display: none;
-            position: absolute;
-            top: 100%;
-            right: 0;
-            margin-top: 4px;
+        .actions-modal-overlay.show {
+            display: flex;
+        }
+
+        .actions-modal {
             background: #1e293b;
             border: 1px solid #475569;
-            border-radius: 8px;
-            min-width: 180px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
-            z-index: 9999;
+            border-radius: 12px;
+            min-width: 280px;
+            max-width: 90vw;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
             overflow: hidden;
         }
 
-        .overflow-menu.show {
-            display: block;
+        .actions-modal-header {
+            padding: 1rem 1.25rem;
+            border-bottom: 1px solid #334155;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
 
-        .overflow-menu-item {
+        .actions-modal-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #f1f5f9;
+            margin: 0;
+        }
+
+        .actions-modal-close {
+            background: none;
+            border: none;
+            color: #94a3b8;
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 0;
+            line-height: 1;
+        }
+
+        .actions-modal-close:hover {
+            color: #f1f5f9;
+        }
+
+        .actions-modal-body {
+            padding: 0.5rem 0;
+        }
+
+        .actions-modal-item {
             display: flex;
             align-items: center;
             gap: 0.75rem;
             width: 100%;
-            padding: 0.75rem 1rem;
+            padding: 0.875rem 1.25rem;
             border: none;
             background: none;
             color: #e2e8f0;
-            font-size: 0.9rem;
+            font-size: 0.95rem;
             text-align: left;
             cursor: pointer;
             transition: background 0.15s;
         }
 
-        .overflow-menu-item:hover {
+        .actions-modal-item:hover {
             background: rgba(255, 255, 255, 0.1);
         }
 
-        .overflow-menu-item.danger {
+        .actions-modal-item.danger {
             color: #f87171;
         }
 
-        .overflow-menu-item.danger:hover {
-            background: rgba(239, 68, 68, 0.2);
+        .actions-modal-item.danger:hover {
+            background: rgba(239, 68, 68, 0.15);
         }
 
-        .overflow-menu-divider {
+        .actions-modal-divider {
             height: 1px;
             background: #334155;
-            margin: 0.25rem 0;
+            margin: 0.5rem 0;
         }
 
-        .overflow-menu-item .icon {
-            width: 1.25rem;
+        .actions-modal-item .icon {
+            width: 1.5rem;
             text-align: center;
+            font-size: 1.1rem;
         }
 
         /* Heartbeat Settings Modal */
@@ -787,6 +826,19 @@
     </div>
 
     <div id="devices-list"></div>
+
+    <!-- Device Actions Modal -->
+    <div id="actions-modal" class="actions-modal-overlay" onclick="if(event.target === this) closeActionsModal();">
+        <div class="actions-modal">
+            <div class="actions-modal-header">
+                <h4 class="actions-modal-title" id="actions-modal-title">Device Actions</h4>
+                <button class="actions-modal-close" onclick="closeActionsModal()">&times;</button>
+            </div>
+            <div class="actions-modal-body" id="actions-modal-body">
+                <!-- Actions will be populated dynamically -->
+            </div>
+        </div>
+    </div>
 
     <!-- Share Management Modal -->
     <div id="share-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 2000;">
@@ -1128,40 +1180,6 @@
                 ? `<div class="device-card-plant">🌱 ${device.active_plant_name} (${device.active_phase})</div>`
                 : '';
 
-            // Build overflow menu items
-            let overflowItems = '';
-            if (deviceType === 'environmental') {
-                overflowItems += `
-                    <button class="overflow-menu-item" onclick="updateEnvironmentalFirmware('${device.device_id}')" id="update-btn-${device.device_id}">
-                        <span class="icon">⬆️</span> Update Software
-                    </button>
-                    <button class="overflow-menu-item" onclick="rebootEnvironmentalDevice('${device.device_id}')" id="reboot-btn-${device.device_id}">
-                        <span class="icon">🔄</span> Reboot System
-                    </button>`;
-            } else {
-                overflowItems += `
-                    <button class="overflow-menu-item" onclick="updateDevice('${device.device_id}')" id="update-btn-${device.device_id}">
-                        <span class="icon">⬆️</span> Update Software
-                    </button>
-                    <button class="overflow-menu-item" onclick="restartService('${device.device_id}')" id="restart-btn-${device.device_id}">
-                        <span class="icon">🔃</span> Restart Service
-                    </button>
-                    <button class="overflow-menu-item" onclick="rebootSystem('${device.device_id}')" id="reboot-btn-${device.device_id}">
-                        <span class="icon">🔄</span> Reboot System
-                    </button>`;
-            }
-
-            if (device.is_owner) {
-                overflowItems += `
-                    <div class="overflow-menu-divider"></div>
-                    <button class="overflow-menu-item" onclick="openShareModal('${device.device_id}')">
-                        <span class="icon">📤</span> Share Device
-                    </button>
-                    <button class="overflow-menu-item danger" onclick="deleteDevice('${device.device_id}')">
-                        <span class="icon">🗑️</span> Delete Device
-                    </button>`;
-            }
-
             // Action buttons
             let actionButtons = '';
             if (device.is_owner) {
@@ -1195,12 +1213,7 @@
                 </div>
                 <div class="device-card-actions">
                     ${actionButtons}
-                    <div class="overflow-menu-container" onclick="event.stopPropagation();">
-                        <button class="overflow-btn" onclick="var menu = document.getElementById('overflow-menu-${device.device_id}'); var wasOpen = menu.classList.contains('show'); closeAllOverflowMenus(); if (!wasOpen) menu.classList.add('show');" title="More actions">⋮</button>
-                        <div class="overflow-menu" id="overflow-menu-${device.device_id}">
-                            ${overflowItems}
-                        </div>
-                    </div>
+                    <button class="overflow-btn" onclick="openActionsModal('${device.device_id}', '${deviceType}', ${device.is_owner})" title="More actions">⋮</button>
                 </div>
             `;
 
@@ -1234,15 +1247,61 @@
             }
         }
 
-        // Close all overflow menus
-        function closeAllOverflowMenus() {
-            document.querySelectorAll('.overflow-menu.show').forEach(m => m.classList.remove('show'));
+        // Device Actions Modal
+        let currentActionsDeviceId = null;
+
+        function openActionsModal(deviceId, deviceType, isOwner) {
+            currentActionsDeviceId = deviceId;
+
+            // Find device name
+            const device = allDevices.find(d => d.device_id === deviceId);
+            const deviceName = device ? device.name : deviceId;
+
+            document.getElementById('actions-modal-title').textContent = deviceName;
+
+            // Build modal content
+            let html = '';
+
+            if (deviceType === 'environmental') {
+                html += `
+                    <button class="actions-modal-item" onclick="closeActionsModal(); updateEnvironmentalFirmware('${deviceId}');">
+                        <span class="icon">⬆️</span> Update Software
+                    </button>
+                    <button class="actions-modal-item" onclick="closeActionsModal(); rebootEnvironmentalDevice('${deviceId}');">
+                        <span class="icon">🔄</span> Reboot System
+                    </button>`;
+            } else {
+                html += `
+                    <button class="actions-modal-item" onclick="closeActionsModal(); updateDevice('${deviceId}');">
+                        <span class="icon">⬆️</span> Update Software
+                    </button>
+                    <button class="actions-modal-item" onclick="closeActionsModal(); restartService('${deviceId}');">
+                        <span class="icon">🔃</span> Restart Service
+                    </button>
+                    <button class="actions-modal-item" onclick="closeActionsModal(); rebootSystem('${deviceId}');">
+                        <span class="icon">🔄</span> Reboot System
+                    </button>`;
+            }
+
+            if (isOwner) {
+                html += `
+                    <div class="actions-modal-divider"></div>
+                    <button class="actions-modal-item" onclick="closeActionsModal(); openShareModal('${deviceId}');">
+                        <span class="icon">📤</span> Share Device
+                    </button>
+                    <button class="actions-modal-item danger" onclick="closeActionsModal(); deleteDevice('${deviceId}');">
+                        <span class="icon">🗑️</span> Delete Device
+                    </button>`;
+            }
+
+            document.getElementById('actions-modal-body').innerHTML = html;
+            document.getElementById('actions-modal').classList.add('show');
         }
 
-        // Close menus when clicking anywhere
-        document.addEventListener('click', function() {
-            closeAllOverflowMenus();
-        });
+        function closeActionsModal() {
+            document.getElementById('actions-modal').classList.remove('show');
+            currentActionsDeviceId = null;
+        }
 
         // Fetch firmware version for environmental sensors
         async function fetchEnvironmentalVersion(device_id) {
