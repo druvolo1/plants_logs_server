@@ -134,6 +134,9 @@ async def create_plant_new(
     # Get effective user (handles impersonation)
     effective_user = await get_effective_user(request, user, session)
 
+    print(f"[CREATE PLANT] Actual user: {user.email} (id={user.id}), Effective user: {effective_user.email} (id={effective_user.id})")
+    print(f"[CREATE PLANT] Impersonate cookie: {request.cookies.get('impersonate_user_id')}")
+
     # Verify location if provided
     if plant_data.location_id:
         from app.models import Location
@@ -264,17 +267,21 @@ async def list_plants(
 
 @router.get("/{plant_id}", response_model=PlantRead)
 async def get_plant(
+    request: Request,
     plant_id: str,
     user: User = Depends(get_current_user_dependency()),
     session: AsyncSession = Depends(get_db_dependency())
 ):
     """Get a specific plant by ID"""
+    # Get effective user (handles impersonation)
+    effective_user = await get_effective_user(request, user, session)
+
     result = await session.execute(
         select(Plant, Device)
         .outerjoin(Device, Plant.device_id == Device.id)
         .where(
             Plant.plant_id == plant_id,
-            or_(Plant.user_id == user.id, Device.user_id == user.id)
+            or_(Plant.user_id == effective_user.id, Device.user_id == effective_user.id)
         )
     )
 
@@ -331,14 +338,18 @@ async def get_plant(
 
 @router.delete("/{plant_id}", response_model=Dict[str, str])
 async def delete_plant(
+    request: Request,
     plant_id: str,
     user: User = Depends(get_current_user_dependency()),
     session: AsyncSession = Depends(get_db_dependency())
 ):
     """Delete a plant"""
+    # Get effective user (handles impersonation)
+    effective_user = await get_effective_user(request, user, session)
+
     # Get plant
     result = await session.execute(
-        select(Plant).where(Plant.plant_id == plant_id, Plant.user_id == user.id)
+        select(Plant).where(Plant.plant_id == plant_id, Plant.user_id == effective_user.id)
     )
 
     plant = result.scalars().first()
@@ -356,14 +367,18 @@ async def delete_plant(
 
 @router.get("/{plant_id}/assignments")
 async def get_plant_assignments(
+    request: Request,
     plant_id: str,
     user: User = Depends(get_current_user_dependency()),
     session: AsyncSession = Depends(get_db_dependency())
 ):
     """Get all device assignments for a plant"""
+    # Get effective user (handles impersonation)
+    effective_user = await get_effective_user(request, user, session)
+
     # Verify plant exists and user has access
     result = await session.execute(
-        select(Plant).where(Plant.plant_id == plant_id, Plant.user_id == user.id)
+        select(Plant).where(Plant.plant_id == plant_id, Plant.user_id == effective_user.id)
     )
     plant = result.scalars().first()
 
@@ -399,17 +414,21 @@ class DeviceAssignRequest(BaseModel):
 
 @router.post("/{plant_id}/assign", response_model=Dict[str, str])
 async def assign_device_to_plant(
+    request: Request,
     plant_id: str,
     assign_data: DeviceAssignRequest,
     user: User = Depends(get_current_user_dependency()),
     session: AsyncSession = Depends(get_db_dependency())
 ):
     """Assign a device to a plant"""
+    # Get effective user (handles impersonation)
+    effective_user = await get_effective_user(request, user, session)
+
     device_id = assign_data.device_id
 
     # Verify plant exists and user has access
     result = await session.execute(
-        select(Plant).where(Plant.plant_id == plant_id, Plant.user_id == user.id)
+        select(Plant).where(Plant.plant_id == plant_id, Plant.user_id == effective_user.id)
     )
     plant = result.scalars().first()
 
@@ -433,13 +452,13 @@ async def assign_device_to_plant(
         raise HTTPException(400, f"Cannot assign plants to {device_type_name}. Only feeding systems can have plants assigned.")
 
     # Check if user owns device or has controller permission
-    is_owner = device.user_id == user.id
+    is_owner = device.user_id == effective_user.id
 
     if not is_owner:
         share_result = await session.execute(
             select(DeviceShare).where(
                 DeviceShare.device_id == device.id,
-                DeviceShare.shared_with_user_id == user.id,
+                DeviceShare.shared_with_user_id == effective_user.id,
                 DeviceShare.is_active == True,
                 DeviceShare.revoked_at == None,
                 DeviceShare.accepted_at != None,
@@ -478,14 +497,18 @@ async def assign_device_to_plant(
 
 @router.post("/{plant_id}/unassign", response_model=Dict[str, str])
 async def unassign_device_from_plant(
+    request: Request,
     plant_id: str,
     user: User = Depends(get_current_user_dependency()),
     session: AsyncSession = Depends(get_db_dependency())
 ):
     """Unassign the current device from a plant"""
+    # Get effective user (handles impersonation)
+    effective_user = await get_effective_user(request, user, session)
+
     # Verify plant exists and user has access
     result = await session.execute(
-        select(Plant).where(Plant.plant_id == plant_id, Plant.user_id == user.id)
+        select(Plant).where(Plant.plant_id == plant_id, Plant.user_id == effective_user.id)
     )
     plant = result.scalars().first()
 
@@ -515,15 +538,19 @@ async def unassign_device_from_plant(
 
 @router.post("/{plant_id}/change-phase", response_model=Dict[str, str])
 async def change_plant_phase(
+    request: Request,
     plant_id: str,
     new_phase: str,
     user: User = Depends(get_current_user_dependency()),
     session: AsyncSession = Depends(get_db_dependency())
 ):
     """Change the current phase of a plant"""
+    # Get effective user (handles impersonation)
+    effective_user = await get_effective_user(request, user, session)
+
     # Verify plant exists and user has access
     result = await session.execute(
-        select(Plant).where(Plant.plant_id == plant_id, Plant.user_id == user.id)
+        select(Plant).where(Plant.plant_id == plant_id, Plant.user_id == effective_user.id)
     )
     plant = result.scalars().first()
 
@@ -581,14 +608,18 @@ async def change_plant_phase(
 
 @router.get("/{plant_id}/phase-history")
 async def get_phase_history(
+    request: Request,
     plant_id: str,
     user: User = Depends(get_current_user_dependency()),
     session: AsyncSession = Depends(get_db_dependency())
 ):
     """Get phase history for a plant"""
+    # Get effective user (handles impersonation)
+    effective_user = await get_effective_user(request, user, session)
+
     # Verify plant exists and user has access
     result = await session.execute(
-        select(Plant).where(Plant.plant_id == plant_id, Plant.user_id == user.id)
+        select(Plant).where(Plant.plant_id == plant_id, Plant.user_id == effective_user.id)
     )
     plant = result.scalars().first()
 
@@ -620,6 +651,7 @@ async def get_phase_history(
 
 @router.get("/{plant_id}/report")
 async def get_plant_report(
+    request: Request,
     plant_id: str,
     user: User = Depends(get_current_user_dependency()),
     session: AsyncSession = Depends(get_db_dependency())
@@ -629,9 +661,12 @@ async def get_plant_report(
 
     Returns a frozen report for finished plants, or a live report for active plants.
     """
+    # Get effective user (handles impersonation)
+    effective_user = await get_effective_user(request, user, session)
+
     # Verify plant exists and user has access
     result = await session.execute(
-        select(Plant).where(Plant.plant_id == plant_id, Plant.user_id == user.id)
+        select(Plant).where(Plant.plant_id == plant_id, Plant.user_id == effective_user.id)
     )
     plant = result.scalars().first()
 
@@ -648,14 +683,18 @@ async def get_plant_report(
 
 @router.post("/{plant_id}/finish", response_model=Dict[str, str])
 async def finish_plant(
+    request: Request,
     plant_id: str,
     user: User = Depends(get_current_user_dependency()),
     session: AsyncSession = Depends(get_db_dependency())
 ):
     """Mark a plant as finished and generate frozen report"""
+    # Get effective user (handles impersonation)
+    effective_user = await get_effective_user(request, user, session)
+
     # Verify plant exists and user has access
     result = await session.execute(
-        select(Plant).where(Plant.plant_id == plant_id, Plant.user_id == user.id)
+        select(Plant).where(Plant.plant_id == plant_id, Plant.user_id == effective_user.id)
     )
     plant = result.scalars().first()
 
@@ -710,14 +749,18 @@ async def finish_plant(
 
 @router.patch("/{plant_id}/name", response_model=Dict[str, str])
 async def update_plant_name(
+    request: Request,
     plant_id: str,
     name: str,
     user: User = Depends(get_current_user_dependency()),
     session: AsyncSession = Depends(get_db_dependency())
 ):
     """Update plant name"""
+    # Get effective user (handles impersonation)
+    effective_user = await get_effective_user(request, user, session)
+
     result = await session.execute(
-        select(Plant).where(Plant.plant_id == plant_id, Plant.user_id == user.id)
+        select(Plant).where(Plant.plant_id == plant_id, Plant.user_id == effective_user.id)
     )
     plant = result.scalars().first()
 
@@ -732,14 +775,18 @@ async def update_plant_name(
 
 @router.patch("/{plant_id}/batch", response_model=Dict[str, str])
 async def update_plant_batch(
+    request: Request,
     plant_id: str,
     batch_number: str,
     user: User = Depends(get_current_user_dependency()),
     session: AsyncSession = Depends(get_db_dependency())
 ):
     """Update plant batch number"""
+    # Get effective user (handles impersonation)
+    effective_user = await get_effective_user(request, user, session)
+
     result = await session.execute(
-        select(Plant).where(Plant.plant_id == plant_id, Plant.user_id == user.id)
+        select(Plant).where(Plant.plant_id == plant_id, Plant.user_id == effective_user.id)
     )
     plant = result.scalars().first()
 
@@ -754,15 +801,19 @@ async def update_plant_batch(
 
 @router.patch("/{plant_id}/apply-template", response_model=Dict[str, str])
 async def apply_template_to_plant(
+    request: Request,
     plant_id: str,
     template_id: int,
     user: User = Depends(get_current_user_dependency()),
     session: AsyncSession = Depends(get_db_dependency())
 ):
     """Apply a phase template to a plant"""
+    # Get effective user (handles impersonation)
+    effective_user = await get_effective_user(request, user, session)
+
     # Verify plant exists and user has access
     result = await session.execute(
-        select(Plant).where(Plant.plant_id == plant_id, Plant.user_id == user.id)
+        select(Plant).where(Plant.plant_id == plant_id, Plant.user_id == effective_user.id)
     )
     plant = result.scalars().first()
 
@@ -773,7 +824,7 @@ async def apply_template_to_plant(
     template_result = await session.execute(
         select(PhaseTemplate).where(
             PhaseTemplate.id == template_id,
-            PhaseTemplate.user_id == user.id
+            PhaseTemplate.user_id == effective_user.id
         )
     )
     template = template_result.scalars().first()
@@ -797,14 +848,18 @@ async def apply_template_to_plant(
 
 @router.patch("/{plant_id}/yield", response_model=Dict[str, str])
 async def update_plant_yield(
+    request: Request,
     plant_id: str,
     yield_grams: float,
     user: User = Depends(get_current_user_dependency()),
     session: AsyncSession = Depends(get_db_dependency())
 ):
     """Update plant yield"""
+    # Get effective user (handles impersonation)
+    effective_user = await get_effective_user(request, user, session)
+
     result = await session.execute(
-        select(Plant).where(Plant.plant_id == plant_id, Plant.user_id == user.id)
+        select(Plant).where(Plant.plant_id == plant_id, Plant.user_id == effective_user.id)
     )
     plant = result.scalars().first()
 
@@ -819,15 +874,19 @@ async def update_plant_yield(
 
 @router.put("/reorder")
 async def reorder_plants(
+    request: Request,
     plant_order: List[str],
     user: User = Depends(get_current_user_dependency()),
     session: AsyncSession = Depends(get_db_dependency())
 ):
     """Reorder plants for display"""
+    # Get effective user (handles impersonation)
+    effective_user = await get_effective_user(request, user, session)
+
     # Update display_order for each plant
     for index, plant_id in enumerate(plant_order):
         result = await session.execute(
-            select(Plant).where(Plant.plant_id == plant_id, Plant.user_id == user.id)
+            select(Plant).where(Plant.plant_id == plant_id, Plant.user_id == effective_user.id)
         )
         plant = result.scalars().first()
 
