@@ -165,9 +165,12 @@ async def device_pair_initiation(request: Request):
         pass
 
     # Show standalone pairing page (handles both login and pairing)
+    # Filter out timestamp (not JSON serializable) before passing to template
+    device_info_for_template = {k: v for k, v in pending_pairings[device_id].items() if k != 'timestamp'}
+
     return templates.TemplateResponse("device_pair_standalone.html", {
         "request": request,
-        "device_info": pending_pairings[device_id],
+        "device_info": device_info_for_template,
         "is_authenticated": is_authenticated
     })
 
