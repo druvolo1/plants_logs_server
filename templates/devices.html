@@ -1219,6 +1219,8 @@
 
         // Overflow menu toggle
         function toggleOverflowMenu(deviceId, event) {
+            event.stopPropagation(); // Prevent document click handler from firing
+
             const menu = document.getElementById(`overflow-menu-${deviceId}`);
             const wasOpen = menu.classList.contains('show');
 
