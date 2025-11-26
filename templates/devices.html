@@ -843,9 +843,13 @@
                 ${linkedDevicesSection}
                 ${editButton}
                 ${linkButton}
-                <button onclick="updateDevice('${device.device_id}')" id="update-btn-${device.device_id}">Update Software</button>
-                <button onclick="restartService('${device.device_id}')" id="restart-btn-${device.device_id}">Restart Service</button>
-                <button onclick="rebootSystem('${device.device_id}')" id="reboot-btn-${device.device_id}" style="background: #dc2626;">Reboot System</button>
+                ${device.device_type === 'environmental'
+                    ? `<button onclick="updateEnvironmentalFirmware('${device.device_id}')" id="update-btn-${device.device_id}">Update Software</button>
+                       <button onclick="rebootEnvironmentalDevice('${device.device_id}')" id="reboot-btn-${device.device_id}" style="background: #dc2626;">Reboot System</button>`
+                    : `<button onclick="updateDevice('${device.device_id}')" id="update-btn-${device.device_id}">Update Software</button>
+                       <button onclick="restartService('${device.device_id}')" id="restart-btn-${device.device_id}">Restart Service</button>
+                       <button onclick="rebootSystem('${device.device_id}')" id="reboot-btn-${device.device_id}" style="background: #dc2626;">Reboot System</button>`
+                }
                 ${shareButton}
                 ${deleteButton}
                 <div id="update-status-${device.device_id}" style="margin-top: 0.5rem; color: #10b981;"></div>
@@ -1670,6 +1674,82 @@
                     statusDiv.textContent = '';
                 }, 5000);
             }, 60000);
+        }
+
+        // Update environmental sensor firmware (triggers via heartbeat)
+        async function updateEnvironmentalFirmware(device_id) {
+            if (!confirm('This will trigger a firmware update on the next heartbeat. The device will restart during the update. Continue?')) {
+                return;
+            }
+
+            const statusDiv = document.getElementById(`update-status-${device_id}`);
+            const updateBtn = document.getElementById(`update-btn-${device_id}`);
+
+            statusDiv.textContent = 'Sending update command...';
+            statusDiv.style.color = '#f59e0b';
+            updateBtn.disabled = true;
+
+            try {
+                const response = await fetch(`/admin/devices/${device_id}/force-firmware-update`, {
+                    method: 'PUT'
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    statusDiv.textContent = 'Update queued! Device will update on next heartbeat.';
+                    statusDiv.style.color = '#10b981';
+                } else {
+                    const error = await response.json();
+                    statusDiv.textContent = `Error: ${error.detail || 'Failed to queue update'}`;
+                    statusDiv.style.color = '#ef4444';
+                }
+            } catch (error) {
+                statusDiv.textContent = 'Error sending update command';
+                statusDiv.style.color = '#ef4444';
+            }
+
+            // Re-enable button after 5 seconds
+            setTimeout(() => {
+                updateBtn.disabled = false;
+            }, 5000);
+        }
+
+        // Reboot environmental sensor (triggers via heartbeat)
+        async function rebootEnvironmentalDevice(device_id) {
+            if (!confirm('This will reboot the environmental sensor on its next heartbeat. Continue?')) {
+                return;
+            }
+
+            const statusDiv = document.getElementById(`update-status-${device_id}`);
+            const rebootBtn = document.getElementById(`reboot-btn-${device_id}`);
+
+            statusDiv.textContent = 'Sending reboot command...';
+            statusDiv.style.color = '#dc2626';
+            rebootBtn.disabled = true;
+
+            try {
+                const response = await fetch(`/admin/devices/${device_id}/reboot`, {
+                    method: 'PUT'
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    statusDiv.textContent = 'Reboot queued! Device will restart on next heartbeat.';
+                    statusDiv.style.color = '#10b981';
+                } else {
+                    const error = await response.json();
+                    statusDiv.textContent = `Error: ${error.detail || 'Failed to queue reboot'}`;
+                    statusDiv.style.color = '#ef4444';
+                }
+            } catch (error) {
+                statusDiv.textContent = 'Error sending reboot command';
+                statusDiv.style.color = '#ef4444';
+            }
+
+            // Re-enable button after 5 seconds
+            setTimeout(() => {
+                rebootBtn.disabled = false;
+            }, 5000);
         }
 
         // Add form submit - handle both device adding and share code acceptance

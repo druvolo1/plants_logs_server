@@ -435,3 +435,45 @@ async def update_device_heartbeat_settings(
             "log_interval": settings.get("log_interval", 3600)
         }
     }
+
+
+@router.put("/devices/{device_id}/reboot")
+async def queue_device_reboot(
+    device_id: str,
+    admin: User = Depends(_get_current_admin()),
+    session: AsyncSession = Depends(_get_db())
+):
+    """Queue a reboot command for a device (admin only).
+
+    The device will reboot on its next heartbeat when it sees pending_reboot=True.
+    """
+    result = await session.execute(
+        select(Device).where(Device.device_id == device_id)
+    )
+    device = result.scalars().first()
+
+    if not device:
+        raise HTTPException(404, "Device not found")
+
+    # Load existing settings
+    settings = {}
+    if device.settings:
+        try:
+            settings = json.loads(device.settings)
+        except:
+            settings = {}
+
+    # Set pending_reboot flag
+    settings["pending_reboot"] = True
+
+    # Save updated settings
+    device.settings = json.dumps(settings)
+    await session.commit()
+
+    print(f"[ADMIN] {admin.email} queued reboot for device {device_id}")
+
+    return {
+        "status": "success",
+        "device_id": device_id,
+        "message": "Reboot queued. Device will restart on next heartbeat."
+    }

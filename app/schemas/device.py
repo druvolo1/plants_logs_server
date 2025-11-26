@@ -131,6 +131,8 @@ class DeviceSettingsResponse(BaseModel):
     log_interval: int  # Database logging interval in seconds (default: 3600 = 1 hour)
     # Firmware update info
     firmware: Optional[FirmwareInfo] = None
+    # Reboot command (set via admin portal)
+    pending_reboot: bool = False
 
 
 # Device Linking Pydantic models

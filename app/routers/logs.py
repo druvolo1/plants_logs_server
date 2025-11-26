@@ -418,12 +418,23 @@ async def environment_heartbeat(
         session, device, data.firmware_version
     )
 
+    # Check for pending reboot command
+    pending_reboot = settings.get("pending_reboot", False)
+
+    # Clear the pending_reboot flag after reading it (so it only triggers once)
+    if pending_reboot:
+        settings["pending_reboot"] = False
+        device.settings = json.dumps(settings)
+        await session.commit()
+        print(f"[Heartbeat] Device {device_id} will reboot (pending_reboot cleared)")
+
     # Return settings to device (defaults: 30s heartbeat, 3600s/1hr logging)
     return DeviceSettingsResponse(
         use_fahrenheit=settings.get("use_fahrenheit", False),
         update_interval=settings.get("update_interval", 30),
         log_interval=settings.get("log_interval", 3600),
-        firmware=firmware_info
+        firmware=firmware_info,
+        pending_reboot=pending_reboot
     )
 
 
@@ -499,12 +510,23 @@ async def log_environment_data(
         session, device, data.firmware_version
     )
 
+    # Check for pending reboot command
+    pending_reboot = settings.get("pending_reboot", False)
+
+    # Clear the pending_reboot flag after reading it (so it only triggers once)
+    if pending_reboot:
+        settings["pending_reboot"] = False
+        device.settings = json.dumps(settings)
+        await session.commit()
+        print(f"[Log] Device {device_id} will reboot (pending_reboot cleared)")
+
     # Return settings to device
     return DeviceSettingsResponse(
         use_fahrenheit=settings.get("use_fahrenheit", False),
         update_interval=settings.get("update_interval", 30),
         log_interval=settings.get("log_interval", 3600),
-        firmware=firmware_info
+        firmware=firmware_info,
+        pending_reboot=pending_reboot
     )
 
 
