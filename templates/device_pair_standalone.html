@@ -413,6 +413,7 @@
         document.getElementById('login-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             hideMessage();
+            console.log('[Pairing] Login form submitted');
 
             const btn = document.getElementById('login-btn');
             btn.dataset.originalText = btn.textContent;
@@ -422,26 +423,32 @@
             const password = document.getElementById('password').value;
 
             try {
+                console.log('[Pairing] Sending login request...');
                 const response = await fetch('/auth/jwt/login', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/x-www-form-urlencoded'
                     },
+                    credentials: 'same-origin',
                     body: `username=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`
                 });
 
+                console.log('[Pairing] Login response status:', response.status);
+
                 if (response.ok) {
                     // Login successful - show pairing form
+                    console.log('[Pairing] Login successful, showing pairing form');
                     document.getElementById('login-section').classList.add('hidden');
                     document.getElementById('pairing-section').classList.remove('hidden');
                     loadLocations();
                 } else {
                     const data = await response.json();
+                    console.log('[Pairing] Login failed:', data);
                     showMessage('error', data.detail || 'Invalid email or password');
                     setButtonLoading(btn, false, 'Sign In');
                 }
             } catch (error) {
-                console.error('Login error:', error);
+                console.error('[Pairing] Login error:', error);
                 showMessage('error', 'An error occurred. Please try again.');
                 setButtonLoading(btn, false, 'Sign In');
             }
