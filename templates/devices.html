@@ -607,7 +607,7 @@
         }
 
         /* Ensure card with open menu is above others */
-        .device-card:has(.overflow-menu.show) {
+        .device-card.menu-open {
             z-index: 100;
             position: relative;
         }
@@ -1231,12 +1231,16 @@
             const menu = document.getElementById(`overflow-menu-${deviceId}`);
             const wasOpen = menu.classList.contains('show');
 
-            // Close all other menus first
-            document.querySelectorAll('.overflow-menu.show').forEach(m => m.classList.remove('show'));
+            // Close all other menus and remove menu-open class from all cards
+            document.querySelectorAll('.overflow-menu.show').forEach(m => {
+                m.classList.remove('show');
+                m.closest('.device-card')?.classList.remove('menu-open');
+            });
 
             // Toggle this menu
             if (!wasOpen) {
                 menu.classList.add('show');
+                menu.closest('.device-card')?.classList.add('menu-open');
             }
         }
 
@@ -1252,13 +1256,12 @@
 
         // Close overflow menus when clicking outside or on menu items
         document.addEventListener('click', function(event) {
-            // Close if clicking outside menu container
-            if (!event.target.closest('.overflow-menu-container')) {
-                document.querySelectorAll('.overflow-menu.show').forEach(m => m.classList.remove('show'));
-            }
-            // Close if clicking a menu item (but not the toggle button)
-            if (event.target.closest('.overflow-menu-item')) {
-                document.querySelectorAll('.overflow-menu.show').forEach(m => m.classList.remove('show'));
+            // Close if clicking outside menu container or clicking a menu item
+            if (!event.target.closest('.overflow-menu-container') || event.target.closest('.overflow-menu-item')) {
+                document.querySelectorAll('.overflow-menu.show').forEach(m => {
+                    m.classList.remove('show');
+                    m.closest('.device-card')?.classList.remove('menu-open');
+                });
             }
         });
 
