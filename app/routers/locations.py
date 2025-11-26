@@ -119,6 +119,10 @@ async def list_locations(
     # Get effective user (handles impersonation)
     effective_user = await get_effective_user(request, user, session)
 
+    # Debug logging
+    print(f"[LOCATIONS] Actual user: {user.email} (id={user.id}), Effective user: {effective_user.email} (id={effective_user.id})")
+    print(f"[LOCATIONS] Impersonate cookie: {request.cookies.get('impersonate_user_id')}")
+
     locations_list = []
 
     # Get owned locations
