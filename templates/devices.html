@@ -300,6 +300,126 @@
             cursor: not-allowed;
         }
 
+        /* Device Card Action Bar */
+        .device-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .device-actions .btn {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .device-actions .btn-primary {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .device-actions .btn-primary:hover {
+            background: #2563eb;
+        }
+
+        .device-actions .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: #e2e8f0;
+        }
+
+        .device-actions .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        /* Overflow Menu */
+        .overflow-menu-container {
+            position: relative;
+            margin-left: auto;
+        }
+
+        .overflow-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            color: #e2e8f0;
+            font-size: 1.25rem;
+            padding: 0.4rem 0.75rem;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            line-height: 1;
+        }
+
+        .overflow-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .overflow-menu {
+            display: none;
+            position: absolute;
+            right: 0;
+            bottom: 100%;
+            margin-bottom: 0.5rem;
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            min-width: 180px;
+            box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.4);
+            z-index: 100;
+            overflow: hidden;
+        }
+
+        .overflow-menu.show {
+            display: block;
+        }
+
+        .overflow-menu-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: none;
+            background: none;
+            color: #e2e8f0;
+            font-size: 0.9rem;
+            text-align: left;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        .overflow-menu-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .overflow-menu-item.danger {
+            color: #f87171;
+        }
+
+        .overflow-menu-item.danger:hover {
+            background: rgba(239, 68, 68, 0.2);
+        }
+
+        .overflow-menu-divider {
+            height: 1px;
+            background: #334155;
+            margin: 0.25rem 0;
+        }
+
+        .overflow-menu-item .icon {
+            width: 1.25rem;
+            text-align: center;
+        }
+
         /* Heartbeat Settings Modal */
         .heartbeat-modal-content {
             position: relative;
@@ -765,28 +885,72 @@
             const locationPath = device.location_id ? getLocationPath(device.location_id) : 'Unassigned';
             const locationInfo = `<p><strong>Location:</strong> <span style="color: ${device.location_id ? '#10b981' : '#6b7280'};">📍 ${locationPath}</span></p>`;
 
-            // Only owners can edit, share and delete
-            const editButton = device.is_owner
-                ? `<button onclick="openEditModal('${device.device_id}')" style="background: #3b82f6;">Edit</button>`
-                : '';
-
-            const shareButton = device.is_owner
-                ? `<button onclick="openShareModal('${device.device_id}')" style="background: #8b5cf6;">Share</button>`
-                : '';
-
-            const deleteButton = device.is_owner
-                ? `<button onclick="deleteDevice('${device.device_id}')">Delete</button>`
-                : '';
-
-            // Link button for feeding systems only
-            const linkButton = (device.is_owner && device.device_type === 'feeding_system')
-                ? `<button onclick="openLinkModal('${device.device_id}')" style="background: #3b82f6;">Link Devices</button>`
-                : '';
-
             // Heartbeat settings button (admin only, environmental sensors only)
             const heartbeatButton = (isAdmin && device.device_type === 'environmental')
                 ? `<button class="heartbeat-btn" onclick="openHeartbeatModal('${device.device_id}')" title="Heartbeat Settings (Admin)">⚡</button>`
                 : '';
+
+            // Build action bar with overflow menu
+            const buildActionBar = () => {
+                let primaryButtons = '';
+                let overflowItems = '';
+
+                if (device.is_owner) {
+                    // Primary action: Edit
+                    primaryButtons += `<button class="btn btn-primary" onclick="openEditModal('${device.device_id}')"><span class="icon">✏️</span> Edit</button>`;
+
+                    // Link Devices for feeding systems
+                    if (device.device_type === 'feeding_system') {
+                        primaryButtons += `<button class="btn btn-secondary" onclick="openLinkModal('${device.device_id}')"><span class="icon">🔗</span> Link</button>`;
+                    }
+                }
+
+                // Overflow menu items
+                if (device.device_type === 'environmental') {
+                    overflowItems += `
+                        <button class="overflow-menu-item" onclick="updateEnvironmentalFirmware('${device.device_id}')" id="update-btn-${device.device_id}">
+                            <span class="icon">⬆️</span> Update Software
+                        </button>
+                        <button class="overflow-menu-item" onclick="rebootEnvironmentalDevice('${device.device_id}')" id="reboot-btn-${device.device_id}">
+                            <span class="icon">🔄</span> Reboot System
+                        </button>`;
+                } else {
+                    overflowItems += `
+                        <button class="overflow-menu-item" onclick="updateDevice('${device.device_id}')" id="update-btn-${device.device_id}">
+                            <span class="icon">⬆️</span> Update Software
+                        </button>
+                        <button class="overflow-menu-item" onclick="restartService('${device.device_id}')" id="restart-btn-${device.device_id}">
+                            <span class="icon">🔃</span> Restart Service
+                        </button>
+                        <button class="overflow-menu-item" onclick="rebootSystem('${device.device_id}')" id="reboot-btn-${device.device_id}">
+                            <span class="icon">🔄</span> Reboot System
+                        </button>`;
+                }
+
+                if (device.is_owner) {
+                    overflowItems += `
+                        <div class="overflow-menu-divider"></div>
+                        <button class="overflow-menu-item" onclick="openShareModal('${device.device_id}')">
+                            <span class="icon">📤</span> Share Device
+                        </button>
+                        <button class="overflow-menu-item danger" onclick="deleteDevice('${device.device_id}')">
+                            <span class="icon">🗑️</span> Delete Device
+                        </button>`;
+                }
+
+                return `
+                    <div class="device-actions">
+                        ${primaryButtons}
+                        <div class="overflow-menu-container">
+                            <button class="overflow-btn" onclick="toggleOverflowMenu('${device.device_id}')" title="More actions">⋮</button>
+                            <div class="overflow-menu" id="overflow-menu-${device.device_id}">
+                                ${overflowItems}
+                            </div>
+                        </div>
+                    </div>
+                    <div id="update-status-${device.device_id}" style="margin-top: 0.5rem; color: #10b981; font-size: 0.9rem;"></div>
+                `;
+            };
 
             // Device type icon bar
             const deviceType = device.device_type || 'feeding_system';
@@ -841,18 +1005,7 @@
                 <p><strong>Version:</strong> <span id="version-${device.device_id}">Loading...</span> <span id="update-badge-${device.device_id}"></span></p>
                 <p><strong>Online:</strong> <span id="online-${device.device_id}">${device.is_online ? 'Yes' : 'No'}</span></p>
                 ${linkedDevicesSection}
-                ${editButton}
-                ${linkButton}
-                ${device.device_type === 'environmental'
-                    ? `<button onclick="updateEnvironmentalFirmware('${device.device_id}')" id="update-btn-${device.device_id}">Update Software</button>
-                       <button onclick="rebootEnvironmentalDevice('${device.device_id}')" id="reboot-btn-${device.device_id}" style="background: #dc2626;">Reboot System</button>`
-                    : `<button onclick="updateDevice('${device.device_id}')" id="update-btn-${device.device_id}">Update Software</button>
-                       <button onclick="restartService('${device.device_id}')" id="restart-btn-${device.device_id}">Restart Service</button>
-                       <button onclick="rebootSystem('${device.device_id}')" id="reboot-btn-${device.device_id}" style="background: #dc2626;">Reboot System</button>`
-                }
-                ${shareButton}
-                ${deleteButton}
-                <div id="update-status-${device.device_id}" style="margin-top: 0.5rem; color: #10b981;"></div>
+                ${buildActionBar()}
             `;
 
             // Auto-connect to WebSocket for status updates (feeding systems)
@@ -867,6 +1020,32 @@
 
             return deviceDiv;
         }
+
+        // Overflow menu toggle
+        function toggleOverflowMenu(deviceId) {
+            const menu = document.getElementById(`overflow-menu-${deviceId}`);
+            const wasOpen = menu.classList.contains('show');
+
+            // Close all other menus first
+            document.querySelectorAll('.overflow-menu.show').forEach(m => m.classList.remove('show'));
+
+            // Toggle this menu
+            if (!wasOpen) {
+                menu.classList.add('show');
+            }
+        }
+
+        // Close overflow menus when clicking outside or on menu items
+        document.addEventListener('click', function(event) {
+            // Close if clicking outside menu container
+            if (!event.target.closest('.overflow-menu-container')) {
+                document.querySelectorAll('.overflow-menu.show').forEach(m => m.classList.remove('show'));
+            }
+            // Close if clicking a menu item (but not the toggle button)
+            if (event.target.closest('.overflow-menu-item')) {
+                document.querySelectorAll('.overflow-menu.show').forEach(m => m.classList.remove('show'));
+            }
+        });
 
         // Fetch firmware version for environmental sensors
         async function fetchEnvironmentalVersion(device_id) {
