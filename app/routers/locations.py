@@ -301,10 +301,21 @@ async def delete_location(
     # Get effective user (handles impersonation)
     effective_user = await get_effective_user(request, user, session)
 
+    print(f"[DELETE LOCATION] Actual user: {user.email} (id={user.id}), Effective user: {effective_user.email} (id={effective_user.id})")
+    print(f"[DELETE LOCATION] Looking for location_id={location_id} with user_id={effective_user.id}")
+    print(f"[DELETE LOCATION] Impersonate cookie: {request.cookies.get('impersonate_user_id')}")
+
     result = await session.execute(select(Location).where(Location.id == location_id, Location.user_id == effective_user.id))
     location = result.scalars().first()
 
     if not location:
+        # Debug: check if location exists at all
+        any_result = await session.execute(select(Location).where(Location.id == location_id))
+        any_location = any_result.scalars().first()
+        if any_location:
+            print(f"[DELETE LOCATION] Location exists but belongs to user_id={any_location.user_id}, not {effective_user.id}")
+        else:
+            print(f"[DELETE LOCATION] Location id={location_id} does not exist in database")
         raise HTTPException(404, "Location not found or access denied")
 
     await session.delete(location)
