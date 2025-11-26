@@ -278,13 +278,15 @@ async def api_login(
         token = await strategy.write_token(user)
 
         # Return JSON response with cookie
+        # Note: samesite="none" and secure=True required for cross-origin iframe usage
         response = JSONResponse({"success": True, "message": "Login successful"})
         response.set_cookie(
             key="auth_cookie",
             value=token,
             httponly=True,
             max_age=3600,
-            samesite="lax"
+            samesite="none",
+            secure=True  # Required when samesite=none
         )
         return response
 
