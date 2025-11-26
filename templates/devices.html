@@ -1217,29 +1217,35 @@
             return deviceDiv;
         }
 
+        // Track currently open menu
+        let currentOpenMenu = null;
+
         // Overflow menu toggle
         function toggleOverflowMenu(deviceId, event) {
-            event.stopPropagation(); // Prevent document click handler from firing
+            event.preventDefault();
+            event.stopPropagation();
 
             const menu = document.getElementById(`overflow-menu-${deviceId}`);
-            const wasOpen = menu.classList.contains('show');
+            const btn = event.currentTarget;
 
-            // Close all other menus
-            document.querySelectorAll('.overflow-menu.show').forEach(m => {
-                m.classList.remove('show');
-            });
-
-            // Toggle this menu
-            if (!wasOpen) {
-                // Get button position
-                const btn = event.currentTarget;
-                const rect = btn.getBoundingClientRect();
-
-                // Position menu above the button, aligned to right edge
-                menu.style.right = (window.innerWidth - rect.right) + 'px';
-                menu.style.bottom = (window.innerHeight - rect.top + 5) + 'px';
-                menu.classList.add('show');
+            // If clicking the same menu that's open, close it
+            if (currentOpenMenu === menu && menu.classList.contains('show')) {
+                menu.classList.remove('show');
+                currentOpenMenu = null;
+                return;
             }
+
+            // Close any currently open menu
+            if (currentOpenMenu) {
+                currentOpenMenu.classList.remove('show');
+            }
+
+            // Position and show the new menu
+            const rect = btn.getBoundingClientRect();
+            menu.style.right = (window.innerWidth - rect.right) + 'px';
+            menu.style.bottom = (window.innerHeight - rect.top + 5) + 'px';
+            menu.classList.add('show');
+            currentOpenMenu = menu;
         }
 
         // Show status message for device card
@@ -1252,13 +1258,17 @@
             }
         }
 
-        // Close overflow menus when clicking outside or on menu items
+        // Close overflow menus when clicking outside
         document.addEventListener('click', function(event) {
-            // Close if clicking outside menu container or clicking a menu item
-            if (!event.target.closest('.overflow-menu-container') || event.target.closest('.overflow-menu-item')) {
-                document.querySelectorAll('.overflow-menu.show').forEach(m => {
-                    m.classList.remove('show');
-                });
+            // Don't close if clicking the overflow button (handled by toggleOverflowMenu)
+            if (event.target.closest('.overflow-btn')) {
+                return;
+            }
+
+            // Close menu if clicking outside or on a menu item
+            if (currentOpenMenu) {
+                currentOpenMenu.classList.remove('show');
+                currentOpenMenu = null;
             }
         });
 
