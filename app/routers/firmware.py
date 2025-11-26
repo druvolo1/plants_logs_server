@@ -109,6 +109,179 @@ async def list_all_firmware(
     return firmware_list
 
 
+# Device Firmware Assignments
+# NOTE: These routes MUST come before /admin/firmware/{firmware_id} to avoid path conflicts
+
+@router.get("/admin/firmware/assignments", response_model=List[DeviceFirmwareAssignmentRead])
+async def list_firmware_assignments(
+    admin: User = Depends(get_current_admin_dependency()),
+    session: AsyncSession = Depends(get_db_dependency())
+):
+    """List all device-specific firmware assignments"""
+    result = await session.execute(
+        select(DeviceFirmwareAssignment, Device, Firmware)
+        .join(Device, DeviceFirmwareAssignment.device_id == Device.id)
+        .join(Firmware, DeviceFirmwareAssignment.firmware_id == Firmware.id)
+    )
+
+    assignments = []
+    for assignment, device, firmware in result.all():
+        assignments.append(DeviceFirmwareAssignmentRead(
+            id=assignment.id,
+            device_id=assignment.device_id,
+            firmware_id=assignment.firmware_id,
+            force_update=assignment.force_update,
+            notes=assignment.notes,
+            created_at=assignment.created_at,
+            updated_at=assignment.updated_at,
+            firmware_version=firmware.version,
+            firmware_device_type=firmware.device_type,
+            device_identifier=device.device_id,
+            device_name=device.name
+        ))
+
+    return assignments
+
+
+@router.post("/admin/firmware/assignments")
+async def create_firmware_assignment(
+    device_identifier: str = Form(...),  # device_id string
+    firmware_id: int = Form(...),
+    force_update: bool = Form(False),
+    notes: str = Form(None),
+    admin: User = Depends(get_current_admin_dependency()),
+    session: AsyncSession = Depends(get_db_dependency())
+):
+    """
+    Assign a specific firmware version to a device.
+
+    This overrides the "latest" firmware for this device, useful for:
+    - Testing beta firmware on specific devices
+    - Rolling back a device to an older version
+    - Holding a device at a specific version
+    """
+    # Get device
+    device_result = await session.execute(
+        select(Device).where(Device.device_id == device_identifier)
+    )
+    device = device_result.scalars().first()
+
+    if not device:
+        raise HTTPException(404, "Device not found")
+
+    # Get firmware
+    firmware_result = await session.execute(
+        select(Firmware).where(Firmware.id == firmware_id)
+    )
+    firmware = firmware_result.scalars().first()
+
+    if not firmware:
+        raise HTTPException(404, "Firmware not found")
+
+    # Verify device type matches
+    if device.device_type != firmware.device_type:
+        raise HTTPException(400, f"Firmware is for {firmware.device_type}, but device is {device.device_type}")
+
+    # Check for existing assignment
+    existing = await session.execute(
+        select(DeviceFirmwareAssignment).where(
+            DeviceFirmwareAssignment.device_id == device.id
+        )
+    )
+    existing_assignment = existing.scalars().first()
+
+    if existing_assignment:
+        # Update existing assignment
+        existing_assignment.firmware_id = firmware_id
+        existing_assignment.force_update = force_update
+        existing_assignment.notes = notes
+        existing_assignment.assigned_by_user_id = admin.id
+        existing_assignment.updated_at = datetime.utcnow()
+        await session.commit()
+
+        print(f"[FIRMWARE] Admin {admin.email} updated assignment for device {device_identifier}: "
+              f"v{firmware.version} (force: {force_update})")
+
+        return {
+            "status": "success",
+            "message": f"Updated firmware assignment to v{firmware.version}",
+            "assignment_id": existing_assignment.id
+        }
+    else:
+        # Create new assignment
+        assignment = DeviceFirmwareAssignment(
+            device_id=device.id,
+            firmware_id=firmware_id,
+            force_update=force_update,
+            notes=notes,
+            assigned_by_user_id=admin.id
+        )
+        session.add(assignment)
+        await session.commit()
+        await session.refresh(assignment)
+
+        print(f"[FIRMWARE] Admin {admin.email} created assignment for device {device_identifier}: "
+              f"v{firmware.version} (force: {force_update})")
+
+        return {
+            "status": "success",
+            "message": f"Assigned firmware v{firmware.version} to device",
+            "assignment_id": assignment.id
+        }
+
+
+@router.put("/admin/firmware/assignments/{assignment_id}/force-update")
+async def set_force_update(
+    assignment_id: int,
+    force: bool = True,
+    admin: User = Depends(get_current_admin_dependency()),
+    session: AsyncSession = Depends(get_db_dependency())
+):
+    """Set or clear the force_update flag on a device assignment"""
+    result = await session.execute(
+        select(DeviceFirmwareAssignment).where(DeviceFirmwareAssignment.id == assignment_id)
+    )
+    assignment = result.scalars().first()
+
+    if not assignment:
+        raise HTTPException(404, "Assignment not found")
+
+    assignment.force_update = force
+    assignment.updated_at = datetime.utcnow()
+    await session.commit()
+
+    return {
+        "status": "success",
+        "message": f"Force update {'enabled' if force else 'disabled'}"
+    }
+
+
+@router.delete("/admin/firmware/assignments/{assignment_id}")
+async def delete_firmware_assignment(
+    assignment_id: int,
+    admin: User = Depends(get_current_admin_dependency()),
+    session: AsyncSession = Depends(get_db_dependency())
+):
+    """
+    Remove a device-specific firmware assignment.
+    The device will revert to using the "latest" firmware for its type.
+    """
+    result = await session.execute(
+        select(DeviceFirmwareAssignment).where(DeviceFirmwareAssignment.id == assignment_id)
+    )
+    assignment = result.scalars().first()
+
+    if not assignment:
+        raise HTTPException(404, "Assignment not found")
+
+    await session.delete(assignment)
+    await session.commit()
+
+    return {"status": "success", "message": "Assignment removed, device will use latest firmware"}
+
+
+# Individual firmware routes (must come AFTER /assignments routes)
+
 @router.get("/admin/firmware/{firmware_id}", response_model=FirmwareRead)
 async def get_firmware_details(
     firmware_id: int,
@@ -315,176 +488,6 @@ async def delete_firmware(
     print(f"[FIRMWARE] Admin {admin.email} deleted firmware: {firmware.device_type} v{firmware.version}")
 
     return {"status": "success", "message": "Firmware deleted"}
-
-
-# Device Firmware Assignments
-
-@router.get("/admin/firmware/assignments", response_model=List[DeviceFirmwareAssignmentRead])
-async def list_firmware_assignments(
-    admin: User = Depends(get_current_admin_dependency()),
-    session: AsyncSession = Depends(get_db_dependency())
-):
-    """List all device-specific firmware assignments"""
-    result = await session.execute(
-        select(DeviceFirmwareAssignment, Device, Firmware)
-        .join(Device, DeviceFirmwareAssignment.device_id == Device.id)
-        .join(Firmware, DeviceFirmwareAssignment.firmware_id == Firmware.id)
-    )
-
-    assignments = []
-    for assignment, device, firmware in result.all():
-        assignments.append(DeviceFirmwareAssignmentRead(
-            id=assignment.id,
-            device_id=assignment.device_id,
-            firmware_id=assignment.firmware_id,
-            force_update=assignment.force_update,
-            notes=assignment.notes,
-            created_at=assignment.created_at,
-            updated_at=assignment.updated_at,
-            firmware_version=firmware.version,
-            firmware_device_type=firmware.device_type,
-            device_identifier=device.device_id,
-            device_name=device.name
-        ))
-
-    return assignments
-
-
-@router.post("/admin/firmware/assignments")
-async def create_firmware_assignment(
-    device_identifier: str = Form(...),  # device_id string
-    firmware_id: int = Form(...),
-    force_update: bool = Form(False),
-    notes: str = Form(None),
-    admin: User = Depends(get_current_admin_dependency()),
-    session: AsyncSession = Depends(get_db_dependency())
-):
-    """
-    Assign a specific firmware version to a device.
-
-    This overrides the "latest" firmware for this device, useful for:
-    - Testing beta firmware on specific devices
-    - Rolling back a device to an older version
-    - Holding a device at a specific version
-    """
-    # Get device
-    device_result = await session.execute(
-        select(Device).where(Device.device_id == device_identifier)
-    )
-    device = device_result.scalars().first()
-
-    if not device:
-        raise HTTPException(404, "Device not found")
-
-    # Get firmware
-    firmware_result = await session.execute(
-        select(Firmware).where(Firmware.id == firmware_id)
-    )
-    firmware = firmware_result.scalars().first()
-
-    if not firmware:
-        raise HTTPException(404, "Firmware not found")
-
-    # Verify device type matches
-    if device.device_type != firmware.device_type:
-        raise HTTPException(400, f"Firmware is for {firmware.device_type}, but device is {device.device_type}")
-
-    # Check for existing assignment
-    existing = await session.execute(
-        select(DeviceFirmwareAssignment).where(
-            DeviceFirmwareAssignment.device_id == device.id
-        )
-    )
-    existing_assignment = existing.scalars().first()
-
-    if existing_assignment:
-        # Update existing assignment
-        existing_assignment.firmware_id = firmware_id
-        existing_assignment.force_update = force_update
-        existing_assignment.notes = notes
-        existing_assignment.assigned_by_user_id = admin.id
-        existing_assignment.updated_at = datetime.utcnow()
-        await session.commit()
-
-        print(f"[FIRMWARE] Admin {admin.email} updated assignment for device {device_identifier}: "
-              f"v{firmware.version} (force: {force_update})")
-
-        return {
-            "status": "success",
-            "message": f"Updated firmware assignment to v{firmware.version}",
-            "assignment_id": existing_assignment.id
-        }
-    else:
-        # Create new assignment
-        assignment = DeviceFirmwareAssignment(
-            device_id=device.id,
-            firmware_id=firmware_id,
-            force_update=force_update,
-            notes=notes,
-            assigned_by_user_id=admin.id
-        )
-        session.add(assignment)
-        await session.commit()
-        await session.refresh(assignment)
-
-        print(f"[FIRMWARE] Admin {admin.email} created assignment for device {device_identifier}: "
-              f"v{firmware.version} (force: {force_update})")
-
-        return {
-            "status": "success",
-            "message": f"Assigned firmware v{firmware.version} to device",
-            "assignment_id": assignment.id
-        }
-
-
-@router.put("/admin/firmware/assignments/{assignment_id}/force-update")
-async def set_force_update(
-    assignment_id: int,
-    force: bool = True,
-    admin: User = Depends(get_current_admin_dependency()),
-    session: AsyncSession = Depends(get_db_dependency())
-):
-    """Set or clear the force_update flag on a device assignment"""
-    result = await session.execute(
-        select(DeviceFirmwareAssignment).where(DeviceFirmwareAssignment.id == assignment_id)
-    )
-    assignment = result.scalars().first()
-
-    if not assignment:
-        raise HTTPException(404, "Assignment not found")
-
-    assignment.force_update = force
-    assignment.updated_at = datetime.utcnow()
-    await session.commit()
-
-    return {
-        "status": "success",
-        "message": f"Force update {'enabled' if force else 'disabled'}"
-    }
-
-
-@router.delete("/admin/firmware/assignments/{assignment_id}")
-async def delete_firmware_assignment(
-    assignment_id: int,
-    admin: User = Depends(get_current_admin_dependency()),
-    session: AsyncSession = Depends(get_db_dependency())
-):
-    """
-    Remove a device-specific firmware assignment.
-    The device will revert to using the "latest" firmware for its type.
-    """
-    result = await session.execute(
-        select(DeviceFirmwareAssignment).where(DeviceFirmwareAssignment.id == assignment_id)
-    )
-    assignment = result.scalars().first()
-
-    if not assignment:
-        raise HTTPException(404, "Assignment not found")
-
-    await session.delete(assignment)
-    await session.commit()
-
-    return {"status": "success", "message": "Assignment removed, device will use latest firmware"}
 
 
 # Force update from heartbeat settings modal
