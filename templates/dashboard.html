@@ -1089,7 +1089,6 @@
                 }
 
                 devices.forEach(device => {
-                    console.log(`[Dashboard] Loading device: ${device.device_id}, type: ${device.device_type}`);
                     const deviceSection = document.createElement('div');
                     deviceSection.classList.add('device-section');
                     deviceSection.dataset.deviceId = device.device_id; // Store device ID for reordering
@@ -1097,7 +1096,6 @@
 
                     // Set colors based on device type (more prominent visual distinction)
                     const deviceType = device.device_type || 'feeding_system';
-                    console.log(`[Dashboard] Device ${device.device_id} treated as type: ${deviceType}`);
                     let headerBgColor, headerBorderColor, cardBgColor;
 
                     // Device type color schemes - Clean accent bar approach
@@ -2005,8 +2003,7 @@
         let envPollingIntervals = {};
 
         function connectToEnvironmentalSensor(device_id) {
-            console.log(`[EnvSensor] Setting up polling for ${device_id}`);
-            // Fetch immediately, then poll every 30 seconds
+            // Fetch immediately, then poll every 10 seconds
             fetchEnvironmentData(device_id);
 
             if (envPollingIntervals[device_id]) {
@@ -2014,32 +2011,26 @@
             }
 
             envPollingIntervals[device_id] = setInterval(() => {
-                console.log(`[EnvSensor] Polling ${device_id}...`);
                 fetchEnvironmentData(device_id);
             }, 10000); // Poll every 10 seconds
-            console.log(`[EnvSensor] Polling interval set for ${device_id}`);
         }
 
         async function fetchEnvironmentData(device_id) {
             try {
-                console.log(`[EnvSensor] Fetching data for ${device_id}...`);
                 const response = await fetch(`/api/devices/${device_id}/environment/latest`);
                 if (response.ok) {
                     const data = await response.json();
-                    console.log(`[EnvSensor] Got data for ${device_id}:`, data);
                     updateEnvironmentDisplay(device_id, data);
                 } else {
-                    console.error(`[EnvSensor] Failed to fetch for ${device_id}: ${response.status}`);
                     updateOnlineStatus(device_id, false);
                 }
             } catch (error) {
-                console.error(`[EnvSensor] Error fetching ${device_id}:`, error);
+                console.error(`Error fetching environment data for ${device_id}:`, error);
                 updateOnlineStatus(device_id, false);
             }
         }
 
         function updateEnvironmentDisplay(device_id, data) {
-            console.log(`[EnvSensor] Updating display for ${device_id}: CO2=${data.co2}, Temp=${data.temperature}`);
             // Update online status
             updateOnlineStatus(device_id, data.is_online);
 
@@ -2068,9 +2059,7 @@
                 document.getElementById(`env-humidity-${device_id}`).textContent = `${data.humidity.toFixed(1)}%`;
             }
             if (data.co2 !== null && data.co2 !== undefined) {
-                const co2El = document.getElementById(`env-co2-${device_id}`);
-                console.log(`[EnvSensor] Setting CO2 element:`, co2El, `to ${data.co2} ppm`);
-                if (co2El) co2El.textContent = `${data.co2} ppm`;
+                document.getElementById(`env-co2-${device_id}`).textContent = `${data.co2} ppm`;
             }
             if (data.vpd !== null && data.vpd !== undefined) {
                 document.getElementById(`env-vpd-${device_id}`).textContent = `${data.vpd.toFixed(2)} kPa`;
