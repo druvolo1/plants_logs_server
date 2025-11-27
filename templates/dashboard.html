@@ -2438,18 +2438,27 @@
         // Update valve controls for valve controller devices
         function updateValveControls(device_id, valves) {
             const grid = document.getElementById(`valve-controls-grid-${device_id}`);
-            if (!grid) return;
+            if (!grid) {
+                console.log(`Valve grid not found for device: ${device_id}`);
+                return;
+            }
+
+            console.log(`Updating valve controls for ${device_id}:`, valves);
 
             // Build valve buttons HTML
+            // Handle both array format and object format ({"1": {...}, "2": {...}})
             let html = '';
-            for (let i = 0; i < valves.length; i++) {
-                const valve = valves[i];
+            const valveKeys = Array.isArray(valves) ? valves.map((v, i) => i) : Object.keys(valves).sort((a, b) => parseInt(a) - parseInt(b));
+
+            for (const key of valveKeys) {
+                const valve = Array.isArray(valves) ? valves[key] : valves[key];
+                const valveId = valve.id || parseInt(key);
                 const isOn = valve.state === true || valve.state === 'on' || valve.state === 1;
-                const label = valve.label || `Valve ${valve.id}`;
+                const label = valve.label || `Valve ${valveId}`;
 
                 html += `
                     <button class="valve-btn ${isOn ? 'on' : ''}"
-                            onclick="toggleValveDashboard('${device_id}', ${valve.id})"
+                            onclick="toggleValveDashboard('${device_id}', ${valveId})"
                             title="${label}"
                             style="padding: 0.75rem 0.5rem; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.85rem; transition: all 0.2s; ${isOn ? 'background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white;' : 'background: #374151; color: #9ca3af;'}">
                         ${label}
