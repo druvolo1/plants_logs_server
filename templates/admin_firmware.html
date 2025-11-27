@@ -722,21 +722,38 @@ async function loadAssignments() {
 
         let html = '';
         assignments.forEach(a => {
+            // Determine update status
+            const isUpToDate = a.device_current_firmware === a.firmware_version;
+            const statusColor = isUpToDate ? '#10b981' : (a.force_update ? '#f59e0b' : '#64748b');
+            const statusText = isUpToDate
+                ? 'Up to date'
+                : (a.force_update ? 'Update pending' : 'Update available');
+            const onlineIndicator = a.device_is_online
+                ? '<span style="color: #10b981;">●</span>'
+                : '<span style="color: #64748b;">○</span>';
+
             html += `
                 <div class="assignment-card">
                     <div class="assignment-header">
-                        <span class="assignment-device">${a.device_name || a.device_identifier}</span>
-                        <span class="assignment-version">v${a.firmware_version}</span>
+                        <span class="assignment-device">${onlineIndicator} ${a.device_name || a.device_identifier}</span>
+                        <span class="assignment-version">Target: v${a.firmware_version}</span>
                     </div>
-                    <div style="font-size: 0.85rem; color: #64748b;">
+                    <div style="font-size: 0.85rem; color: #64748b; margin-bottom: 0.5rem;">
                         Type: ${a.firmware_device_type} |
-                        Force update: ${a.force_update ? '<span style="color: #f59e0b;">Yes</span>' : 'No'}
+                        Current: <span style="color: ${a.device_current_firmware ? '#fff' : '#64748b'};">${a.device_current_firmware ? 'v' + a.device_current_firmware : 'Unknown'}</span>
+                    </div>
+                    <div style="font-size: 0.85rem; margin-bottom: 0.5rem;">
+                        <span style="color: ${statusColor}; font-weight: 500;">${statusText}</span>
+                        ${a.force_update && !isUpToDate ? ' <span style="color: #64748b;">(force enabled)</span>' : ''}
                     </div>
                     ${a.notes ? `<div class="assignment-notes">${a.notes}</div>` : ''}
                     <div style="margin-top: 0.75rem;">
-                        ${!a.force_update
+                        ${!isUpToDate && !a.force_update
                             ? `<button class="action-btn action-btn-primary" onclick="setForceUpdate(${a.id}, true)">Force Update</button>`
-                            : `<button class="action-btn" onclick="setForceUpdate(${a.id}, false)" style="background: #64748b; color: white;">Cancel Force</button>`}
+                            : ''}
+                        ${a.force_update && !isUpToDate
+                            ? `<button class="action-btn" onclick="setForceUpdate(${a.id}, false)" style="background: #64748b; color: white;">Cancel Force</button>`
+                            : ''}
                         <button class="action-btn action-btn-danger" onclick="deleteAssignment(${a.id})">Remove</button>
                     </div>
                 </div>

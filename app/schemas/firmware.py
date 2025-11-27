@@ -67,6 +67,8 @@ class DeviceFirmwareAssignmentRead(BaseModel):
     firmware_device_type: Optional[str] = None
     device_identifier: Optional[str] = None
     device_name: Optional[str] = None
+    device_current_firmware: Optional[str] = None  # Device's reported firmware version
+    device_is_online: bool = False  # Device online status
 
     class Config:
         from_attributes = True

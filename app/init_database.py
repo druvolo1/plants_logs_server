@@ -208,6 +208,14 @@ async def init_database():
                 "last_seen DATETIME NULL AFTER is_online"
             )
 
+            # Add firmware_version column if it doesn't exist (device's reported firmware version)
+            await check_and_add_column(
+                conn,
+                'devices',
+                'firmware_version',
+                "firmware_version VARCHAR(50) NULL AFTER scope"
+            )
+
             print("\nChecking 'plants' table schema...")
 
             # Add batch_number column if it doesn't exist

@@ -19,6 +19,7 @@ class Device(Base):
     last_seen = Column(DateTime, nullable=True)  # Last connection timestamp
     device_type = Column(String(50), nullable=True, default='feeding_system')  # 'feeding_system', 'environmental', 'valve_controller', 'other'
     scope = Column(String(20), nullable=True, default='plant')  # 'plant' (1-to-1) or 'room' (1-to-many)
+    firmware_version = Column(String(50), nullable=True)  # Current firmware version reported by device
     capabilities = Column(Text, nullable=True)  # JSON string of device capabilities
     settings = Column(Text, nullable=True)  # JSON string for device-specific settings (temp scale, update interval, etc.)
     user_id = Column(Integer, ForeignKey("users.id"))

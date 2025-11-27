@@ -150,7 +150,9 @@ async def list_firmware_assignments(
             firmware_version=firmware.version,
             firmware_device_type=firmware.device_type,
             device_identifier=device.device_id,
-            device_name=device.name
+            device_name=device.name,
+            device_current_firmware=device.firmware_version,
+            device_is_online=device.is_online
         ))
 
     return assignments
@@ -665,6 +667,12 @@ async def check_firmware_update(
             update_available=False,
             current_version=current_version
         )
+
+    # Update the device's reported firmware version
+    if device.firmware_version != current_version:
+        device.firmware_version = current_version
+        await session.commit()
+        print(f"[FIRMWARE] Updated reported firmware version for {device_id}: v{current_version}")
 
     # Check for device-specific assignment
     assignment_result = await session.execute(
