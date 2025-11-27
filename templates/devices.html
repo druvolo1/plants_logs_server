@@ -1212,7 +1212,7 @@
             const scope = device.scope || 'plant';
             const typeClass = deviceType === 'environmental' ? 'environmental' :
                               deviceType === 'valve_controller' ? 'valve' : 'feeding';
-            const scopeText = scope === 'room' ? 'ROOM' : 'PLANT';
+            const scopeText = deviceType === 'valve_controller' ? 'VALVE' : (scope === 'room' ? 'ROOM' : 'PLANT');
 
             // Heartbeat button for admin
             const heartbeatButton = (isAdmin && deviceType === 'environmental')
