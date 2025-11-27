@@ -346,68 +346,6 @@
         .device-card-type.environmental { background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); }
         .device-card-type.valve { background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%); }
 
-        /* Valve control panel */
-        .valve-panel {
-            margin-top: 0.75rem;
-            padding: 0.75rem;
-            background: rgba(0,0,0,0.2);
-            border-radius: 8px;
-        }
-        .valve-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 0.5rem;
-        }
-        .valve-control-item {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0.5rem;
-            background: #1f2937;
-            border-radius: 6px;
-        }
-        .valve-control-item .valve-label {
-            color: #e5e7eb;
-            font-weight: 500;
-            font-size: 0.8rem;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            max-width: 55%;
-        }
-        .valve-control-item .valve-buttons {
-            display: flex;
-            gap: 0.2rem;
-        }
-        .valve-control-item .valve-buttons button {
-            padding: 0.3rem 0.5rem;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-weight: 600;
-            font-size: 0.75rem;
-            transition: all 0.2s;
-        }
-        .valve-control-item .btn-on-active {
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-            color: white;
-        }
-        .valve-control-item .btn-off-active {
-            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-            color: white;
-        }
-        .valve-control-item .btn-inactive {
-            background: #374151;
-            color: #6b7280;
-        }
-        .valve-loading {
-            grid-column: 1 / -1;
-            color: #64748b;
-            font-size: 0.8rem;
-            text-align: center;
-            padding: 1rem;
-        }
-
         .device-card-content {
             flex: 1;
             padding: 0.75rem 1rem;
@@ -1305,17 +1243,6 @@
                 ? `<div class="device-card-plant">🌱 ${device.active_plant_name} (${device.active_phase})</div>`
                 : '';
 
-            // Valve control panel for valve_controller devices
-            let valvePanel = '';
-            if (deviceType === 'valve_controller') {
-                valvePanel = `
-                    <div class="valve-panel" id="valve-panel-${device.device_id}">
-                        <div class="valve-grid" id="valve-grid-${device.device_id}">
-                            <span class="valve-loading">Connecting...</span>
-                        </div>
-                    </div>
-                `;
-            }
 
             // Action buttons
             let actionButtons = '';
@@ -1346,7 +1273,6 @@
                         ${locationPath ? `<span class="sep">·</span><span class="location">📍 ${locationPath}</span>` : ''}
                     </div>
                     ${plantInfo}
-                    ${valvePanel}
                     ${linkedChips ? `<div class="device-card-links"><span class="link-label">🔗</span>${linkedChips}</div>` : ''}
                 </div>
                 <div class="device-card-actions">
@@ -1422,10 +1348,10 @@
                     <button class="actions-modal-item" onclick="closeActionsModal(); openEditLabelsModal('${deviceId}');">
                         <span class="icon">🏷️</span> Edit Valve Labels
                     </button>
-                    <button class="actions-modal-item" onclick="closeActionsModal(); updateDevice('${deviceId}');">
+                    <button class="actions-modal-item" onclick="closeActionsModal(); updateValveControllerFirmware('${deviceId}');">
                         <span class="icon">⬆️</span> Update Software
                     </button>
-                    <button class="actions-modal-item" onclick="closeActionsModal(); rebootSystem('${deviceId}');">
+                    <button class="actions-modal-item" onclick="closeActionsModal(); rebootValveController('${deviceId}');">
                         <span class="icon">🔄</span> Reboot System
                     </button>`;
             } else {
@@ -2240,47 +2166,6 @@
             wsMap[device_id] = ws;
         }
 
-        // Update valve panel with valve states
-        function updateValvePanel(deviceId, valves) {
-            const grid = document.getElementById(`valve-grid-${deviceId}`);
-            if (!grid) return;
-
-            // Build valve controls with On/Off buttons
-            let html = '';
-            for (const [valveId, valve] of Object.entries(valves)) {
-                const isOn = valve.state === 'on' || valve.state === true || valve.state === 1;
-                const label = valve.label || `Valve ${valveId}`;
-                html += `
-                    <div class="valve-control-item">
-                        <span class="valve-label">${label}</span>
-                        <div class="valve-buttons">
-                            <button class="${isOn ? 'btn-on-active' : 'btn-inactive'}"
-                                    onclick="setValve('${deviceId}', ${valveId}, 'on')">On</button>
-                            <button class="${!isOn ? 'btn-off-active' : 'btn-inactive'}"
-                                    onclick="setValve('${deviceId}', ${valveId}, 'off')">Off</button>
-                        </div>
-                    </div>
-                `;
-            }
-            grid.innerHTML = html;
-        }
-
-        // Set valve on/off
-        function setValve(deviceId, valveId, action) {
-            const ws = wsMap[deviceId];
-            if (!ws || ws.readyState !== WebSocket.OPEN) {
-                console.error('WebSocket not connected');
-                return;
-            }
-
-            // Send on/off command to device via server relay
-            ws.send(JSON.stringify({
-                type: 'valve_command',
-                action: action,
-                valve_id: valveId
-            }));
-        }
-
         // Update device software
         function updateDevice(device_id) {
             const ws = wsMap[device_id];
@@ -2444,6 +2329,50 @@
             setTimeout(() => {
                 if (rebootBtn) rebootBtn.disabled = false;
             }, 5000);
+        }
+
+        // Update valve controller firmware via WebSocket command
+        function updateValveControllerFirmware(device_id) {
+            const ws = wsMap[device_id];
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                alert('Device is not connected. Please wait for the device to come online.');
+                return;
+            }
+
+            if (!confirm('This will trigger a firmware update on the valve controller. The device will restart during the update. Continue?')) {
+                return;
+            }
+
+            showDeviceStatus(device_id, 'Sending update command...', '#f59e0b');
+
+            // Send firmware update command via WebSocket
+            ws.send(JSON.stringify({
+                type: 'firmware_update'
+            }));
+
+            showDeviceStatus(device_id, 'Update command sent! Device will check for updates and restart if available.', '#10b981');
+        }
+
+        // Reboot valve controller via WebSocket command
+        function rebootValveController(device_id) {
+            const ws = wsMap[device_id];
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                alert('Device is not connected. Please wait for the device to come online.');
+                return;
+            }
+
+            if (!confirm('This will reboot the valve controller. Continue?')) {
+                return;
+            }
+
+            showDeviceStatus(device_id, 'Sending reboot command...', '#dc2626');
+
+            // Send reboot command via WebSocket
+            ws.send(JSON.stringify({
+                type: 'reboot'
+            }));
+
+            showDeviceStatus(device_id, 'Reboot command sent! Device will restart shortly.', '#10b981');
         }
 
         // Add form submit - handle both device adding and share code acceptance
