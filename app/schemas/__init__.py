@@ -21,6 +21,7 @@ from .device import (
     LinkedDeviceInfo,
     AvailableDeviceForLinking,
     FirmwareInfo,
+    RemoteLogRequest,
 )
 from .location import (
     LocationCreate,
@@ -82,6 +83,7 @@ __all__ = [
     "LinkedDeviceInfo",
     "AvailableDeviceForLinking",
     "FirmwareInfo",
+    "RemoteLogRequest",
     # Location schemas
     "LocationCreate",
     "LocationUpdate",
