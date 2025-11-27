@@ -639,6 +639,9 @@ async function deleteFirmware(firmwareId) {
     }
 }
 
+// Store device info for filtering firmware
+let deviceTypeMap = {};
+
 // Load devices for assignment dropdown
 async function loadDevicesForAssignment() {
     try {
@@ -652,18 +655,28 @@ async function loadDevicesForAssignment() {
             d.device_type === 'environmental' || d.device_type === 'valve_controller'
         );
 
+        // Build device type map for filtering
+        deviceTypeMap = {};
         espDevices.forEach(device => {
+            deviceTypeMap[device.device_id] = device.device_type;
             const name = device.name || device.device_id.substring(0, 8);
             const type = device.device_type === 'environmental' ? 'Env Sensor' : 'Valve Ctrl';
             select.innerHTML += `<option value="${device.device_id}">${name} (${type}) - ${device.owner_email}</option>`;
         });
+
+        // Add change handler to filter firmware when device is selected
+        select.onchange = function() {
+            const selectedDeviceId = this.value;
+            const deviceType = deviceTypeMap[selectedDeviceId] || null;
+            loadFirmwareForAssignment(deviceType);
+        };
     } catch (error) {
         console.error('Error loading devices:', error);
     }
 }
 
-// Load firmware for assignment dropdown
-async function loadFirmwareForAssignment() {
+// Load firmware for assignment dropdown, optionally filtered by device type
+async function loadFirmwareForAssignment(filterDeviceType = null) {
     try {
         const response = await fetch('/admin/firmware/list');
         const firmwareList = await response.json();
@@ -671,11 +684,23 @@ async function loadFirmwareForAssignment() {
         const select = document.getElementById('assignment-firmware');
         select.innerHTML = '<option value="">Select firmware...</option>';
 
-        firmwareList.forEach(fw => {
+        // Filter by device type if specified
+        const filteredList = filterDeviceType
+            ? firmwareList.filter(fw => fw.device_type === filterDeviceType)
+            : firmwareList;
+
+        if (filterDeviceType && filteredList.length === 0) {
+            select.innerHTML = '<option value="">No firmware for this device type</option>';
+            return;
+        }
+
+        filteredList.forEach(fw => {
             const badges = [];
             if (fw.is_latest) badges.push('[LATEST]');
             if (fw.is_prerelease) badges.push('[BETA]');
-            select.innerHTML += `<option value="${fw.id}">${fw.device_type} v${fw.version} ${badges.join(' ')}</option>`;
+            // Only show device type prefix when not filtered
+            const prefix = filterDeviceType ? '' : `${fw.device_type} `;
+            select.innerHTML += `<option value="${fw.id}">${prefix}v${fw.version} ${badges.join(' ')}</option>`;
         });
     } catch (error) {
         console.error('Error loading firmware:', error);

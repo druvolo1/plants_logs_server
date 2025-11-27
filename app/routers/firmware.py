@@ -18,6 +18,7 @@ from app.schemas import (
     DeviceFirmwareAssignmentRead,
     FirmwareUpdateInfo,
 )
+from app.routers.websocket import device_connections
 
 router = APIRouter(tags=["firmware"])
 
@@ -53,6 +54,18 @@ def ensure_firmware_dir():
     """Ensure the firmware storage directory exists"""
     if not os.path.exists(FIRMWARE_STORAGE_DIR):
         os.makedirs(FIRMWARE_STORAGE_DIR)
+
+
+async def _send_firmware_update_via_websocket(device_id: str):
+    """Send firmware_update command to a device via WebSocket"""
+    if device_id in device_connections:
+        try:
+            await device_connections[device_id].send_json({"type": "firmware_update"})
+            print(f"[FIRMWARE] Sent firmware_update command via WebSocket to {device_id}")
+        except Exception as e:
+            print(f"[FIRMWARE] Failed to send firmware_update via WebSocket to {device_id}: {e}")
+    else:
+        print(f"[FIRMWARE] Device {device_id} not connected via WebSocket, cannot send firmware_update command")
 
 
 def calculate_checksum(file_path: str) -> str:
@@ -202,6 +215,10 @@ async def create_firmware_assignment(
         print(f"[FIRMWARE] Admin {admin.email} updated assignment for device {device_identifier}: "
               f"v{firmware.version} (force: {force_update})")
 
+        # Send WebSocket command for valve_controller devices when force_update is enabled
+        if force_update and device.device_type == 'valve_controller':
+            await _send_firmware_update_via_websocket(device_identifier)
+
         return {
             "status": "success",
             "message": f"Updated firmware assignment to v{firmware.version}",
@@ -223,6 +240,10 @@ async def create_firmware_assignment(
         print(f"[FIRMWARE] Admin {admin.email} created assignment for device {device_identifier}: "
               f"v{firmware.version} (force: {force_update})")
 
+        # Send WebSocket command for valve_controller devices when force_update is enabled
+        if force_update and device.device_type == 'valve_controller':
+            await _send_firmware_update_via_websocket(device_identifier)
+
         return {
             "status": "success",
             "message": f"Assigned firmware v{firmware.version} to device",
@@ -239,16 +260,23 @@ async def set_force_update(
 ):
     """Set or clear the force_update flag on a device assignment"""
     result = await session.execute(
-        select(DeviceFirmwareAssignment).where(DeviceFirmwareAssignment.id == assignment_id)
+        select(DeviceFirmwareAssignment, Device)
+        .join(Device, DeviceFirmwareAssignment.device_id == Device.id)
+        .where(DeviceFirmwareAssignment.id == assignment_id)
     )
-    assignment = result.scalars().first()
+    row = result.first()
 
-    if not assignment:
+    if not row:
         raise HTTPException(404, "Assignment not found")
 
+    assignment, device = row
     assignment.force_update = force
     assignment.updated_at = datetime.utcnow()
     await session.commit()
+
+    # Send WebSocket command for valve_controller devices when force_update is enabled
+    if force and device.device_type == 'valve_controller':
+        await _send_firmware_update_via_websocket(device.device_id)
 
     return {
         "status": "success",
