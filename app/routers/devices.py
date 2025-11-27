@@ -92,11 +92,15 @@ async def generate_share_code(session: AsyncSession) -> str:
 
 @router.post("", response_model=Dict[str, str])
 async def add_device(
+    request: Request,
     device: DeviceCreate,
     user: User = Depends(get_current_user_dependency()),
     session: AsyncSession = Depends(get_db_dependency())
 ):
     """Add a new device"""
+    # Get effective user (handles impersonation)
+    effective_user = await get_effective_user(request, user, session)
+
     existing = await session.execute(select(Device).where(Device.device_id == device.device_id))
     if existing.scalars().first():
         raise HTTPException(400, "Device ID already linked")
@@ -119,7 +123,7 @@ async def add_device(
         device_type=device.device_type or 'feeding_system',
         scope=scope,
         location_id=device.location_id,
-        user_id=user.id
+        user_id=effective_user.id
     )
     session.add(new_device)
     await session.commit()

@@ -10,7 +10,7 @@ from sqlalchemy import select, update, or_
 from dateutil import parser as date_parser
 import json
 
-from app.models import User, Device, Plant, LogEntry, EnvironmentLog, DeviceAssignment, DeviceShare, Firmware, DeviceFirmwareAssignment
+from app.models import User, Device, Plant, LogEntry, EnvironmentLog, DeviceAssignment, DeviceShare, Firmware, DeviceFirmwareAssignment, DeviceDebugLog
 from app.schemas import (
     LogEntryCreate,
     LogEntryRead,
@@ -18,6 +18,7 @@ from app.schemas import (
     DeviceSettingsUpdate,
     DeviceSettingsResponse,
     FirmwareInfo,
+    RemoteLogRequest,
 )
 
 router = APIRouter(tags=["logs"])
@@ -428,13 +429,35 @@ async def environment_heartbeat(
         await session.commit()
         print(f"[Heartbeat] Device {device_id} will reboot (pending_reboot cleared)")
 
+    # Check for pending remote log request
+    remote_log_info = None
+    pending_log_result = await session.execute(
+        select(DeviceDebugLog).where(
+            DeviceDebugLog.device_id == device.id,
+            DeviceDebugLog.status == 'pending'
+        ).order_by(DeviceDebugLog.requested_at.asc())
+    )
+    pending_log = pending_log_result.scalars().first()
+
+    if pending_log:
+        remote_log_info = RemoteLogRequest(
+            log_id=pending_log.id,
+            duration=pending_log.requested_duration
+        )
+        # Mark as capturing so it doesn't get sent again
+        pending_log.status = 'capturing'
+        pending_log.started_at = datetime.utcnow()
+        await session.commit()
+        print(f"[Heartbeat] Sending remote log request to {device_id}: log_id={pending_log.id}, duration={pending_log.requested_duration}s")
+
     # Return settings to device (defaults: 30s heartbeat, 3600s/1hr logging)
     return DeviceSettingsResponse(
         use_fahrenheit=settings.get("use_fahrenheit", False),
         update_interval=settings.get("update_interval", 30),
         log_interval=settings.get("log_interval", 3600),
         firmware=firmware_info,
-        pending_reboot=pending_reboot
+        pending_reboot=pending_reboot,
+        remote_log=remote_log_info
     )
 
 

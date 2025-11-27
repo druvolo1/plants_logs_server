@@ -126,6 +126,12 @@ class FirmwareInfo(BaseModel):
     checksum: Optional[str] = None
 
 
+class RemoteLogRequest(BaseModel):
+    """Remote debug log capture request included in heartbeat response."""
+    log_id: int
+    duration: int  # Duration in seconds
+
+
 class DeviceSettingsResponse(BaseModel):
     use_fahrenheit: bool
     update_interval: int  # Heartbeat interval in seconds (default: 30)
@@ -134,6 +140,8 @@ class DeviceSettingsResponse(BaseModel):
     firmware: Optional[FirmwareInfo] = None
     # Reboot command (set via admin portal)
     pending_reboot: bool = False
+    # Remote debug log request (set via admin portal)
+    remote_log: Optional[RemoteLogRequest] = None
 
 
 # Device Linking Pydantic models

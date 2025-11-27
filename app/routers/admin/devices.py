@@ -497,8 +497,8 @@ async def request_device_log(
 ):
     """Request a debug log capture from a device.
 
-    This creates a log request record and sends a command to the device via WebSocket.
-    The device will capture debug output for the specified duration and upload it.
+    For valve_controller devices: Sends command immediately via WebSocket.
+    For environmental devices: Creates pending request, delivered via next heartbeat.
     """
     # Validate duration (1 second to 10 minutes)
     if duration < 1 or duration > 600:
@@ -541,36 +541,42 @@ async def request_device_log(
     await session.commit()
     await session.refresh(log_record)
 
-    # Send command to device via WebSocket
-    from app.routers.websocket import device_connections
-    if device_id in device_connections:
-        try:
-            await device_connections[device_id].send_json({
-                "type": "start_remote_log",
-                "log_id": log_record.id,
-                "duration": duration
-            })
-            print(f"[DEBUG_LOG] Sent start_remote_log command to {device_id} for {duration}s (log_id={log_record.id})")
-        except Exception as e:
-            print(f"[DEBUG_LOG] Failed to send command to device {device_id}: {e}")
-            # Update status to failed
+    # For valve_controller devices with WebSocket: send command immediately
+    # For environmental devices: leave as pending, heartbeat will deliver it
+    message = ""
+    if device.device_type == 'valve_controller':
+        from app.routers.websocket import device_connections
+        if device_id in device_connections:
+            try:
+                await device_connections[device_id].send_json({
+                    "type": "start_remote_log",
+                    "log_id": log_record.id,
+                    "duration": duration
+                })
+                print(f"[DEBUG_LOG] Sent start_remote_log command to {device_id} for {duration}s (log_id={log_record.id})")
+                message = f"Log capture started for {duration} seconds"
+            except Exception as e:
+                print(f"[DEBUG_LOG] Failed to send command to device {device_id}: {e}")
+                log_record.status = 'failed'
+                log_record.early_cutoff_reason = f"WebSocket send failed: {str(e)}"
+                await session.commit()
+                raise HTTPException(500, f"Failed to send command to device: {str(e)}")
+        else:
             log_record.status = 'failed'
-            log_record.early_cutoff_reason = f"WebSocket send failed: {str(e)}"
+            log_record.early_cutoff_reason = "Device disconnected"
             await session.commit()
-            raise HTTPException(500, f"Failed to send command to device: {str(e)}")
+            raise HTTPException(400, "Device disconnected")
     else:
-        # Device disconnected between check and send
-        log_record.status = 'failed'
-        log_record.early_cutoff_reason = "Device disconnected"
-        await session.commit()
-        raise HTTPException(400, "Device disconnected")
+        # Environmental devices receive the request via heartbeat
+        message = f"Log capture requested for {duration} seconds. Will start on next device heartbeat."
+        print(f"[DEBUG_LOG] Queued remote log request for {device_id}: log_id={log_record.id}, duration={duration}s (via heartbeat)")
 
     print(f"[ADMIN] {admin.email} requested {duration}s debug log from device {device_id}")
 
     return {
         "status": "success",
         "log_id": log_record.id,
-        "message": f"Log capture requested for {duration} seconds"
+        "message": message
     }
 
 
