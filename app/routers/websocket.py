@@ -13,7 +13,7 @@ from sqlalchemy import select, update, or_
 from starlette.websockets import WebSocketDisconnect
 import jwt
 
-from app.models import User, Device, DeviceShare, LocationShare
+from app.models import User, Device, DeviceShare, LocationShare, DeviceFirmwareAssignment
 
 router = APIRouter(tags=["websocket"])
 
@@ -87,6 +87,22 @@ async def device_websocket(
             await user_ws.send_json({"type": "device_status", "online": True})
         except:
             pass  # User might have disconnected
+
+    # Check for pending force firmware update (for valve_controller devices)
+    if device.device_type == 'valve_controller':
+        try:
+            assignment_result = await session.execute(
+                select(DeviceFirmwareAssignment).where(
+                    DeviceFirmwareAssignment.device_id == device.id,
+                    DeviceFirmwareAssignment.force_update == True
+                )
+            )
+            pending_assignment = assignment_result.scalars().first()
+            if pending_assignment:
+                await websocket.send_json({"type": "firmware_update"})
+                print(f"[FIRMWARE] Sent pending firmware_update command to {device_id} on connect")
+        except Exception as e:
+            print(f"[FIRMWARE] Error checking pending firmware update for {device_id}: {e}")
 
     try:
         while True:
