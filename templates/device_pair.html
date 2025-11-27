@@ -1,10 +1,10 @@
-<!-- templates/device_pair.html - Device pairing page for environment sensors -->
+<!-- templates/device_pair.html - Device pairing page for all device types -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Pair Environment Sensor</title>
+    <title>Pair Device</title>
     <link rel="stylesheet" href="/static/style.css">
     <style>
         body {
@@ -109,7 +109,7 @@
     </style>
 </head>
 <body>
-    <h1>🌱 Pair Environment Sensor</h1>
+    <h1 id="page-title">🌱 Pair Device</h1>
 
     <div id="message"></div>
 
@@ -160,6 +160,7 @@
         const manufacturer = deviceInfo.manufacturer;
         const swVersion = deviceInfo.sw_version;
         const hwVersion = deviceInfo.hw_version;
+        const deviceType = deviceInfo.device_type || 'environmental';
         const defaultName = deviceInfo.device_name;
         const callbackUrl = deviceInfo.callback;
 
@@ -176,6 +177,16 @@
         document.getElementById('display-device-id').textContent = deviceId || 'Unknown';
         document.getElementById('display-model').textContent = model;
         document.getElementById('display-mac').textContent = macAddress || 'Unknown';
+
+        // Update page title based on device type
+        const pageTitle = document.getElementById('page-title');
+        if (deviceType === 'valve_controller') {
+            pageTitle.textContent = '🚿 Pair Valve Controller';
+            document.title = 'Pair Valve Controller';
+        } else {
+            pageTitle.textContent = '🌱 Pair Environment Sensor';
+            document.title = 'Pair Environment Sensor';
+        }
 
         // Load user's locations
         async function loadLocations() {
@@ -242,6 +253,7 @@
                 manufacturer: formData.get('manufacturer'),
                 sw_version: formData.get('sw_version'),
                 hw_version: formData.get('hw_version'),
+                device_type: deviceType,
                 location_id: locationId ? parseInt(locationId) : null,
                 location_name: locationName || null
             };
