@@ -980,6 +980,56 @@
         </div>
     </div>
 
+    <!-- Edit Valve Labels Modal -->
+    <div id="labels-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 2000;" onclick="if(event.target === this) closeLabelsModal();">
+        <div style="position: relative; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #1e293b; padding: 2rem; border-radius: 12px; max-width: 500px; width: 90%; box-shadow: 0 8px 32px rgba(0,0,0,0.5);">
+            <h3 style="color: #10b981; margin-top: 0;">🏷️ Edit Valve Labels</h3>
+            <p style="color: #888; font-size: 0.9rem;" id="labels-device-name"></p>
+
+            <form id="labels-form" onsubmit="saveValveLabels(event)">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+                    <div>
+                        <label for="label-1" style="display: block; color: #9ca3af; margin-bottom: 0.25rem; font-size: 0.8rem;">Valve 1:</label>
+                        <input type="text" id="label-1" name="label-1" style="width: 100%; padding: 0.5rem; border-radius: 4px; border: 1px solid #374151; background: #0f172a; color: #fff; box-sizing: border-box;">
+                    </div>
+                    <div>
+                        <label for="label-2" style="display: block; color: #9ca3af; margin-bottom: 0.25rem; font-size: 0.8rem;">Valve 2:</label>
+                        <input type="text" id="label-2" name="label-2" style="width: 100%; padding: 0.5rem; border-radius: 4px; border: 1px solid #374151; background: #0f172a; color: #fff; box-sizing: border-box;">
+                    </div>
+                    <div>
+                        <label for="label-3" style="display: block; color: #9ca3af; margin-bottom: 0.25rem; font-size: 0.8rem;">Valve 3:</label>
+                        <input type="text" id="label-3" name="label-3" style="width: 100%; padding: 0.5rem; border-radius: 4px; border: 1px solid #374151; background: #0f172a; color: #fff; box-sizing: border-box;">
+                    </div>
+                    <div>
+                        <label for="label-4" style="display: block; color: #9ca3af; margin-bottom: 0.25rem; font-size: 0.8rem;">Valve 4:</label>
+                        <input type="text" id="label-4" name="label-4" style="width: 100%; padding: 0.5rem; border-radius: 4px; border: 1px solid #374151; background: #0f172a; color: #fff; box-sizing: border-box;">
+                    </div>
+                    <div>
+                        <label for="label-5" style="display: block; color: #9ca3af; margin-bottom: 0.25rem; font-size: 0.8rem;">Valve 5:</label>
+                        <input type="text" id="label-5" name="label-5" style="width: 100%; padding: 0.5rem; border-radius: 4px; border: 1px solid #374151; background: #0f172a; color: #fff; box-sizing: border-box;">
+                    </div>
+                    <div>
+                        <label for="label-6" style="display: block; color: #9ca3af; margin-bottom: 0.25rem; font-size: 0.8rem;">Valve 6:</label>
+                        <input type="text" id="label-6" name="label-6" style="width: 100%; padding: 0.5rem; border-radius: 4px; border: 1px solid #374151; background: #0f172a; color: #fff; box-sizing: border-box;">
+                    </div>
+                    <div>
+                        <label for="label-7" style="display: block; color: #9ca3af; margin-bottom: 0.25rem; font-size: 0.8rem;">Valve 7:</label>
+                        <input type="text" id="label-7" name="label-7" style="width: 100%; padding: 0.5rem; border-radius: 4px; border: 1px solid #374151; background: #0f172a; color: #fff; box-sizing: border-box;">
+                    </div>
+                    <div>
+                        <label for="label-8" style="display: block; color: #9ca3af; margin-bottom: 0.25rem; font-size: 0.8rem;">Valve 8:</label>
+                        <input type="text" id="label-8" name="label-8" style="width: 100%; padding: 0.5rem; border-radius: 4px; border: 1px solid #374151; background: #0f172a; color: #fff; box-sizing: border-box;">
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 0.5rem; margin-top: 1.5rem;">
+                    <button type="submit" style="background: #10b981; flex: 1; padding: 0.75rem; border: none; border-radius: 6px; color: white; font-weight: 600; cursor: pointer;">Save Labels</button>
+                    <button type="button" onclick="closeLabelsModal()" style="background: #64748b; flex: 1; padding: 0.75rem; border: none; border-radius: 6px; color: white; font-weight: 600; cursor: pointer;">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Link Devices Modal -->
     <div id="link-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 2000;">
         <div style="position: relative; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #1e293b; padding: 2rem; border-radius: 12px; max-width: 600px; width: 90%; box-shadow: 0 8px 32px rgba(0,0,0,0.5); max-height: 80vh; overflow-y: auto;">
@@ -1367,6 +1417,17 @@
                     <button class="actions-modal-item" onclick="closeActionsModal(); rebootEnvironmentalDevice('${deviceId}');">
                         <span class="icon">🔄</span> Reboot System
                     </button>`;
+            } else if (deviceType === 'valve_controller') {
+                html += `
+                    <button class="actions-modal-item" onclick="closeActionsModal(); openEditLabelsModal('${deviceId}');">
+                        <span class="icon">🏷️</span> Edit Valve Labels
+                    </button>
+                    <button class="actions-modal-item" onclick="closeActionsModal(); updateDevice('${deviceId}');">
+                        <span class="icon">⬆️</span> Update Software
+                    </button>
+                    <button class="actions-modal-item" onclick="closeActionsModal(); rebootSystem('${deviceId}');">
+                        <span class="icon">🔄</span> Reboot System
+                    </button>`;
             } else {
                 html += `
                     <button class="actions-modal-item" onclick="closeActionsModal(); updateDevice('${deviceId}');">
@@ -1398,6 +1459,84 @@
         function closeActionsModal() {
             document.getElementById('actions-modal').classList.remove('show');
             currentActionsDeviceId = null;
+        }
+
+        // Edit Valve Labels Modal
+        let currentLabelsDeviceId = null;
+        let currentValveLabels = {};
+
+        function openEditLabelsModal(deviceId) {
+            currentLabelsDeviceId = deviceId;
+
+            // Find device name
+            const device = allDevices.find(d => d.device_id === deviceId);
+            const deviceName = device ? device.name : deviceId;
+            document.getElementById('labels-device-name').textContent = deviceName;
+
+            // Get current labels from the valve panel if available
+            const grid = document.getElementById(`valve-grid-${deviceId}`);
+            if (grid) {
+                const labels = grid.querySelectorAll('.valve-label');
+                labels.forEach((label, index) => {
+                    const input = document.getElementById(`label-${index + 1}`);
+                    if (input) {
+                        input.value = label.textContent || `Valve ${index + 1}`;
+                        currentValveLabels[index + 1] = label.textContent;
+                    }
+                });
+            } else {
+                // Default labels if no data yet
+                for (let i = 1; i <= 8; i++) {
+                    const input = document.getElementById(`label-${i}`);
+                    if (input) {
+                        input.value = `Valve ${i}`;
+                        currentValveLabels[i] = `Valve ${i}`;
+                    }
+                }
+            }
+
+            document.getElementById('labels-modal').style.display = 'block';
+        }
+
+        function closeLabelsModal() {
+            document.getElementById('labels-modal').style.display = 'none';
+            currentLabelsDeviceId = null;
+            currentValveLabels = {};
+        }
+
+        function saveValveLabels(event) {
+            event.preventDefault();
+
+            if (!currentLabelsDeviceId) return;
+
+            const ws = wsMap[currentLabelsDeviceId];
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                alert('Device is not connected. Please wait for the device to come online.');
+                return;
+            }
+
+            // Collect labels from form
+            const labels = {};
+            for (let i = 1; i <= 8; i++) {
+                const input = document.getElementById(`label-${i}`);
+                if (input && input.value.trim()) {
+                    labels[i] = input.value.trim();
+                }
+            }
+
+            // Send labels to device via WebSocket
+            ws.send(JSON.stringify({
+                type: 'set_labels',
+                labels: labels
+            }));
+
+            console.log('Sent set_labels command:', labels);
+
+            // Close modal
+            closeLabelsModal();
+
+            // Show feedback
+            showDeviceStatus(currentLabelsDeviceId, 'Labels updated', '#10b981');
         }
 
         // Fetch firmware version for environmental sensors
