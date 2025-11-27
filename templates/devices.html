@@ -346,6 +346,55 @@
         .device-card-type.environmental { background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); }
         .device-card-type.valve { background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%); }
 
+        /* Valve control panel */
+        .valve-panel {
+            margin-top: 0.75rem;
+            padding: 0.75rem;
+            background: rgba(0,0,0,0.2);
+            border-radius: 8px;
+        }
+        .valve-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0.5rem;
+        }
+        .valve-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 0.5rem 0.25rem;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: rgba(255,255,255,0.1);
+            color: #94a3b8;
+            font-size: 0.7rem;
+        }
+        .valve-btn:hover {
+            background: rgba(255,255,255,0.2);
+        }
+        .valve-btn.on {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+        }
+        .valve-btn .valve-icon {
+            font-size: 1.25rem;
+            margin-bottom: 0.25rem;
+        }
+        .valve-btn .valve-label {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 100%;
+        }
+        .valve-loading {
+            color: #64748b;
+            font-size: 0.8rem;
+            text-align: center;
+            padding: 1rem;
+        }
+
         .device-card-content {
             flex: 1;
             padding: 0.75rem 1rem;
@@ -1193,6 +1242,18 @@
                 ? `<div class="device-card-plant">🌱 ${device.active_plant_name} (${device.active_phase})</div>`
                 : '';
 
+            // Valve control panel for valve_controller devices
+            let valvePanel = '';
+            if (deviceType === 'valve_controller') {
+                valvePanel = `
+                    <div class="valve-panel" id="valve-panel-${device.device_id}">
+                        <div class="valve-grid" id="valve-grid-${device.device_id}">
+                            <span class="valve-loading">Connecting...</span>
+                        </div>
+                    </div>
+                `;
+            }
+
             // Action buttons
             let actionButtons = '';
             if (device.is_owner) {
@@ -1222,6 +1283,7 @@
                         ${locationPath ? `<span class="sep">·</span><span class="location">📍 ${locationPath}</span>` : ''}
                     </div>
                     ${plantInfo}
+                    ${valvePanel}
                     ${linkedChips ? `<div class="device-card-links"><span class="link-label">🔗</span>${linkedChips}</div>` : ''}
                 </div>
                 <div class="device-card-actions">
@@ -2004,6 +2066,11 @@
                         allDevices[deviceIndex].is_online = data.online;
                     }
                 }
+
+                // Handle valve status updates
+                if (data.type === 'valve_status' && data.valves) {
+                    updateValvePanel(device_id, data.valves);
+                }
             };
             ws.onclose = () => {
                 console.log(`Disconnected from ${device_id}`);
@@ -2019,6 +2086,43 @@
                 delete wsMap[device_id];
             };
             wsMap[device_id] = ws;
+        }
+
+        // Update valve panel with valve states
+        function updateValvePanel(deviceId, valves) {
+            const grid = document.getElementById(`valve-grid-${deviceId}`);
+            if (!grid) return;
+
+            // Build valve buttons
+            let html = '';
+            for (const [valveId, valve] of Object.entries(valves)) {
+                const isOn = valve.state === 'on';
+                html += `
+                    <button class="valve-btn ${isOn ? 'on' : ''}"
+                            onclick="toggleValve('${deviceId}', ${valveId})"
+                            title="${valve.label}">
+                        <span class="valve-icon">🚿</span>
+                        <span class="valve-label">${valve.label}</span>
+                    </button>
+                `;
+            }
+            grid.innerHTML = html;
+        }
+
+        // Toggle valve on/off
+        function toggleValve(deviceId, valveId) {
+            const ws = wsMap[deviceId];
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                console.error('WebSocket not connected');
+                return;
+            }
+
+            // Send toggle command to device via server relay
+            ws.send(JSON.stringify({
+                type: 'valve_command',
+                action: 'toggle',
+                valve_id: valveId
+            }));
         }
 
         // Update device software

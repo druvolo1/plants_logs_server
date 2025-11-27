@@ -822,13 +822,18 @@ async def pair_device(
         await session.flush()
         location_id = new_location.id
 
+    # Determine device type and scope
+    device_type = pair_request.device_type or 'environmental'
+    # Environmental and valve_controller are room-scoped by default
+    scope = 'room' if device_type in ['environmental', 'valve_controller'] else 'plant'
+
     # Create new device
     new_device = Device(
         device_id=pair_request.device_id,
         api_key=api_key,
-        name=pair_request.device_name or f"Sensor {pair_request.device_id[:8]}",
-        device_type='environmental',
-        scope='room',
+        name=pair_request.device_name or f"Device {pair_request.device_id[:8]}",
+        device_type=device_type,
+        scope=scope,
         location_id=location_id,
         user_id=user.id,
         is_online=True,

@@ -103,6 +103,7 @@ class DevicePairRequest(BaseModel):
     manufacturer: str
     sw_version: str
     hw_version: str
+    device_type: Optional[str] = 'environmental'  # 'environmental', 'valve_controller', etc.
 
 
 class DevicePairResponse(BaseModel):

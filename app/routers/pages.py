@@ -130,6 +130,7 @@ async def device_pair_initiation(request: Request):
     manufacturer = request.query_params.get('manufacturer', 'HerbNerdz')
     sw_version = request.query_params.get('sw_version', '2.0')
     hw_version = request.query_params.get('hw_version', '1')
+    device_type = request.query_params.get('device_type', 'environmental')
 
     if not device_id or not mac_address:
         return templates.TemplateResponse("error.html", {
@@ -146,6 +147,7 @@ async def device_pair_initiation(request: Request):
         "manufacturer": manufacturer,
         "sw_version": sw_version,
         "hw_version": hw_version,
+        "device_type": device_type,
         "timestamp": datetime.utcnow()
     }
 
