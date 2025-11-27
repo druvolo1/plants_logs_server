@@ -284,11 +284,14 @@ async def user_websocket(websocket: WebSocket, device_id: str):
             try:
                 while True:
                     data = await websocket.receive_json()
+                    print(f"Received from user for {device_id}: {json.dumps(data)}")
                     # Relay command to device
                     if device_id in device_connections:
                         await device_connections[device_id].send_json(data)
+                        print(f"Relayed to device {device_id}: {json.dumps(data)}")
                     else:
                         await websocket.send_json({"error": "Device offline"})
+                        print(f"Device {device_id} offline, could not relay")
             except WebSocketDisconnect:
                 user_connections[device_id].remove(websocket)
                 print(f"User disconnected from device {device_id}")
