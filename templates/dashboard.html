@@ -2338,7 +2338,7 @@
             }
             
             updateWaterBucket(device_id, statusData);
-            updateValveControls(device_id, statusData);
+            updateFeedingValveControls(device_id, statusData);
             updateDosingControls(device_id, statusData);
             updateAllValvesControls(device_id, statusData);
         }
@@ -2569,7 +2569,7 @@
             return permissionLevel !== 'viewer';
         }
 
-        function updateValveControls(device_id, statusData) {
+        function updateFeedingValveControls(device_id, statusData) {
             const valveControlsDiv = document.getElementById(`valve-controls-${device_id}`);
             const valvesCard = document.getElementById(`valves-card-${device_id}`);
             const fillLabel = statusData.settings?.fill_valve_label;
