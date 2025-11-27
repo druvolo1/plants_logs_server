@@ -2145,10 +2145,7 @@
                     }
                 }
 
-                // Handle valve status updates
-                if (data.type === 'valve_status' && data.valves) {
-                    updateValvePanel(device_id, data.valves);
-                }
+                // Valve status updates are handled on the dashboard page, not here
             };
             ws.onclose = () => {
                 console.log(`Disconnected from ${device_id}`);

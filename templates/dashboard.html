@@ -2445,6 +2445,11 @@
 
             console.log(`Updating valve controls for ${device_id}:`, valves);
 
+            // Check if user has control permission
+            const isViewOnly = !canControl(device_id);
+            const disabledAttr = isViewOnly ? 'disabled' : '';
+            const disabledStyle = isViewOnly ? 'opacity: 0.5; cursor: not-allowed;' : 'cursor: pointer;';
+
             // Build valve controls HTML with label and on/off buttons
             // Handle both array format and object format ({"1": {...}, "2": {...}})
             let html = '';
@@ -2463,13 +2468,15 @@
                             <button id="valve-on-${device_id}-${valveId}"
                                     onclick="setValveDashboard('${device_id}', ${valveId}, 'on')"
                                     class="${isOn ? 'btn-on-active' : 'btn-inactive'}"
-                                    style="padding: 0.3rem 0.5rem; border: none; border-radius: 4px; cursor: pointer; font-weight: 600; font-size: 0.75rem; transition: all 0.2s; ${isOn ? 'background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white;' : 'background: #374151; color: #6b7280;'}">
+                                    ${disabledAttr}
+                                    style="padding: 0.3rem 0.5rem; border: none; border-radius: 4px; ${disabledStyle} font-weight: 600; font-size: 0.75rem; transition: all 0.2s; ${isOn ? 'background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white;' : 'background: #374151; color: #6b7280;'}">
                                 On
                             </button>
                             <button id="valve-off-${device_id}-${valveId}"
                                     onclick="setValveDashboard('${device_id}', ${valveId}, 'off')"
                                     class="${!isOn ? 'btn-off-active' : 'btn-inactive'}"
-                                    style="padding: 0.3rem 0.5rem; border: none; border-radius: 4px; cursor: pointer; font-weight: 600; font-size: 0.75rem; transition: all 0.2s; ${!isOn ? 'background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white;' : 'background: #374151; color: #6b7280;'}">
+                                    ${disabledAttr}
+                                    style="padding: 0.3rem 0.5rem; border: none; border-radius: 4px; ${disabledStyle} font-weight: 600; font-size: 0.75rem; transition: all 0.2s; ${!isOn ? 'background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white;' : 'background: #374151; color: #6b7280;'}">
                                 Off
                             </button>
                         </div>
@@ -2482,6 +2489,12 @@
 
         // Set valve state on valve controller
         function setValveDashboard(device_id, valve_id, action) {
+            // Check permission before sending command
+            if (!canControl(device_id)) {
+                console.error('Permission denied: view-only access');
+                return;
+            }
+
             const ws = wsMap[device_id];
             if (!ws || ws.readyState !== WebSocket.OPEN) {
                 console.error('WebSocket not connected for device:', device_id);
