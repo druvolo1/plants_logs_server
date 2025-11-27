@@ -227,6 +227,50 @@
         </form>
     </div>
 </div>
+
+<!-- Debug Logs Modal -->
+<div class="modal" id="logs-modal">
+    <div class="modal-content" style="max-width: 800px;">
+        <div class="modal-header">
+            <h2 class="modal-title">Debug Logs - <span id="logs-device-name"></span></h2>
+            <button class="modal-close" onclick="closeModal('logs-modal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="logs-device-id">
+
+            <!-- Request New Log Section -->
+            <div style="background: #1e293b; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem;">
+                <h3 style="color: #10b981; margin-bottom: 1rem; font-size: 1rem;">Request New Log Capture</h3>
+                <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+                    <div class="form-group" style="margin: 0;">
+                        <label class="form-label" style="margin-bottom: 0.25rem;">Duration (seconds)</label>
+                        <input type="number" class="form-input" id="log-duration" min="1" max="600" value="60" style="width: 120px;">
+                    </div>
+                    <button type="button" class="btn btn-primary" onclick="requestLog()" id="request-log-btn">
+                        Request Log
+                    </button>
+                    <span id="log-request-status" style="color: #64748b; font-size: 0.9rem;"></span>
+                </div>
+                <p style="color: #64748b; font-size: 0.8rem; margin-top: 0.5rem; margin-bottom: 0;">
+                    Device must be online. Max duration: 600 seconds (10 minutes).
+                </p>
+            </div>
+
+            <!-- Previous Logs Section -->
+            <h3 style="color: #e2e8f0; margin-bottom: 1rem; font-size: 1rem;">Previous Logs</h3>
+            <div id="logs-list" style="max-height: 400px; overflow-y: auto;">
+                <div class="loading">
+                    <div class="loading-spinner"></div>
+                    Loading logs...
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeModal('logs-modal')">Close</button>
+            <button type="button" class="btn btn-primary" onclick="refreshLogs()">Refresh</button>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_scripts %}
@@ -348,6 +392,9 @@ function renderDevices() {
                         </button>
                         <button class="action-btn action-btn-info" onclick="viewDeviceData('${device.device_id}')" title="View data">
                             📊
+                        </button>
+                        <button class="action-btn action-btn-secondary" onclick="viewDeviceLogs('${device.device_id}')" title="Debug logs">
+                            📋
                         </button>
                     </div>
                 </td>
@@ -576,6 +623,197 @@ function viewDeviceData(deviceId) {
 
 function refreshDevices() {
     loadDevices();
+}
+
+// ==============================
+// Debug Logs Modal Functions
+// ==============================
+
+let currentLogsDeviceId = null;
+
+async function viewDeviceLogs(deviceId) {
+    currentLogsDeviceId = deviceId;
+    const device = allDevices.find(d => d.device_id === deviceId);
+
+    document.getElementById('logs-device-id').value = deviceId;
+    document.getElementById('logs-device-name').textContent = device?.name || deviceId.substring(0, 8) + '...';
+    document.getElementById('log-request-status').textContent = '';
+
+    // Enable/disable request button based on device status
+    const requestBtn = document.getElementById('request-log-btn');
+    if (device?.is_online) {
+        requestBtn.disabled = false;
+        requestBtn.title = '';
+    } else {
+        requestBtn.disabled = true;
+        requestBtn.title = 'Device is offline';
+    }
+
+    openModal('logs-modal');
+    await loadLogs(deviceId);
+}
+
+async function loadLogs(deviceId) {
+    const listEl = document.getElementById('logs-list');
+    listEl.innerHTML = '<div class="loading"><div class="loading-spinner"></div>Loading logs...</div>';
+
+    try {
+        const response = await fetch(`/admin/devices/${deviceId}/logs`);
+        if (!response.ok) throw new Error('Failed to load logs');
+
+        const data = await response.json();
+        renderLogs(data.logs);
+    } catch (error) {
+        console.error('Error loading logs:', error);
+        listEl.innerHTML = '<div class="empty-state">Error loading logs</div>';
+    }
+}
+
+function renderLogs(logs) {
+    const listEl = document.getElementById('logs-list');
+
+    if (!logs || logs.length === 0) {
+        listEl.innerHTML = '<div class="empty-state" style="padding: 2rem; text-align: center; color: #64748b;">No debug logs captured yet</div>';
+        return;
+    }
+
+    listEl.innerHTML = `
+        <table class="data-table" style="margin: 0;">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Duration</th>
+                    <th>Size</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${logs.map(log => `
+                    <tr>
+                        <td>
+                            <div style="font-size: 0.85rem;">${formatDateTime(log.requested_at)}</div>
+                            ${log.early_cutoff_reason ? `<div style="font-size: 0.75rem; color: #f59e0b;">${log.early_cutoff_reason}</div>` : ''}
+                        </td>
+                        <td>
+                            ${log.actual_duration !== null ? log.actual_duration + 's' : '-'}
+                            ${log.actual_duration !== null && log.actual_duration < log.requested_duration ? `<span style="color: #64748b;">/${log.requested_duration}s</span>` : ''}
+                        </td>
+                        <td>${log.file_size ? formatFileSize(log.file_size) : '-'}</td>
+                        <td>
+                            ${getLogStatusBadge(log.status)}
+                        </td>
+                        <td>
+                            <div class="action-buttons">
+                                ${log.status === 'completed' ? `
+                                    <button class="action-btn action-btn-primary" onclick="downloadLog(${log.id})" title="Download">
+                                        ⬇️
+                                    </button>
+                                ` : ''}
+                                <button class="action-btn action-btn-danger" onclick="deleteLog(${log.id})" title="Delete">
+                                    🗑️
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>
+    `;
+}
+
+function getLogStatusBadge(status) {
+    const badges = {
+        'pending': '<span class="badge badge-warning">Pending</span>',
+        'capturing': '<span class="badge badge-info">Capturing...</span>',
+        'completed': '<span class="badge badge-success">Completed</span>',
+        'failed': '<span class="badge badge-danger">Failed</span>'
+    };
+    return badges[status] || `<span class="badge">${status}</span>`;
+}
+
+function formatFileSize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+}
+
+async function requestLog() {
+    const deviceId = document.getElementById('logs-device-id').value;
+    const duration = parseInt(document.getElementById('log-duration').value) || 60;
+    const statusEl = document.getElementById('log-request-status');
+    const btn = document.getElementById('request-log-btn');
+
+    if (duration < 1 || duration > 600) {
+        statusEl.textContent = 'Duration must be between 1 and 600 seconds';
+        statusEl.style.color = '#ef4444';
+        return;
+    }
+
+    btn.disabled = true;
+    statusEl.textContent = 'Requesting log capture...';
+    statusEl.style.color = '#64748b';
+
+    try {
+        const response = await fetch(`/admin/devices/${deviceId}/logs/request?duration=${duration}`, {
+            method: 'POST'
+        });
+
+        if (response.ok) {
+            statusEl.textContent = 'Log capture started! Refresh to see status.';
+            statusEl.style.color = '#10b981';
+            // Reload logs list after a short delay
+            setTimeout(() => loadLogs(deviceId), 1000);
+        } else {
+            const error = await response.json();
+            statusEl.textContent = error.detail || 'Failed to request log';
+            statusEl.style.color = '#ef4444';
+        }
+    } catch (error) {
+        console.error('Error requesting log:', error);
+        statusEl.textContent = 'Error requesting log';
+        statusEl.style.color = '#ef4444';
+    }
+
+    // Re-enable button after a delay
+    setTimeout(() => {
+        btn.disabled = false;
+        const device = allDevices.find(d => d.device_id === deviceId);
+        if (!device?.is_online) btn.disabled = true;
+    }, 2000);
+}
+
+async function downloadLog(logId) {
+    const deviceId = document.getElementById('logs-device-id').value;
+    window.open(`/admin/devices/${deviceId}/logs/${logId}/download`, '_blank');
+}
+
+async function deleteLog(logId) {
+    if (!confirm('Are you sure you want to delete this log?')) return;
+
+    const deviceId = document.getElementById('logs-device-id').value;
+
+    try {
+        const response = await fetch(`/admin/devices/${deviceId}/logs/${logId}`, {
+            method: 'DELETE'
+        });
+
+        if (response.ok) {
+            loadLogs(deviceId);
+        } else {
+            const error = await response.json();
+            alert('Failed to delete log: ' + (error.detail || 'Unknown error'));
+        }
+    } catch (error) {
+        console.error('Error deleting log:', error);
+        alert('Error deleting log');
+    }
+}
+
+function refreshLogs() {
+    if (currentLogsDeviceId) {
+        loadLogs(currentLogsDeviceId);
+    }
 }
 
 // Close modals on backdrop click

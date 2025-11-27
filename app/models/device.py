@@ -2,7 +2,7 @@
 """
 Device and device sharing models.
 """
-from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, DateTime, Text
+from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, DateTime, Text, Float
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from .base import Base
@@ -87,3 +87,27 @@ class DeviceLink(Base):
     # Relationships
     parent_device = relationship("Device", foreign_keys=[parent_device_id], back_populates="linked_child_devices")
     child_device = relationship("Device", foreign_keys=[child_device_id], back_populates="linked_parent_devices")
+
+
+class DeviceDebugLog(Base):
+    """
+    Stores metadata for debug log captures from devices.
+    Actual log content is stored in filesystem at logs/{device_id}/{filename}.
+    """
+    __tablename__ = "device_debug_logs"
+    id = Column(Integer, primary_key=True, index=True)
+    device_id = Column(Integer, ForeignKey("devices.id", ondelete="CASCADE"), nullable=False)
+    filename = Column(String(255), nullable=False)  # e.g., "2024-01-15_14-30-00.txt"
+    requested_duration = Column(Integer, nullable=False)  # Duration requested in seconds
+    actual_duration = Column(Integer, nullable=True)  # Actual capture duration in seconds
+    file_size = Column(Integer, nullable=True)  # Size in bytes
+    early_cutoff_reason = Column(String(255), nullable=True)  # e.g., "low_memory", "buffer_full", null if completed normally
+    status = Column(String(20), nullable=False, default='pending')  # 'pending', 'capturing', 'completed', 'failed'
+    requested_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    started_at = Column(DateTime, nullable=True)  # When device started capturing
+    completed_at = Column(DateTime, nullable=True)  # When log was uploaded
+    requested_by_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+
+    # Relationships
+    device = relationship("Device", foreign_keys=[device_id])
+    requested_by = relationship("User", foreign_keys=[requested_by_user_id])

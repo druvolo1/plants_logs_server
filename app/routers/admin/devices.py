@@ -3,14 +3,19 @@
 Device management and data viewing endpoints for admin portal.
 """
 import json
+import os
 from typing import Optional
 from datetime import datetime, timedelta
-from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.responses import HTMLResponse
+from pathlib import Path
+from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File, Form
+from fastapi.responses import HTMLResponse, FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select, func, update
 
-from app.models import User, Device, Plant, DeviceAssignment, LogEntry, EnvironmentLog
+from app.models import User, Device, Plant, DeviceAssignment, LogEntry, EnvironmentLog, DeviceDebugLog
+
+# Log storage directory
+LOGS_DIR = Path("logs/device_debug")
 
 router = APIRouter()
 
@@ -477,3 +482,228 @@ async def queue_device_reboot(
         "device_id": device_id,
         "message": "Reboot queued. Device will restart on next heartbeat."
     }
+
+
+# =============================================================================
+# Device Debug Log Management
+# =============================================================================
+
+@router.post("/devices/{device_id}/logs/request")
+async def request_device_log(
+    device_id: str,
+    duration: int,
+    admin: User = Depends(_get_current_admin()),
+    session: AsyncSession = Depends(_get_db())
+):
+    """Request a debug log capture from a device.
+
+    This creates a log request record and sends a command to the device via WebSocket.
+    The device will capture debug output for the specified duration and upload it.
+    """
+    # Validate duration (1 second to 10 minutes)
+    if duration < 1 or duration > 600:
+        raise HTTPException(400, "Duration must be between 1 and 600 seconds")
+
+    # Get device
+    result = await session.execute(
+        select(Device).where(Device.device_id == device_id)
+    )
+    device = result.scalars().first()
+
+    if not device:
+        raise HTTPException(404, "Device not found")
+
+    if not device.is_online:
+        raise HTTPException(400, "Device is offline. Cannot request log capture.")
+
+    # Check if there's already a pending/capturing log for this device
+    existing_result = await session.execute(
+        select(DeviceDebugLog).where(
+            DeviceDebugLog.device_id == device.id,
+            DeviceDebugLog.status.in_(['pending', 'capturing'])
+        )
+    )
+    existing = existing_result.scalars().first()
+    if existing:
+        raise HTTPException(400, "A log capture is already in progress for this device")
+
+    # Create log request record
+    filename = datetime.utcnow().strftime("%Y-%m-%d_%H-%M-%S") + ".txt"
+    log_record = DeviceDebugLog(
+        device_id=device.id,
+        filename=filename,
+        requested_duration=duration,
+        status='pending',
+        requested_at=datetime.utcnow(),
+        requested_by_user_id=admin.id
+    )
+    session.add(log_record)
+    await session.commit()
+    await session.refresh(log_record)
+
+    # Send command to device via WebSocket
+    from app.routers.websocket import device_connections
+    if device_id in device_connections:
+        try:
+            await device_connections[device_id].send_json({
+                "type": "start_remote_log",
+                "log_id": log_record.id,
+                "duration": duration
+            })
+            print(f"[DEBUG_LOG] Sent start_remote_log command to {device_id} for {duration}s (log_id={log_record.id})")
+        except Exception as e:
+            print(f"[DEBUG_LOG] Failed to send command to device {device_id}: {e}")
+            # Update status to failed
+            log_record.status = 'failed'
+            log_record.early_cutoff_reason = f"WebSocket send failed: {str(e)}"
+            await session.commit()
+            raise HTTPException(500, f"Failed to send command to device: {str(e)}")
+    else:
+        # Device disconnected between check and send
+        log_record.status = 'failed'
+        log_record.early_cutoff_reason = "Device disconnected"
+        await session.commit()
+        raise HTTPException(400, "Device disconnected")
+
+    print(f"[ADMIN] {admin.email} requested {duration}s debug log from device {device_id}")
+
+    return {
+        "status": "success",
+        "log_id": log_record.id,
+        "message": f"Log capture requested for {duration} seconds"
+    }
+
+
+@router.get("/devices/{device_id}/logs")
+async def list_device_logs(
+    device_id: str,
+    admin: User = Depends(_get_current_admin()),
+    session: AsyncSession = Depends(_get_db())
+):
+    """List all debug logs for a device."""
+    # Get device
+    result = await session.execute(
+        select(Device).where(Device.device_id == device_id)
+    )
+    device = result.scalars().first()
+
+    if not device:
+        raise HTTPException(404, "Device not found")
+
+    # Get all logs for this device
+    logs_result = await session.execute(
+        select(DeviceDebugLog, User.email)
+        .outerjoin(User, DeviceDebugLog.requested_by_user_id == User.id)
+        .where(DeviceDebugLog.device_id == device.id)
+        .order_by(DeviceDebugLog.requested_at.desc())
+    )
+
+    logs = []
+    for log, requester_email in logs_result.all():
+        logs.append({
+            "id": log.id,
+            "filename": log.filename,
+            "requested_duration": log.requested_duration,
+            "actual_duration": log.actual_duration,
+            "file_size": log.file_size,
+            "status": log.status,
+            "early_cutoff_reason": log.early_cutoff_reason,
+            "requested_at": log.requested_at.isoformat() if log.requested_at else None,
+            "started_at": log.started_at.isoformat() if log.started_at else None,
+            "completed_at": log.completed_at.isoformat() if log.completed_at else None,
+            "requested_by": requester_email
+        })
+
+    return {"logs": logs}
+
+
+@router.get("/devices/{device_id}/logs/{log_id}/download")
+async def download_device_log(
+    device_id: str,
+    log_id: int,
+    admin: User = Depends(_get_current_admin()),
+    session: AsyncSession = Depends(_get_db())
+):
+    """Download a debug log file."""
+    # Get device
+    result = await session.execute(
+        select(Device).where(Device.device_id == device_id)
+    )
+    device = result.scalars().first()
+
+    if not device:
+        raise HTTPException(404, "Device not found")
+
+    # Get log record
+    log_result = await session.execute(
+        select(DeviceDebugLog).where(
+            DeviceDebugLog.id == log_id,
+            DeviceDebugLog.device_id == device.id
+        )
+    )
+    log = log_result.scalars().first()
+
+    if not log:
+        raise HTTPException(404, "Log not found")
+
+    if log.status != 'completed':
+        raise HTTPException(400, f"Log is not ready for download (status: {log.status})")
+
+    # Build file path
+    file_path = LOGS_DIR / device_id / log.filename
+
+    if not file_path.exists():
+        raise HTTPException(404, "Log file not found on disk")
+
+    return FileResponse(
+        path=file_path,
+        filename=f"{device_id}_{log.filename}",
+        media_type="text/plain"
+    )
+
+
+@router.delete("/devices/{device_id}/logs/{log_id}")
+async def delete_device_log(
+    device_id: str,
+    log_id: int,
+    admin: User = Depends(_get_current_admin()),
+    session: AsyncSession = Depends(_get_db())
+):
+    """Delete a debug log."""
+    # Get device
+    result = await session.execute(
+        select(Device).where(Device.device_id == device_id)
+    )
+    device = result.scalars().first()
+
+    if not device:
+        raise HTTPException(404, "Device not found")
+
+    # Get log record
+    log_result = await session.execute(
+        select(DeviceDebugLog).where(
+            DeviceDebugLog.id == log_id,
+            DeviceDebugLog.device_id == device.id
+        )
+    )
+    log = log_result.scalars().first()
+
+    if not log:
+        raise HTTPException(404, "Log not found")
+
+    # Delete file from disk if it exists
+    file_path = LOGS_DIR / device_id / log.filename
+    if file_path.exists():
+        try:
+            file_path.unlink()
+            print(f"[DEBUG_LOG] Deleted file: {file_path}")
+        except Exception as e:
+            print(f"[DEBUG_LOG] Failed to delete file {file_path}: {e}")
+
+    # Delete database record
+    await session.delete(log)
+    await session.commit()
+
+    print(f"[ADMIN] {admin.email} deleted debug log {log_id} for device {device_id}")
+
+    return {"status": "success", "message": "Log deleted"}

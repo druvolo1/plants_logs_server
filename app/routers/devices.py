@@ -4,12 +4,16 @@ Device management endpoints including CRUD, pairing, and sharing.
 """
 from typing import List, Dict
 from datetime import datetime, timedelta
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from pathlib import Path
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Form
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_
 import secrets
 
-from app.models import User, Device, DeviceShare, DeviceLink, Plant, DeviceAssignment, Location
+from app.models import User, Device, DeviceShare, DeviceLink, Plant, DeviceAssignment, Location, DeviceDebugLog
+
+# Log storage directory
+LOGS_DIR = Path("logs/device_debug")
 from app.schemas import (
     DeviceCreate,
     DeviceUpdate,
@@ -906,3 +910,115 @@ async def unpair_device(
     await session.commit()
 
     return {"status": "success", "message": "Device unpaired successfully"}
+
+
+@api_router.post("/{device_id}/logs/upload")
+async def upload_debug_log(
+    device_id: str,
+    request: Request,
+    api_key: str = Query(...),
+    log_id: int = Query(...),
+    actual_duration: int = Query(...),
+    early_cutoff_reason: str = Query(None),
+    session: AsyncSession = Depends(get_db_dependency())
+):
+    """
+    Device uploads a debug log file after capture completes.
+    The log content is sent as the raw request body.
+    """
+    # Verify device exists and API key matches
+    result = await session.execute(
+        select(Device).where(Device.device_id == device_id, Device.api_key == api_key)
+    )
+    device = result.scalars().first()
+
+    if not device:
+        raise HTTPException(404, "Device not found or invalid API key")
+
+    # Find the log record
+    log_result = await session.execute(
+        select(DeviceDebugLog).where(
+            DeviceDebugLog.id == log_id,
+            DeviceDebugLog.device_id == device.id
+        )
+    )
+    log_record = log_result.scalars().first()
+
+    if not log_record:
+        raise HTTPException(404, "Log record not found")
+
+    if log_record.status == 'completed':
+        raise HTTPException(400, "Log already uploaded")
+
+    # Read log content from request body
+    log_content = await request.body()
+    log_content_str = log_content.decode('utf-8', errors='replace')
+
+    # Create directory if needed
+    device_log_dir = LOGS_DIR / device_id
+    device_log_dir.mkdir(parents=True, exist_ok=True)
+
+    # Write log file
+    file_path = device_log_dir / log_record.filename
+    file_path.write_text(log_content_str, encoding='utf-8')
+
+    # Update log record
+    log_record.status = 'completed'
+    log_record.actual_duration = actual_duration
+    log_record.file_size = len(log_content)
+    log_record.early_cutoff_reason = early_cutoff_reason
+    log_record.completed_at = datetime.utcnow()
+
+    await session.commit()
+
+    print(f"[DEBUG_LOG] Received log from {device_id}: {len(log_content)} bytes, duration={actual_duration}s, log_id={log_id}")
+
+    return {"status": "success", "message": "Log uploaded successfully"}
+
+
+@api_router.post("/{device_id}/logs/status")
+async def update_log_status(
+    device_id: str,
+    api_key: str = Query(...),
+    log_id: int = Query(...),
+    status: str = Query(...),
+    session: AsyncSession = Depends(get_db_dependency())
+):
+    """
+    Device updates the status of a log capture (e.g., started capturing, failed).
+    """
+    # Verify device exists and API key matches
+    result = await session.execute(
+        select(Device).where(Device.device_id == device_id, Device.api_key == api_key)
+    )
+    device = result.scalars().first()
+
+    if not device:
+        raise HTTPException(404, "Device not found or invalid API key")
+
+    # Find the log record
+    log_result = await session.execute(
+        select(DeviceDebugLog).where(
+            DeviceDebugLog.id == log_id,
+            DeviceDebugLog.device_id == device.id
+        )
+    )
+    log_record = log_result.scalars().first()
+
+    if not log_record:
+        raise HTTPException(404, "Log record not found")
+
+    # Update status
+    if status == 'capturing':
+        log_record.status = 'capturing'
+        log_record.started_at = datetime.utcnow()
+    elif status == 'failed':
+        log_record.status = 'failed'
+    else:
+        raise HTTPException(400, f"Invalid status: {status}")
+
+    await session.commit()
+
+    print(f"[DEBUG_LOG] Status update from {device_id}: log_id={log_id}, status={status}")
+
+    return {"status": "success"}
