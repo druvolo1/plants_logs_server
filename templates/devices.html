@@ -355,40 +355,53 @@
         }
         .valve-grid {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
+            grid-template-columns: 1fr 1fr;
             gap: 0.5rem;
         }
-        .valve-btn {
+        .valve-control-item {
             display: flex;
-            flex-direction: column;
             align-items: center;
-            padding: 0.5rem 0.25rem;
-            border: none;
+            justify-content: space-between;
+            padding: 0.5rem;
+            background: #1f2937;
             border-radius: 6px;
-            cursor: pointer;
-            transition: all 0.2s;
-            background: rgba(255,255,255,0.1);
-            color: #94a3b8;
-            font-size: 0.7rem;
         }
-        .valve-btn:hover {
-            background: rgba(255,255,255,0.2);
-        }
-        .valve-btn.on {
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-            color: white;
-        }
-        .valve-btn .valve-icon {
-            font-size: 1.25rem;
-            margin-bottom: 0.25rem;
-        }
-        .valve-btn .valve-label {
+        .valve-control-item .valve-label {
+            color: #e5e7eb;
+            font-weight: 500;
+            font-size: 0.8rem;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            max-width: 100%;
+            max-width: 55%;
+        }
+        .valve-control-item .valve-buttons {
+            display: flex;
+            gap: 0.2rem;
+        }
+        .valve-control-item .valve-buttons button {
+            padding: 0.3rem 0.5rem;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.75rem;
+            transition: all 0.2s;
+        }
+        .valve-control-item .btn-on-active {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+        }
+        .valve-control-item .btn-off-active {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: white;
+        }
+        .valve-control-item .btn-inactive {
+            background: #374151;
+            color: #6b7280;
         }
         .valve-loading {
+            grid-column: 1 / -1;
             color: #64748b;
             font-size: 0.8rem;
             text-align: center;
@@ -2093,34 +2106,38 @@
             const grid = document.getElementById(`valve-grid-${deviceId}`);
             if (!grid) return;
 
-            // Build valve buttons
+            // Build valve controls with On/Off buttons
             let html = '';
             for (const [valveId, valve] of Object.entries(valves)) {
-                const isOn = valve.state === 'on';
+                const isOn = valve.state === 'on' || valve.state === true || valve.state === 1;
+                const label = valve.label || `Valve ${valveId}`;
                 html += `
-                    <button class="valve-btn ${isOn ? 'on' : ''}"
-                            onclick="toggleValve('${deviceId}', ${valveId})"
-                            title="${valve.label}">
-                        <span class="valve-icon">🚿</span>
-                        <span class="valve-label">${valve.label}</span>
-                    </button>
+                    <div class="valve-control-item">
+                        <span class="valve-label">${label}</span>
+                        <div class="valve-buttons">
+                            <button class="${isOn ? 'btn-on-active' : 'btn-inactive'}"
+                                    onclick="setValve('${deviceId}', ${valveId}, 'on')">On</button>
+                            <button class="${!isOn ? 'btn-off-active' : 'btn-inactive'}"
+                                    onclick="setValve('${deviceId}', ${valveId}, 'off')">Off</button>
+                        </div>
+                    </div>
                 `;
             }
             grid.innerHTML = html;
         }
 
-        // Toggle valve on/off
-        function toggleValve(deviceId, valveId) {
+        // Set valve on/off
+        function setValve(deviceId, valveId, action) {
             const ws = wsMap[deviceId];
             if (!ws || ws.readyState !== WebSocket.OPEN) {
                 console.error('WebSocket not connected');
                 return;
             }
 
-            // Send toggle command to device via server relay
+            // Send on/off command to device via server relay
             ws.send(JSON.stringify({
                 type: 'valve_command',
-                action: 'toggle',
+                action: action,
                 valve_id: valveId
             }));
         }
