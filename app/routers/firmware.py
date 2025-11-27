@@ -678,7 +678,8 @@ async def check_firmware_update(
         assignment, firmware = assignment_row
 
         # Device has a specific assignment
-        if firmware.version != current_version or assignment.force_update:
+        if firmware.version != current_version:
+            # Version mismatch - update available
             return FirmwareUpdateInfo(
                 update_available=True,
                 current_version=current_version,
@@ -690,6 +691,13 @@ async def check_firmware_update(
                 checksum=firmware.checksum
             )
         else:
+            # Versions match - clear force_update flag if it was set (update completed)
+            if assignment.force_update:
+                assignment.force_update = False
+                assignment.updated_at = datetime.utcnow()
+                await session.commit()
+                print(f"[FIRMWARE] Cleared force_update flag for device {device_id} - now at v{current_version}")
+
             return FirmwareUpdateInfo(
                 update_available=False,
                 current_version=current_version,
