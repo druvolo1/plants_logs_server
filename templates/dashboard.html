@@ -1027,7 +1027,8 @@
             };
 
             const type = typeMap[deviceType] || typeMap['other'];
-            const scopeText = scope === 'room' ? 'ROOM' : 'PLANT';
+            // Valve controllers show "VALVE", others show ROOM/PLANT based on scope
+            const scopeText = deviceType === 'valve_controller' ? 'VALVE' : (scope === 'room' ? 'ROOM' : 'PLANT');
 
             return `<div class="device-type-icon-bar ${type.bgClass}">
                 <div class="scope-text">${scopeText}</div>
@@ -1152,6 +1153,13 @@
                                         <label>Sensor:</label>
                                         <span id="system-name-${device.device_id}">${device.name || device.system_name || 'Environmental Sensor'}</span>
                                     </div>
+                                    ` : deviceType === 'valve_controller' ? `
+                                    <!-- Valve Controller Header - Just show device name -->
+                                    <div class="info-item" id="system-item-${device.device_id}" data-info-type="system" draggable="true">
+                                        <span class="info-item-drag-handle" title="Drag to reorder">⋮</span>
+                                        <label>Controller:</label>
+                                        <span id="system-name-${device.device_id}">${device.name || device.system_name || 'Valve Controller'}</span>
+                                    </div>
                                     ` : `
                                     <!-- Plant System Header -->
                                     <div class="info-item" id="system-item-${device.device_id}" data-info-type="system" draggable="true">
@@ -1264,6 +1272,18 @@
                                                     <span>PPFD:</span>
                                                     <span id="env-ppfd-${device.device_id}" style="font-weight: bold;">--</span>
                                                 </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    ` : deviceType === 'valve_controller' ? `
+                                    <!-- Valve Controller Card -->
+                                    <div class="card" id="valve-controller-card-${device.device_id}" data-card-type="valve-controller" draggable="true" style="min-width: 100%;">
+                                        <div class="card-drag-handle" title="Drag to reorder">⋮⋮</div>
+                                        <div class="card-content">
+                                            <div class="card-title">🚿 Valve Controls</div>
+                                            <div id="valve-controls-grid-${device.device_id}" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem; margin-top: 0.5rem;">
+                                                <!-- Valve buttons will be populated via WebSocket -->
+                                                <div style="grid-column: 1 / -1; text-align: center; color: #888; padding: 1rem;">Connecting...</div>
                                             </div>
                                         </div>
                                     </div>
@@ -2167,6 +2187,11 @@
                     updateOnlineStatus(device_id, true);
                     updateDosingControlsGranular(device_id, data);
                 }
+                // Handle valve status update from valve controller
+                else if (data.type === 'valve_status' && data.valves) {
+                    updateOnlineStatus(device_id, true);
+                    updateValveControls(device_id, data.valves);
+                }
                 // Legacy: Handle old status_update format for backwards compatibility
                 else if (data.type === 'status_update' && data.data) {
                     updateOnlineStatus(device_id, true);
@@ -2408,6 +2433,46 @@
                     break;
                 }
             }
+        }
+
+        // Update valve controls for valve controller devices
+        function updateValveControls(device_id, valves) {
+            const grid = document.getElementById(`valve-controls-grid-${device_id}`);
+            if (!grid) return;
+
+            // Build valve buttons HTML
+            let html = '';
+            for (let i = 0; i < valves.length; i++) {
+                const valve = valves[i];
+                const isOn = valve.state === true || valve.state === 'on' || valve.state === 1;
+                const label = valve.label || `Valve ${valve.id}`;
+
+                html += `
+                    <button class="valve-btn ${isOn ? 'on' : ''}"
+                            onclick="toggleValveDashboard('${device_id}', ${valve.id})"
+                            title="${label}"
+                            style="padding: 0.75rem 0.5rem; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.85rem; transition: all 0.2s; ${isOn ? 'background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white;' : 'background: #374151; color: #9ca3af;'}">
+                        ${label}
+                    </button>
+                `;
+            }
+
+            grid.innerHTML = html;
+        }
+
+        // Toggle valve on valve controller
+        function toggleValveDashboard(device_id, valve_id) {
+            const ws = wsMap[device_id];
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                console.error('WebSocket not connected for device:', device_id);
+                return;
+            }
+
+            ws.send(JSON.stringify({
+                type: 'valve_command',
+                action: 'toggle',
+                valve_id: valve_id
+            }));
         }
 
         function updatePlantInfo(device_id, data) {
