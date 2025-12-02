@@ -758,6 +758,7 @@ async def delete_device_link(
 
 @api_router.post("/pair", response_model=DevicePairResponse)
 async def pair_device(
+    request: Request,
     pair_request: DevicePairRequest,
     user: User = Depends(get_current_user_dependency()),
     session: AsyncSession = Depends(get_db_dependency())
@@ -766,13 +767,16 @@ async def pair_device(
     Pair an environment sensor device to a user account.
     Device submits device_id, user approves via web UI, device polls for result.
     """
+    # Get effective user (handles impersonation)
+    effective_user = await get_effective_user(request, user, session)
+
     # Check if device already exists
     result = await session.execute(select(Device).where(Device.device_id == pair_request.device_id))
     existing_device = result.scalars().first()
 
     if existing_device:
         # Device exists - check if it belongs to this user
-        if existing_device.user_id == user.id:
+        if existing_device.user_id == effective_user.id:
             # Same user re-pairing their own device (e.g., after factory reset)
             # Generate new API key and update the existing device
             api_key = secrets.token_hex(32)
@@ -787,7 +791,7 @@ async def pair_device(
             elif pair_request.location_name:
                 new_location = Location(
                     name=pair_request.location_name,
-                    user_id=user.id
+                    user_id=effective_user.id
                 )
                 session.add(new_location)
                 await session.flush()
@@ -800,7 +804,7 @@ async def pair_device(
             pairing_results[pair_request.device_id] = {
                 "success": True,
                 "api_key": api_key,
-                "user_email": user.email,
+                "user_email": effective_user.email,
                 "message": "Device re-paired successfully (API key updated)"
             }
 
@@ -824,7 +828,7 @@ async def pair_device(
         # Create new location if name provided but no ID
         new_location = Location(
             name=pair_request.location_name,
-            user_id=user.id
+            user_id=effective_user.id
         )
         session.add(new_location)
         await session.flush()
@@ -843,7 +847,7 @@ async def pair_device(
         device_type=device_type,
         scope=scope,
         location_id=location_id,
-        user_id=user.id,
+        user_id=effective_user.id,
         is_online=True,
         last_seen=datetime.utcnow()
     )
@@ -856,7 +860,7 @@ async def pair_device(
     pairing_results[pair_request.device_id] = {
         "success": True,
         "api_key": api_key,
-        "user_email": user.email
+        "user_email": effective_user.email
     }
 
     return DevicePairResponse(
@@ -888,6 +892,35 @@ async def get_pair_status(device_id: str):
 async def pair_status_options(device_id: str):
     """Handle CORS preflight for pair-status endpoint"""
     return {"message": "OK"}
+
+
+@api_router.get("/check-registration")
+async def check_device_registration(
+    device_id: str = Query(...),
+    session: AsyncSession = Depends(get_db_dependency())
+):
+    """
+    Check if a device is registered on the server by its device_id.
+    Used by devices to restore pairing if local data was lost.
+    Returns the api_key if registered so device can restore its connection.
+    """
+    # Find device by device_id
+    result = await session.execute(
+        select(Device).where(Device.device_id == device_id)
+    )
+    device = result.scalars().first()
+
+    if not device:
+        return {"registered": False, "message": "Device not found"}
+
+    # Device exists - return info needed to restore pairing
+    return {
+        "registered": True,
+        "device_id": device.device_id,
+        "api_key": device.api_key,
+        "name": device.name,
+        "device_type": device.device_type
+    }
 
 
 @api_router.post("/{device_id}/unpair")
