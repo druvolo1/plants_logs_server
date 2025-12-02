@@ -161,12 +161,21 @@ async def device_websocket(
                 await user_ws.send_json(data)
                 print(f"Relayed to user for {device_id}: {json.dumps(data)}")
     except WebSocketDisconnect:
-        print(f"Device disconnected: {device_id}")
+        print(f"Device disconnected cleanly: {device_id}")
+    except Exception as e:
+        print(f"Device connection error for {device_id}: {e}")
+    finally:
+        # Always clean up and mark device offline, regardless of how connection ended
+        print(f"Cleaning up device connection: {device_id}")
         if device_id in device_connections:
             del device_connections[device_id]
-        await session.execute(update(Device).where(Device.device_id == device_id).values(is_online=False, last_seen=datetime.utcnow()))
-        await session.commit()
-        print(f"Set {device_id} offline in DB")
+
+        try:
+            await session.execute(update(Device).where(Device.device_id == device_id).values(is_online=False, last_seen=datetime.utcnow()))
+            await session.commit()
+            print(f"Set {device_id} offline in DB")
+        except Exception as db_error:
+            print(f"Error setting {device_id} offline in DB: {db_error}")
 
         # Notify all connected users that the device went offline
         for user_ws in user_connections[device_id]:
