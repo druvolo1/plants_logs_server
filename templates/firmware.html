@@ -456,6 +456,7 @@
                                 <option value="">Select device type...</option>
                                 <option value="environmental">Environmental Sensor</option>
                                 <option value="valve_controller">Valve Controller</option>
+                                <option value="hydroponic_controller">Hydroponic Controller</option>
                                 <option value="feeding_system">Feeding System</option>
                             </select>
                         </div>
@@ -631,6 +632,7 @@
                     const typeLabel = {
                         'environmental': 'Environmental Sensor',
                         'valve_controller': 'Valve Controller',
+                        'hydroponic_controller': 'Hydroponic Controller',
                         'feeding_system': 'Feeding System'
                     }[deviceType] || deviceType;
 
@@ -755,14 +757,21 @@
                 const select = document.getElementById('assignment-device');
                 select.innerHTML = '<option value="">Select device...</option>';
 
-                // Filter to only environmental sensors and valve controllers (ESP32 devices)
+                // Filter to only ESP32 devices (environmental sensors, valve controllers, hydroponic controllers)
                 const espDevices = devices.filter(d =>
-                    d.device_type === 'environmental' || d.device_type === 'valve_controller'
+                    d.device_type === 'environmental' ||
+                    d.device_type === 'valve_controller' ||
+                    d.device_type === 'hydroponic_controller'
                 );
 
                 espDevices.forEach(device => {
                     const name = device.name || device.device_id.substring(0, 8);
-                    const type = device.device_type === 'environmental' ? 'Env Sensor' : 'Valve Ctrl';
+                    const typeLabels = {
+                        'environmental': 'Env Sensor',
+                        'valve_controller': 'Valve Ctrl',
+                        'hydroponic_controller': 'Hydroponic'
+                    };
+                    const type = typeLabels[device.device_type] || device.device_type;
                     select.innerHTML += `<option value="${device.device_id}">${name} (${type}) - ${device.owner_email}</option>`;
                 });
             } catch (error) {
