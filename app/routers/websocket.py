@@ -88,8 +88,8 @@ async def device_websocket(
         except:
             pass  # User might have disconnected
 
-    # Check for pending force firmware update (for valve_controller devices)
-    if device.device_type == 'valve_controller':
+    # Check for pending force firmware update (for ESP32 devices)
+    if device.device_type in ['valve_controller', 'hydroponic_controller']:
         try:
             assignment_result = await session.execute(
                 select(DeviceFirmwareAssignment).where(

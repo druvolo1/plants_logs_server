@@ -129,6 +129,13 @@ async def add_device(
     await session.commit()
     await session.refresh(new_device)
 
+    # Store pairing result for ESP32 devices to retrieve via polling
+    pairing_results[device.device_id] = {
+        "success": True,
+        "api_key": api_key,
+        "user_email": effective_user.email
+    }
+
     return {"api_key": api_key, "message": "Device added. Copy API key to Pi settings."}
 
 
