@@ -713,3 +713,67 @@ async def delete_device_log(
     print(f"[ADMIN] {admin.email} deleted debug log {log_id} for device {device_id}")
 
     return {"status": "success", "message": "Log deleted"}
+
+
+# =============================================================================
+# Device Status Management
+# =============================================================================
+
+@router.put("/devices/{device_id}/set-offline")
+async def set_device_offline(
+    device_id: str,
+    admin: User = Depends(_get_current_admin()),
+    session: AsyncSession = Depends(_get_db())
+):
+    """Manually mark a device as offline (admin only).
+
+    Useful when a device crashed or disconnected ungracefully and is still
+    showing as online in the database.
+    """
+    result = await session.execute(
+        select(Device).where(Device.device_id == device_id)
+    )
+    device = result.scalars().first()
+
+    if not device:
+        raise HTTPException(404, "Device not found")
+
+    was_online = device.is_online
+    device.is_online = False
+    device.last_seen = datetime.utcnow()
+    await session.commit()
+
+    print(f"[ADMIN] {admin.email} manually set device {device_id} offline (was_online={was_online})")
+
+    return {
+        "status": "success",
+        "device_id": device_id,
+        "message": f"Device marked offline (was {'online' if was_online else 'already offline'})"
+    }
+
+
+@router.put("/devices/reset-all-offline")
+async def reset_all_devices_offline(
+    admin: User = Depends(_get_current_admin()),
+    session: AsyncSession = Depends(_get_db())
+):
+    """Mark all devices as offline (admin only).
+
+    Useful after server restart to reset stale online status.
+    Devices will be marked online again when they reconnect.
+    """
+    result = await session.execute(
+        update(Device)
+        .where(Device.is_online == True)
+        .values(is_online=False, last_seen=datetime.utcnow())
+    )
+    await session.commit()
+
+    count = result.rowcount
+
+    print(f"[ADMIN] {admin.email} reset all devices to offline (affected {count} devices)")
+
+    return {
+        "status": "success",
+        "message": f"Marked {count} devices as offline"
+    }

@@ -199,6 +199,10 @@
             background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
             color: white;
         }
+        .device-type-hydroponic {
+            background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+            color: white;
+        }
         .device-type-other {
             background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
             color: white;
@@ -998,8 +1002,9 @@
         function getDeviceTypeBadge(deviceType) {
             const typeMap = {
                 'feeding_system': { label: 'Feeding System', class: 'device-type-feeding', icon: '🔧' },
+                'hydroponic_controller': { label: 'Hydroponic Controller', class: 'device-type-hydroponic', icon: '💧' },
                 'environmental': { label: 'Environmental Sensor', class: 'device-type-environmental', icon: '🌡️' },
-                'valve_controller': { label: 'Valve Controller', class: 'device-type-valve', icon: '💧' },
+                'valve_controller': { label: 'Valve Controller', class: 'device-type-valve', icon: '⚙️' },
                 'other': { label: 'Other Device', class: 'device-type-other', icon: '📟' }
             };
 
@@ -1021,8 +1026,9 @@
         function getDeviceTypeIconBar(deviceType, scope) {
             const typeMap = {
                 'feeding_system': { icon: '🔧', bgClass: 'device-type-feeding' },
+                'hydroponic_controller': { icon: '💧', bgClass: 'device-type-hydroponic' },
                 'environmental': { icon: '🌡️', bgClass: 'device-type-environmental' },
-                'valve_controller': { icon: '💧', bgClass: 'device-type-valve' },
+                'valve_controller': { icon: '⚙️', bgClass: 'device-type-valve' },
                 'other': { icon: '📟', bgClass: 'device-type-other' }
             };
 
