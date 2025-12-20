@@ -1354,6 +1354,14 @@
                     <button class="actions-modal-item" onclick="closeActionsModal(); rebootValveController('${deviceId}');">
                         <span class="icon">🔄</span> Reboot System
                     </button>`;
+            } else if (deviceType === 'hydroponic_controller') {
+                html += `
+                    <button class="actions-modal-item" onclick="closeActionsModal(); updateHydroponicControllerFirmware('${deviceId}');">
+                        <span class="icon">⬆️</span> Update Software
+                    </button>
+                    <button class="actions-modal-item" onclick="closeActionsModal(); rebootHydroponicController('${deviceId}');">
+                        <span class="icon">🔄</span> Reboot System
+                    </button>`;
             } else {
                 html += `
                     <button class="actions-modal-item" onclick="closeActionsModal(); updateDevice('${deviceId}');">
@@ -2359,6 +2367,50 @@
             }
 
             if (!confirm('This will reboot the valve controller. Continue?')) {
+                return;
+            }
+
+            showDeviceStatus(device_id, 'Sending reboot command...', '#dc2626');
+
+            // Send reboot command via WebSocket
+            ws.send(JSON.stringify({
+                type: 'reboot'
+            }));
+
+            showDeviceStatus(device_id, 'Reboot command sent! Device will restart shortly.', '#10b981');
+        }
+
+        // Update hydroponic controller firmware via WebSocket command
+        function updateHydroponicControllerFirmware(device_id) {
+            const ws = wsMap[device_id];
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                alert('Device is not connected. Please wait for the device to come online.');
+                return;
+            }
+
+            if (!confirm('This will trigger a firmware update on the hydroponic controller. The device will restart during the update. Continue?')) {
+                return;
+            }
+
+            showDeviceStatus(device_id, 'Sending update command...', '#f59e0b');
+
+            // Send firmware update command via WebSocket
+            ws.send(JSON.stringify({
+                type: 'firmware_update'
+            }));
+
+            showDeviceStatus(device_id, 'Update command sent! Device will check for updates and restart if available.', '#10b981');
+        }
+
+        // Reboot hydroponic controller via WebSocket command
+        function rebootHydroponicController(device_id) {
+            const ws = wsMap[device_id];
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                alert('Device is not connected. Please wait for the device to come online.');
+                return;
+            }
+
+            if (!confirm('This will reboot the hydroponic controller. Continue?')) {
                 return;
             }
 
