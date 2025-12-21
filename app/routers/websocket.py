@@ -113,6 +113,8 @@ async def device_websocket(
             if data.get('type') == 'device_info':
                 device_type = data.get('device_type')
                 capabilities = data.get('capabilities')
+                firmware_version = data.get('firmware_version')
+                mdns_hostname = data.get('mdns_hostname')
 
                 updates = {}
 
@@ -130,6 +132,16 @@ async def device_websocket(
                 if capabilities:
                     updates['capabilities'] = json.dumps(capabilities)
                     print(f"Stored capabilities for {device_id}: {capabilities}")
+
+                # Store firmware version
+                if firmware_version:
+                    updates['firmware_version'] = firmware_version
+                    print(f"Stored firmware version for {device_id}: {firmware_version}")
+
+                # Store mDNS hostname
+                if mdns_hostname:
+                    updates['mdns_hostname'] = mdns_hostname
+                    print(f"Stored mDNS hostname for {device_id}: {mdns_hostname}")
 
                 # Update device in database
                 if updates:

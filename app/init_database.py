@@ -216,6 +216,14 @@ async def init_database():
                 "firmware_version VARCHAR(50) NULL AFTER scope"
             )
 
+            # Add mdns_hostname column if it doesn't exist (mDNS hostname for local network discovery)
+            await check_and_add_column(
+                conn,
+                'devices',
+                'mdns_hostname',
+                "mdns_hostname VARCHAR(255) NULL AFTER firmware_version"
+            )
+
             print("\nChecking 'plants' table schema...")
 
             # Add batch_number column if it doesn't exist
