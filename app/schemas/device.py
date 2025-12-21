@@ -51,6 +51,8 @@ class DeviceRead(BaseModel):
     device_type: Optional[str] = 'feeding_system'  # Device type
     scope: Optional[str] = 'plant'  # 'plant' or 'room'
     capabilities: Optional[str] = None  # JSON string of capabilities
+    firmware_version: Optional[str] = None  # Device's current firmware version
+    mdns_hostname: Optional[str] = None  # mDNS hostname (e.g., "herbnerdz-valve.local")
     last_seen: Optional[datetime] = None  # Last connection timestamp
     location_id: Optional[int] = None  # Location assignment
     is_owner: Optional[bool] = True  # Whether current user owns the device
