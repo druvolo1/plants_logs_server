@@ -863,6 +863,25 @@
         </div>
     </div>
 
+    <!-- Device Settings Modal -->
+    <div id="settings-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 2000;" onclick="if(event.target === this) closeDeviceSettingsModal();">
+        <div style="position: relative; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #1e293b; padding: 2rem; border-radius: 12px; max-width: 600px; width: 90%; max-height: 85vh; overflow-y: auto; box-shadow: 0 8px 32px rgba(0,0,0,0.5);">
+            <h3 style="color: #10b981; margin-top: 0;" id="settings-modal-title">Device Settings</h3>
+            <p style="color: #888; font-size: 0.9rem; margin-bottom: 1.5rem;">Configure device settings remotely via WebSocket</p>
+
+            <div id="settings-modal-body">
+                <div style="text-align: center; padding: 2rem; color: #94a3b8;">
+                    <div style="font-size: 2rem; margin-bottom: 1rem;">⏳</div>
+                    <div>Loading settings...</div>
+                </div>
+            </div>
+
+            <div style="margin-top: 1.5rem; text-align: right;">
+                <button onclick="closeDeviceSettingsModal()" style="padding: 0.5rem 1rem; background: #475569; color: white; border: none; border-radius: 6px; cursor: pointer;">Close</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Share Management Modal -->
     <div id="share-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 2000;">
         <div style="position: relative; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #1e293b; padding: 2rem; border-radius: 12px; max-width: 600px; width: 90%; box-shadow: 0 8px 32px rgba(0,0,0,0.5);">
@@ -1392,6 +1411,9 @@
                     </button>`;
             } else if (deviceType === 'valve_controller') {
                 html += `
+                    <button class="actions-modal-item" onclick="closeActionsModal(); openDeviceSettingsModal('${deviceId}', '${deviceType}');">
+                        <span class="icon">⚙️</span> Device Settings
+                    </button>
                     <button class="actions-modal-item" onclick="closeActionsModal(); openEditLabelsModal('${deviceId}');">
                         <span class="icon">🏷️</span> Edit Valve Labels
                     </button>
@@ -1440,6 +1462,211 @@
         function closeActionsModal() {
             document.getElementById('actions-modal').classList.remove('show');
             currentActionsDeviceId = null;
+        }
+
+        // Device Settings Modal
+        let currentSettingsDeviceId = null;
+        let currentSettingsDeviceType = null;
+
+        function openDeviceSettingsModal(deviceId, deviceType) {
+            // Check if device is online
+            const device = allDevices.find(d => d.device_id === deviceId);
+            if (!device || !device.is_online) {
+                alert('Cannot access settings: Device is offline. Settings can only be configured when the device is connected.');
+                return;
+            }
+
+            currentSettingsDeviceId = deviceId;
+            currentSettingsDeviceType = deviceType;
+
+            // Update modal title with device name
+            const deviceName = device.name || deviceId.substring(0, 8);
+            document.getElementById('settings-modal-title').textContent = `${deviceName} - Settings`;
+
+            // Show modal with loading state
+            document.getElementById('settings-modal-body').innerHTML = `
+                <div style="text-align: center; padding: 2rem; color: #94a3b8;">
+                    <div style="font-size: 2rem; margin-bottom: 1rem;">⏳</div>
+                    <div>Loading settings from device...</div>
+                </div>
+            `;
+            document.getElementById('settings-modal').style.display = 'block';
+
+            // Request settings from device via WebSocket
+            requestDeviceSettings(deviceId);
+        }
+
+        function closeDeviceSettingsModal() {
+            document.getElementById('settings-modal').style.display = 'none';
+            currentSettingsDeviceId = null;
+            currentSettingsDeviceType = null;
+        }
+
+        function requestDeviceSettings(deviceId) {
+            const ws = device_connections[deviceId];
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                document.getElementById('settings-modal-body').innerHTML = `
+                    <div style="text-align: center; padding: 2rem; color: #ef4444;">
+                        <div style="font-size: 2rem; margin-bottom: 1rem;">❌</div>
+                        <div>WebSocket not connected</div>
+                        <div style="font-size: 0.9rem; margin-top: 0.5rem; color: #94a3b8;">Please try again in a moment</div>
+                    </div>
+                `;
+                return;
+            }
+
+            // Send get_settings request
+            ws.send(JSON.stringify({
+                type: 'get_settings'
+            }));
+
+            // Set timeout for response
+            setTimeout(() => {
+                const body = document.getElementById('settings-modal-body');
+                if (body && body.innerHTML.includes('Loading')) {
+                    body.innerHTML = `
+                        <div style="text-align: center; padding: 2rem; color: #ef4444;">
+                            <div style="font-size: 2rem; margin-bottom: 1rem;">⏱️</div>
+                            <div>Request timed out</div>
+                            <div style="font-size: 0.9rem; margin-top: 0.5rem; color: #94a3b8;">Device did not respond</div>
+                        </div>
+                    `;
+                }
+            }, 5000);
+        }
+
+        function displayDeviceSettings(settings) {
+            if (!currentSettingsDeviceId || currentSettingsDeviceType !== 'valve_controller') return;
+
+            // Generate valve label inputs
+            let valveLabelsHTML = '';
+            const valveLabels = settings.valve_labels || ['Valve 1', 'Valve 2', 'Valve 3', 'Valve 4', 'Valve 5', 'Valve 6', 'Valve 7', 'Valve 8'];
+            for (let i = 0; i < 8; i++) {
+                valveLabelsHTML += `
+                    <div style="display: grid; grid-template-columns: 60px 1fr; gap: 0.75rem; align-items: center;">
+                        <label style="color: #94a3b8; font-size: 0.9rem;">Valve ${i + 1}</label>
+                        <input type="text" id="valve-label-${i}" value="${valveLabels[i] || 'Valve ' + (i + 1)}"
+                            onchange="updateValveLabel(${i}, this.value)"
+                            style="padding: 0.5rem; background: #0f172a; border: 1px solid #374151; border-radius: 6px; color: #fff; font-size: 0.95rem;">
+                    </div>
+                `;
+            }
+
+            // Generate valve assignment checkboxes
+            let valveAssignmentsHTML = '';
+            const valveAssignments = settings.outlet_valve_assignments || 0xFF;
+            for (let i = 0; i < 8; i++) {
+                const isAssigned = (valveAssignments & (1 << i)) !== 0;
+                valveAssignmentsHTML += `
+                    <label style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem; background: rgba(59, 130, 246, 0.05); border-radius: 4px; cursor: pointer;">
+                        <input type="checkbox" id="outlet-valve-${i}" ${isAssigned ? 'checked' : ''}
+                            onchange="updateOutletValveAssignment(${i}, this.checked)"
+                            style="width: 18px; height: 18px; cursor: pointer;">
+                        <span style="color: #e2e8f0; font-size: 0.9rem;">Valve ${i + 1} (${valveLabels[i] || 'Valve ' + (i + 1)})</span>
+                    </label>
+                `;
+            }
+
+            const html = `
+                <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+                    <!-- Device Name -->
+                    <div>
+                        <label style="display: block; color: #94a3b8; font-size: 0.9rem; margin-bottom: 0.5rem; font-weight: 600;">Device Name</label>
+                        <input type="text" id="setting-device-name" value="${settings.device_name || ''}"
+                            onchange="updateDeviceSetting('device_name', this.value)"
+                            style="width: 100%; padding: 0.75rem; background: #0f172a; border: 1px solid #374151; border-radius: 6px; color: #fff; font-size: 1rem;">
+                    </div>
+
+                    <!-- Valve Labels -->
+                    <div style="background: rgba(59, 130, 246, 0.05); padding: 1rem; border-radius: 8px; border: 1px solid #374151;">
+                        <h3 style="color: #10b981; margin: 0 0 1rem 0; font-size: 1.1rem;">Valve Labels</h3>
+                        <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                            ${valveLabelsHTML}
+                        </div>
+                    </div>
+
+                    <!-- Outlet Configuration -->
+                    <div style="background: rgba(59, 130, 246, 0.05); padding: 1rem; border-radius: 8px; border: 1px solid #374151;">
+                        <h3 style="color: #10b981; margin: 0 0 1rem 0; font-size: 1.1rem;">Remote Outlet Configuration</h3>
+
+                        <!-- Outlet Enabled -->
+                        <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem; background: rgba(59, 130, 246, 0.1); border-radius: 6px; margin-bottom: 1rem;">
+                            <div>
+                                <div style="color: #e2e8f0; font-weight: 500;">Enable Outlet Control</div>
+                                <div style="color: #94a3b8; font-size: 0.85rem;">Automatically control remote outlet based on valve states</div>
+                            </div>
+                            <label class="switch">
+                                <input type="checkbox" id="outlet-enabled" ${settings.outlet_enabled ? 'checked' : ''}
+                                    onchange="updateDeviceSetting('outlet_enabled', this.checked)">
+                                <span class="slider round"></span>
+                            </label>
+                        </div>
+
+                        <!-- Outlet Host -->
+                        <div style="margin-bottom: 1rem;">
+                            <label style="display: block; color: #94a3b8; font-size: 0.9rem; margin-bottom: 0.5rem;">Outlet IP Address / Hostname</label>
+                            <input type="text" id="outlet-host" value="${settings.outlet_host || ''}"
+                                placeholder="e.g., 192.168.1.100 or outlet.local"
+                                onchange="updateDeviceSetting('outlet_host', this.value)"
+                                style="width: 100%; padding: 0.75rem; background: #0f172a; border: 1px solid #374151; border-radius: 6px; color: #fff; font-size: 1rem;">
+                        </div>
+
+                        <!-- Outlet Port -->
+                        <div style="margin-bottom: 1rem;">
+                            <label style="display: block; color: #94a3b8; font-size: 0.9rem; margin-bottom: 0.5rem;">Outlet Port</label>
+                            <input type="number" id="outlet-port" value="${settings.outlet_port || 80}" min="1" max="65535"
+                                onchange="updateDeviceSetting('outlet_port', parseInt(this.value))"
+                                style="width: 150px; padding: 0.75rem; background: #0f172a; border: 1px solid #374151; border-radius: 6px; color: #fff; font-size: 1rem;">
+                        </div>
+
+                        <!-- Valve Assignments -->
+                        <div>
+                            <label style="display: block; color: #94a3b8; font-size: 0.9rem; margin-bottom: 0.5rem;">Assigned Valves</label>
+                            <div style="color: #64748b; font-size: 0.85rem; margin-bottom: 0.75rem;">Select which valves control this outlet (outlet turns on when any assigned valve is on)</div>
+                            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.5rem;">
+                                ${valveAssignmentsHTML}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('settings-modal-body').innerHTML = html;
+        }
+
+        function updateValveLabel(valveIndex, label) {
+            updateDeviceSetting('valve_label', { index: valveIndex, label: label });
+        }
+
+        function updateOutletValveAssignment(valveIndex, assigned) {
+            // Get current assignments from checkboxes
+            let assignments = 0;
+            for (let i = 0; i < 8; i++) {
+                const checkbox = document.getElementById(`outlet-valve-${i}`);
+                if (checkbox && checkbox.checked) {
+                    assignments |= (1 << i);
+                }
+            }
+            updateDeviceSetting('outlet_valve_assignments', assignments);
+        }
+
+        function updateDeviceSetting(key, value) {
+            if (!currentSettingsDeviceId) return;
+
+            const ws = device_connections[currentSettingsDeviceId];
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                alert('WebSocket not connected. Cannot update setting.');
+                return;
+            }
+
+            // Send update to device
+            ws.send(JSON.stringify({
+                type: 'update_setting',
+                key: key,
+                value: value
+            }));
+
+            console.log(`Updating setting ${key} = ${value} on device ${currentSettingsDeviceId}`);
         }
 
         // Edit Valve Labels Modal
@@ -2221,6 +2448,21 @@
                     const deviceIndex = allDevices.findIndex(d => d.device_id === device_id);
                     if (deviceIndex !== -1) {
                         allDevices[deviceIndex].is_online = data.online;
+                    }
+                }
+
+                // Handle settings response
+                if (data.type === 'settings' && data.settings) {
+                    displayDeviceSettings(data.settings);
+                }
+
+                // Handle setting update confirmation
+                if (data.type === 'setting_updated') {
+                    if (data.success) {
+                        console.log(`Setting ${data.key} updated successfully`);
+                        // Optionally show a brief success indicator
+                    } else {
+                        alert(`Failed to update setting: ${data.message || 'Unknown error'}`);
                     }
                 }
 
