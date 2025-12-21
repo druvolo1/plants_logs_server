@@ -1214,6 +1214,24 @@
             }
         }
 
+        // Format last seen timestamp as relative time
+        function formatLastSeen(lastSeenStr) {
+            if (!lastSeenStr) return 'Never';
+
+            const lastSeen = new Date(lastSeenStr);
+            const now = new Date();
+            const diffMs = now - lastSeen;
+            const diffMins = Math.floor(diffMs / 60000);
+            const diffHours = Math.floor(diffMs / 3600000);
+            const diffDays = Math.floor(diffMs / 86400000);
+
+            if (diffMins < 1) return 'Just now';
+            if (diffMins < 60) return `${diffMins}m ago`;
+            if (diffHours < 24) return `${diffHours}h ago`;
+            if (diffDays < 7) return `${diffDays}d ago`;
+            return lastSeen.toLocaleDateString();
+        }
+
         function createDeviceCard(device) {
             const deviceDiv = document.createElement('div');
             deviceDiv.className = `device-card${device.active_plant_name ? ' has-plant' : ''}`;
@@ -1282,6 +1300,7 @@
                         <span class="meta-label">Version:</span>
                         <span class="version" id="version-${device.device_id}">...</span>
                         <span id="update-badge-${device.device_id}"></span>
+                        ${device.last_seen ? `<span class="sep">·</span><span class="meta-label">Last seen:</span><span class="last-seen">${formatLastSeen(device.last_seen)}</span>` : ''}
                         ${locationPath ? `<span class="sep">·</span><span class="location">📍 ${locationPath}</span>` : ''}
                     </div>
                     ${plantInfo}

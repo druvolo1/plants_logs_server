@@ -296,8 +296,11 @@ async def delete_device(
     user: User = Depends(get_current_user_dependency()),
     session: AsyncSession = Depends(get_db_dependency())
 ):
-    """Delete a device"""
-    # Load device with its related plants to allow proper cascade deletion
+    """Delete a device and all related records"""
+    from app.models import DeviceShare, DeviceLink, DeviceDebugLog, DeviceFirmwareAssignment, LogEntry, EnvironmentLog
+    from sqlalchemy import delete as sql_delete
+
+    # Load device
     result = await session.execute(
         select(Device).where(Device.device_id == device_id, Device.user_id == user.id)
     )
@@ -306,9 +309,21 @@ async def delete_device(
     if not device:
         raise HTTPException(404, "Device not found")
 
+    # Delete related records manually (in case CASCADE isn't set up in DB)
+    await session.execute(sql_delete(DeviceShare).where(DeviceShare.device_id == device.id))
+    await session.execute(sql_delete(DeviceLink).where(
+        (DeviceLink.parent_device_id == device.id) | (DeviceLink.child_device_id == device.id)
+    ))
+    await session.execute(sql_delete(DeviceDebugLog).where(DeviceDebugLog.device_id == device.id))
+    await session.execute(sql_delete(DeviceFirmwareAssignment).where(DeviceFirmwareAssignment.device_id == device.id))
+    await session.execute(sql_delete(LogEntry).where(LogEntry.device_id == device.id))
+    await session.execute(sql_delete(EnvironmentLog).where(EnvironmentLog.device_id == device.id))
+
+    # Delete the device itself
     await session.delete(device)
     await session.commit()
 
+    print(f"[DEVICE] User {user.email} deleted device {device_id} and all related records")
     return {"status": "success", "message": "Device deleted"}
 
 

@@ -15,7 +15,7 @@ class LogEntry(Base):
     """
     __tablename__ = "log_entries"
     id = Column(Integer, primary_key=True, index=True)
-    device_id = Column(Integer, ForeignKey("devices.id"), nullable=True, index=True)  # Nullable for legacy data
+    device_id = Column(Integer, ForeignKey("devices.id", ondelete="CASCADE"), nullable=True, index=True)  # Nullable for legacy data
     # Legacy field - kept for backward compatibility with old data
     plant_id = Column(Integer, ForeignKey("plants.id"), nullable=True, index=True)
     event_type = Column(String(20), nullable=False)  # 'sensor' or 'dosing'
@@ -34,7 +34,7 @@ class LogEntry(Base):
 class EnvironmentLog(Base):
     __tablename__ = "environment_logs"
     id = Column(Integer, primary_key=True, index=True)
-    device_id = Column(Integer, ForeignKey("devices.id"), nullable=False)
+    device_id = Column(Integer, ForeignKey("devices.id", ondelete="CASCADE"), nullable=False)
     location_id = Column(Integer, ForeignKey("locations.id"), nullable=True)
 
     # Air Quality readings

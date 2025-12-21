@@ -48,7 +48,7 @@ class Device(Base):
 class DeviceShare(Base):
     __tablename__ = "device_shares"
     id = Column(Integer, primary_key=True, index=True)
-    device_id = Column(Integer, ForeignKey("devices.id"), nullable=False)
+    device_id = Column(Integer, ForeignKey("devices.id", ondelete="CASCADE"), nullable=False)
     owner_user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     shared_with_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)  # NULL until accepted
     share_code = Column(String(12), unique=True, index=True, nullable=False)
