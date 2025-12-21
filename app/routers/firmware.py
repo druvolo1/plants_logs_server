@@ -6,6 +6,7 @@ import os
 import hashlib
 from typing import List, Optional
 from datetime import datetime
+from packaging import version
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Request
 from fastapi.responses import HTMLResponse, FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -24,6 +25,19 @@ router = APIRouter(tags=["firmware"])
 
 # Firmware storage directory (relative to app root)
 FIRMWARE_STORAGE_DIR = "firmware_storage"
+
+
+def is_version_newer(latest_version: str, current_version: str) -> bool:
+    """
+    Compare two semantic version strings.
+    Returns True if latest_version is newer than current_version.
+    """
+    try:
+        return version.parse(latest_version) > version.parse(current_version)
+    except Exception as e:
+        # Fallback to string comparison if parsing fails
+        print(f"[FIRMWARE] Version parsing failed: {e}. Using string comparison.")
+        return latest_version > current_version
 
 
 def get_current_admin_dependency():
@@ -686,8 +700,8 @@ async def check_firmware_update(
         assignment, firmware = assignment_row
 
         # Device has a specific assignment
-        if firmware.version != current_version:
-            # Version mismatch - update available
+        if is_version_newer(firmware.version, current_version):
+            # Assigned version is newer - update available
             return FirmwareUpdateInfo(
                 update_available=True,
                 current_version=current_version,
@@ -699,7 +713,7 @@ async def check_firmware_update(
                 checksum=firmware.checksum
             )
         else:
-            # Versions match - clear force_update flag if it was set (update completed)
+            # Current version is same or newer - clear force_update flag if it was set
             if assignment.force_update:
                 assignment.force_update = False
                 assignment.updated_at = datetime.utcnow()
@@ -727,7 +741,7 @@ async def check_firmware_update(
             current_version=current_version
         )
 
-    if latest_firmware.version != current_version:
+    if is_version_newer(latest_firmware.version, current_version):
         return FirmwareUpdateInfo(
             update_available=True,
             current_version=current_version,
