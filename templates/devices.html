@@ -409,10 +409,17 @@
             color: #475569;
         }
 
+        .device-card-meta .meta-label {
+            color: #64748b;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-right: 0.25rem;
+        }
+
         .device-card-meta .device-id {
             font-family: monospace;
             font-size: 0.75rem;
-            color: #64748b;
+            color: #94a3b8;
         }
 
         .device-card-meta .version {
@@ -1269,8 +1276,10 @@
                         </span>
                     </div>
                     <div class="device-card-meta">
-                        <span class="device-id">${device.device_id}</span>
+                        <span class="meta-label">UUID:</span>
+                        <span class="device-id">${device.device_id.split('-').pop()}</span>
                         <span class="sep">·</span>
+                        <span class="meta-label">Version:</span>
                         <span class="version" id="version-${device.device_id}">...</span>
                         <span id="update-badge-${device.device_id}"></span>
                         ${locationPath ? `<span class="sep">·</span><span class="location">📍 ${locationPath}</span>` : ''}
