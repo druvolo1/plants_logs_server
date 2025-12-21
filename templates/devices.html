@@ -2106,42 +2106,44 @@
                     }
                 }
 
-                // Update version from full_sync or status_update
-                if ((data.type === 'full_sync' || data.type === 'status_update') && data.data && data.data.settings) {
-                    if (data.data.settings.current_version) {
-                        document.getElementById(`version-${device_id}`).textContent = data.data.settings.current_version;
+                // Update version from full_sync, status_update, or sensors
+                const settings = (data.type === 'sensors' && data.settings) ? data.settings :
+                                 ((data.type === 'full_sync' || data.type === 'status_update') && data.data && data.data.settings) ? data.data.settings : null;
 
-                        // Update in allDevices array for search
-                        const deviceIndex = allDevices.findIndex(d => d.device_id === device_id);
-                        if (deviceIndex !== -1) {
-                            allDevices[deviceIndex].version = data.data.settings.current_version;
-                        }
+                if (settings && settings.current_version) {
+                    document.getElementById(`version-${device_id}`).textContent = settings.current_version;
 
-                        // Check for firmware updates (for ESP32 devices)
-                        const updateBadge = document.getElementById(`update-badge-${device_id}`);
-                        if (updateBadge) {
-                            checkForFirmwareUpdate(device_id, data.data.settings.current_version, updateBadge);
-                        }
-
-                        // Check if this device was updating and clear the status message
-                        if (localStorage.getItem(`updating_${device_id}`) === 'true') {
-                            const updateBtn = document.getElementById(`update-btn-${device_id}`);
-                            showDeviceStatus(device_id, 'Update completed successfully!', '#10b981');
-                            setTimeout(() => {
-                                showDeviceStatus(device_id, '', '#10b981');
-                            }, 5000);
-                            if (updateBtn) {
-                                updateBtn.disabled = false;
-                            }
-                            localStorage.removeItem(`updating_${device_id}`);
-                        }
+                    // Update in allDevices array for search
+                    const deviceIndex = allDevices.findIndex(d => d.device_id === device_id);
+                    if (deviceIndex !== -1) {
+                        allDevices[deviceIndex].version = settings.current_version;
                     }
-                    if (data.data.settings.system_name) {
-                        document.getElementById(`name-${device_id}`).textContent = data.data.settings.system_name;
-                        // Update in allDevices array for search
-                        const deviceIndex = allDevices.findIndex(d => d.device_id === device_id);
-                        if (deviceIndex !== -1) {
-                            allDevices[deviceIndex].name = data.data.settings.system_name;
+
+                    // Check for firmware updates (for ESP32 devices)
+                    const updateBadge = document.getElementById(`update-badge-${device_id}`);
+                    if (updateBadge) {
+                        checkForFirmwareUpdate(device_id, settings.current_version, updateBadge);
+                    }
+
+                    // Check if this device was updating and clear the status message
+                    if (localStorage.getItem(`updating_${device_id}`) === 'true') {
+                        const updateBtn = document.getElementById(`update-btn-${device_id}`);
+                        showDeviceStatus(device_id, 'Update completed successfully!', '#10b981');
+                        setTimeout(() => {
+                            showDeviceStatus(device_id, '', '#10b981');
+                        }, 5000);
+                        if (updateBtn) {
+                            updateBtn.disabled = false;
+                        }
+                        localStorage.removeItem(`updating_${device_id}`);
+                    }
+                }
+                if (settings && settings.system_name) {
+                    document.getElementById(`name-${device_id}`).textContent = settings.system_name;
+                    // Update in allDevices array for search
+                    const deviceIndex = allDevices.findIndex(d => d.device_id === device_id);
+                    if (deviceIndex !== -1) {
+                        allDevices[deviceIndex].name = settings.system_name;
                         }
                     }
                 }
