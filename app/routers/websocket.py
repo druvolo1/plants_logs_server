@@ -301,8 +301,8 @@ async def user_websocket(websocket: WebSocket, device_id: str):
             # Request full sync from device when user connects
             if device_id in device_connections:
                 try:
-                    await device_connections[device_id].send_json({"type": "request_refresh"})
-                    print(f"Sent refresh request to device {device_id} for new user connection")
+                    await device_connections[device_id].send_json({"type": "request_full_sync"})
+                    print(f"Sent request_full_sync to device {device_id} for new user connection")
                 except:
                     pass
 
