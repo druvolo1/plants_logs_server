@@ -1292,8 +1292,12 @@
             deviceDiv.appendChild(statusDiv);
 
             // Auto-connect to WebSocket for status updates (feeding systems)
+            console.log(`Device ${device.device_id.substring(0,8)}: is_online=${device.is_online}, type=${device.device_type}`);
             if (device.is_online && device.device_type !== 'environmental') {
+                console.log(`Connecting to WebSocket for ${device.device_id.substring(0,8)}`);
                 connectToDevice(device.device_id);
+            } else {
+                console.log(`Skipping WebSocket for ${device.device_id.substring(0,8)}: ${!device.is_online ? 'offline' : 'environmental sensor'}`);
             }
 
             // For environmental sensors, fetch version from environment/latest endpoint
@@ -2083,11 +2087,22 @@
 
         // Connect to WS for status updates
         function connectToDevice(device_id) {
-            if (wsMap[device_id]) return;
-            const ws = new WebSocket(`wss://${window.location.host}/ws/user/devices/${device_id}`);
+            if (wsMap[device_id]) {
+                console.log(`WebSocket already exists for ${device_id.substring(0,8)}`);
+                return;
+            }
+            const wsUrl = `wss://${window.location.host}/ws/user/devices/${device_id}`;
+            console.log(`Creating WebSocket connection to: ${wsUrl}`);
+            const ws = new WebSocket(wsUrl);
             ws.onopen = () => {
-                console.log(`Connected to ${device_id}`);
+                console.log(`✅ WebSocket CONNECTED to ${device_id.substring(0,8)}`);
                 // Version info is automatically included in full_sync from device
+            };
+            ws.onerror = (error) => {
+                console.error(`❌ WebSocket ERROR for ${device_id.substring(0,8)}:`, error);
+            };
+            ws.onclose = (event) => {
+                console.log(`WebSocket CLOSED for ${device_id.substring(0,8)}:`, event.code, event.reason);
             };
             ws.onmessage = (event) => {
                 const data = JSON.parse(event.data);
