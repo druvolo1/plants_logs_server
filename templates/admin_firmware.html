@@ -337,6 +337,7 @@
                         <option value="">Select device type...</option>
                         <option value="environmental">Environmental Sensor</option>
                         <option value="valve_controller">Valve Controller</option>
+                        <option value="hydroponic_controller">Hydroponic Controller</option>
                         <option value="doser">Feeding System / Doser</option>
                     </select>
                 </div>
@@ -522,6 +523,7 @@ async function loadFirmwareList() {
         const typeLabels = {
             'environmental': 'Environmental Sensor',
             'valve_controller': 'Valve Controller',
+            'hydroponic_controller': 'Hydroponic Controller',
             'doser': 'Feeding System / Doser'
         };
 
@@ -652,7 +654,7 @@ async function loadDevicesForAssignment() {
         select.innerHTML = '<option value="">Select device...</option>';
 
         const espDevices = devices.filter(d =>
-            d.device_type === 'environmental' || d.device_type === 'valve_controller'
+            d.device_type === 'environmental' || d.device_type === 'valve_controller' || d.device_type === 'hydroponic_controller'
         );
 
         // Build device type map for filtering
@@ -660,7 +662,12 @@ async function loadDevicesForAssignment() {
         espDevices.forEach(device => {
             deviceTypeMap[device.device_id] = device.device_type;
             const name = device.name || device.device_id.substring(0, 8);
-            const type = device.device_type === 'environmental' ? 'Env Sensor' : 'Valve Ctrl';
+            const typeMap = {
+                'environmental': 'Env Sensor',
+                'valve_controller': 'Valve Ctrl',
+                'hydroponic_controller': 'Hydroponic'
+            };
+            const type = typeMap[device.device_type] || device.device_type;
             select.innerHTML += `<option value="${device.device_id}">${name} (${type}) - ${device.owner_email}</option>`;
         });
 
