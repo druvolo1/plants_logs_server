@@ -2128,22 +2128,25 @@
                 const settings = (data.type === 'sensors' && data.settings) ? data.settings :
                                  ((data.type === 'full_sync' || data.type === 'status_update') && data.data && data.data.settings) ? data.data.settings : null;
 
-                console.log(`[WS ${device_id.substring(0,8)}] Type: ${data.type}, Settings:`, settings);
+                // Check for firmware_version at top level (server WebSocket format)
+                const version = settings?.current_version || data.firmware_version;
 
-                if (settings && settings.current_version) {
-                    console.log(`[WS ${device_id.substring(0,8)}] Setting version to:`, settings.current_version);
-                    document.getElementById(`version-${device_id}`).textContent = settings.current_version;
+                console.log(`[WS ${device_id.substring(0,8)}] Type: ${data.type}, Version: ${version}`);
+
+                if (version) {
+                    console.log(`[WS ${device_id.substring(0,8)}] Setting version to: ${version}`);
+                    document.getElementById(`version-${device_id}`).textContent = version;
 
                     // Update in allDevices array for search
                     const deviceIndex = allDevices.findIndex(d => d.device_id === device_id);
                     if (deviceIndex !== -1) {
-                        allDevices[deviceIndex].version = settings.current_version;
+                        allDevices[deviceIndex].version = version;
                     }
 
                     // Check for firmware updates (for ESP32 devices)
                     const updateBadge = document.getElementById(`update-badge-${device_id}`);
                     if (updateBadge) {
-                        checkForFirmwareUpdate(device_id, settings.current_version, updateBadge);
+                        checkForFirmwareUpdate(device_id, version, updateBadge);
                     }
 
                     // Check if this device was updating and clear the status message
