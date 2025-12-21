@@ -1266,7 +1266,7 @@
                         </span>
                     </div>
                     <div class="device-card-meta">
-                        <span class="device-id">${device.device_id}</span>
+                        <span class="device-id">${device.device_id.substring(0, 8)}</span>
                         <span class="sep">·</span>
                         <span class="version" id="version-${device.device_id}">...</span>
                         <span id="update-badge-${device.device_id}"></span>
