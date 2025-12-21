@@ -1301,6 +1301,7 @@
                         <span class="version" id="version-${device.device_id}">...</span>
                         <span id="update-badge-${device.device_id}"></span>
                         ${device.last_seen ? `<span class="sep">·</span><span class="meta-label">Last seen:</span><span class="last-seen">${formatLastSeen(device.last_seen)}</span>` : ''}
+                        ${device.ip_address ? `<span class="sep">·</span><span class="meta-label">IP:</span><span class="ip-address">${device.ip_address}</span>` : ''}
                         ${device.mdns_hostname ? `<span class="sep">·</span><span class="meta-label">mDNS:</span><span class="mdns-hostname">${device.mdns_hostname}</span>` : ''}
                         ${locationPath ? `<span class="sep">·</span><span class="location">📍 ${locationPath}</span>` : ''}
                     </div>

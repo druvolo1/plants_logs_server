@@ -224,6 +224,14 @@ async def init_database():
                 "mdns_hostname VARCHAR(255) NULL AFTER firmware_version"
             )
 
+            # Add ip_address column if it doesn't exist (current IP address)
+            await check_and_add_column(
+                conn,
+                'devices',
+                'ip_address',
+                "ip_address VARCHAR(45) NULL AFTER mdns_hostname"
+            )
+
             print("\nChecking 'plants' table schema...")
 
             # Add batch_number column if it doesn't exist

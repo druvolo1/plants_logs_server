@@ -115,6 +115,7 @@ async def device_websocket(
                 capabilities = data.get('capabilities')
                 firmware_version = data.get('firmware_version')
                 mdns_hostname = data.get('mdns_hostname')
+                ip_address = data.get('ip_address')
 
                 updates = {}
 
@@ -142,6 +143,11 @@ async def device_websocket(
                 if mdns_hostname:
                     updates['mdns_hostname'] = mdns_hostname
                     print(f"Stored mDNS hostname for {device_id}: {mdns_hostname}")
+
+                # Store IP address
+                if ip_address:
+                    updates['ip_address'] = ip_address
+                    print(f"Stored IP address for {device_id}: {ip_address}")
 
                 # Update device in database
                 if updates:

@@ -53,6 +53,7 @@ class DeviceRead(BaseModel):
     capabilities: Optional[str] = None  # JSON string of capabilities
     firmware_version: Optional[str] = None  # Device's current firmware version
     mdns_hostname: Optional[str] = None  # mDNS hostname (e.g., "herbnerdz-valve.local")
+    ip_address: Optional[str] = None  # Current IP address
     last_seen: Optional[datetime] = None  # Last connection timestamp
     location_id: Optional[int] = None  # Location assignment
     is_owner: Optional[bool] = True  # Whether current user owns the device
