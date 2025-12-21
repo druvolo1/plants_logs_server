@@ -417,6 +417,9 @@
 
         .device-card-meta .version {
             color: #94a3b8;
+            display: inline-block;
+            min-width: 40px;
+            font-weight: 500;
         }
 
         .device-card-meta .location {
@@ -1266,7 +1269,7 @@
                         </span>
                     </div>
                     <div class="device-card-meta">
-                        <span class="device-id">${device.device_id.substring(0, 8)}</span>
+                        <span class="device-id">${device.device_id}</span>
                         <span class="sep">·</span>
                         <span class="version" id="version-${device.device_id}">...</span>
                         <span id="update-badge-${device.device_id}"></span>
@@ -2110,7 +2113,10 @@
                 const settings = (data.type === 'sensors' && data.settings) ? data.settings :
                                  ((data.type === 'full_sync' || data.type === 'status_update') && data.data && data.data.settings) ? data.data.settings : null;
 
+                console.log(`[WS ${device_id.substring(0,8)}] Type: ${data.type}, Settings:`, settings);
+
                 if (settings && settings.current_version) {
+                    console.log(`[WS ${device_id.substring(0,8)}] Setting version to:`, settings.current_version);
                     document.getElementById(`version-${device_id}`).textContent = settings.current_version;
 
                     // Update in allDevices array for search
