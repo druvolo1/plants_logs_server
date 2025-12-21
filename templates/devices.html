@@ -1503,7 +1503,7 @@
         }
 
         function requestDeviceSettings(deviceId) {
-            const ws = device_connections[deviceId];
+            const ws = wsMap[deviceId];
             if (!ws || ws.readyState !== WebSocket.OPEN) {
                 document.getElementById('settings-modal-body').innerHTML = `
                     <div style="text-align: center; padding: 2rem; color: #ef4444;">
@@ -1516,6 +1516,7 @@
             }
 
             // Send get_settings request
+            console.log(`[Settings] Sending get_settings to ${deviceId}`);
             ws.send(JSON.stringify({
                 type: 'get_settings'
             }));
@@ -1653,13 +1654,14 @@
         function updateDeviceSetting(key, value) {
             if (!currentSettingsDeviceId) return;
 
-            const ws = device_connections[currentSettingsDeviceId];
+            const ws = wsMap[currentSettingsDeviceId];
             if (!ws || ws.readyState !== WebSocket.OPEN) {
                 alert('WebSocket not connected. Cannot update setting.');
                 return;
             }
 
             // Send update to device
+            console.log(`[Settings] Sending update_setting: ${key} = ${JSON.stringify(value)} to ${currentSettingsDeviceId}`);
             ws.send(JSON.stringify({
                 type: 'update_setting',
                 key: key,
