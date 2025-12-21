@@ -2117,6 +2117,12 @@
                             allDevices[deviceIndex].version = data.data.settings.current_version;
                         }
 
+                        // Check for firmware updates (for ESP32 devices)
+                        const updateBadge = document.getElementById(`update-badge-${device_id}`);
+                        if (updateBadge) {
+                            checkForFirmwareUpdate(device_id, data.data.settings.current_version, updateBadge);
+                        }
+
                         // Check if this device was updating and clear the status message
                         if (localStorage.getItem(`updating_${device_id}`) === 'true') {
                             const updateBtn = document.getElementById(`update-btn-${device_id}`);
