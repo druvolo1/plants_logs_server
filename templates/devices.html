@@ -1369,13 +1369,13 @@
             statusDiv.style.display = 'none';
             deviceDiv.appendChild(statusDiv);
 
-            // Auto-connect to WebSocket for status updates (feeding systems)
+            // Auto-connect to WebSocket for status updates (all devices except environmental sensors)
             console.log(`Device ${device.device_id.substring(0,8)}: is_online=${device.is_online}, type=${device.device_type}`);
-            if (device.is_online && device.device_type !== 'environmental') {
+            if (device.device_type !== 'environmental') {
                 console.log(`Connecting to WebSocket for ${device.device_id.substring(0,8)}`);
                 connectToDevice(device.device_id);
             } else {
-                console.log(`Skipping WebSocket for ${device.device_id.substring(0,8)}: ${!device.is_online ? 'offline' : 'environmental sensor'}`);
+                console.log(`Skipping WebSocket for ${device.device_id.substring(0,8)}: environmental sensor`);
             }
 
             // For environmental sensors, fetch version from environment/latest endpoint
@@ -3373,10 +3373,20 @@
 
                 // Handle device status changes (online/offline)
                 if (data.type === 'device_status') {
+                    console.log(`[Status Update] Device ${device_id.substring(0,8)} is now ${data.online ? 'ONLINE' : 'OFFLINE'}`);
+
+                    // Update status text
                     const onlineElem = document.getElementById(`online-${device_id}`);
                     if (onlineElem) {
                         onlineElem.textContent = data.online ? 'Online' : 'Offline';
                     }
+
+                    // Update status dot
+                    const dotElem = onlineElem?.parentElement.querySelector('.dot');
+                    if (dotElem) {
+                        dotElem.className = data.online ? 'dot online' : 'dot offline';
+                    }
+
                     // Update in allDevices array for search
                     const deviceIndex = allDevices.findIndex(d => d.device_id === device_id);
                     if (deviceIndex !== -1) {
