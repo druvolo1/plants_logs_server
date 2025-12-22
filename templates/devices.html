@@ -1537,7 +1537,17 @@
         }
 
         function displayDeviceSettings(settings) {
-            if (!currentSettingsDeviceId || currentSettingsDeviceType !== 'valve_controller') return;
+            if (!currentSettingsDeviceId) return;
+
+            // Route to appropriate display function based on device type
+            if (currentSettingsDeviceType === 'valve_controller') {
+                displayValveControllerSettings(settings);
+            } else if (currentSettingsDeviceType === 'hydroponic_controller') {
+                displayHydroControllerSettings(settings);
+            }
+        }
+
+        function displayValveControllerSettings(settings) {
 
             // Generate valve label inputs
             let valveLabelsHTML = '';
@@ -1669,6 +1679,565 @@
             }));
 
             console.log(`Updating setting ${key} = ${value} on device ${currentSettingsDeviceId}`);
+        }
+
+        // Hydroponic Controller Settings with Tabs
+        let currentHydroTab = 'general';
+        let hydroSensorUpdateInterval = null;
+
+        function displayHydroControllerSettings(settings) {
+            const html = `
+                <style>
+                    .hydro-tabs {
+                        display: flex;
+                        gap: 0.5rem;
+                        margin-bottom: 1.5rem;
+                        border-bottom: 2px solid #374151;
+                        overflow-x: auto;
+                    }
+                    .hydro-tab {
+                        padding: 0.75rem 1rem;
+                        background: transparent;
+                        border: none;
+                        color: #94a3b8;
+                        cursor: pointer;
+                        font-size: 0.95rem;
+                        font-weight: 500;
+                        border-bottom: 3px solid transparent;
+                        transition: all 0.2s;
+                        white-space: nowrap;
+                    }
+                    .hydro-tab:hover {
+                        color: #10b981;
+                        background: rgba(16, 185, 129, 0.05);
+                    }
+                    .hydro-tab.active {
+                        color: #10b981;
+                        border-bottom-color: #10b981;
+                    }
+                    .hydro-tab-content {
+                        display: none;
+                    }
+                    .hydro-tab-content.active {
+                        display: block;
+                    }
+                    .setting-group {
+                        background: rgba(59, 130, 246, 0.05);
+                        padding: 1rem;
+                        border-radius: 8px;
+                        border: 1px solid #374151;
+                        margin-bottom: 1rem;
+                    }
+                    .setting-group h4 {
+                        color: #10b981;
+                        margin: 0 0 1rem 0;
+                        font-size: 1rem;
+                    }
+                    .setting-row {
+                        display: flex;
+                        align-items: center;
+                        justify-content: space-between;
+                        margin-bottom: 0.75rem;
+                    }
+                    .setting-row:last-child {
+                        margin-bottom: 0;
+                    }
+                    .setting-label {
+                        color: #94a3b8;
+                        font-size: 0.9rem;
+                        flex: 1;
+                    }
+                    .setting-input {
+                        padding: 0.5rem;
+                        background: #0f172a;
+                        border: 1px solid #374151;
+                        border-radius: 6px;
+                        color: #fff;
+                        font-size: 0.95rem;
+                        width: 200px;
+                    }
+                    .sensor-reading {
+                        display: flex;
+                        align-items: center;
+                        justify-content: space-between;
+                        padding: 1rem;
+                        background: rgba(16, 185, 129, 0.1);
+                        border-radius: 8px;
+                        margin-bottom: 0.75rem;
+                    }
+                    .sensor-reading:last-child {
+                        margin-bottom: 0;
+                    }
+                    .sensor-name {
+                        color: #e2e8f0;
+                        font-weight: 500;
+                    }
+                    .sensor-value {
+                        color: #10b981;
+                        font-size: 1.5rem;
+                        font-weight: 600;
+                    }
+                    .sensor-unit {
+                        color: #94a3b8;
+                        font-size: 0.9rem;
+                        margin-left: 0.25rem;
+                    }
+                </style>
+
+                <div class="hydro-tabs">
+                    <button class="hydro-tab active" onclick="switchHydroTab('general')">⚙️ General</button>
+                    <button class="hydro-tab" onclick="switchHydroTab('sensors')">📊 Sensors</button>
+                    <button class="hydro-tab" onclick="switchHydroTab('calibration')">🔧 Calibration</button>
+                    <button class="hydro-tab" onclick="switchHydroTab('dosing')">💧 Targets & Dosing</button>
+                    <button class="hydro-tab" onclick="switchHydroTab('automation')">🤖 Automation</button>
+                </div>
+
+                <div id="hydro-tab-general" class="hydro-tab-content active"></div>
+                <div id="hydro-tab-sensors" class="hydro-tab-content"></div>
+                <div id="hydro-tab-calibration" class="hydro-tab-content"></div>
+                <div id="hydro-tab-dosing" class="hydro-tab-content"></div>
+                <div id="hydro-tab-automation" class="hydro-tab-content"></div>
+            `;
+
+            document.getElementById('settings-modal-body').innerHTML = html;
+
+            // Store settings for use by tab display functions
+            window.currentHydroSettings = settings;
+
+            // Display initial tab content
+            displayHydroGeneralTab(settings);
+        }
+
+        function switchHydroTab(tabName) {
+            currentHydroTab = tabName;
+
+            // Update tab buttons
+            document.querySelectorAll('.hydro-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            event.target.classList.add('active');
+
+            // Hide all tab contents
+            document.querySelectorAll('.hydro-tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+
+            // Show selected tab content
+            document.getElementById(`hydro-tab-${tabName}`).classList.add('active');
+
+            // Stop sensor updates if leaving sensors tab
+            if (hydroSensorUpdateInterval && tabName !== 'sensors') {
+                clearInterval(hydroSensorUpdateInterval);
+                hydroSensorUpdateInterval = null;
+            }
+
+            // Load appropriate tab content
+            const settings = window.currentHydroSettings || {};
+            switch(tabName) {
+                case 'general':
+                    displayHydroGeneralTab(settings);
+                    break;
+                case 'sensors':
+                    displayHydroSensorsTab(settings);
+                    break;
+                case 'calibration':
+                    displayHydroCalibrationTab(settings);
+                    break;
+                case 'dosing':
+                    displayHydroDosingTab(settings);
+                    break;
+                case 'automation':
+                    displayHydroAutomationTab(settings);
+                    break;
+            }
+        }
+
+        function displayHydroGeneralTab(settings) {
+            const html = `
+                <div class="setting-group">
+                    <h4>Device Configuration</h4>
+                    <div class="setting-row">
+                        <label class="setting-label">Device Name</label>
+                        <input type="text" class="setting-input" style="width: 300px;"
+                            value="${settings.device_name || ''}"
+                            onchange="updateDeviceSetting('device_name', this.value)">
+                    </div>
+                    <div class="setting-row">
+                        <label class="setting-label">Temperature Unit</label>
+                        <select class="setting-input"
+                            onchange="updateDeviceSetting('temp_unit', this.value)">
+                            <option value="C" ${(settings.temp_unit || 'C') === 'C' ? 'selected' : ''}>Celsius (°C)</option>
+                            <option value="F" ${settings.temp_unit === 'F' ? 'selected' : ''}>Fahrenheit (°F)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="setting-group">
+                    <h4>Update Intervals</h4>
+                    <div class="setting-row">
+                        <label class="setting-label">Heartbeat Interval (seconds)</label>
+                        <input type="number" class="setting-input" min="10" max="300"
+                            value="${settings.update_interval || 30}"
+                            onchange="updateDeviceSetting('update_interval', parseInt(this.value))">
+                    </div>
+                    <div class="setting-row">
+                        <label class="setting-label">Log Interval (seconds)</label>
+                        <input type="number" class="setting-input" min="60" max="7200"
+                            value="${settings.log_interval || 3600}"
+                            onchange="updateDeviceSetting('log_interval', parseInt(this.value))">
+                    </div>
+                </div>
+
+                <div class="setting-group">
+                    <h4>Time Settings</h4>
+                    <div class="setting-row">
+                        <label class="setting-label">NTP Enabled</label>
+                        <label class="switch">
+                            <input type="checkbox" ${settings.ntp_enabled !== false ? 'checked' : ''}
+                                onchange="updateDeviceSetting('ntp_enabled', this.checked)">
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                    <div class="setting-row">
+                        <label class="setting-label">NTP Server</label>
+                        <input type="text" class="setting-input" style="width: 250px;"
+                            value="${settings.ntp_server || 'pool.ntp.org'}"
+                            onchange="updateDeviceSetting('ntp_server', this.value)">
+                    </div>
+                </div>
+            `;
+            document.getElementById('hydro-tab-general').innerHTML = html;
+        }
+
+        function displayHydroSensorsTab(settings) {
+            const html = `
+                <div style="color: #94a3b8; margin-bottom: 1.5rem; font-size: 0.9rem;">
+                    Live sensor readings updated in real-time via WebSocket
+                </div>
+
+                <div id="sensor-readings">
+                    <div class="sensor-reading">
+                        <span class="sensor-name">pH Level</span>
+                        <span class="sensor-value" id="sensor-ph">--<span class="sensor-unit">pH</span></span>
+                    </div>
+                    <div class="sensor-reading">
+                        <span class="sensor-name">EC (Conductivity)</span>
+                        <span class="sensor-value" id="sensor-ec">--<span class="sensor-unit">μS/cm</span></span>
+                    </div>
+                    <div class="sensor-reading">
+                        <span class="sensor-name">Water Temperature</span>
+                        <span class="sensor-value" id="sensor-water-temp">--<span class="sensor-unit">°C</span></span>
+                    </div>
+                    <div class="sensor-reading">
+                        <span class="sensor-name">Air Temperature</span>
+                        <span class="sensor-value" id="sensor-air-temp">--<span class="sensor-unit">°C</span></span>
+                    </div>
+                    <div class="sensor-reading">
+                        <span class="sensor-name">Water Level</span>
+                        <span class="sensor-value" id="sensor-water-level">--<span class="sensor-unit">%</span></span>
+                    </div>
+                </div>
+            `;
+            document.getElementById('hydro-tab-sensors').innerHTML = html;
+
+            // Start updating sensors
+            startHydroSensorUpdates();
+        }
+
+        function displayHydroCalibrationTab(settings) {
+            const html = `
+                <div class="setting-group">
+                    <h4>pH Calibration</h4>
+                    <div class="setting-row">
+                        <label class="setting-label">pH 4.0 Calibration Value</label>
+                        <input type="number" class="setting-input" step="0.01" min="0" max="14"
+                            value="${settings.ph_cal_4 || 4.0}"
+                            onchange="updateDeviceSetting('ph_cal_4', parseFloat(this.value))">
+                    </div>
+                    <div class="setting-row">
+                        <label class="setting-label">pH 7.0 Calibration Value</label>
+                        <input type="number" class="setting-input" step="0.01" min="0" max="14"
+                            value="${settings.ph_cal_7 || 7.0}"
+                            onchange="updateDeviceSetting('ph_cal_7', parseFloat(this.value))">
+                    </div>
+                    <div class="setting-row">
+                        <label class="setting-label">pH 10.0 Calibration Value</label>
+                        <input type="number" class="setting-input" step="0.01" min="0" max="14"
+                            value="${settings.ph_cal_10 || 10.0}"
+                            onchange="updateDeviceSetting('ph_cal_10', parseFloat(this.value))">
+                    </div>
+                </div>
+
+                <div class="setting-group">
+                    <h4>EC Calibration</h4>
+                    <div class="setting-row">
+                        <label class="setting-label">EC Dry Calibration</label>
+                        <input type="number" class="setting-input" step="1" min="0"
+                            value="${settings.ec_cal_dry || 0}"
+                            onchange="updateDeviceSetting('ec_cal_dry', parseInt(this.value))">
+                    </div>
+                    <div class="setting-row">
+                        <label class="setting-label">EC Low Point (μS/cm)</label>
+                        <input type="number" class="setting-input" step="1" min="0"
+                            value="${settings.ec_cal_low || 1413}"
+                            onchange="updateDeviceSetting('ec_cal_low', parseInt(this.value))">
+                    </div>
+                    <div class="setting-row">
+                        <label class="setting-label">EC High Point (μS/cm)</label>
+                        <input type="number" class="setting-input" step="1" min="0"
+                            value="${settings.ec_cal_high || 12880}"
+                            onchange="updateDeviceSetting('ec_cal_high', parseInt(this.value))">
+                    </div>
+                </div>
+
+                <div class="setting-group">
+                    <h4>Temperature Calibration</h4>
+                    <div class="setting-row">
+                        <label class="setting-label">Water Temp Offset (°C)</label>
+                        <input type="number" class="setting-input" step="0.1" min="-5" max="5"
+                            value="${settings.water_temp_offset || 0}"
+                            onchange="updateDeviceSetting('water_temp_offset', parseFloat(this.value))">
+                    </div>
+                    <div class="setting-row">
+                        <label class="setting-label">Air Temp Offset (°C)</label>
+                        <input type="number" class="setting-input" step="0.1" min="-5" max="5"
+                            value="${settings.air_temp_offset || 0}"
+                            onchange="updateDeviceSetting('air_temp_offset', parseFloat(this.value))">
+                    </div>
+                </div>
+
+                <div class="setting-group">
+                    <h4>Water Level Calibration</h4>
+                    <div class="setting-row">
+                        <label class="setting-label">Low Level Threshold (%)</label>
+                        <input type="number" class="setting-input" step="1" min="0" max="100"
+                            value="${settings.water_level_low || 20}"
+                            onchange="updateDeviceSetting('water_level_low', parseInt(this.value))">
+                    </div>
+                    <div class="setting-row">
+                        <label class="setting-label">High Level Threshold (%)</label>
+                        <input type="number" class="setting-input" step="1" min="0" max="100"
+                            value="${settings.water_level_high || 90}"
+                            onchange="updateDeviceSetting('water_level_high', parseInt(this.value))">
+                    </div>
+                </div>
+            `;
+            document.getElementById('hydro-tab-calibration').innerHTML = html;
+        }
+
+        function displayHydroDosingTab(settings) {
+            const html = `
+                <div class="setting-group">
+                    <h4>pH Target Range</h4>
+                    <div class="setting-row">
+                        <label class="setting-label">Minimum pH</label>
+                        <input type="number" class="setting-input" step="0.1" min="0" max="14"
+                            value="${settings.ph_min || 5.5}"
+                            onchange="updateDeviceSetting('ph_min', parseFloat(this.value))">
+                    </div>
+                    <div class="setting-row">
+                        <label class="setting-label">Maximum pH</label>
+                        <input type="number" class="setting-input" step="0.1" min="0" max="14"
+                            value="${settings.ph_max || 6.5}"
+                            onchange="updateDeviceSetting('ph_max', parseFloat(this.value))">
+                    </div>
+                </div>
+
+                <div class="setting-group">
+                    <h4>EC Target Range</h4>
+                    <div class="setting-row">
+                        <label class="setting-label">Minimum EC (μS/cm)</label>
+                        <input type="number" class="setting-input" step="100" min="0"
+                            value="${settings.ec_min || 1000}"
+                            onchange="updateDeviceSetting('ec_min', parseInt(this.value))">
+                    </div>
+                    <div class="setting-row">
+                        <label class="setting-label">Maximum EC (μS/cm)</label>
+                        <input type="number" class="setting-input" step="100" min="0"
+                            value="${settings.ec_max || 2000}"
+                            onchange="updateDeviceSetting('ec_max', parseInt(this.value))">
+                    </div>
+                </div>
+
+                <div class="setting-group">
+                    <h4>Auto-Dosing Configuration</h4>
+                    <div class="setting-row">
+                        <label class="setting-label">Enable Auto-Dose</label>
+                        <label class="switch">
+                            <input type="checkbox" ${settings.auto_dose_enabled ? 'checked' : ''}
+                                onchange="updateDeviceSetting('auto_dose_enabled', this.checked)">
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                    <div class="setting-row">
+                        <label class="setting-label">pH Down Pump Duration (ms)</label>
+                        <input type="number" class="setting-input" step="100" min="100" max="10000"
+                            value="${settings.ph_down_duration || 1000}"
+                            onchange="updateDeviceSetting('ph_down_duration', parseInt(this.value))">
+                    </div>
+                    <div class="setting-row">
+                        <label class="setting-label">pH Up Pump Duration (ms)</label>
+                        <input type="number" class="setting-input" step="100" min="100" max="10000"
+                            value="${settings.ph_up_duration || 1000}"
+                            onchange="updateDeviceSetting('ph_up_duration', parseInt(this.value))">
+                    </div>
+                    <div class="setting-row">
+                        <label class="setting-label">Nutrient Pump Duration (ms)</label>
+                        <input type="number" class="setting-input" step="100" min="100" max="10000"
+                            value="${settings.nutrient_duration || 1000}"
+                            onchange="updateDeviceSetting('nutrient_duration', parseInt(this.value))">
+                    </div>
+                    <div class="setting-row">
+                        <label class="setting-label">Minimum Dose Interval (minutes)</label>
+                        <input type="number" class="setting-input" step="1" min="1" max="60"
+                            value="${settings.dose_interval || 15}"
+                            onchange="updateDeviceSetting('dose_interval', parseInt(this.value))">
+                    </div>
+                </div>
+            `;
+            document.getElementById('hydro-tab-dosing').innerHTML = html;
+        }
+
+        function displayHydroAutomationTab(settings) {
+            const html = `
+                <div class="setting-group">
+                    <h4>Auto-Fill Configuration</h4>
+                    <div class="setting-row">
+                        <label class="setting-label">Enable Auto-Fill</label>
+                        <label class="switch">
+                            <input type="checkbox" ${settings.auto_fill_enabled ? 'checked' : ''}
+                                onchange="updateDeviceSetting('auto_fill_enabled', this.checked)">
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                    <div class="setting-row">
+                        <label class="setting-label">Fill Start Level (%)</label>
+                        <input type="number" class="setting-input" step="1" min="0" max="100"
+                            value="${settings.auto_fill_start || 30}"
+                            onchange="updateDeviceSetting('auto_fill_start', parseInt(this.value))">
+                    </div>
+                    <div class="setting-row">
+                        <label class="setting-label">Fill Stop Level (%)</label>
+                        <input type="number" class="setting-input" step="1" min="0" max="100"
+                            value="${settings.auto_fill_stop || 80}"
+                            onchange="updateDeviceSetting('auto_fill_stop', parseInt(this.value))">
+                    </div>
+                    <div class="setting-row">
+                        <label class="setting-label">Max Fill Duration (seconds)</label>
+                        <input type="number" class="setting-input" step="10" min="10" max="600"
+                            value="${settings.auto_fill_max_duration || 300}"
+                            onchange="updateDeviceSetting('auto_fill_max_duration', parseInt(this.value))">
+                    </div>
+                </div>
+
+                <div class="setting-group">
+                    <h4>Remote Fill Valve</h4>
+                    <div class="setting-row">
+                        <label class="setting-label">Fill Valve Host</label>
+                        <input type="text" class="setting-input" style="width: 250px;"
+                            value="${settings.fill_valve_host || ''}"
+                            placeholder="192.168.1.100"
+                            onchange="updateDeviceSetting('fill_valve_host', this.value)">
+                    </div>
+                    <div class="setting-row">
+                        <label class="setting-label">Fill Valve Port</label>
+                        <input type="number" class="setting-input" min="1" max="65535"
+                            value="${settings.fill_valve_port || 80}"
+                            onchange="updateDeviceSetting('fill_valve_port', parseInt(this.value))">
+                    </div>
+                    <div class="setting-row">
+                        <label class="setting-label">Fill Valve Number</label>
+                        <input type="number" class="setting-input" min="1" max="8"
+                            value="${settings.fill_valve_num || 1}"
+                            onchange="updateDeviceSetting('fill_valve_num', parseInt(this.value))">
+                    </div>
+                </div>
+
+                <div class="setting-group">
+                    <h4>Remote Drain Valve</h4>
+                    <div class="setting-row">
+                        <label class="setting-label">Drain Valve Host</label>
+                        <input type="text" class="setting-input" style="width: 250px;"
+                            value="${settings.drain_valve_host || ''}"
+                            placeholder="192.168.1.100"
+                            onchange="updateDeviceSetting('drain_valve_host', this.value)">
+                    </div>
+                    <div class="setting-row">
+                        <label class="setting-label">Drain Valve Port</label>
+                        <input type="number" class="setting-input" min="1" max="65535"
+                            value="${settings.drain_valve_port || 80}"
+                            onchange="updateDeviceSetting('drain_valve_port', parseInt(this.value))">
+                    </div>
+                    <div class="setting-row">
+                        <label class="setting-label">Drain Valve Number</label>
+                        <input type="number" class="setting-input" min="1" max="8"
+                            value="${settings.drain_valve_num || 2}"
+                            onchange="updateDeviceSetting('drain_valve_num', parseInt(this.value))">
+                    </div>
+                </div>
+
+                <div class="setting-group">
+                    <h4>Leak Detection</h4>
+                    <div class="setting-row">
+                        <label class="setting-label">Enable Leak Detection</label>
+                        <label class="switch">
+                            <input type="checkbox" ${settings.leak_detection_enabled !== false ? 'checked' : ''}
+                                onchange="updateDeviceSetting('leak_detection_enabled', this.checked)">
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                    <div class="setting-row">
+                        <label class="setting-label">Leak Sensor Pin</label>
+                        <input type="number" class="setting-input" min="0" max="40"
+                            value="${settings.leak_sensor_pin || 10}"
+                            onchange="updateDeviceSetting('leak_sensor_pin', parseInt(this.value))">
+                    </div>
+                </div>
+            `;
+            document.getElementById('hydro-tab-automation').innerHTML = html;
+        }
+
+        function startHydroSensorUpdates() {
+            // Clear any existing interval
+            if (hydroSensorUpdateInterval) {
+                clearInterval(hydroSensorUpdateInterval);
+            }
+
+            // Update sensors immediately
+            updateHydroSensorReadings();
+
+            // Then update every 2 seconds
+            hydroSensorUpdateInterval = setInterval(updateHydroSensorReadings, 2000);
+        }
+
+        function updateHydroSensorReadings() {
+            if (!currentSettingsDeviceId) return;
+
+            const device = allDevices.find(d => d.device_id === currentSettingsDeviceId);
+            if (!device) return;
+
+            // Update sensor displays with current values
+            const phEl = document.getElementById('sensor-ph');
+            const ecEl = document.getElementById('sensor-ec');
+            const waterTempEl = document.getElementById('sensor-water-temp');
+            const airTempEl = document.getElementById('sensor-air-temp');
+            const waterLevelEl = document.getElementById('sensor-water-level');
+
+            if (phEl && device.pH !== undefined && device.pH !== null) {
+                phEl.innerHTML = device.pH.toFixed(2) + '<span class="sensor-unit">pH</span>';
+            }
+            if (ecEl && device.ec !== undefined && device.ec !== null) {
+                ecEl.innerHTML = device.ec.toFixed(0) + '<span class="sensor-unit">μS/cm</span>';
+            }
+            if (waterTempEl && device.water_temp !== undefined && device.water_temp !== null) {
+                waterTempEl.innerHTML = device.water_temp.toFixed(1) + '<span class="sensor-unit">°C</span>';
+            }
+            if (airTempEl && device.air_temp !== undefined && device.air_temp !== null) {
+                airTempEl.innerHTML = device.air_temp.toFixed(1) + '<span class="sensor-unit">°C</span>';
+            }
+            if (waterLevelEl && device.water_level !== undefined && device.water_level !== null) {
+                waterLevelEl.innerHTML = device.water_level.toFixed(0) + '<span class="sensor-unit">%</span>';
+            }
         }
 
         // Edit Valve Labels Modal
