@@ -1425,6 +1425,9 @@
                     </button>`;
             } else if (deviceType === 'hydroponic_controller') {
                 html += `
+                    <button class="actions-modal-item" onclick="closeActionsModal(); openDeviceSettingsModal('${deviceId}', '${deviceType}');">
+                        <span class="icon">⚙️</span> Device Settings
+                    </button>
                     <button class="actions-modal-item" onclick="closeActionsModal(); updateHydroponicControllerFirmware('${deviceId}');">
                         <span class="icon">⬆️</span> Update Software
                     </button>
