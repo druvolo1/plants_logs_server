@@ -1439,7 +1439,17 @@
                     </button>
                     <button class="actions-modal-item" onclick="closeActionsModal(); openAutomationsModal('${deviceId}');">
                         <span class="icon">🤖</span> Automations
-                    </button>
+                    </button>`;
+
+                // Admin-only Advanced Settings
+                {% if actual_user.is_superuser %}
+                html += `
+                    <button class="actions-modal-item" onclick="closeActionsModal(); openAdvancedSettingsModal('${deviceId}');">
+                        <span class="icon">🔧</span> Advanced Settings
+                    </button>`;
+                {% endif %}
+
+                html += `
                     <button class="actions-modal-item" onclick="closeActionsModal(); updateHydroponicControllerFirmware('${deviceId}');">
                         <span class="icon">⬆️</span> Update Software
                     </button>
@@ -1581,6 +1591,9 @@
                         break;
                     case 'automation':
                         displayHydroAutomationModal(settings);
+                        break;
+                    case 'advanced':
+                        displayHydroAdvancedModal(settings);
                         break;
                 }
             }
@@ -1825,6 +1838,26 @@
             requestDeviceSettings(deviceId);
         }
 
+        function openAdvancedSettingsModal(deviceId) {
+            currentHydroModalType = 'advanced';
+            const device = allDevices.find(d => d.device_id === deviceId);
+            const deviceName = device ? device.name : deviceId;
+            const deviceType = device ? device.device_type : 'hydroponic_controller';
+
+            currentSettingsDeviceId = deviceId;
+            currentSettingsDeviceType = deviceType;
+
+            document.getElementById('settings-modal-title').textContent = `${deviceName} - Advanced Settings`;
+            document.getElementById('settings-modal-body').innerHTML = `
+                <div style="text-align: center; padding: 2rem; color: #94a3b8;">
+                    <div style="font-size: 2rem; margin-bottom: 1rem;">⏳</div>
+                    <div>Loading advanced settings...</div>
+                </div>
+            `;
+            document.getElementById('settings-modal').style.display = 'block';
+            requestDeviceSettings(deviceId);
+        }
+
         function displayHydroGeneralModal(settings) {
             const html = `
                 <style>
@@ -1872,30 +1905,6 @@
                         <input type="text" class="setting-input" style="width: 300px;"
                             value="${settings.device_name || ''}"
                             onchange="updateDeviceSetting('device_name', this.value)">
-                    </div>
-                    <div class="setting-row">
-                        <label class="setting-label">Temperature Unit</label>
-                        <select class="setting-input"
-                            onchange="updateDeviceSetting('temp_unit', this.value)">
-                            <option value="C" ${(settings.temp_unit || 'C') === 'C' ? 'selected' : ''}>Celsius (°C)</option>
-                            <option value="F" ${settings.temp_unit === 'F' ? 'selected' : ''}>Fahrenheit (°F)</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="setting-group">
-                    <h4>Update Intervals</h4>
-                    <div class="setting-row">
-                        <label class="setting-label">Heartbeat Interval (seconds)</label>
-                        <input type="number" class="setting-input" min="10" max="300"
-                            value="${settings.update_interval || 30}"
-                            onchange="updateDeviceSetting('update_interval', parseInt(this.value))">
-                    </div>
-                    <div class="setting-row">
-                        <label class="setting-label">Log Interval (seconds)</label>
-                        <input type="number" class="setting-input" min="60" max="7200"
-                            value="${settings.log_interval || 3600}"
-                            onchange="updateDeviceSetting('log_interval', parseInt(this.value))">
                     </div>
                 </div>
 
@@ -2346,6 +2355,85 @@
                             value="${settings.leak_sensor_pin || 10}"
                             onchange="updateDeviceSetting('leak_sensor_pin', parseInt(this.value))">
                     </div>
+                </div>
+            `;
+            document.getElementById('settings-modal-body').innerHTML = html;
+        }
+
+        function displayHydroAdvancedModal(settings) {
+            const html = `
+                <style>
+                    .setting-group {
+                        background: rgba(59, 130, 246, 0.05);
+                        padding: 1rem;
+                        border-radius: 8px;
+                        border: 1px solid #374151;
+                        margin-bottom: 1rem;
+                    }
+                    .setting-group h4 {
+                        color: #10b981;
+                        margin: 0 0 1rem 0;
+                        font-size: 1rem;
+                    }
+                    .setting-row {
+                        display: flex;
+                        align-items: center;
+                        justify-content: space-between;
+                        margin-bottom: 0.75rem;
+                    }
+                    .setting-row:last-child {
+                        margin-bottom: 0;
+                    }
+                    .setting-label {
+                        color: #94a3b8;
+                        font-size: 0.9rem;
+                        flex: 1;
+                    }
+                    .setting-input {
+                        padding: 0.5rem;
+                        background: #0f172a;
+                        border: 1px solid #374151;
+                        border-radius: 6px;
+                        color: #fff;
+                        font-size: 0.95rem;
+                        width: 200px;
+                    }
+                    .info-box {
+                        background: rgba(59, 130, 246, 0.1);
+                        border: 1px solid rgba(59, 130, 246, 0.3);
+                        color: #94a3b8;
+                        padding: 0.75rem;
+                        border-radius: 6px;
+                        font-size: 0.85rem;
+                        margin-bottom: 1.5rem;
+                    }
+                </style>
+
+                <div class="info-box">
+                    ⚠️ <strong>Admin Only:</strong> These settings control how the device communicates with the server. Changes take effect immediately and persist across reboots.
+                </div>
+
+                <div class="setting-group">
+                    <h4>Server Communication</h4>
+                    <div class="setting-row">
+                        <label class="setting-label">Heartbeat Interval (seconds)</label>
+                        <input type="number" class="setting-input" min="10" max="300"
+                            value="${settings.update_interval || 30}"
+                            onchange="updateDeviceSetting('update_interval', parseInt(this.value))"
+                            title="How often the device sends status updates to the server">
+                    </div>
+                    <div class="setting-row">
+                        <label class="setting-label">Log Interval (seconds)</label>
+                        <input type="number" class="setting-input" min="60" max="7200"
+                            value="${settings.log_interval || 3600}"
+                            onchange="updateDeviceSetting('log_interval', parseInt(this.value))"
+                            title="How often sensor readings are saved to the database">
+                    </div>
+                </div>
+
+                <div style="color: #64748b; font-size: 0.85rem; margin-top: 1rem;">
+                    <strong>Heartbeat Interval:</strong> Determines how often the device reports its online status (default: 30s)<br>
+                    <strong>Log Interval:</strong> Determines data storage frequency to reduce database writes (default: 3600s = 1 hour)
                 </div>
             `;
             document.getElementById('settings-modal-body').innerHTML = html;
