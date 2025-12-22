@@ -1425,8 +1425,20 @@
                     </button>`;
             } else if (deviceType === 'hydroponic_controller') {
                 html += `
-                    <button class="actions-modal-item" onclick="closeActionsModal(); openDeviceSettingsModal('${deviceId}', '${deviceType}');">
-                        <span class="icon">⚙️</span> Device Settings
+                    <button class="actions-modal-item" onclick="closeActionsModal(); openGeneralSettingsModal('${deviceId}');">
+                        <span class="icon">⚙️</span> General Settings
+                    </button>
+                    <button class="actions-modal-item" onclick="closeActionsModal(); openSensorConfigModal('${deviceId}');">
+                        <span class="icon">📊</span> Sensor Config
+                    </button>
+                    <button class="actions-modal-item" onclick="closeActionsModal(); openCalibrationModal('${deviceId}');">
+                        <span class="icon">🔧</span> pH & EC Calibration
+                    </button>
+                    <button class="actions-modal-item" onclick="closeActionsModal(); openDosingModal('${deviceId}');">
+                        <span class="icon">💧</span> pH & EC Dosing
+                    </button>
+                    <button class="actions-modal-item" onclick="closeActionsModal(); openAutomationsModal('${deviceId}');">
+                        <span class="icon">🤖</span> Automations
                     </button>
                     <button class="actions-modal-item" onclick="closeActionsModal(); updateHydroponicControllerFirmware('${deviceId}');">
                         <span class="icon">⬆️</span> Update Software
@@ -1503,6 +1515,13 @@
             document.getElementById('settings-modal').style.display = 'none';
             currentSettingsDeviceId = null;
             currentSettingsDeviceType = null;
+            currentHydroModalType = null;
+
+            // Clear sensor update interval if running
+            if (hydroSensorUpdateInterval) {
+                clearInterval(hydroSensorUpdateInterval);
+                hydroSensorUpdateInterval = null;
+            }
         }
 
         function requestDeviceSettings(deviceId) {
@@ -1546,7 +1565,24 @@
             if (currentSettingsDeviceType === 'valve_controller') {
                 displayValveControllerSettings(settings);
             } else if (currentSettingsDeviceType === 'hydroponic_controller') {
-                displayHydroControllerSettings(settings);
+                // Route to specific hydro modal based on currentHydroModalType
+                switch(currentHydroModalType) {
+                    case 'general':
+                        displayHydroGeneralModal(settings);
+                        break;
+                    case 'sensors':
+                        displayHydroSensorsModal(settings);
+                        break;
+                    case 'calibration':
+                        displayHydroCalibrationModal(settings);
+                        break;
+                    case 'dosing':
+                        displayHydroDosingModal(settings);
+                        break;
+                    case 'automation':
+                        displayHydroAutomationModal(settings);
+                        break;
+                }
             }
         }
 
@@ -1684,46 +1720,114 @@
             console.log(`Updating setting ${key} = ${value} on device ${currentSettingsDeviceId}`);
         }
 
-        // Hydroponic Controller Settings with Tabs
-        let currentHydroTab = 'general';
+        // Hydroponic Controller Settings - Separate Modals
+        let currentHydroModalType = null;
         let hydroSensorUpdateInterval = null;
 
-        function displayHydroControllerSettings(settings) {
+        // Modal opener functions
+        function openGeneralSettingsModal(deviceId) {
+            currentHydroModalType = 'general';
+            const device = allDevices.find(d => d.device_id === deviceId);
+            const deviceName = device ? device.name : deviceId;
+            const deviceType = device ? device.device_type : 'hydroponic_controller';
+
+            currentSettingsDeviceId = deviceId;
+            currentSettingsDeviceType = deviceType;
+
+            document.getElementById('settings-modal-title').textContent = `${deviceName} - General Settings`;
+            document.getElementById('settings-modal-body').innerHTML = `
+                <div style="text-align: center; padding: 2rem; color: #94a3b8;">
+                    <div style="font-size: 2rem; margin-bottom: 1rem;">⏳</div>
+                    <div>Loading settings from device...</div>
+                </div>
+            `;
+            document.getElementById('settings-modal').style.display = 'block';
+            requestDeviceSettings(deviceId);
+        }
+
+        function openSensorConfigModal(deviceId) {
+            currentHydroModalType = 'sensors';
+            const device = allDevices.find(d => d.device_id === deviceId);
+            const deviceName = device ? device.name : deviceId;
+            const deviceType = device ? device.device_type : 'hydroponic_controller';
+
+            currentSettingsDeviceId = deviceId;
+            currentSettingsDeviceType = deviceType;
+
+            document.getElementById('settings-modal-title').textContent = `${deviceName} - Sensor Config`;
+            document.getElementById('settings-modal-body').innerHTML = `
+                <div style="text-align: center; padding: 2rem; color: #94a3b8;">
+                    <div style="font-size: 2rem; margin-bottom: 1rem;">⏳</div>
+                    <div>Loading sensor data...</div>
+                </div>
+            `;
+            document.getElementById('settings-modal').style.display = 'block';
+            requestDeviceSettings(deviceId);
+        }
+
+        function openCalibrationModal(deviceId) {
+            currentHydroModalType = 'calibration';
+            const device = allDevices.find(d => d.device_id === deviceId);
+            const deviceName = device ? device.name : deviceId;
+            const deviceType = device ? device.device_type : 'hydroponic_controller';
+
+            currentSettingsDeviceId = deviceId;
+            currentSettingsDeviceType = deviceType;
+
+            document.getElementById('settings-modal-title').textContent = `${deviceName} - pH & EC Calibration`;
+            document.getElementById('settings-modal-body').innerHTML = `
+                <div style="text-align: center; padding: 2rem; color: #94a3b8;">
+                    <div style="font-size: 2rem; margin-bottom: 1rem;">⏳</div>
+                    <div>Loading calibration settings...</div>
+                </div>
+            `;
+            document.getElementById('settings-modal').style.display = 'block';
+            requestDeviceSettings(deviceId);
+        }
+
+        function openDosingModal(deviceId) {
+            currentHydroModalType = 'dosing';
+            const device = allDevices.find(d => d.device_id === deviceId);
+            const deviceName = device ? device.name : deviceId;
+            const deviceType = device ? device.device_type : 'hydroponic_controller';
+
+            currentSettingsDeviceId = deviceId;
+            currentSettingsDeviceType = deviceType;
+
+            document.getElementById('settings-modal-title').textContent = `${deviceName} - pH & EC Dosing`;
+            document.getElementById('settings-modal-body').innerHTML = `
+                <div style="text-align: center; padding: 2rem; color: #94a3b8;">
+                    <div style="font-size: 2rem; margin-bottom: 1rem;">⏳</div>
+                    <div>Loading dosing settings...</div>
+                </div>
+            `;
+            document.getElementById('settings-modal').style.display = 'block';
+            requestDeviceSettings(deviceId);
+        }
+
+        function openAutomationsModal(deviceId) {
+            currentHydroModalType = 'automation';
+            const device = allDevices.find(d => d.device_id === deviceId);
+            const deviceName = device ? device.name : deviceId;
+            const deviceType = device ? device.device_type : 'hydroponic_controller';
+
+            currentSettingsDeviceId = deviceId;
+            currentSettingsDeviceType = deviceType;
+
+            document.getElementById('settings-modal-title').textContent = `${deviceName} - Automations`;
+            document.getElementById('settings-modal-body').innerHTML = `
+                <div style="text-align: center; padding: 2rem; color: #94a3b8;">
+                    <div style="font-size: 2rem; margin-bottom: 1rem;">⏳</div>
+                    <div>Loading automation settings...</div>
+                </div>
+            `;
+            document.getElementById('settings-modal').style.display = 'block';
+            requestDeviceSettings(deviceId);
+        }
+
+        function displayHydroGeneralModal(settings) {
             const html = `
                 <style>
-                    .hydro-tabs {
-                        display: flex;
-                        gap: 0.5rem;
-                        margin-bottom: 1.5rem;
-                        border-bottom: 2px solid #374151;
-                        overflow-x: auto;
-                    }
-                    .hydro-tab {
-                        padding: 0.75rem 1rem;
-                        background: transparent;
-                        border: none;
-                        color: #94a3b8;
-                        cursor: pointer;
-                        font-size: 0.95rem;
-                        font-weight: 500;
-                        border-bottom: 3px solid transparent;
-                        transition: all 0.2s;
-                        white-space: nowrap;
-                    }
-                    .hydro-tab:hover {
-                        color: #10b981;
-                        background: rgba(16, 185, 129, 0.05);
-                    }
-                    .hydro-tab.active {
-                        color: #10b981;
-                        border-bottom-color: #10b981;
-                    }
-                    .hydro-tab-content {
-                        display: none;
-                    }
-                    .hydro-tab-content.active {
-                        display: block;
-                    }
                     .setting-group {
                         background: rgba(59, 130, 246, 0.05);
                         padding: 1rem;
@@ -1759,104 +1863,8 @@
                         font-size: 0.95rem;
                         width: 200px;
                     }
-                    .sensor-reading {
-                        display: flex;
-                        align-items: center;
-                        justify-content: space-between;
-                        padding: 1rem;
-                        background: rgba(16, 185, 129, 0.1);
-                        border-radius: 8px;
-                        margin-bottom: 0.75rem;
-                    }
-                    .sensor-reading:last-child {
-                        margin-bottom: 0;
-                    }
-                    .sensor-name {
-                        color: #e2e8f0;
-                        font-weight: 500;
-                    }
-                    .sensor-value {
-                        color: #10b981;
-                        font-size: 1.5rem;
-                        font-weight: 600;
-                    }
-                    .sensor-unit {
-                        color: #94a3b8;
-                        font-size: 0.9rem;
-                        margin-left: 0.25rem;
-                    }
                 </style>
 
-                <div class="hydro-tabs">
-                    <button class="hydro-tab active" onclick="switchHydroTab('general')">⚙️ General</button>
-                    <button class="hydro-tab" onclick="switchHydroTab('sensors')">📊 Sensors</button>
-                    <button class="hydro-tab" onclick="switchHydroTab('calibration')">🔧 Calibration</button>
-                    <button class="hydro-tab" onclick="switchHydroTab('dosing')">💧 Targets & Dosing</button>
-                    <button class="hydro-tab" onclick="switchHydroTab('automation')">🤖 Automation</button>
-                </div>
-
-                <div id="hydro-tab-general" class="hydro-tab-content active"></div>
-                <div id="hydro-tab-sensors" class="hydro-tab-content"></div>
-                <div id="hydro-tab-calibration" class="hydro-tab-content"></div>
-                <div id="hydro-tab-dosing" class="hydro-tab-content"></div>
-                <div id="hydro-tab-automation" class="hydro-tab-content"></div>
-            `;
-
-            document.getElementById('settings-modal-body').innerHTML = html;
-
-            // Store settings for use by tab display functions
-            window.currentHydroSettings = settings;
-
-            // Display initial tab content
-            displayHydroGeneralTab(settings);
-        }
-
-        function switchHydroTab(tabName) {
-            currentHydroTab = tabName;
-
-            // Update tab buttons
-            document.querySelectorAll('.hydro-tab').forEach(tab => {
-                tab.classList.remove('active');
-            });
-            event.target.classList.add('active');
-
-            // Hide all tab contents
-            document.querySelectorAll('.hydro-tab-content').forEach(content => {
-                content.classList.remove('active');
-            });
-
-            // Show selected tab content
-            document.getElementById(`hydro-tab-${tabName}`).classList.add('active');
-
-            // Stop sensor updates if leaving sensors tab
-            if (hydroSensorUpdateInterval && tabName !== 'sensors') {
-                clearInterval(hydroSensorUpdateInterval);
-                hydroSensorUpdateInterval = null;
-            }
-
-            // Load appropriate tab content
-            const settings = window.currentHydroSettings || {};
-            switch(tabName) {
-                case 'general':
-                    displayHydroGeneralTab(settings);
-                    break;
-                case 'sensors':
-                    displayHydroSensorsTab(settings);
-                    break;
-                case 'calibration':
-                    displayHydroCalibrationTab(settings);
-                    break;
-                case 'dosing':
-                    displayHydroDosingTab(settings);
-                    break;
-                case 'automation':
-                    displayHydroAutomationTab(settings);
-                    break;
-            }
-        }
-
-        function displayHydroGeneralTab(settings) {
-            const html = `
                 <div class="setting-group">
                     <h4>Device Configuration</h4>
                     <div class="setting-row">
@@ -1909,11 +1917,40 @@
                     </div>
                 </div>
             `;
-            document.getElementById('hydro-tab-general').innerHTML = html;
+            document.getElementById('settings-modal-body').innerHTML = html;
         }
 
-        function displayHydroSensorsTab(settings) {
+        function displayHydroSensorsModal(settings) {
             const html = `
+                <style>
+                    .sensor-reading {
+                        display: flex;
+                        align-items: center;
+                        justify-content: space-between;
+                        padding: 1rem;
+                        background: rgba(16, 185, 129, 0.1);
+                        border-radius: 8px;
+                        margin-bottom: 0.75rem;
+                    }
+                    .sensor-reading:last-child {
+                        margin-bottom: 0;
+                    }
+                    .sensor-name {
+                        color: #e2e8f0;
+                        font-weight: 500;
+                    }
+                    .sensor-value {
+                        color: #10b981;
+                        font-size: 1.5rem;
+                        font-weight: 600;
+                    }
+                    .sensor-unit {
+                        color: #94a3b8;
+                        font-size: 0.9rem;
+                        margin-left: 0.25rem;
+                    }
+                </style>
+
                 <div style="color: #94a3b8; margin-bottom: 1.5rem; font-size: 0.9rem;">
                     Live sensor readings updated in real-time via WebSocket
                 </div>
@@ -1941,14 +1978,52 @@
                     </div>
                 </div>
             `;
-            document.getElementById('hydro-tab-sensors').innerHTML = html;
+            document.getElementById('settings-modal-body').innerHTML = html;
 
             // Start updating sensors
             startHydroSensorUpdates();
         }
 
-        function displayHydroCalibrationTab(settings) {
+        function displayHydroCalibrationModal(settings) {
             const html = `
+                <style>
+                    .setting-group {
+                        background: rgba(59, 130, 246, 0.05);
+                        padding: 1rem;
+                        border-radius: 8px;
+                        border: 1px solid #374151;
+                        margin-bottom: 1rem;
+                    }
+                    .setting-group h4 {
+                        color: #10b981;
+                        margin: 0 0 1rem 0;
+                        font-size: 1rem;
+                    }
+                    .setting-row {
+                        display: flex;
+                        align-items: center;
+                        justify-content: space-between;
+                        margin-bottom: 0.75rem;
+                    }
+                    .setting-row:last-child {
+                        margin-bottom: 0;
+                    }
+                    .setting-label {
+                        color: #94a3b8;
+                        font-size: 0.9rem;
+                        flex: 1;
+                    }
+                    .setting-input {
+                        padding: 0.5rem;
+                        background: #0f172a;
+                        border: 1px solid #374151;
+                        border-radius: 6px;
+                        color: #fff;
+                        font-size: 0.95rem;
+                        width: 200px;
+                    }
+                </style>
+
                 <div class="setting-group">
                     <h4>pH Calibration</h4>
                     <div class="setting-row">
@@ -2025,11 +2100,49 @@
                     </div>
                 </div>
             `;
-            document.getElementById('hydro-tab-calibration').innerHTML = html;
+            document.getElementById('settings-modal-body').innerHTML = html;
         }
 
-        function displayHydroDosingTab(settings) {
+        function displayHydroDosingModal(settings) {
             const html = `
+                <style>
+                    .setting-group {
+                        background: rgba(59, 130, 246, 0.05);
+                        padding: 1rem;
+                        border-radius: 8px;
+                        border: 1px solid #374151;
+                        margin-bottom: 1rem;
+                    }
+                    .setting-group h4 {
+                        color: #10b981;
+                        margin: 0 0 1rem 0;
+                        font-size: 1rem;
+                    }
+                    .setting-row {
+                        display: flex;
+                        align-items: center;
+                        justify-content: space-between;
+                        margin-bottom: 0.75rem;
+                    }
+                    .setting-row:last-child {
+                        margin-bottom: 0;
+                    }
+                    .setting-label {
+                        color: #94a3b8;
+                        font-size: 0.9rem;
+                        flex: 1;
+                    }
+                    .setting-input {
+                        padding: 0.5rem;
+                        background: #0f172a;
+                        border: 1px solid #374151;
+                        border-radius: 6px;
+                        color: #fff;
+                        font-size: 0.95rem;
+                        width: 200px;
+                    }
+                </style>
+
                 <div class="setting-group">
                     <h4>pH Target Range</h4>
                     <div class="setting-row">
@@ -2098,11 +2211,49 @@
                     </div>
                 </div>
             `;
-            document.getElementById('hydro-tab-dosing').innerHTML = html;
+            document.getElementById('settings-modal-body').innerHTML = html;
         }
 
-        function displayHydroAutomationTab(settings) {
+        function displayHydroAutomationModal(settings) {
             const html = `
+                <style>
+                    .setting-group {
+                        background: rgba(59, 130, 246, 0.05);
+                        padding: 1rem;
+                        border-radius: 8px;
+                        border: 1px solid #374151;
+                        margin-bottom: 1rem;
+                    }
+                    .setting-group h4 {
+                        color: #10b981;
+                        margin: 0 0 1rem 0;
+                        font-size: 1rem;
+                    }
+                    .setting-row {
+                        display: flex;
+                        align-items: center;
+                        justify-content: space-between;
+                        margin-bottom: 0.75rem;
+                    }
+                    .setting-row:last-child {
+                        margin-bottom: 0;
+                    }
+                    .setting-label {
+                        color: #94a3b8;
+                        font-size: 0.9rem;
+                        flex: 1;
+                    }
+                    .setting-input {
+                        padding: 0.5rem;
+                        background: #0f172a;
+                        border: 1px solid #374151;
+                        border-radius: 6px;
+                        color: #fff;
+                        font-size: 0.95rem;
+                        width: 200px;
+                    }
+                </style>
+
                 <div class="setting-group">
                     <h4>Auto-Fill Configuration</h4>
                     <div class="setting-row">
@@ -2197,7 +2348,7 @@
                     </div>
                 </div>
             `;
-            document.getElementById('hydro-tab-automation').innerHTML = html;
+            document.getElementById('settings-modal-body').innerHTML = html;
         }
 
         function startHydroSensorUpdates() {
