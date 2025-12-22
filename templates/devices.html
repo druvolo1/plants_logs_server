@@ -1911,14 +1911,6 @@
                 <div class="setting-group">
                     <h4>Time Settings</h4>
                     <div class="setting-row">
-                        <label class="setting-label">NTP Enabled</label>
-                        <label class="switch">
-                            <input type="checkbox" ${settings.ntp_enabled !== false ? 'checked' : ''}
-                                onchange="updateDeviceSetting('ntp_enabled', this.checked)">
-                            <span class="slider round"></span>
-                        </label>
-                    </div>
-                    <div class="setting-row">
                         <label class="setting-label">NTP Server</label>
                         <input type="text" class="setting-input" style="width: 250px;"
                             value="${settings.ntp_server || 'pool.ntp.org'}"
@@ -1926,25 +1918,44 @@
                     </div>
                     <div class="setting-row">
                         <label class="setting-label">Timezone</label>
-                        <select class="setting-input" style="width: 250px;"
+                        <select class="setting-input" style="width: 300px;"
                             onchange="updateDeviceSetting('timezone_offset', parseInt(this.value))">
-                            <option value="-36000" ${(settings.timezone_offset || -18000) === -36000 ? 'selected' : ''}>HST (UTC-10)</option>
-                            <option value="-32400" ${(settings.timezone_offset || -18000) === -32400 ? 'selected' : ''}>AKST (UTC-9)</option>
-                            <option value="-28800" ${(settings.timezone_offset || -18000) === -28800 ? 'selected' : ''}>PST (UTC-8)</option>
-                            <option value="-25200" ${(settings.timezone_offset || -18000) === -25200 ? 'selected' : ''}>MST (UTC-7)</option>
-                            <option value="-21600" ${(settings.timezone_offset || -18000) === -21600 ? 'selected' : ''}>CST (UTC-6)</option>
-                            <option value="-18000" ${(settings.timezone_offset || -18000) === -18000 ? 'selected' : ''}>EST (UTC-5)</option>
-                            <option value="-14400" ${(settings.timezone_offset || -18000) === -14400 ? 'selected' : ''}>AST (UTC-4)</option>
-                            <option value="0" ${(settings.timezone_offset || -18000) === 0 ? 'selected' : ''}>UTC (UTC+0)</option>
+                            <option value="-43200" ${(settings.timezone_offset || -18000) === -43200 ? 'selected' : ''}>UTC-12:00 (Baker Island)</option>
+                            <option value="-39600" ${(settings.timezone_offset || -18000) === -39600 ? 'selected' : ''}>UTC-11:00 (Samoa)</option>
+                            <option value="-36000" ${(settings.timezone_offset || -18000) === -36000 ? 'selected' : ''}>UTC-10:00 (Hawaii)</option>
+                            <option value="-32400" ${(settings.timezone_offset || -18000) === -32400 ? 'selected' : ''}>UTC-09:00 (Alaska)</option>
+                            <option value="-28800" ${(settings.timezone_offset || -18000) === -28800 ? 'selected' : ''}>UTC-08:00 (Pacific)</option>
+                            <option value="-25200" ${(settings.timezone_offset || -18000) === -25200 ? 'selected' : ''}>UTC-07:00 (Mountain)</option>
+                            <option value="-21600" ${(settings.timezone_offset || -18000) === -21600 ? 'selected' : ''}>UTC-06:00 (Central)</option>
+                            <option value="-18000" ${(settings.timezone_offset || -18000) === -18000 ? 'selected' : ''}>UTC-05:00 (Eastern)</option>
+                            <option value="-14400" ${(settings.timezone_offset || -18000) === -14400 ? 'selected' : ''}>UTC-04:00 (Atlantic)</option>
+                            <option value="-12600" ${(settings.timezone_offset || -18000) === -12600 ? 'selected' : ''}>UTC-03:30 (Newfoundland)</option>
+                            <option value="-10800" ${(settings.timezone_offset || -18000) === -10800 ? 'selected' : ''}>UTC-03:00 (Brazil)</option>
+                            <option value="-7200" ${(settings.timezone_offset || -18000) === -7200 ? 'selected' : ''}>UTC-02:00 (Mid-Atlantic)</option>
+                            <option value="-3600" ${(settings.timezone_offset || -18000) === -3600 ? 'selected' : ''}>UTC-01:00 (Azores)</option>
+                            <option value="0" ${(settings.timezone_offset || -18000) === 0 ? 'selected' : ''}>UTC+00:00 (London)</option>
+                            <option value="3600" ${(settings.timezone_offset || -18000) === 3600 ? 'selected' : ''}>UTC+01:00 (Paris)</option>
+                            <option value="7200" ${(settings.timezone_offset || -18000) === 7200 ? 'selected' : ''}>UTC+02:00 (Cairo)</option>
+                            <option value="10800" ${(settings.timezone_offset || -18000) === 10800 ? 'selected' : ''}>UTC+03:00 (Moscow)</option>
+                            <option value="12600" ${(settings.timezone_offset || -18000) === 12600 ? 'selected' : ''}>UTC+03:30 (Tehran)</option>
+                            <option value="14400" ${(settings.timezone_offset || -18000) === 14400 ? 'selected' : ''}>UTC+04:00 (Dubai)</option>
+                            <option value="18000" ${(settings.timezone_offset || -18000) === 18000 ? 'selected' : ''}>UTC+05:00 (Karachi)</option>
+                            <option value="19800" ${(settings.timezone_offset || -18000) === 19800 ? 'selected' : ''}>UTC+05:30 (Mumbai)</option>
+                            <option value="21600" ${(settings.timezone_offset || -18000) === 21600 ? 'selected' : ''}>UTC+06:00 (Dhaka)</option>
+                            <option value="25200" ${(settings.timezone_offset || -18000) === 25200 ? 'selected' : ''}>UTC+07:00 (Bangkok)</option>
+                            <option value="28800" ${(settings.timezone_offset || -18000) === 28800 ? 'selected' : ''}>UTC+08:00 (Singapore)</option>
+                            <option value="32400" ${(settings.timezone_offset || -18000) === 32400 ? 'selected' : ''}>UTC+09:00 (Tokyo)</option>
+                            <option value="36000" ${(settings.timezone_offset || -18000) === 36000 ? 'selected' : ''}>UTC+10:00 (Sydney)</option>
+                            <option value="43200" ${(settings.timezone_offset || -18000) === 43200 ? 'selected' : ''}>UTC+12:00 (Auckland)</option>
                         </select>
                     </div>
                     <div class="setting-row">
                         <label class="setting-label">Daylight Saving Time</label>
-                        <select class="setting-input"
-                            onchange="updateDeviceSetting('dst_offset', parseInt(this.value))">
-                            <option value="0" ${(settings.dst_offset || 0) === 0 ? 'selected' : ''}>Disabled</option>
-                            <option value="3600" ${settings.dst_offset === 3600 ? 'selected' : ''}>+1 Hour</option>
-                        </select>
+                        <label class="switch">
+                            <input type="checkbox" ${settings.dst_offset === 3600 ? 'checked' : ''}
+                                onchange="updateDeviceSetting('dst_offset', this.checked ? 3600 : 0)">
+                            <span class="slider round"></span>
+                        </label>
                     </div>
                 </div>
             `;
