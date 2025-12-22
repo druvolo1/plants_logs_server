@@ -159,6 +159,30 @@ async def device_websocket(
                     await session.commit()
                     print(f"Updated device {device_id} with: {updates}")
 
+            # Handle device name updates from device
+            if data.get('type') == 'device_name_update':
+                device_name = data.get('device_name')
+                if device_name:
+                    await session.execute(
+                        update(Device)
+                        .where(Device.device_id == device_id)
+                        .values(name=device_name)
+                    )
+                    await session.commit()
+                    device.name = device_name
+                    print(f"Updated device name for {device_id}: {device_name}")
+
+                    # Notify all connected users of the name change
+                    for user_ws in user_connections[device_id]:
+                        try:
+                            await user_ws.send_json({
+                                "type": "device_name_change",
+                                "device_id": device_id,
+                                "name": device_name
+                            })
+                        except:
+                            pass
+
             # Extract and save system_name if present in the payload
             if data.get('type') == 'full_sync' or 'data' in data:
                 payload = data.get('data', data)

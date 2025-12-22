@@ -3288,13 +3288,27 @@
                 if (data.type === 'device_status') {
                     const onlineElem = document.getElementById(`online-${device_id}`);
                     if (onlineElem) {
-                        onlineElem.textContent = data.online ? 'Yes' : 'No';
+                        onlineElem.textContent = data.online ? 'Online' : 'Offline';
                     }
                     // Update in allDevices array for search
                     const deviceIndex = allDevices.findIndex(d => d.device_id === device_id);
                     if (deviceIndex !== -1) {
                         allDevices[deviceIndex].is_online = data.online;
                     }
+                }
+
+                // Handle device name changes from device
+                if (data.type === 'device_name_change') {
+                    const nameElem = document.getElementById(`name-${device_id}`);
+                    if (nameElem) {
+                        nameElem.textContent = data.name;
+                    }
+                    // Update in allDevices array for search
+                    const deviceIndex = allDevices.findIndex(d => d.device_id === device_id);
+                    if (deviceIndex !== -1) {
+                        allDevices[deviceIndex].name = data.name;
+                    }
+                    console.log(`Device ${device_id} name updated to: ${data.name}`);
                 }
 
                 // Handle settings response
