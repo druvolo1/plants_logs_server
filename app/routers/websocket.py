@@ -112,6 +112,7 @@ async def device_websocket(
             # Handle device_info message for auto-detection
             if data.get('type') == 'device_info':
                 device_type = data.get('device_type')
+                device_name = data.get('device_name')
                 capabilities = data.get('capabilities')
                 firmware_version = data.get('firmware_version')
                 mdns_hostname = data.get('mdns_hostname')
@@ -128,6 +129,11 @@ async def device_websocket(
                     else:
                         updates['scope'] = 'plant'
                     print(f"Auto-detected device type for {device_id}: {device_type}")
+
+                # Store device name
+                if device_name:
+                    updates['name'] = device_name
+                    print(f"Stored device name for {device_id}: {device_name}")
 
                 # Store capabilities as JSON string
                 if capabilities:
