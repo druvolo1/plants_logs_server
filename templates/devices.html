@@ -1987,59 +1987,132 @@
         function displayHydroSensorsModal(settings) {
             const html = `
                 <style>
-                    .sensor-reading {
-                        display: flex;
-                        align-items: center;
-                        justify-content: space-between;
+                    .setting-group {
+                        background: rgba(59, 130, 246, 0.05);
                         padding: 1rem;
-                        background: rgba(16, 185, 129, 0.1);
                         border-radius: 8px;
-                        margin-bottom: 0.75rem;
+                        border: 1px solid #374151;
+                        margin-bottom: 1rem;
                     }
-                    .sensor-reading:last-child {
-                        margin-bottom: 0;
-                    }
-                    .sensor-name {
-                        color: #e2e8f0;
-                        font-weight: 500;
-                    }
-                    .sensor-value {
+                    .setting-group h4 {
                         color: #10b981;
-                        font-size: 1.5rem;
-                        font-weight: 600;
+                        margin: 0 0 1rem 0;
+                        font-size: 1rem;
                     }
-                    .sensor-unit {
+                    .setting-row {
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                        margin-bottom: 0.75rem;
+                        padding-bottom: 0.75rem;
+                        border-bottom: 1px solid #334155;
+                    }
+                    .setting-row:last-child {
+                        margin-bottom: 0;
+                        padding-bottom: 0;
+                        border-bottom: none;
+                    }
+                    .setting-label {
                         color: #94a3b8;
                         font-size: 0.9rem;
-                        margin-left: 0.25rem;
+                    }
+                    .setting-input {
+                        padding: 0.5rem;
+                        background: #0f172a;
+                        border: 1px solid #374151;
+                        border-radius: 6px;
+                        color: #fff;
+                        width: 100px;
+                    }
+                    .sensor-status {
+                        color: #94a3b8;
+                        font-size: 0.85rem;
+                        margin-top: 0.5rem;
                     }
                 </style>
 
-                <div style="color: #94a3b8; margin-bottom: 1.5rem; font-size: 0.9rem;">
-                    Live sensor readings updated in real-time via WebSocket
+                <div class="setting-group">
+                    <h4>pH Target Range</h4>
+                    <p style="color: #64748b; font-size: 0.85rem; margin-bottom: 1rem;">Typical: Seedlings 5.5-6.0, Veg 5.5-6.5, Flower 6.0-6.8</p>
+                    <div class="setting-row">
+                        <label class="setting-label">Minimum pH</label>
+                        <input type="number" class="setting-input" step="0.1" min="0" max="14"
+                            value="${settings.ph_min || 5.5}"
+                            onchange="updateDeviceSetting('ph_min', parseFloat(this.value))">
+                    </div>
+                    <div class="setting-row">
+                        <label class="setting-label">Maximum pH</label>
+                        <input type="number" class="setting-input" step="0.1" min="0" max="14"
+                            value="${settings.ph_max || 6.5}"
+                            onchange="updateDeviceSetting('ph_max', parseFloat(this.value))">
+                    </div>
+                    <div class="sensor-status">Current pH: <span id="sensor-ph" style="color: #10b981; font-weight: 600;">--</span></div>
                 </div>
 
-                <div id="sensor-readings">
-                    <div class="sensor-reading">
-                        <span class="sensor-name">pH Level</span>
-                        <span class="sensor-value" id="sensor-ph">--<span class="sensor-unit">pH</span></span>
+                <div class="setting-group">
+                    <h4>EC Target Range</h4>
+                    <p style="color: #64748b; font-size: 0.85rem; margin-bottom: 1rem;">Typical: Seedlings 0.5-0.8, Veg 1.0-1.4, Flower 1.2-2.0 mS/cm</p>
+                    <div class="setting-row">
+                        <label class="setting-label">Minimum EC (mS/cm)</label>
+                        <input type="number" class="setting-input" step="0.1" min="0" max="10"
+                            value="${(settings.ec_min || 1000) / 1000}"
+                            onchange="updateDeviceSetting('ec_min', parseFloat(this.value) * 1000)">
                     </div>
-                    <div class="sensor-reading">
-                        <span class="sensor-name">EC (Conductivity)</span>
-                        <span class="sensor-value" id="sensor-ec">--<span class="sensor-unit">μS/cm</span></span>
+                    <div class="setting-row">
+                        <label class="setting-label">Maximum EC (mS/cm)</label>
+                        <input type="number" class="setting-input" step="0.1" min="0" max="10"
+                            value="${(settings.ec_max || 2000) / 1000}"
+                            onchange="updateDeviceSetting('ec_max', parseFloat(this.value) * 1000)">
                     </div>
-                    <div class="sensor-reading">
-                        <span class="sensor-name">Water Temperature</span>
-                        <span class="sensor-value" id="sensor-water-temp">--<span class="sensor-unit">°C</span></span>
+                    <div class="sensor-status">Current EC: <span id="sensor-ec" style="color: #10b981; font-weight: 600;">--</span> μS/cm</div>
+                </div>
+
+                <div class="setting-group">
+                    <h4>Temperature Sensors</h4>
+                    <div class="setting-row">
+                        <label class="setting-label">Water Temperature Sensor</label>
+                        <label class="switch">
+                            <input type="checkbox" ${settings.water_temp_enabled ? 'checked' : ''}
+                                onchange="updateDeviceSetting('water_temp_enabled', this.checked)">
+                            <span class="slider round"></span>
+                        </label>
                     </div>
-                    <div class="sensor-reading">
-                        <span class="sensor-name">Air Temperature</span>
-                        <span class="sensor-value" id="sensor-air-temp">--<span class="sensor-unit">°C</span></span>
+                    <div class="sensor-status">Status: <span id="water-temp-status">--</span></div>
+                    <div class="sensor-status">Current: <span id="sensor-water-temp" style="color: #10b981; font-weight: 600;">--</span> °C</div>
+
+                    <div class="setting-row" style="margin-top: 1rem;">
+                        <label class="setting-label">Air Temperature Sensor</label>
+                        <label class="switch">
+                            <input type="checkbox" ${settings.air_temp_enabled ? 'checked' : ''}
+                                onchange="updateDeviceSetting('air_temp_enabled', this.checked)">
+                            <span class="slider round"></span>
+                        </label>
                     </div>
-                    <div class="sensor-reading">
-                        <span class="sensor-name">Water Level</span>
-                        <span class="sensor-value" id="sensor-water-level">--<span class="sensor-unit">%</span></span>
+                    <div class="sensor-status">Status: <span id="air-temp-status">--</span></div>
+                    <div class="sensor-status">Current: <span id="sensor-air-temp" style="color: #10b981; font-weight: 600;">--</span> °C</div>
+
+                    <div class="setting-row" style="margin-top: 1rem;">
+                        <label class="setting-label">Temperature Unit</label>
+                        <select class="setting-input" style="width: 150px;"
+                            onchange="updateDeviceSetting('use_fahrenheit', this.value === 'fahrenheit')">
+                            <option value="fahrenheit" ${settings.use_fahrenheit ? 'selected' : ''}>Fahrenheit (°F)</option>
+                            <option value="celsius" ${!settings.use_fahrenheit ? 'selected' : ''}>Celsius (°C)</option>
+                        </select>
                     </div>
+                </div>
+
+                <div class="setting-group">
+                    <h4>Water Level Sensor</h4>
+                    <div class="setting-row">
+                        <label class="setting-label">Sensor Type</label>
+                        <select class="setting-input" style="width: 200px;"
+                            onchange="updateDeviceSetting('water_level_type', parseInt(this.value))">
+                            <option value="0" ${(settings.water_level_type || 0) === 0 ? 'selected' : ''}>Disabled</option>
+                            <option value="1" ${(settings.water_level_type || 0) === 1 ? 'selected' : ''}>ETape (Continuous)</option>
+                            <option value="2" ${(settings.water_level_type || 0) === 2 ? 'selected' : ''}>Water Sensors (3-Point)</option>
+                        </select>
+                    </div>
+                    <div class="sensor-status">Current Level: <span id="sensor-water-level" style="color: #10b981; font-weight: 600;">--</span>%</div>
                 </div>
             `;
             document.getElementById('settings-modal-body').innerHTML = html;
