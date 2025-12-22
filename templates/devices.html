@@ -1924,6 +1924,28 @@
                             value="${settings.ntp_server || 'pool.ntp.org'}"
                             onchange="updateDeviceSetting('ntp_server', this.value)">
                     </div>
+                    <div class="setting-row">
+                        <label class="setting-label">Timezone</label>
+                        <select class="setting-input" style="width: 250px;"
+                            onchange="updateDeviceSetting('timezone_offset', parseInt(this.value))">
+                            <option value="-36000" ${(settings.timezone_offset || -18000) === -36000 ? 'selected' : ''}>HST (UTC-10)</option>
+                            <option value="-32400" ${(settings.timezone_offset || -18000) === -32400 ? 'selected' : ''}>AKST (UTC-9)</option>
+                            <option value="-28800" ${(settings.timezone_offset || -18000) === -28800 ? 'selected' : ''}>PST (UTC-8)</option>
+                            <option value="-25200" ${(settings.timezone_offset || -18000) === -25200 ? 'selected' : ''}>MST (UTC-7)</option>
+                            <option value="-21600" ${(settings.timezone_offset || -18000) === -21600 ? 'selected' : ''}>CST (UTC-6)</option>
+                            <option value="-18000" ${(settings.timezone_offset || -18000) === -18000 ? 'selected' : ''}>EST (UTC-5)</option>
+                            <option value="-14400" ${(settings.timezone_offset || -18000) === -14400 ? 'selected' : ''}>AST (UTC-4)</option>
+                            <option value="0" ${(settings.timezone_offset || -18000) === 0 ? 'selected' : ''}>UTC (UTC+0)</option>
+                        </select>
+                    </div>
+                    <div class="setting-row">
+                        <label class="setting-label">Daylight Saving Time</label>
+                        <select class="setting-input"
+                            onchange="updateDeviceSetting('dst_offset', parseInt(this.value))">
+                            <option value="0" ${(settings.dst_offset || 0) === 0 ? 'selected' : ''}>Disabled</option>
+                            <option value="3600" ${settings.dst_offset === 3600 ? 'selected' : ''}>+1 Hour</option>
+                        </select>
+                    </div>
                 </div>
             `;
             document.getElementById('settings-modal-body').innerHTML = html;
