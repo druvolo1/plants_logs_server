@@ -228,7 +228,7 @@ async def device_websocket(
         # Notify all connected users that the device went offline
         for user_ws in user_connections[device_id]:
             try:
-                await user_ws.send_json({"error": "Device offline"})
+                await user_ws.send_json({"type": "device_status", "online": False})
             except:
                 pass  # User might have already disconnected
 
