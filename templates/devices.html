@@ -3583,18 +3583,28 @@
                 }
 
                 // Update sensor values in allDevices array (for Sensor Config modal display)
-                if (data.type === 'full_sync') {
-                    const deviceIndex = allDevices.findIndex(d => d.device_id === device_id);
-                    if (deviceIndex !== -1) {
-                        // Store sensor readings
-                        if (data.pH !== undefined) allDevices[deviceIndex].pH = data.pH;
-                        if (data.ec !== undefined) allDevices[deviceIndex].ec = data.ec;
-                        if (data.water_temp !== undefined) allDevices[deviceIndex].water_temp = data.water_temp;
-                        if (data.air_temp !== undefined) allDevices[deviceIndex].air_temp = data.air_temp;
-                        if (data.water_level !== undefined) allDevices[deviceIndex].water_level = data.water_level;
-                        // Store calibration offsets
-                        if (data.water_temp_offset !== undefined) allDevices[deviceIndex].water_temp_offset = data.water_temp_offset;
-                        if (data.air_temp_offset !== undefined) allDevices[deviceIndex].air_temp_offset = data.air_temp_offset;
+                // Update for ALL message types that contain sensor data
+                const deviceIndex = allDevices.findIndex(d => d.device_id === device_id);
+                if (deviceIndex !== -1) {
+                    // Store sensor readings from top-level fields
+                    if (data.pH !== undefined) allDevices[deviceIndex].pH = data.pH;
+                    if (data.ec !== undefined) allDevices[deviceIndex].ec = data.ec;
+                    if (data.water_temp !== undefined) allDevices[deviceIndex].water_temp = data.water_temp;
+                    if (data.air_temp !== undefined) allDevices[deviceIndex].air_temp = data.air_temp;
+                    if (data.water_level !== undefined) allDevices[deviceIndex].water_level = data.water_level;
+                    // Store calibration offsets
+                    if (data.water_temp_offset !== undefined) allDevices[deviceIndex].water_temp_offset = data.water_temp_offset;
+                    if (data.air_temp_offset !== undefined) allDevices[deviceIndex].air_temp_offset = data.air_temp_offset;
+
+                    // Also check in data.data for nested formats (some message types nest sensor data)
+                    if (data.data) {
+                        if (data.data.pH !== undefined) allDevices[deviceIndex].pH = data.data.pH;
+                        if (data.data.ec !== undefined) allDevices[deviceIndex].ec = data.data.ec;
+                        if (data.data.water_temp !== undefined) allDevices[deviceIndex].water_temp = data.data.water_temp;
+                        if (data.data.air_temp !== undefined) allDevices[deviceIndex].air_temp = data.data.air_temp;
+                        if (data.data.water_level !== undefined) allDevices[deviceIndex].water_level = data.data.water_level;
+                        if (data.data.water_temp_offset !== undefined) allDevices[deviceIndex].water_temp_offset = data.data.water_temp_offset;
+                        if (data.data.air_temp_offset !== undefined) allDevices[deviceIndex].air_temp_offset = data.data.air_temp_offset;
                     }
                 }
 
