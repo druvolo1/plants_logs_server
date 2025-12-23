@@ -346,11 +346,19 @@ async def user_websocket(websocket: WebSocket, device_id: str):
             await websocket.accept()
             user_connections[device_id].append(websocket)
 
+            # Notify device if this is the first user connecting
+            is_first_user = len(user_connections[device_id]) == 1
+
             # Request full sync from device when user connects
             if device_id in device_connections:
                 try:
                     await device_connections[device_id].send_json({"type": "request_full_sync"})
                     print(f"Sent request_full_sync to device {device_id} for new user connection")
+
+                    # Notify device that users are now viewing (only for first user)
+                    if is_first_user:
+                        await device_connections[device_id].send_json({"type": "user_connected"})
+                        print(f"Sent user_connected to device {device_id} (first user connected)")
                 except:
                     pass
 
@@ -368,6 +376,15 @@ async def user_websocket(websocket: WebSocket, device_id: str):
             except WebSocketDisconnect:
                 user_connections[device_id].remove(websocket)
                 print(f"User disconnected from device {device_id}")
+
+                # Notify device if this was the last user disconnecting
+                is_last_user = len(user_connections[device_id]) == 0
+                if is_last_user and device_id in device_connections:
+                    try:
+                        await device_connections[device_id].send_json({"type": "user_disconnected"})
+                        print(f"Sent user_disconnected to device {device_id} (last user disconnected)")
+                    except:
+                        pass
 
     except Exception as e:
         print(f"WebSocket authentication error for device {device_id}: {e}")
