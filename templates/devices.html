@@ -1755,6 +1755,25 @@
             console.log(`Updating setting ${key} = ${value} on device ${currentSettingsDeviceId}`);
         }
 
+        function sendDeviceCommand(command) {
+            if (!currentSettingsDeviceId) {
+                alert('No device selected.');
+                return;
+            }
+
+            const ws = wsMap[currentSettingsDeviceId];
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                alert('WebSocket not connected. Cannot send command.');
+                return;
+            }
+
+            // Send command to device
+            console.log(`[Command] Sending ${command} to ${currentSettingsDeviceId}`);
+            ws.send(JSON.stringify({
+                type: command
+            }));
+        }
+
         // Hydroponic Controller Settings - Separate Modals
         let currentHydroModalType = null;
         let hydroSensorUpdateInterval = null;
@@ -2133,7 +2152,18 @@
 
                     <!-- ETape Configuration -->
                     <div id="etape-config" style="display: ${(settings.water_level_type || 0) === 1 ? 'block' : 'none'}; margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid #334155;">
-                        <h5 style="color: #94a3b8; font-size: 0.9rem; margin: 0 0 1rem 0;">Level Thresholds</h5>
+                        <h5 style="color: #94a3b8; font-size: 0.9rem; margin: 0 0 0.5rem 0;">Calibration</h5>
+                        <p style="color: #64748b; font-size: 0.85rem; margin-bottom: 1rem;">Set sensor to tank empty, click Empty. Fill tank, click Full.</p>
+                        <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1.5rem;">
+                            <button class="btn" style="padding: 0.5rem 1rem; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.9rem;"
+                                onclick="sendDeviceCommand('calibrate_water_empty')">Set Empty</button>
+                            <button class="btn" style="padding: 0.5rem 1rem; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.9rem;"
+                                onclick="sendDeviceCommand('calibrate_water_full')">Set Full</button>
+                            <button class="btn" style="padding: 0.5rem 1rem; background: #64748b; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.9rem; opacity: 0.7;"
+                                onclick="if(confirm('Clear water level calibration?')) sendDeviceCommand('clear_water_level_cal')">Clear</button>
+                        </div>
+
+                        <h5 style="color: #94a3b8; font-size: 0.9rem; margin: 1.5rem 0 0.5rem 0;">Level Thresholds</h5>
                         <p style="color: #64748b; font-size: 0.85rem; margin-bottom: 1rem;">Configure water level percentage thresholds for status determination.</p>
                         <div class="setting-row">
                             <label class="setting-label">Empty Threshold (%)</label>
