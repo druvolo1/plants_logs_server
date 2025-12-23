@@ -1755,7 +1755,7 @@
             console.log(`Updating setting ${key} = ${value} on device ${currentSettingsDeviceId}`);
         }
 
-        function sendDeviceCommand(command) {
+        function sendDeviceCommand(command, data = {}) {
             if (!currentSettingsDeviceId) {
                 alert('No device selected.');
                 return;
@@ -1768,10 +1768,45 @@
             }
 
             // Send command to device
-            console.log(`[Command] Sending ${command} to ${currentSettingsDeviceId}`);
+            console.log(`[Command] Sending ${command} to ${currentSettingsDeviceId}`, data);
             ws.send(JSON.stringify({
-                type: command
+                type: command,
+                ...data
             }));
+        }
+
+        function calibrateWaterTemp() {
+            const input = document.getElementById('waterActualTemp');
+            const val = parseFloat(input ? input.value : '0');
+
+            if (!val || val <= -50 || val > 150) {
+                alert('Enter a valid actual water temperature');
+                return;
+            }
+
+            sendDeviceCommand('calibrate_water_temp', { actualTemp: val });
+            input.value = '';
+        }
+
+        function calibrateAirTemp() {
+            const input = document.getElementById('airActualTemp');
+            const val = parseFloat(input ? input.value : '0');
+
+            if (!val || val <= -50 || val > 150) {
+                alert('Enter a valid actual air temperature');
+                return;
+            }
+
+            sendDeviceCommand('calibrate_air_temp', { actualTemp: val });
+            input.value = '';
+        }
+
+        function clearWaterTempCal() {
+            sendDeviceCommand('clear_water_temp_cal');
+        }
+
+        function clearAirTempCal() {
+            sendDeviceCommand('clear_air_temp_cal');
         }
 
         // Hydroponic Controller Settings - Separate Modals
@@ -2120,19 +2155,41 @@
                     </div>
 
                     <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid #334155;">
-                        <h5 style="color: #94a3b8; font-size: 0.9rem; margin: 0 0 1rem 0;">Temperature Calibration</h5>
-                        <p style="color: #64748b; font-size: 0.85rem; margin-bottom: 1rem;">Adjust sensor offset to match a reference thermometer.</p>
-                        <div class="setting-row">
-                            <label class="setting-label">Water Temp Offset (°C)</label>
-                            <input type="number" class="setting-input" step="0.1" min="-5" max="5"
-                                value="${settings.water_temp_offset || 0}"
-                                onchange="updateDeviceSetting('water_temp_offset', parseFloat(this.value))">
+                        <h5 style="color: #94a3b8; font-size: 0.9rem; margin: 0 0 0.5rem 0;">Temperature Calibration</h5>
+                        <p style="color: #64748b; font-size: 0.85rem; margin-bottom: 1.5rem;">Fine-tune sensors to match a reference thermometer. Enter the actual temperature and click Calibrate.</p>
+
+                        <!-- Water Temperature Calibration -->
+                        <div style="margin-bottom: 1.5rem; padding: 1rem; background: rgba(0,0,0,0.2); border-radius: 6px;">
+                            <h6 style="color: #94a3b8; font-size: 0.85rem; font-weight: 500; margin: 0 0 0.75rem 0;">Water Sensor</h6>
+                            <div style="color: #64748b; font-size: 0.85rem; margin-bottom: 0.75rem;">
+                                Current: <span id="sensor-water-temp-cal" style="color: #10b981; font-weight: 600;">--</span>
+                                <span style="opacity: 0.6;">(offset: <span id="water-temp-offset-display" style="color: #94a3b8;">0.0</span>°)</span>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <input type="number" id="waterActualTemp" step="0.1" placeholder="Actual temp"
+                                    style="width: 100px; padding: 0.5rem; background: #0f172a; border: 1px solid #374151; border-radius: 6px; color: #fff;">
+                                <button class="btn" style="padding: 0.5rem 0.75rem; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.85rem;"
+                                    onclick="calibrateWaterTemp()">Calibrate</button>
+                                <button class="btn" style="padding: 0.5rem 0.75rem; background: #64748b; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.85rem; opacity: 0.7;"
+                                    onclick="if(confirm('Clear water temperature calibration?')) clearWaterTempCal()">Clear</button>
+                            </div>
                         </div>
-                        <div class="setting-row">
-                            <label class="setting-label">Air Temp Offset (°C)</label>
-                            <input type="number" class="setting-input" step="0.1" min="-5" max="5"
-                                value="${settings.air_temp_offset || 0}"
-                                onchange="updateDeviceSetting('air_temp_offset', parseFloat(this.value))">
+
+                        <!-- Air Temperature Calibration -->
+                        <div style="padding: 1rem; background: rgba(0,0,0,0.2); border-radius: 6px;">
+                            <h6 style="color: #94a3b8; font-size: 0.85rem; font-weight: 500; margin: 0 0 0.75rem 0;">Air Sensor</h6>
+                            <div style="color: #64748b; font-size: 0.85rem; margin-bottom: 0.75rem;">
+                                Current: <span id="sensor-air-temp-cal" style="color: #10b981; font-weight: 600;">--</span>
+                                <span style="opacity: 0.6;">(offset: <span id="air-temp-offset-display" style="color: #94a3b8;">0.0</span>°)</span>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <input type="number" id="airActualTemp" step="0.1" placeholder="Actual temp"
+                                    style="width: 100px; padding: 0.5rem; background: #0f172a; border: 1px solid #374151; border-radius: 6px; color: #fff;">
+                                <button class="btn" style="padding: 0.5rem 0.75rem; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.85rem;"
+                                    onclick="calibrateAirTemp()">Calibrate</button>
+                                <button class="btn" style="padding: 0.5rem 0.75rem; background: #64748b; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.85rem; opacity: 0.7;"
+                                    onclick="if(confirm('Clear air temperature calibration?')) clearAirTempCal()">Clear</button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -2669,6 +2726,25 @@
             }
             if (waterLevelEl && device.water_level !== undefined && device.water_level !== null) {
                 waterLevelEl.innerHTML = device.water_level.toFixed(0) + '<span class="sensor-unit">%</span>';
+            }
+
+            // Update temperature calibration displays
+            const waterTempCalEl = document.getElementById('sensor-water-temp-cal');
+            const airTempCalEl = document.getElementById('sensor-air-temp-cal');
+            const waterOffsetEl = document.getElementById('water-temp-offset-display');
+            const airOffsetEl = document.getElementById('air-temp-offset-display');
+
+            if (waterTempCalEl && device.water_temp !== undefined && device.water_temp !== null) {
+                waterTempCalEl.textContent = device.water_temp.toFixed(1) + '°C';
+            }
+            if (airTempCalEl && device.air_temp !== undefined && device.air_temp !== null) {
+                airTempCalEl.textContent = device.air_temp.toFixed(1) + '°C';
+            }
+            if (waterOffsetEl && device.water_temp_offset !== undefined && device.water_temp_offset !== null) {
+                waterOffsetEl.textContent = device.water_temp_offset.toFixed(2);
+            }
+            if (airOffsetEl && device.air_temp_offset !== undefined && device.air_temp_offset !== null) {
+                airOffsetEl.textContent = device.air_temp_offset.toFixed(2);
             }
         }
 
