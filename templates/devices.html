@@ -2172,19 +2172,17 @@
                         <small style="color: #64748b; font-size: 0.8rem; display: block; margin-top: 0.5rem;">Most sensors are NPN. Check your sensor's datasheet if unsure.</small>
                     </div>
                 </div>
-
-                <script>
-                function updateWaterLevelUI() {
-                    const type = parseInt(document.getElementById('water-level-type-select').value);
-                    document.getElementById('etape-config').style.display = type === 1 ? 'block' : 'none';
-                    document.getElementById('water-sensors-config').style.display = type === 2 ? 'block' : 'none';
-                }
-                </script>
             `;
             document.getElementById('settings-modal-body').innerHTML = html;
 
             // Start updating sensors
             startHydroSensorUpdates();
+        }
+
+        function updateWaterLevelUI() {
+            const type = parseInt(document.getElementById('water-level-type-select').value);
+            document.getElementById('etape-config').style.display = type === 1 ? 'block' : 'none';
+            document.getElementById('water-sensors-config').style.display = type === 2 ? 'block' : 'none';
         }
 
         function displayHydroCalibrationModal(settings) {
