@@ -2099,21 +2099,87 @@
                             <option value="celsius" ${!settings.use_fahrenheit ? 'selected' : ''}>Celsius (°C)</option>
                         </select>
                     </div>
+
+                    <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid #334155;">
+                        <h5 style="color: #94a3b8; font-size: 0.9rem; margin: 0 0 1rem 0;">Temperature Calibration</h5>
+                        <p style="color: #64748b; font-size: 0.85rem; margin-bottom: 1rem;">Adjust sensor offset to match a reference thermometer.</p>
+                        <div class="setting-row">
+                            <label class="setting-label">Water Temp Offset (°C)</label>
+                            <input type="number" class="setting-input" step="0.1" min="-5" max="5"
+                                value="${settings.water_temp_offset || 0}"
+                                onchange="updateDeviceSetting('water_temp_offset', parseFloat(this.value))">
+                        </div>
+                        <div class="setting-row">
+                            <label class="setting-label">Air Temp Offset (°C)</label>
+                            <input type="number" class="setting-input" step="0.1" min="-5" max="5"
+                                value="${settings.air_temp_offset || 0}"
+                                onchange="updateDeviceSetting('air_temp_offset', parseFloat(this.value))">
+                        </div>
+                    </div>
                 </div>
 
                 <div class="setting-group">
                     <h4>Water Level Sensor</h4>
                     <div class="setting-row">
                         <label class="setting-label">Sensor Type</label>
-                        <select class="setting-input" style="width: 200px;"
-                            onchange="updateDeviceSetting('water_level_type', parseInt(this.value))">
+                        <select id="water-level-type-select" class="setting-input" style="width: 200px;"
+                            onchange="updateDeviceSetting('water_level_type', parseInt(this.value)); updateWaterLevelUI();">
                             <option value="0" ${(settings.water_level_type || 0) === 0 ? 'selected' : ''}>Disabled</option>
                             <option value="1" ${(settings.water_level_type || 0) === 1 ? 'selected' : ''}>ETape (Continuous)</option>
                             <option value="2" ${(settings.water_level_type || 0) === 2 ? 'selected' : ''}>Water Sensors (3-Point)</option>
                         </select>
                     </div>
                     <div class="sensor-status">Current Level: <span id="sensor-water-level" style="color: #10b981; font-weight: 600;">--</span>%</div>
+
+                    <!-- ETape Configuration -->
+                    <div id="etape-config" style="display: ${(settings.water_level_type || 0) === 1 ? 'block' : 'none'}; margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid #334155;">
+                        <h5 style="color: #94a3b8; font-size: 0.9rem; margin: 0 0 1rem 0;">Level Thresholds</h5>
+                        <p style="color: #64748b; font-size: 0.85rem; margin-bottom: 1rem;">Configure water level percentage thresholds for status determination.</p>
+                        <div class="setting-row">
+                            <label class="setting-label">Empty Threshold (%)</label>
+                            <input type="number" class="setting-input" step="1" min="0" max="100"
+                                value="${settings.water_level_empty_threshold || 5}"
+                                onchange="updateDeviceSetting('water_level_empty_threshold', parseInt(this.value))">
+                        </div>
+                        <small style="color: #64748b; font-size: 0.8rem; display: block; margin: -0.5rem 0 0.75rem 0;">Below this % = Empty status</small>
+                        <div class="setting-row">
+                            <label class="setting-label">Low Threshold (%)</label>
+                            <input type="number" class="setting-input" step="1" min="0" max="100"
+                                value="${settings.water_level_low_threshold || 20}"
+                                onchange="updateDeviceSetting('water_level_low_threshold', parseInt(this.value))">
+                        </div>
+                        <small style="color: #64748b; font-size: 0.8rem; display: block; margin: -0.5rem 0 0.75rem 0;">Below this % = Low status (blocks auto-dosing)</small>
+                        <div class="setting-row">
+                            <label class="setting-label">Full Threshold (%)</label>
+                            <input type="number" class="setting-input" step="1" min="0" max="100"
+                                value="${settings.water_level_full_threshold || 95}"
+                                onchange="updateDeviceSetting('water_level_full_threshold', parseInt(this.value))">
+                        </div>
+                        <small style="color: #64748b; font-size: 0.8rem; display: block; margin: -0.5rem 0 0 0;">Above this % = Full status</small>
+                    </div>
+
+                    <!-- 3-Point Water Sensor Configuration -->
+                    <div id="water-sensors-config" style="display: ${(settings.water_level_type || 0) === 2 ? 'block' : 'none'}; margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid #334155;">
+                        <h5 style="color: #94a3b8; font-size: 0.9rem; margin: 0 0 1rem 0;">Sensor Output Type</h5>
+                        <div class="setting-row">
+                            <label class="setting-label">Output Type</label>
+                            <select class="setting-input" style="width: 250px;"
+                                onchange="updateDeviceSetting('water_sensor_output_type', parseInt(this.value))">
+                                <option value="0" ${(settings.water_sensor_output_type || 0) === 0 ? 'selected' : ''}>NPN (LOW when triggered)</option>
+                                <option value="1" ${(settings.water_sensor_output_type || 0) === 1 ? 'selected' : ''}>PNP (HIGH when triggered)</option>
+                            </select>
+                        </div>
+                        <small style="color: #64748b; font-size: 0.8rem; display: block; margin-top: 0.5rem;">Most sensors are NPN. Check your sensor's datasheet if unsure.</small>
+                    </div>
                 </div>
+
+                <script>
+                function updateWaterLevelUI() {
+                    const type = parseInt(document.getElementById('water-level-type-select').value);
+                    document.getElementById('etape-config').style.display = type === 1 ? 'block' : 'none';
+                    document.getElementById('water-sensors-config').style.display = type === 2 ? 'block' : 'none';
+                }
+                </script>
             `;
             document.getElementById('settings-modal-body').innerHTML = html;
 
@@ -2202,38 +2268,6 @@
                         <input type="number" class="setting-input" step="1" min="0"
                             value="${settings.ec_cal_high || 12880}"
                             onchange="updateDeviceSetting('ec_cal_high', parseInt(this.value))">
-                    </div>
-                </div>
-
-                <div class="setting-group">
-                    <h4>Temperature Calibration</h4>
-                    <div class="setting-row">
-                        <label class="setting-label">Water Temp Offset (°C)</label>
-                        <input type="number" class="setting-input" step="0.1" min="-5" max="5"
-                            value="${settings.water_temp_offset || 0}"
-                            onchange="updateDeviceSetting('water_temp_offset', parseFloat(this.value))">
-                    </div>
-                    <div class="setting-row">
-                        <label class="setting-label">Air Temp Offset (°C)</label>
-                        <input type="number" class="setting-input" step="0.1" min="-5" max="5"
-                            value="${settings.air_temp_offset || 0}"
-                            onchange="updateDeviceSetting('air_temp_offset', parseFloat(this.value))">
-                    </div>
-                </div>
-
-                <div class="setting-group">
-                    <h4>Water Level Calibration</h4>
-                    <div class="setting-row">
-                        <label class="setting-label">Low Level Threshold (%)</label>
-                        <input type="number" class="setting-input" step="1" min="0" max="100"
-                            value="${settings.water_level_low || 20}"
-                            onchange="updateDeviceSetting('water_level_low', parseInt(this.value))">
-                    </div>
-                    <div class="setting-row">
-                        <label class="setting-label">High Level Threshold (%)</label>
-                        <input type="number" class="setting-input" step="1" min="0" max="100"
-                            value="${settings.water_level_high || 90}"
-                            onchange="updateDeviceSetting('water_level_high', parseInt(this.value))">
                     </div>
                 </div>
             `;
