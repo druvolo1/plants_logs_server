@@ -2703,7 +2703,21 @@
             if (!currentSettingsDeviceId) return;
 
             const device = allDevices.find(d => d.device_id === currentSettingsDeviceId);
-            if (!device) return;
+            if (!device) {
+                console.log('[Update] Device not found in allDevices');
+                return;
+            }
+
+            // Debug: Log what sensor values we have
+            console.log('[Update] Device sensor data:', {
+                pH: device.pH,
+                ec: device.ec,
+                water_temp: device.water_temp,
+                air_temp: device.air_temp,
+                water_level: device.water_level,
+                water_temp_offset: device.water_temp_offset,
+                air_temp_offset: device.air_temp_offset
+            });
 
             // Update sensor displays with current values
             const phEl = document.getElementById('sensor-ph');
