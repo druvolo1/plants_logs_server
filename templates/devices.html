@@ -1763,6 +1763,31 @@
             }));
         }
 
+        function runPumpCalibration(pumpNum, duration) {
+            if (!currentSettingsDeviceId) {
+                alert('No device selected.');
+                return;
+            }
+
+            const ws = wsMap[currentSettingsDeviceId];
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                alert('WebSocket not connected. Cannot run pump.');
+                return;
+            }
+
+            // Confirm before running pump
+            if (!confirm(`Run Pump ${pumpNum} for ${duration} seconds?`)) {
+                return;
+            }
+
+            console.log(`[Calibration] Running pump ${pumpNum} for ${duration} seconds`);
+            ws.send(JSON.stringify({
+                type: 'run_pump_calibration',
+                pump: pumpNum,
+                duration: duration
+            }));
+        }
+
         function calibrateWaterTemp() {
             const input = document.getElementById('waterActualTemp');
             const val = parseFloat(input ? input.value : '0');
@@ -2348,6 +2373,7 @@
         }
 
         function displayHydroDosingModal(settings) {
+            const volumeUnit = settings.use_gallons ? 'gal' : 'L';
             const html = `
                 <style>
                     .setting-group {
@@ -2385,73 +2411,140 @@
                         font-size: 0.95rem;
                         width: 200px;
                     }
+                    .setting-input-small {
+                        padding: 0.5rem;
+                        background: #0f172a;
+                        border: 1px solid #374151;
+                        border-radius: 6px;
+                        color: #fff;
+                        font-size: 0.95rem;
+                        width: 120px;
+                    }
+                    .unit-selector {
+                        display: inline-flex;
+                        gap: 0.5rem;
+                        margin-left: 0.5rem;
+                    }
+                    .calibration-btn {
+                        padding: 0.5rem 1rem;
+                        background: #3b82f6;
+                        border: none;
+                        border-radius: 6px;
+                        color: #fff;
+                        cursor: pointer;
+                        font-size: 0.9rem;
+                        transition: background 0.2s;
+                    }
+                    .calibration-btn:hover {
+                        background: #2563eb;
+                    }
+                    .calibration-btn:active {
+                        background: #1d4ed8;
+                    }
+                    .stat-value {
+                        color: #10b981;
+                        font-weight: 500;
+                    }
+                    .info-text {
+                        color: #64748b;
+                        font-size: 0.85rem;
+                        font-style: italic;
+                    }
                 </style>
 
                 <div class="setting-group">
-                    <h4>pH Target Range</h4>
+                    <h4>Reservoir Configuration</h4>
                     <div class="setting-row">
-                        <label class="setting-label">Minimum pH</label>
-                        <input type="number" class="setting-input" step="0.1" min="0" max="14"
-                            value="${settings.ph_min || 5.5}"
-                            onchange="updateDeviceSetting('ph_min', parseFloat(this.value))">
-                    </div>
-                    <div class="setting-row">
-                        <label class="setting-label">Maximum pH</label>
-                        <input type="number" class="setting-input" step="0.1" min="0" max="14"
-                            value="${settings.ph_max || 6.5}"
-                            onchange="updateDeviceSetting('ph_max', parseFloat(this.value))">
-                    </div>
-                </div>
-
-                <div class="setting-group">
-                    <h4>EC Target Range</h4>
-                    <div class="setting-row">
-                        <label class="setting-label">Minimum EC (μS/cm)</label>
-                        <input type="number" class="setting-input" step="100" min="0"
-                            value="${settings.ec_min || 1000}"
-                            onchange="updateDeviceSetting('ec_min', parseInt(this.value))">
-                    </div>
-                    <div class="setting-row">
-                        <label class="setting-label">Maximum EC (μS/cm)</label>
-                        <input type="number" class="setting-input" step="100" min="0"
-                            value="${settings.ec_max || 2000}"
-                            onchange="updateDeviceSetting('ec_max', parseInt(this.value))">
+                        <label class="setting-label">Reservoir Volume</label>
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <input type="number" class="setting-input-small" step="0.1" min="0.1"
+                                value="${settings.system_volume || 5.0}"
+                                onchange="updateDeviceSetting('system_volume', parseFloat(this.value))">
+                            <label class="switch">
+                                <input type="checkbox" ${settings.use_gallons ? 'checked' : ''}
+                                    onchange="updateDeviceSetting('use_gallons', this.checked)">
+                                <span class="slider round"></span>
+                            </label>
+                            <span style="color: #94a3b8; min-width: 30px;">${volumeUnit}</span>
+                        </div>
                     </div>
                 </div>
 
                 <div class="setting-group">
-                    <h4>Auto-Dosing Configuration</h4>
+                    <h4>Dosing Settings</h4>
                     <div class="setting-row">
-                        <label class="setting-label">Enable Auto-Dose</label>
-                        <label class="switch">
-                            <input type="checkbox" ${settings.auto_dose_enabled ? 'checked' : ''}
-                                onchange="updateDeviceSetting('auto_dose_enabled', this.checked)">
-                            <span class="slider round"></span>
-                        </label>
+                        <label class="setting-label">pH Target for Dosing</label>
+                        <input type="number" class="setting-input" step="0.01" min="0" max="14"
+                            value="${settings.ph_target || 6.0}"
+                            onchange="updateDeviceSetting('ph_target', parseFloat(this.value))">
                     </div>
                     <div class="setting-row">
-                        <label class="setting-label">pH Down Pump Duration (ms)</label>
-                        <input type="number" class="setting-input" step="100" min="100" max="10000"
-                            value="${settings.ph_down_duration || 1000}"
-                            onchange="updateDeviceSetting('ph_down_duration', parseInt(this.value))">
+                        <label class="setting-label">pH Up Strength (ml/pH/${volumeUnit})</label>
+                        <input type="number" class="setting-input" step="0.01" min="0"
+                            value="${settings.ph_up_strength || 0.5}"
+                            onchange="updateDeviceSetting('ph_up_strength', parseFloat(this.value))">
                     </div>
                     <div class="setting-row">
-                        <label class="setting-label">pH Up Pump Duration (ms)</label>
-                        <input type="number" class="setting-input" step="100" min="100" max="10000"
-                            value="${settings.ph_up_duration || 1000}"
-                            onchange="updateDeviceSetting('ph_up_duration', parseInt(this.value))">
+                        <label class="setting-label">pH Down Strength (ml/pH/${volumeUnit})</label>
+                        <input type="number" class="setting-input" step="0.01" min="0"
+                            value="${settings.ph_down_strength || 0.5}"
+                            onchange="updateDeviceSetting('ph_down_strength', parseFloat(this.value))">
                     </div>
                     <div class="setting-row">
-                        <label class="setting-label">Nutrient Pump Duration (ms)</label>
-                        <input type="number" class="setting-input" step="100" min="100" max="10000"
-                            value="${settings.nutrient_duration || 1000}"
-                            onchange="updateDeviceSetting('nutrient_duration', parseInt(this.value))">
+                        <label class="setting-label">Max Dose Limit (ml)</label>
+                        <input type="number" class="setting-input" step="0.1" min="0.1"
+                            value="${settings.max_dose_ml || 10.0}"
+                            onchange="updateDeviceSetting('max_dose_ml', parseFloat(this.value))">
+                    </div>
+                </div>
+
+                <div class="setting-group">
+                    <h4>Pump Calibration</h4>
+                    <div class="setting-row">
+                        <label class="setting-label">Pump 1 (pH Up) - sec/ml</label>
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <input type="number" class="setting-input-small" step="0.01" min="0.01"
+                                value="${settings.pump1_calibration || 1.0}"
+                                onchange="updateDeviceSetting('pump1_calibration', parseFloat(this.value))">
+                            <button class="calibration-btn" onclick="runPumpCalibration(1, 10)">Run 10 sec</button>
+                        </div>
                     </div>
                     <div class="setting-row">
-                        <label class="setting-label">Minimum Dose Interval (minutes)</label>
-                        <input type="number" class="setting-input" step="1" min="1" max="60"
-                            value="${settings.dose_interval || 15}"
-                            onchange="updateDeviceSetting('dose_interval', parseInt(this.value))">
+                        <label class="setting-label">Pump 2 (pH Down) - sec/ml</label>
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <input type="number" class="setting-input-small" step="0.01" min="0.01"
+                                value="${settings.pump2_calibration || 1.0}"
+                                onchange="updateDeviceSetting('pump2_calibration', parseFloat(this.value))">
+                            <button class="calibration-btn" onclick="runPumpCalibration(2, 10)">Run 10 sec</button>
+                        </div>
+                    </div>
+                    <div class="setting-row">
+                        <label class="setting-label">Pump 1 Last Calibrated</label>
+                        <span class="info-text">${settings.pump1_last_calibrated || 'Never'}</span>
+                    </div>
+                    <div class="setting-row">
+                        <label class="setting-label">Pump 2 Last Calibrated</label>
+                        <span class="info-text">${settings.pump2_last_calibrated || 'Never'}</span>
+                    </div>
+                </div>
+
+                <div class="setting-group">
+                    <h4>Pump Statistics</h4>
+                    <div class="setting-row">
+                        <label class="setting-label">Pump 1 Activations</label>
+                        <span class="stat-value">${settings.pump1_activations || 0}</span>
+                    </div>
+                    <div class="setting-row">
+                        <label class="setting-label">Pump 1 Total Runtime</label>
+                        <span class="stat-value">${(settings.pump1_total_duration || 0).toFixed(1)} sec</span>
+                    </div>
+                    <div class="setting-row">
+                        <label class="setting-label">Pump 2 Activations</label>
+                        <span class="stat-value">${settings.pump2_activations || 0}</span>
+                    </div>
+                    <div class="setting-row">
+                        <label class="setting-label">Pump 2 Total Runtime</label>
+                        <span class="stat-value">${(settings.pump2_total_duration || 0).toFixed(1)} sec</span>
                     </div>
                 </div>
             `;
