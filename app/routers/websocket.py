@@ -104,6 +104,14 @@ async def device_websocket(
         except Exception as e:
             print(f"[FIRMWARE] Error checking pending firmware update for {device_id}: {e}")
 
+    # Check if users are already viewing this device and notify device
+    if len(user_connections[device_id]) > 0:
+        try:
+            await websocket.send_json({"type": "user_connected"})
+            print(f"Sent user_connected to device {device_id} on connect (users already viewing)")
+        except Exception as e:
+            print(f"Failed to send user_connected to device {device_id}: {e}")
+
     try:
         while True:
             data = await websocket.receive_json()

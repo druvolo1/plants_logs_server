@@ -811,25 +811,13 @@
     <div style="padding: 2rem 1.5rem; max-width: 1400px; margin: 0 auto;">
     <h2 style="color: #10b981; margin-bottom: 1.5rem;">Manage Devices</h2>
 
-    <!-- Add Device form -->
-    <h3>Add Device</h3>
+    <!-- Accept Shared Device form -->
+    <h3>Accept Shared Device</h3>
     <form id="add-device-form">
-        <label for="device_id">Device ID (from Pi):</label>
-        <input type="text" id="device_id">
-        <br>
-        <label for="name">Device Name (optional):</label>
-        <input type="text" id="name">
-        <br>
-        <label for="device_location">Location (optional):</label>
-        <select id="device_location">
-            <option value="">Unassigned</option>
-        </select>
-        <br>
-        <label style="margin-top: 1rem; display: block; font-weight: normal; color: #888;">OR accept shared device:</label>
         <label for="share_code">Share Code:</label>
         <input type="text" id="share_code" placeholder="Enter 10-character code">
         <br>
-        <button type="submit">Add Device / Accept Share</button>
+        <button type="submit">Accept Share</button>
     </form>
     <div id="add-result"></div>
 
@@ -3945,83 +3933,37 @@
             showDeviceStatus(device_id, 'Reboot command sent! Device will restart shortly.', '#10b981');
         }
 
-        // Add form submit - handle both device adding and share code acceptance
+        // Accept share code form submit
         document.getElementById('add-device-form').addEventListener('submit', async function(event) {
             event.preventDefault();
-            const device_id = document.getElementById('device_id').value.trim();
-            const name = document.getElementById('name').value.trim();
             const share_code = document.getElementById('share_code').value.trim();
             const resultDiv = document.getElementById('add-result');
 
-            // If share code is provided, accept share
-            if (share_code) {
-                const response = await fetch('/user/devices/accept-share', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ share_code: share_code })
-                });
-
-                if (response.ok) {
-                    const data = await response.json();
-                    resultDiv.innerHTML = `<p style="color: #10b981;">✓ Device share accepted successfully! Device ID: ${data.device_id}</p>`;
-                    document.getElementById('share_code').value = '';
-                    fetchDevices();  // Reload list
-                } else {
-                    const error = await response.json();
-                    resultDiv.innerHTML = `<p style="color: #ef4444;">Error: ${error.detail}</p>`;
-                }
+            if (!share_code) {
+                resultDiv.innerHTML = `<p style="color: #ef4444;">Please enter a share code</p>`;
+                return;
             }
-            // Otherwise, add new device
-            else if (device_id) {
-                const location_id = document.getElementById('device_location').value;
-                const payload = { device_id: device_id, name: name };
-                if (location_id) {
-                    payload.location_id = parseInt(location_id);
-                }
 
-                const response = await fetch('/user/devices', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
+            const response = await fetch('/user/devices/accept-share', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ share_code: share_code })
+            });
 
-                if (response.ok) {
-                    const data = await response.json();
-                    resultDiv.innerHTML = `<p style="color: #10b981;">Device added! API Key: <strong>${data.api_key}</strong> (copy to Pi settings.json as "api_key")</p>`;
-                    document.getElementById('device_id').value = '';
-                    document.getElementById('name').value = '';
-                    fetchDevices();  // Reload list
-                } else {
-                    const error = await response.json();
-                    resultDiv.innerHTML = `<p style="color: #ef4444;">Error: ${error.detail}</p>`;
-                }
+            if (response.ok) {
+                const data = await response.json();
+                resultDiv.innerHTML = `<p style="color: #10b981;">✓ Device share accepted successfully! Device ID: ${data.device_id}</p>`;
+                document.getElementById('share_code').value = '';
+                fetchDevices();  // Reload list
             } else {
-                resultDiv.innerHTML = `<p style="color: #ef4444;">Please enter either a Device ID or a Share Code</p>`;
+                const error = await response.json();
+                resultDiv.innerHTML = `<p style="color: #ef4444;">Error: ${error.detail}</p>`;
             }
         });
 
         // Load devices on page load
-        async function fetchLocations() {
-            const response = await fetch('/user/locations');
-            if (response.ok) {
-                const locations = await response.json();
-                const select = document.getElementById('device_location');
-                select.innerHTML = '<option value="">Unassigned</option>';
-
-                // Only show owned locations
-                const ownedLocations = locations.filter(loc => loc.is_owner);
-                ownedLocations.forEach(loc => {
-                    const option = document.createElement('option');
-                    option.value = loc.id;
-                    option.textContent = loc.name;
-                    select.appendChild(option);
-                });
-            }
-        }
-
         window.onload = function() {
             fetchDevices();
-            fetchLocations();
         };
 
         window.onpageshow = function(evt) {
