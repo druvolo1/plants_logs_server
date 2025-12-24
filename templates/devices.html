@@ -1788,6 +1788,51 @@
             }));
         }
 
+        function clearPumpStats(pumpNum) {
+            if (!currentSettingsDeviceId) {
+                alert('No device selected.');
+                return;
+            }
+
+            const ws = wsMap[currentSettingsDeviceId];
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                alert('WebSocket not connected. Cannot clear stats.');
+                return;
+            }
+
+            const pumpName = pumpNum === 1 ? 'pH Up' : 'pH Down';
+            if (!confirm(`Clear all statistics for ${pumpName} pump?`)) {
+                return;
+            }
+
+            console.log(`[Stats] Clearing stats for pump ${pumpNum}`);
+            ws.send(JSON.stringify({
+                type: 'clear_pump_stats',
+                pump: pumpNum
+            }));
+
+            // Refresh modal after a short delay to show updated stats
+            setTimeout(() => refreshModalSettings(), 500);
+        }
+
+        function refreshModalSettings() {
+            if (!currentSettingsDeviceId) {
+                alert('No device selected.');
+                return;
+            }
+
+            const ws = wsMap[currentSettingsDeviceId];
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                alert('WebSocket not connected. Cannot refresh.');
+                return;
+            }
+
+            console.log('[Settings] Requesting settings refresh');
+            ws.send(JSON.stringify({
+                type: 'get_settings'
+            }));
+        }
+
         function calibrateWaterTemp() {
             const input = document.getElementById('waterActualTemp');
             const val = parseFloat(input ? input.value : '0');
@@ -1985,7 +2030,24 @@
                         font-size: 0.95rem;
                         width: 200px;
                     }
+                
+                    .refresh-btn {
+                        padding: 0.5rem 1rem;
+                        background: #10b981;
+                        border: none;
+                        border-radius: 6px;
+                        color: #fff;
+                        cursor: pointer;
+                        font-size: 0.9rem;
+                        margin-bottom: 1rem;
+                        transition: background 0.2s;
+                    }
+                    .refresh-btn:hover {
+                        background: #059669;
+                    }
                 </style>
+
+                <button class="refresh-btn" onclick="refreshModalSettings()">🔄 Refresh Settings</button>
 
                 <div class="setting-group">
                     <h4>Device Configuration</h4>
@@ -2096,7 +2158,24 @@
                         font-size: 0.85rem;
                         margin-top: 0.5rem;
                     }
+                
+                    .refresh-btn {
+                        padding: 0.5rem 1rem;
+                        background: #10b981;
+                        border: none;
+                        border-radius: 6px;
+                        color: #fff;
+                        cursor: pointer;
+                        font-size: 0.9rem;
+                        margin-bottom: 1rem;
+                        transition: background 0.2s;
+                    }
+                    .refresh-btn:hover {
+                        background: #059669;
+                    }
                 </style>
+
+                <button class="refresh-btn" onclick="refreshModalSettings()">🔄 Refresh Settings</button>
 
                 <div class="setting-group">
                     <h4>pH Target Range</h4>
@@ -2323,7 +2402,24 @@
                         font-size: 0.95rem;
                         width: 200px;
                     }
+                
+                    .refresh-btn {
+                        padding: 0.5rem 1rem;
+                        background: #10b981;
+                        border: none;
+                        border-radius: 6px;
+                        color: #fff;
+                        cursor: pointer;
+                        font-size: 0.9rem;
+                        margin-bottom: 1rem;
+                        transition: background 0.2s;
+                    }
+                    .refresh-btn:hover {
+                        background: #059669;
+                    }
                 </style>
+
+                <button class="refresh-btn" onclick="refreshModalSettings()">🔄 Refresh Settings</button>
 
                 <div class="setting-group">
                     <h4>pH Calibration</h4>
@@ -2441,6 +2537,33 @@
                     .calibration-btn:active {
                         background: #1d4ed8;
                     }
+                    .clear-btn {
+                        padding: 0.4rem 0.8rem;
+                        background: #ef4444;
+                        border: none;
+                        border-radius: 6px;
+                        color: #fff;
+                        cursor: pointer;
+                        font-size: 0.85rem;
+                        transition: background 0.2s;
+                    }
+                    .clear-btn:hover {
+                        background: #dc2626;
+                    }
+                    .refresh-btn {
+                        padding: 0.5rem 1rem;
+                        background: #10b981;
+                        border: none;
+                        border-radius: 6px;
+                        color: #fff;
+                        cursor: pointer;
+                        font-size: 0.9rem;
+                        margin-bottom: 1rem;
+                        transition: background 0.2s;
+                    }
+                    .refresh-btn:hover {
+                        background: #059669;
+                    }
                     .stat-value {
                         color: #10b981;
                         font-weight: 500;
@@ -2452,6 +2575,8 @@
                     }
                 </style>
 
+                <button class="refresh-btn" onclick="refreshModalSettings()">🔄 Refresh Settings</button>
+
                 <div class="setting-group">
                     <h4>Reservoir Configuration</h4>
                     <div class="setting-row">
@@ -2460,12 +2585,10 @@
                             <input type="number" class="setting-input-small" step="0.1" min="0.1"
                                 value="${settings.system_volume || 5.0}"
                                 onchange="updateDeviceSetting('system_volume', parseFloat(this.value))">
-                            <label class="switch">
-                                <input type="checkbox" ${settings.use_gallons ? 'checked' : ''}
-                                    onchange="updateDeviceSetting('use_gallons', this.checked)">
-                                <span class="slider round"></span>
-                            </label>
-                            <span style="color: #94a3b8; min-width: 30px;">${volumeUnit}</span>
+                            <select class="setting-input-small" onchange="updateDeviceSetting('use_gallons', this.value === 'gal')">
+                                <option value="gal" ${settings.use_gallons ? 'selected' : ''}>Gallons</option>
+                                <option value="L" ${!settings.use_gallons ? 'selected' : ''}>Liters</option>
+                            </select>
                         </div>
                     </div>
                 </div>
@@ -2501,7 +2624,7 @@
                 <div class="setting-group">
                     <h4>Pump Calibration</h4>
                     <div class="setting-row">
-                        <label class="setting-label">Pump 1 (pH Up) - sec/ml</label>
+                        <label class="setting-label">pH Up Pump - sec/ml</label>
                         <div style="display: flex; align-items: center; gap: 0.5rem;">
                             <input type="number" class="setting-input-small" step="0.01" min="0.01"
                                 value="${settings.pump1_calibration || 1.0}"
@@ -2510,7 +2633,7 @@
                         </div>
                     </div>
                     <div class="setting-row">
-                        <label class="setting-label">Pump 2 (pH Down) - sec/ml</label>
+                        <label class="setting-label">pH Down Pump - sec/ml</label>
                         <div style="display: flex; align-items: center; gap: 0.5rem;">
                             <input type="number" class="setting-input-small" step="0.01" min="0.01"
                                 value="${settings.pump2_calibration || 1.0}"
@@ -2519,11 +2642,11 @@
                         </div>
                     </div>
                     <div class="setting-row">
-                        <label class="setting-label">Pump 1 Last Calibrated</label>
+                        <label class="setting-label">pH Up Last Calibrated</label>
                         <span class="info-text">${settings.pump1_last_calibrated || 'Never'}</span>
                     </div>
                     <div class="setting-row">
-                        <label class="setting-label">Pump 2 Last Calibrated</label>
+                        <label class="setting-label">pH Down Last Calibrated</label>
                         <span class="info-text">${settings.pump2_last_calibrated || 'Never'}</span>
                     </div>
                 </div>
@@ -2531,19 +2654,25 @@
                 <div class="setting-group">
                     <h4>Pump Statistics</h4>
                     <div class="setting-row">
-                        <label class="setting-label">Pump 1 Activations</label>
-                        <span class="stat-value">${settings.pump1_activations || 0}</span>
+                        <label class="setting-label">pH Up Activations</label>
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <span class="stat-value">${settings.pump1_activations || 0}</span>
+                            <button class="clear-btn" onclick="clearPumpStats(1)">Clear</button>
+                        </div>
                     </div>
                     <div class="setting-row">
-                        <label class="setting-label">Pump 1 Total Runtime</label>
+                        <label class="setting-label">pH Up Total Runtime</label>
                         <span class="stat-value">${(settings.pump1_total_duration || 0).toFixed(1)} sec</span>
                     </div>
                     <div class="setting-row">
-                        <label class="setting-label">Pump 2 Activations</label>
-                        <span class="stat-value">${settings.pump2_activations || 0}</span>
+                        <label class="setting-label">pH Down Activations</label>
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <span class="stat-value">${settings.pump2_activations || 0}</span>
+                            <button class="clear-btn" onclick="clearPumpStats(2)">Clear</button>
+                        </div>
                     </div>
                     <div class="setting-row">
-                        <label class="setting-label">Pump 2 Total Runtime</label>
+                        <label class="setting-label">pH Down Total Runtime</label>
                         <span class="stat-value">${(settings.pump2_total_duration || 0).toFixed(1)} sec</span>
                     </div>
                 </div>
@@ -2589,7 +2718,24 @@
                         font-size: 0.95rem;
                         width: 200px;
                     }
+                
+                    .refresh-btn {
+                        padding: 0.5rem 1rem;
+                        background: #10b981;
+                        border: none;
+                        border-radius: 6px;
+                        color: #fff;
+                        cursor: pointer;
+                        font-size: 0.9rem;
+                        margin-bottom: 1rem;
+                        transition: background 0.2s;
+                    }
+                    .refresh-btn:hover {
+                        background: #059669;
+                    }
                 </style>
+
+                <button class="refresh-btn" onclick="refreshModalSettings()">🔄 Refresh Settings</button>
 
                 <div class="setting-group">
                     <h4>Auto-Fill Configuration</h4>
@@ -2735,7 +2881,24 @@
                         font-size: 0.85rem;
                         margin-bottom: 1.5rem;
                     }
+                
+                    .refresh-btn {
+                        padding: 0.5rem 1rem;
+                        background: #10b981;
+                        border: none;
+                        border-radius: 6px;
+                        color: #fff;
+                        cursor: pointer;
+                        font-size: 0.9rem;
+                        margin-bottom: 1rem;
+                        transition: background 0.2s;
+                    }
+                    .refresh-btn:hover {
+                        background: #059669;
+                    }
                 </style>
+
+                <button class="refresh-btn" onclick="refreshModalSettings()">🔄 Refresh Settings</button>
 
                 <div class="info-box">
                     ⚠️ <strong>Admin Only:</strong> These settings control how the device communicates with the server. Changes take effect immediately and persist across reboots.
