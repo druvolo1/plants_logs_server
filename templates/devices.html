@@ -1775,17 +1775,60 @@
                 return;
             }
 
-            // Confirm before running pump
-            if (!confirm(`Run Pump ${pumpNum} for ${duration} seconds?`)) {
-                return;
-            }
+            const pumpName = pumpNum === 1 ? 'pH Up' : 'pH Down';
 
-            console.log(`[Calibration] Running pump ${pumpNum} for ${duration} seconds`);
+            // Create countdown overlay
+            const overlay = document.createElement('div');
+            overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.8);display:flex;align-items:center;justify-content:center;z-index:10000';
+            overlay.innerHTML = `
+                <div style="background:#1e293b;padding:2rem;border-radius:12px;text-align:center;min-width:300px;border:1px solid #334155">
+                    <h3 style="color:#10b981;margin:0 0 1rem 0">Calibrating ${pumpName} Pump</h3>
+                    <div style="font-size:3rem;font-weight:bold;color:#fff;font-family:monospace;margin:1rem 0" id="countdown">${duration}</div>
+                    <div style="color:#94a3b8">Running pump...</div>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+
+            // Send command to run pump
+            console.log(`[Calibration] Running ${pumpName} pump for ${duration} seconds`);
             ws.send(JSON.stringify({
                 type: 'run_pump_calibration',
                 pump: pumpNum,
                 duration: duration
             }));
+
+            // Countdown timer
+            let remaining = duration;
+            const countdownEl = overlay.querySelector('#countdown');
+            const timer = setInterval(() => {
+                remaining--;
+                countdownEl.textContent = remaining;
+                if (remaining <= 0) {
+                    clearInterval(timer);
+
+                    // Prompt for measurement
+                    document.body.removeChild(overlay);
+                    const measured = prompt(`Pump stopped. How many ml did the ${pumpName} pump dispense in ${duration} seconds?`);
+
+                    if (measured && parseFloat(measured) > 0) {
+                        const ml = parseFloat(measured);
+                        const secPerMl = duration / ml;
+
+                        console.log(`[Calibration] ${pumpName}: ${ml} ml in ${duration} sec = ${secPerMl.toFixed(2)} sec/ml`);
+
+                        // Update calibration
+                        const setting = pumpNum === 1 ? 'pump1_calibration' : 'pump2_calibration';
+                        updateDeviceSetting(setting, parseFloat(secPerMl.toFixed(2)));
+
+                        alert(`${pumpName} pump calibrated: ${secPerMl.toFixed(2)} sec/ml`);
+
+                        // Refresh modal to show updated value
+                        setTimeout(() => refreshModalSettings(), 500);
+                    } else {
+                        alert('Calibration cancelled - no valid measurement entered');
+                    }
+                }
+            }, 1000);
         }
 
         function clearPumpStats(pumpNum) {
