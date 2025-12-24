@@ -48,69 +48,118 @@ async def device_websocket(
     api_key: str = Query(...),
     session: AsyncSession = Depends(get_db_dependency())
 ):
-    await websocket.accept()
-    print(f"Device connected: {device_id} with api_key {api_key}")
+    device = None  # Track device for cleanup
+    device_added_to_connections = False  # Track if we added to device_connections
 
-    # Get device and verify auth
-    result = await session.execute(
-        select(Device, User)
-        .join(User, Device.user_id == User.id)
-        .where(Device.device_id == device_id, Device.api_key == api_key)
-    )
-    row = result.first()
-    if not row:
-        print(f"Invalid device/auth for {device_id}")
-        await websocket.close()
-        return
-
-    device, user = row
-
-    await session.execute(update(Device).where(Device.device_id == device_id).values(is_online=True, last_seen=datetime.utcnow()))
-    await session.commit()
-    print(f"Set {device_id} online in DB")
-    device_connections[device_id] = websocket
-
-    # Send owner info to device
     try:
-        await websocket.send_json({
-            "command": "server_info",
-            "owner_email": user.email,
-            "owner_name": user.email.split('@')[0]
-        })
-        print(f"Sent owner info to device {device_id}: {user.email}")
-    except Exception as e:
-        print(f"Failed to send owner info to device {device_id}: {e}")
+        await websocket.accept()
+        print(f"Device connected: {device_id} with api_key {api_key}")
 
-    # Notify all connected users that the device is online
-    for user_ws in user_connections[device_id]:
-        try:
-            await user_ws.send_json({"type": "device_status", "online": True})
-        except:
-            pass  # User might have disconnected
+        # Get device and verify auth
+        result = await session.execute(
+            select(Device, User)
+            .join(User, Device.user_id == User.id)
+            .where(Device.device_id == device_id, Device.api_key == api_key)
+        )
+        row = result.first()
+        if not row:
+            print(f"Invalid device/auth for {device_id}")
+            await websocket.close()
+            return
 
-    # Check for pending force firmware update (for ESP32 devices)
-    if device.device_type in ['valve_controller', 'hydroponic_controller']:
+        device, user = row
+
+        # Mark device as online in database with explicit error handling
         try:
-            assignment_result = await session.execute(
-                select(DeviceFirmwareAssignment).where(
-                    DeviceFirmwareAssignment.device_id == device.id,
-                    DeviceFirmwareAssignment.force_update == True
+            await session.execute(update(Device).where(Device.device_id == device_id).values(is_online=True, last_seen=datetime.utcnow()))
+            await session.commit()
+            print(f"Set {device_id} online in DB")
+
+            # Verify the update actually persisted
+            verify_result = await session.execute(select(Device.is_online).where(Device.device_id == device_id))
+            is_actually_online = verify_result.scalar()
+            if not is_actually_online:
+                print(f"CRITICAL ERROR: Database shows {device_id} still offline after update! Closing connection.")
+                await websocket.close()
+                return
+
+        except Exception as db_error:
+            print(f"CRITICAL ERROR: Failed to mark {device_id} online in DB: {db_error}")
+            import traceback
+            traceback.print_exc()
+            await websocket.close()
+            return
+
+        device_connections[device_id] = websocket
+        device_added_to_connections = True
+        print(f"Added {device_id} to device_connections (total: {len(device_connections)} devices)")
+
+        # Send owner info to device
+        try:
+            await websocket.send_json({
+                "command": "server_info",
+                "owner_email": user.email,
+                "owner_name": user.email.split('@')[0]
+            })
+            print(f"Sent owner info to device {device_id}: {user.email}")
+        except Exception as e:
+            print(f"Failed to send owner info to device {device_id}: {e}")
+
+        # Notify all connected users that the device is online
+        for user_ws in user_connections[device_id]:
+            try:
+                await user_ws.send_json({"type": "device_status", "online": True})
+            except:
+                pass  # User might have disconnected
+
+        # Check for pending force firmware update (for ESP32 devices)
+        if device.device_type in ['valve_controller', 'hydroponic_controller']:
+            try:
+                assignment_result = await session.execute(
+                    select(DeviceFirmwareAssignment).where(
+                        DeviceFirmwareAssignment.device_id == device.id,
+                        DeviceFirmwareAssignment.force_update == True
+                    )
                 )
-            )
-            pending_assignment = assignment_result.scalars().first()
-            if pending_assignment:
-                await websocket.send_json({"type": "firmware_update"})
-                print(f"[FIRMWARE] Sent pending firmware_update command to {device_id} on connect")
-        except Exception as e:
-            print(f"[FIRMWARE] Error checking pending firmware update for {device_id}: {e}")
+                pending_assignment = assignment_result.scalars().first()
+                if pending_assignment:
+                    await websocket.send_json({"type": "firmware_update"})
+                    print(f"[FIRMWARE] Sent pending firmware_update command to {device_id} on connect")
+            except Exception as e:
+                print(f"[FIRMWARE] Error checking pending firmware update for {device_id}: {e}")
 
-    # Check if users are already viewing this device and notify device
-    if len(user_connections[device_id]) > 0:
+        # Check if users are already viewing this device and notify device
+        if len(user_connections[device_id]) > 0:
+            try:
+                await websocket.send_json({"type": "user_connected"})
+                print(f"Sent user_connected to device {device_id} on connect (users already viewing)")
+            except Exception as e:
+                print(f"Failed to send user_connected to device {device_id}: {e}")
+
+    except Exception as setup_error:
+        print(f"CRITICAL ERROR during device setup for {device_id}: {setup_error}")
+        import traceback
+        traceback.print_exc()
+
+        # Clean up if we partially set up
+        if device_added_to_connections and device_id in device_connections:
+            del device_connections[device_id]
+            print(f"Removed {device_id} from device_connections after setup failure")
+
+        # Try to mark offline in DB
+        if device:
+            try:
+                await session.execute(update(Device).where(Device.device_id == device_id).values(is_online=False, last_seen=datetime.utcnow()))
+                await session.commit()
+                print(f"Marked {device_id} offline in DB after setup failure")
+            except:
+                pass
+
         try:
-            await websocket.send_json({"type": "user_connected"})
-            print(f"Sent user_connected to device {device_id} on connect (users already viewing)")
-        except Exception as e:
-            print(f"Failed to send user_connected to device {device_id}: {e}")
+            await websocket.close()
+        except:
+            pass
+        return
 
     try:
         while True:
@@ -220,25 +269,45 @@ async def device_websocket(
         print(f"Device disconnected cleanly: {device_id}")
     except Exception as e:
         print(f"Device connection error for {device_id}: {e}")
+        import traceback
+        traceback.print_exc()
     finally:
         # Always clean up and mark device offline, regardless of how connection ended
         print(f"Cleaning up device connection: {device_id}")
+
+        # Remove from device_connections with verification
         if device_id in device_connections:
             del device_connections[device_id]
+            print(f"Removed {device_id} from device_connections (remaining: {len(device_connections)} devices)")
+        else:
+            print(f"WARNING: {device_id} was not in device_connections during cleanup")
 
+        # Mark device offline in database
         try:
             await session.execute(update(Device).where(Device.device_id == device_id).values(is_online=False, last_seen=datetime.utcnow()))
             await session.commit()
             print(f"Set {device_id} offline in DB")
+
+            # Verify the offline status was set
+            verify_result = await session.execute(select(Device.is_online).where(Device.device_id == device_id))
+            is_still_online = verify_result.scalar()
+            if is_still_online:
+                print(f"WARNING: Database still shows {device_id} as online after cleanup!")
+
         except Exception as db_error:
-            print(f"Error setting {device_id} offline in DB: {db_error}")
+            print(f"ERROR setting {device_id} offline in DB: {db_error}")
+            import traceback
+            traceback.print_exc()
 
         # Notify all connected users that the device went offline
-        for user_ws in user_connections[device_id]:
-            try:
-                await user_ws.send_json({"type": "device_status", "online": False})
-            except:
-                pass  # User might have already disconnected
+        user_count = len(user_connections[device_id])
+        if user_count > 0:
+            print(f"Notifying {user_count} user(s) that {device_id} went offline")
+            for user_ws in user_connections[device_id]:
+                try:
+                    await user_ws.send_json({"type": "device_status", "online": False})
+                except:
+                    pass  # User might have already disconnected
 
 
 # User WS endpoint (for web dashboard)

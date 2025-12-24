@@ -3818,12 +3818,9 @@
             };
             ws.onmessage = (event) => {
                 const data = JSON.parse(event.data);
-                console.log(`Received from server for ${device_id}:`, data);
-                console.log(`Message type: ${data.type}`);
-                if (data.type === 'full_sync' || data.type === 'status_update') {
-                    console.log(`Has data.data? ${!!data.data}`);
-                    console.log(`Has data.data.settings? ${!!(data.data && data.data.settings)}`);
-                    console.log(`Version in data: ${data.data?.settings?.current_version}`);
+                // Debug logging only for errors or important events
+                if (data.type === 'error') {
+                    console.error(`[WS ${device_id.substring(0,8)}] Error:`, data);
                 }
 
                 // Update system name from settings
@@ -3843,10 +3840,7 @@
                 // Check for firmware_version at top level (server WebSocket format)
                 const version = settings?.current_version || data.firmware_version;
 
-                console.log(`[WS ${device_id.substring(0,8)}] Type: ${data.type}, Version: ${version}`);
-
                 if (version) {
-                    console.log(`[WS ${device_id.substring(0,8)}] Setting version to: ${version}`);
                     document.getElementById(`version-${device_id}`).textContent = version;
 
                     // Update in allDevices array for search
