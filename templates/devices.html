@@ -300,207 +300,182 @@
             cursor: not-allowed;
         }
 
-        /* Compact Device Card */
-        .device-card {
-            display: flex;
-            align-items: stretch;
-            margin-bottom: 0.75rem;
-            border-radius: 8px;
+        /* Compact Device Table */
+        .devices-table {
+            width: 100%;
+            margin-bottom: 1.5rem;
+            border-collapse: separate;
+            border-spacing: 0;
             background: rgba(30, 41, 59, 0.5);
+            border-radius: 8px;
+            overflow: hidden;
             border: 1px solid #334155;
-            overflow: visible;
-            transition: border-color 0.2s;
-            position: relative;
         }
 
-        .device-card.has-status {
-            margin-bottom: 2.5rem;
+        .devices-table thead {
+            background: rgba(0, 0, 0, 0.3);
         }
 
-        .device-card:hover {
-            border-color: #475569;
+        .devices-table th {
+            padding: 0.6rem 0.75rem;
+            text-align: left;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid #334155;
         }
 
-        .device-card.has-plant {
-            border-color: #10b981;
+        .devices-table tbody tr {
+            border-bottom: 1px solid rgba(51, 65, 85, 0.5);
+            transition: background-color 0.15s;
+        }
+
+        .devices-table tbody tr:last-child {
+            border-bottom: none;
+        }
+
+        .devices-table tbody tr:hover {
+            background: rgba(51, 65, 85, 0.3);
+        }
+
+        .devices-table tbody tr.has-plant {
             background: rgba(16, 185, 129, 0.05);
         }
 
-        .device-card-type {
-            width: 42px;
-            min-width: 42px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.7rem;
-            font-weight: 700;
-            letter-spacing: 1px;
-            writing-mode: vertical-rl;
-            text-orientation: mixed;
-            color: white;
-            text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+        .devices-table td {
+            padding: 0.6rem 0.75rem;
+            font-size: 0.85rem;
+            color: #e2e8f0;
+            vertical-align: middle;
         }
 
-        .device-card-type.feeding { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
-        .device-card-type.environmental { background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); }
-        .device-card-type.valve { background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%); }
-
-        .device-card-content {
-            flex: 1;
-            padding: 0.75rem 1rem;
-            min-width: 0;
-        }
-
-        .device-card-header {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            margin-bottom: 0.35rem;
-            flex-wrap: wrap;
-        }
-
-        .device-card-name {
-            font-size: 1.05rem;
-            font-weight: 600;
-            color: #f1f5f9;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .device-card-owner {
-            font-size: 0.75rem;
-            color: #10b981;
-        }
-
-        .device-card-shared {
-            font-size: 0.75rem;
-            color: #f59e0b;
-        }
-
-        .device-card-online {
+        .device-type-badge {
             display: inline-flex;
             align-items: center;
-            gap: 0.3rem;
-            font-size: 0.75rem;
-            margin-left: auto;
+            justify-content: center;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            color: white;
+            min-width: 60px;
+            text-align: center;
         }
 
-        .device-card-online .dot {
+        .device-type-badge.feeding { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
+        .device-type-badge.environmental { background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); }
+        .device-type-badge.valve { background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%); }
+
+        .device-name-cell {
+            font-weight: 600;
+            color: #f1f5f9;
+        }
+
+        .device-owner-badge {
+            font-size: 0.7rem;
+            color: #10b981;
+            margin-left: 0.5rem;
+        }
+
+        .device-shared-badge {
+            font-size: 0.7rem;
+            color: #f59e0b;
+            display: block;
+            margin-top: 0.2rem;
+        }
+
+        .device-plant-info {
+            font-size: 0.75rem;
+            color: #10b981;
+            margin-top: 0.2rem;
+        }
+
+        .status-dot {
+            display: inline-block;
             width: 8px;
             height: 8px;
             border-radius: 50%;
+            margin-right: 0.4rem;
         }
 
-        .device-card-online .dot.online { background: #10b981; }
-        .device-card-online .dot.offline { background: #64748b; }
+        .status-dot.online { background: #10b981; }
+        .status-dot.offline { background: #64748b; }
 
-        .device-card-meta {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            font-size: 0.8rem;
-            color: #94a3b8;
-            flex-wrap: wrap;
-        }
-
-        .device-card-meta .sep {
-            color: #475569;
-        }
-
-        .device-card-meta .meta-label {
-            color: #64748b;
-            font-size: 0.75rem;
-            font-weight: 600;
-            margin-right: 0.25rem;
-        }
-
-        .device-card-meta .device-id {
+        .device-id-short {
             font-family: monospace;
             font-size: 0.75rem;
             color: #94a3b8;
         }
 
-        .device-card-meta .version {
+        .device-version {
+            font-family: monospace;
+            font-size: 0.75rem;
             color: #94a3b8;
-            display: inline-block;
-            min-width: 40px;
-            font-weight: 500;
         }
 
-        .device-card-meta .location {
-            color: #10b981;
-        }
-
-        .device-card-meta .update-badge {
+        .update-badge {
             background: #f59e0b;
             color: #000;
             padding: 1px 6px;
             border-radius: 4px;
             font-size: 0.7rem;
             font-weight: 600;
+            margin-left: 0.4rem;
             cursor: pointer;
         }
 
-        .device-card-plant {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.3rem;
-            font-size: 0.8rem;
-            color: #10b981;
-            font-weight: 500;
-            margin-top: 0.25rem;
+        .device-network-info {
+            font-size: 0.75rem;
+            color: #94a3b8;
+            line-height: 1.4;
         }
 
-        .device-card-links {
+        .device-network-info div {
+            margin-bottom: 0.15rem;
+        }
+
+        .device-network-info div:last-child {
+            margin-bottom: 0;
+        }
+
+        .linked-devices {
             display: flex;
-            align-items: center;
-            gap: 0.4rem;
-            margin-top: 0.35rem;
+            gap: 0.3rem;
             flex-wrap: wrap;
         }
 
-        .device-card-links .link-label {
-            font-size: 0.75rem;
-            color: #64748b;
-        }
-
-        .device-card-links .linked-chip {
+        .linked-chip {
             display: inline-flex;
             align-items: center;
             gap: 0.3rem;
             padding: 0.15rem 0.5rem;
             background: rgba(59, 130, 246, 0.2);
             border-radius: 4px;
-            font-size: 0.75rem;
+            font-size: 0.7rem;
             color: #93c5fd;
         }
 
-        .device-card-links .linked-chip .dot {
+        .linked-chip .dot {
             width: 6px;
             height: 6px;
             border-radius: 50%;
             background: #64748b;
         }
 
-        .device-card-links .linked-chip .dot.online {
+        .linked-chip .dot.online {
             background: #10b981;
         }
 
-        .device-card-actions {
+        .table-actions {
             display: flex;
-            flex-direction: column;
+            gap: 0.3rem;
             align-items: center;
-            justify-content: center;
-            padding: 0.5rem;
-            gap: 0.35rem;
-            border-left: 1px solid #334155;
-            background: rgba(0,0,0,0.1);
         }
 
-        .device-card-actions .action-btn {
-            padding: 0.4rem 0.6rem;
+        .table-actions .action-btn {
+            padding: 0.3rem 0.5rem;
             border: none;
             border-radius: 4px;
             font-size: 0.75rem;
@@ -510,41 +485,39 @@
             white-space: nowrap;
         }
 
-        .device-card-actions .action-btn.primary {
+        .table-actions .action-btn.primary {
             background: #3b82f6;
             color: white;
         }
 
-        .device-card-actions .action-btn.primary:hover {
+        .table-actions .action-btn.primary:hover {
             background: #2563eb;
         }
 
-        .device-card-actions .action-btn.secondary {
+        .table-actions .action-btn.secondary {
             background: rgba(255,255,255,0.1);
             color: #e2e8f0;
         }
 
-        .device-card-actions .action-btn.secondary:hover {
+        .table-actions .action-btn.secondary:hover {
             background: rgba(255,255,255,0.2);
         }
 
-        .device-card-actions .overflow-btn {
+        .table-actions .overflow-btn {
             padding: 0.3rem 0.5rem;
             font-size: 1.1rem;
         }
 
-        .device-card-status {
-            position: absolute;
-            top: 100%;
-            left: 0;
-            right: 0;
-            font-size: 0.75rem;
-            padding: 0.4rem 1rem;
-            background: rgba(30, 41, 59, 0.95);
-            border: 1px solid #334155;
-            border-top: none;
-            border-radius: 0 0 8px 8px;
-            margin-top: -1px;
+        .location-header {
+            color: #10b981;
+            margin-top: 1.5rem;
+            margin-bottom: 0.75rem;
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        .location-header:first-child {
+            margin-top: 0;
         }
 
         /* Device Card Action Bar - legacy, keep for modals */
@@ -1183,29 +1156,54 @@
             Object.keys(devicesByLocation).sort().forEach(locationName => {
                 const locationHeader = document.createElement('h4');
                 locationHeader.textContent = `📍 ${locationName}`;
-                locationHeader.style.color = '#10b981';
-                locationHeader.style.marginTop = '1.5rem';
-                locationHeader.style.marginBottom = '1rem';
+                locationHeader.className = 'location-header';
                 listDiv.appendChild(locationHeader);
 
-                devicesByLocation[locationName].forEach(device => {
-                    listDiv.appendChild(createDeviceCard(device));
-                });
+                const table = createDeviceTable(devicesByLocation[locationName]);
+                listDiv.appendChild(table);
             });
 
             // Render unassigned devices
             if (unassignedDevices.length > 0) {
                 const unassignedHeader = document.createElement('h4');
                 unassignedHeader.textContent = 'Unassigned';
+                unassignedHeader.className = 'location-header';
                 unassignedHeader.style.color = '#64748b';
-                unassignedHeader.style.marginTop = '2rem';
-                unassignedHeader.style.marginBottom = '1rem';
                 listDiv.appendChild(unassignedHeader);
 
-                unassignedDevices.forEach(device => {
-                    listDiv.appendChild(createDeviceCard(device));
-                });
+                const table = createDeviceTable(unassignedDevices);
+                listDiv.appendChild(table);
             }
+        }
+
+        // Create a table for a group of devices
+        function createDeviceTable(devices) {
+            const table = document.createElement('table');
+            table.className = 'devices-table';
+
+            // Table header
+            const thead = document.createElement('thead');
+            thead.innerHTML = `
+                <tr>
+                    <th>Type</th>
+                    <th>Device</th>
+                    <th>Status</th>
+                    <th>Version</th>
+                    <th>Network</th>
+                    <th>Links</th>
+                    <th>Actions</th>
+                </tr>
+            `;
+            table.appendChild(thead);
+
+            // Table body
+            const tbody = document.createElement('tbody');
+            devices.forEach(device => {
+                tbody.appendChild(createDeviceRow(device));
+            });
+            table.appendChild(tbody);
+
+            return table;
         }
 
         // Fetch and display devices list with Update and Delete buttons
@@ -1271,9 +1269,10 @@
             return lastSeen.toLocaleDateString();
         }
 
-        function createDeviceCard(device) {
-            const deviceDiv = document.createElement('div');
-            deviceDiv.className = `device-card${device.active_plant_name ? ' has-plant' : ''}`;
+        function createDeviceRow(device) {
+            const row = document.createElement('tr');
+            row.className = device.active_plant_name ? 'has-plant' : '';
+            row.dataset.deviceId = device.device_id;
 
             // Device type info
             const deviceType = device.device_type || 'feeding_system';
@@ -1289,11 +1288,13 @@
 
             // Ownership badge
             const ownerBadge = device.is_owner
-                ? `<span class="device-card-owner">✓ Owner</span>`
-                : `<span class="device-card-shared">Shared by ${device.shared_by_email}</span>`;
+                ? `<span class="device-owner-badge">✓ Owner</span>`
+                : `<span class="device-shared-badge">Shared by ${device.shared_by_email}</span>`;
 
-            // Location display (not showing if already grouped by location)
-            const locationPath = device.location_id ? getLocationPath(device.location_id) : null;
+            // Plant info
+            const plantInfo = device.active_plant_name
+                ? `<div class="device-plant-info">🌱 ${device.active_plant_name} (${device.active_phase})</div>`
+                : '';
 
             // Linked devices for feeding systems
             let linkedChips = '';
@@ -1305,11 +1306,14 @@
                 }).join('');
             }
 
-            // Plant info
-            const plantInfo = device.active_plant_name
-                ? `<div class="device-card-plant">🌱 ${device.active_plant_name} (${device.active_phase})</div>`
-                : '';
-
+            // Network info
+            const networkInfo = [];
+            if (device.ip_address) networkInfo.push(`IP: ${device.ip_address}`);
+            if (device.mdns_hostname) networkInfo.push(`mDNS: ${device.mdns_hostname}`);
+            if (device.last_seen) networkInfo.push(`Last: ${formatLastSeen(device.last_seen)}`);
+            const networkCell = networkInfo.length > 0
+                ? `<div class="device-network-info">${networkInfo.map(info => `<div>${info}</div>`).join('')}</div>`
+                : '-';
 
             // Action buttons
             let actionButtons = '';
@@ -1317,45 +1321,36 @@
                 actionButtons += `<button class="action-btn secondary" onclick="openLinkModal('${device.device_id}')">Link</button>`;
             }
 
-            deviceDiv.innerHTML = `
-                <div class="device-card-type ${typeClass}">${scopeText}</div>
-                <div class="device-card-content">
-                    <div class="device-card-header">
-                        <span class="device-card-name" id="name-${device.device_id}">${device.name || 'Unnamed Device'}</span>
-                        ${heartbeatButton}
-                        ${ownerBadge}
-                        <span class="device-card-online">
-                            <span class="dot ${device.is_online ? 'online' : 'offline'}"></span>
-                            <span id="online-${device.device_id}">${device.is_online ? 'Online' : 'Offline'}</span>
-                        </span>
-                    </div>
-                    <div class="device-card-meta">
-                        <span class="meta-label">UUID:</span>
-                        <span class="device-id">${device.device_id.split('-').pop()}</span>
-                        <span class="sep">·</span>
-                        <span class="meta-label">Version:</span>
-                        <span class="version" id="version-${device.device_id}">...</span>
-                        <span id="update-badge-${device.device_id}"></span>
-                        ${device.last_seen ? `<span class="sep">·</span><span class="meta-label">Last seen:</span><span class="last-seen">${formatLastSeen(device.last_seen)}</span>` : ''}
-                        ${device.ip_address ? `<span class="sep">·</span><span class="meta-label">IP:</span><span class="ip-address">${device.ip_address}</span>` : ''}
-                        ${device.mdns_hostname ? `<span class="sep">·</span><span class="meta-label">mDNS:</span><span class="mdns-hostname">${device.mdns_hostname}</span>` : ''}
-                        ${locationPath ? `<span class="sep">·</span><span class="location">📍 ${locationPath}</span>` : ''}
-                    </div>
+            row.innerHTML = `
+                <td>
+                    <span class="device-type-badge ${typeClass}">${scopeText}</span>
+                </td>
+                <td>
+                    <div class="device-name-cell" id="name-${device.device_id}">${device.name || 'Unnamed Device'}</div>
+                    ${ownerBadge}
+                    <div class="device-id-short">UUID: ${device.device_id.split('-').pop()}</div>
                     ${plantInfo}
-                    ${linkedChips ? `<div class="device-card-links"><span class="link-label">🔗</span>${linkedChips}</div>` : ''}
-                </div>
-                <div class="device-card-actions">
-                    ${actionButtons}
-                    <button class="overflow-btn" onclick="openActionsModal('${device.device_id}', '${deviceType}', ${device.is_owner})" title="More actions">⋮</button>
-                </div>
+                </td>
+                <td>
+                    <span class="status-dot ${device.is_online ? 'online' : 'offline'}"></span>
+                    <span id="online-${device.device_id}">${device.is_online ? 'Online' : 'Offline'}</span>
+                </td>
+                <td>
+                    <div class="device-version" id="version-${device.device_id}">...</div>
+                    <span id="update-badge-${device.device_id}"></span>
+                </td>
+                <td>${networkCell}</td>
+                <td>
+                    <div class="linked-devices">${linkedChips || '-'}</div>
+                </td>
+                <td>
+                    <div class="table-actions">
+                        ${actionButtons}
+                        ${heartbeatButton}
+                        <button class="overflow-btn" onclick="openActionsModal('${device.device_id}', '${deviceType}', ${device.is_owner})" title="More actions">⋮</button>
+                    </div>
+                </td>
             `;
-
-            // Status div for feedback (appended outside main card for positioning)
-            const statusDiv = document.createElement('div');
-            statusDiv.id = `update-status-${device.device_id}`;
-            statusDiv.className = 'device-card-status';
-            statusDiv.style.display = 'none';
-            deviceDiv.appendChild(statusDiv);
 
             // Auto-connect to WebSocket for status updates (all devices except environmental sensors)
             console.log(`Device ${device.device_id.substring(0,8)}: is_online=${device.is_online}, type=${device.device_type}`);
@@ -1371,25 +1366,41 @@
                 fetchEnvironmentalVersion(device.device_id);
             }
 
-            return deviceDiv;
+            return row;
         }
 
-        // Show status message for device card
+        // Show status message for device (table view compatible)
         function showDeviceStatus(deviceId, message, color = '#10b981') {
-            const statusDiv = document.getElementById(`update-status-${deviceId}`);
-            const card = statusDiv?.closest('.device-card');
-            if (statusDiv) {
-                statusDiv.textContent = message;
-                statusDiv.style.color = color;
-                statusDiv.style.display = message ? 'block' : 'none';
-                // Add/remove margin class to make room for status
-                if (card) {
-                    if (message) {
-                        card.classList.add('has-status');
-                    } else {
-                        card.classList.remove('has-status');
-                    }
+            // Find the device row
+            const row = document.querySelector(`tr[data-device-id="${deviceId}"]`);
+            if (!row) return;
+
+            // Create or update status message in the status cell
+            const statusCell = row.querySelector('td:nth-child(3)'); // Status column
+            if (message && statusCell) {
+                const existingStatus = statusCell.querySelector('.status-message');
+                if (existingStatus) {
+                    existingStatus.textContent = message;
+                    existingStatus.style.color = color;
+                } else {
+                    const statusMsg = document.createElement('div');
+                    statusMsg.className = 'status-message';
+                    statusMsg.textContent = message;
+                    statusMsg.style.color = color;
+                    statusMsg.style.fontSize = '0.7rem';
+                    statusMsg.style.marginTop = '0.2rem';
+                    statusCell.appendChild(statusMsg);
+
+                    // Auto-remove after 3 seconds
+                    setTimeout(() => {
+                        statusMsg.remove();
+                    }, 3000);
                 }
+            }
+
+            // Also log to console for debugging
+            if (message) {
+                console.log(`[Device ${deviceId.substring(0, 8)}] ${message}`);
             }
         }
 
@@ -4105,13 +4116,10 @@
                         delete wsMap[device_id];
                     }
 
-                    // Remove the device div from DOM instead of rebuilding entire list
-                    const deviceElements = document.querySelectorAll('#devices-list > div');
-                    for (let elem of deviceElements) {
-                        if (elem.innerHTML.includes(device_id)) {
-                            elem.remove();
-                            break;
-                        }
+                    // Remove the device row from DOM
+                    const deviceRow = document.querySelector(`tr[data-device-id="${device_id}"]`);
+                    if (deviceRow) {
+                        deviceRow.remove();
                     }
 
                     alert('Device deleted successfully');
