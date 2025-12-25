@@ -3148,6 +3148,39 @@
                             <span class="slider round"></span>
                         </label>
                     </div>
+
+                    <h5 style="margin: 1.5rem 0 0.5rem 0; font-size: 0.9rem; opacity: 0.8;">Temperature Ranges</h5>
+                    <p style="margin: 0 0 1rem 0; opacity: 0.7; font-size: 0.85rem;">Set acceptable temperature ranges for alerts.</p>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                        <div class="setting-row" style="flex-direction: column; align-items: flex-start;">
+                            <label class="setting-label" style="margin-bottom: 0.5rem;">Water Temp Min (°F)</label>
+                            <input type="number" class="setting-input" step="0.1" min="0" max="120"
+                                value="${settings.water_temp_min || 65}" style="width: 100%;"
+                                onchange="updateDeviceSetting('water_temp_min', parseFloat(this.value))">
+                        </div>
+                        <div class="setting-row" style="flex-direction: column; align-items: flex-start;">
+                            <label class="setting-label" style="margin-bottom: 0.5rem;">Water Temp Max (°F)</label>
+                            <input type="number" class="setting-input" step="0.1" min="0" max="120"
+                                value="${settings.water_temp_max || 75}" style="width: 100%;"
+                                onchange="updateDeviceSetting('water_temp_max', parseFloat(this.value))">
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                        <div class="setting-row" style="flex-direction: column; align-items: flex-start;">
+                            <label class="setting-label" style="margin-bottom: 0.5rem;">Air Temp Min (°F)</label>
+                            <input type="number" class="setting-input" step="0.1" min="0" max="120"
+                                value="${settings.air_temp_min || 60}" style="width: 100%;"
+                                onchange="updateDeviceSetting('air_temp_min', parseFloat(this.value))">
+                        </div>
+                        <div class="setting-row" style="flex-direction: column; align-items: flex-start;">
+                            <label class="setting-label" style="margin-bottom: 0.5rem;">Air Temp Max (°F)</label>
+                            <input type="number" class="setting-input" step="0.1" min="0" max="120"
+                                value="${settings.air_temp_max || 80}" style="width: 100%;"
+                                onchange="updateDeviceSetting('air_temp_max', parseFloat(this.value))">
+                        </div>
+                    </div>
                 </div>
 
                 <div class="setting-group">
