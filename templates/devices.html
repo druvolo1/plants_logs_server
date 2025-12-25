@@ -1749,120 +1749,6 @@
             console.log(`Updating setting ${key} = ${value} on device ${currentSettingsDeviceId}`);
         }
 
-        async function updateDeviceSettingHTTP(endpoint, body) {
-            if (!currentSettingsDeviceId) return;
-
-            // Get device IP address
-            const device = allDevices.find(d => d.device_id === currentSettingsDeviceId);
-            if (!device || !device.ip_address) {
-                alert('Cannot update setting: Device IP address not available.');
-                console.error('[HTTP Settings] Device IP not found for', currentSettingsDeviceId);
-                return;
-            }
-
-            const url = `http://${device.ip_address}${endpoint}`;
-            console.log(`[HTTP Settings] Sending POST to ${url}:`, body);
-
-            try {
-                const response = await fetch(url, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(body)
-                });
-
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                }
-
-                const result = await response.json();
-                console.log(`[HTTP Settings] Success:`, result);
-
-                if (!result.success) {
-                    alert(`Failed to update setting: ${result.error || 'Unknown error'}`);
-                }
-            } catch (error) {
-                console.error('[HTTP Settings] Error:', error);
-                alert(`Failed to update setting: ${error.message}`);
-            }
-        }
-
-        // Helper to get current leak settings from modal and send updated config
-        function updateLeakSetting(field, value) {
-            // Get current values from modal
-            const enabled = document.querySelector('input[onchange*="leak_detection_enabled"]')?.checked || false;
-            const buzzerEnabled = document.querySelector('input[onchange*="leak_buzzer_enabled"]')?.checked || false;
-            const closeFillOnLeak = document.querySelector('input[onchange*="leak_close_fill"]')?.checked || false;
-            const closeDrainOnLeak = document.querySelector('input[onchange*="leak_close_drain"]')?.checked || false;
-            const allOffFillController = document.querySelector('input[onchange*="leak_all_off_fill"]')?.checked || false;
-            const allOffDrainController = document.querySelector('input[onchange*="leak_all_off_drain"]')?.checked || false;
-
-            // Build the request body with all settings
-            const body = {
-                enabled: field === 'enabled' ? value : enabled,
-                activeHigh: true, // Default from firmware
-                buzzerEnabled: field === 'buzzerEnabled' ? value : buzzerEnabled,
-                closeFillOnLeak: field === 'closeFillOnLeak' ? value : closeFillOnLeak,
-                closeDrainOnLeak: field === 'closeDrainOnLeak' ? value : closeDrainOnLeak,
-                allOffFillController: field === 'allOffFillController' ? value : allOffFillController,
-                allOffDrainController: field === 'allOffDrainController' ? value : allOffDrainController
-            };
-
-            updateDeviceSettingHTTP('/api/leak/config', body);
-        }
-
-        // Helper to update temperature compensation settings
-        function updateTemperatureSetting(field, value) {
-            // Get current values from modal
-            const phCompensation = document.querySelector('input[onchange*="ph_temp_compensation"]')?.checked || false;
-            const ecCompensation = document.querySelector('input[onchange*="ec_temp_compensation"]')?.checked || false;
-
-            // Build the request body
-            const body = {
-                waterEnabled: true, // Keep existing settings
-                airEnabled: true,
-                useFahrenheit: false,
-                phCompensation: field === 'phCompensation' ? value : phCompensation,
-                ecCompensation: field === 'ecCompensation' ? value : ecCompensation
-            };
-
-            updateDeviceSettingHTTP('/api/temperature/config', body);
-        }
-
-        // Helper to update auto-dose settings
-        function updateAutoDoseSetting(field, value) {
-            // Get current values from modal
-            const enabled = document.querySelector('input[onchange*="auto_dose_enabled"]')?.checked || false;
-            const interval = parseInt(document.querySelector('input[onchange*="auto_dose_interval"]')?.value) || 240;
-
-            // Build the request body
-            const body = {
-                enabled: field === 'enabled' ? value : enabled,
-                intervalMinutes: field === 'intervalMinutes' ? value : interval
-            };
-
-            updateDeviceSettingHTTP('/api/autodose/config', body);
-        }
-
-        // Helper to update alert settings
-        function updateAlertSetting(category, type, enabled) {
-            const body = {
-                type: type,
-                enabled: enabled
-            };
-
-            updateDeviceSettingHTTP(`/api/${category}/alerts-config`, body);
-        }
-
-        // Helper to update master notifications
-        function updateNotificationsMaster(enabled) {
-            const body = {
-                enabled: enabled
-            };
-
-            updateDeviceSettingHTTP('/api/notifications/master', body);
-        }
 
         function sendDeviceCommand(command, data = {}) {
             if (!currentSettingsDeviceId) {
@@ -2997,7 +2883,7 @@
                         <label class="setting-label">Enable Leak Detection</label>
                         <label class="switch">
                             <input type="checkbox" ${settings.leak_detection_enabled !== false ? 'checked' : ''}
-                                onchange="updateLeakSetting('enabled', this.checked)">
+                                onchange="updateDeviceSetting('leak_detection_enabled', this.checked)">
                             <span class="slider round"></span>
                         </label>
                     </div>
@@ -3005,7 +2891,7 @@
                         <label class="setting-label">Audible Alarm (Buzzer)</label>
                         <label class="switch">
                             <input type="checkbox" ${settings.leak_buzzer_enabled ? 'checked' : ''}
-                                onchange="updateLeakSetting('buzzerEnabled', this.checked)">
+                                onchange="updateDeviceSetting('leak_buzzer_enabled', this.checked)">
                             <span class="slider round"></span>
                         </label>
                     </div>
@@ -3015,7 +2901,7 @@
                             <label class="setting-label">Close Fill Valve on Leak</label>
                             <label class="switch">
                                 <input type="checkbox" ${settings.leak_close_fill ? 'checked' : ''}
-                                    onchange="updateLeakSetting('closeFillOnLeak', this.checked)">
+                                    onchange="updateDeviceSetting('leak_close_fill', this.checked)">
                                 <span class="slider round"></span>
                             </label>
                         </div>
@@ -3023,7 +2909,7 @@
                             <label class="setting-label">Close Drain Valve on Leak</label>
                             <label class="switch">
                                 <input type="checkbox" ${settings.leak_close_drain ? 'checked' : ''}
-                                    onchange="updateLeakSetting('closeDrainOnLeak', this.checked)">
+                                    onchange="updateDeviceSetting('leak_close_drain', this.checked)">
                                 <span class="slider round"></span>
                             </label>
                         </div>
@@ -3031,7 +2917,7 @@
                             <label class="setting-label">ALL OFF Fill Controller</label>
                             <label class="switch">
                                 <input type="checkbox" ${settings.leak_all_off_fill ? 'checked' : ''}
-                                    onchange="updateLeakSetting('allOffFillController', this.checked)">
+                                    onchange="updateDeviceSetting('leak_all_off_fill', this.checked)">
                                 <span class="slider round"></span>
                             </label>
                         </div>
@@ -3039,7 +2925,7 @@
                             <label class="setting-label">ALL OFF Drain Controller</label>
                             <label class="switch">
                                 <input type="checkbox" ${settings.leak_all_off_drain ? 'checked' : ''}
-                                    onchange="updateLeakSetting('allOffDrainController', this.checked)">
+                                    onchange="updateDeviceSetting('leak_all_off_drain', this.checked)">
                                 <span class="slider round"></span>
                             </label>
                         </div>
@@ -3052,7 +2938,7 @@
                         <label class="setting-label">pH Temperature Compensation</label>
                         <label class="switch">
                             <input type="checkbox" ${settings.ph_temp_compensation ? 'checked' : ''}
-                                onchange="updateTemperatureSetting('phCompensation', this.checked)">
+                                onchange="updateDeviceSetting('ph_temp_compensation', this.checked)">
                             <span class="slider round"></span>
                         </label>
                     </div>
@@ -3060,7 +2946,7 @@
                         <label class="setting-label">EC Temperature Compensation</label>
                         <label class="switch">
                             <input type="checkbox" ${settings.ec_temp_compensation ? 'checked' : ''}
-                                onchange="updateTemperatureSetting('ecCompensation', this.checked)">
+                                onchange="updateDeviceSetting('ec_temp_compensation', this.checked)">
                             <span class="slider round"></span>
                         </label>
                     </div>
@@ -3072,7 +2958,7 @@
                         <label class="setting-label">Enable Auto-Dosing</label>
                         <label class="switch">
                             <input type="checkbox" ${settings.auto_dose_enabled ? 'checked' : ''}
-                                onchange="updateAutoDoseSetting('enabled', this.checked)">
+                                onchange="updateDeviceSetting('auto_dose_enabled', this.checked)">
                             <span class="slider round"></span>
                         </label>
                     </div>
@@ -3080,7 +2966,7 @@
                         <label class="setting-label">Check Interval (minutes)</label>
                         <input type="number" class="setting-input" step="1" min="1" max="1440"
                             value="${settings.auto_dose_interval || 240}"
-                            onchange="updateAutoDoseSetting('intervalMinutes', parseInt(this.value))">
+                            onchange="updateDeviceSetting('auto_dose_interval', parseInt(this.value))">
                     </div>
                 </div>
             `;
@@ -3146,7 +3032,7 @@
                         <label class="setting-label">Enable All Notifications</label>
                         <label class="switch">
                             <input type="checkbox" ${settings.notifications_enabled !== false ? 'checked' : ''}
-                                onchange="updateNotificationsMaster(this.checked)">
+                                onchange="updateDeviceSetting('notifications_enabled', this.checked)">
                             <span class="slider round"></span>
                         </label>
                     </div>
@@ -3161,7 +3047,7 @@
                         </label>
                         <label class="switch">
                             <input type="checkbox" ${settings.ph_range_alerts !== false ? 'checked' : ''}
-                                onchange="updateAlertSetting('ph', 'range', this.checked)">
+                                onchange="updateDeviceSetting('ph_range_alerts', this.checked)">
                             <span class="slider round"></span>
                         </label>
                     </div>
@@ -3172,7 +3058,7 @@
                         </label>
                         <label class="switch">
                             <input type="checkbox" ${settings.ph_calibration_alerts !== false ? 'checked' : ''}
-                                onchange="updateAlertSetting('ph', 'calibration', this.checked)">
+                                onchange="updateDeviceSetting('ph_calibration_alerts', this.checked)">
                             <span class="slider round"></span>
                         </label>
                     </div>
@@ -3183,7 +3069,7 @@
                         </label>
                         <label class="switch">
                             <input type="checkbox" ${settings.ph_probe_health_alerts !== false ? 'checked' : ''}
-                                onchange="updateAlertSetting('ph', 'probe', this.checked)">
+                                onchange="updateDeviceSetting('ph_probe_health_alerts', this.checked)">
                             <span class="slider round"></span>
                         </label>
                     </div>
@@ -3194,7 +3080,7 @@
                         </label>
                         <label class="switch">
                             <input type="checkbox" ${settings.ph_reading_quality_alerts !== false ? 'checked' : ''}
-                                onchange="updateAlertSetting('ph', 'reading', this.checked)">
+                                onchange="updateDeviceSetting('ph_reading_quality_alerts', this.checked)">
                             <span class="slider round"></span>
                         </label>
                     </div>
@@ -3205,7 +3091,7 @@
                         </label>
                         <label class="switch">
                             <input type="checkbox" ${settings.ph_communication_alerts !== false ? 'checked' : ''}
-                                onchange="updateAlertSetting('ph', 'communication', this.checked)">
+                                onchange="updateDeviceSetting('ph_communication_alerts', this.checked)">
                             <span class="slider round"></span>
                         </label>
                     </div>
@@ -3220,7 +3106,7 @@
                         </label>
                         <label class="switch">
                             <input type="checkbox" ${settings.ec_range_alerts !== false ? 'checked' : ''}
-                                onchange="updateAlertSetting('ec', 'range', this.checked)">
+                                onchange="updateDeviceSetting('ec_range_alerts', this.checked)">
                             <span class="slider round"></span>
                         </label>
                     </div>
@@ -3231,7 +3117,7 @@
                         </label>
                         <label class="switch">
                             <input type="checkbox" ${settings.ec_calibration_alerts !== false ? 'checked' : ''}
-                                onchange="updateAlertSetting('ec', 'calibration', this.checked)">
+                                onchange="updateDeviceSetting('ec_calibration_alerts', this.checked)">
                             <span class="slider round"></span>
                         </label>
                     </div>
@@ -3242,7 +3128,7 @@
                         </label>
                         <label class="switch">
                             <input type="checkbox" ${settings.ec_probe_health_alerts !== false ? 'checked' : ''}
-                                onchange="updateAlertSetting('ec', 'probe', this.checked)">
+                                onchange="updateDeviceSetting('ec_probe_health_alerts', this.checked)">
                             <span class="slider round"></span>
                         </label>
                     </div>
@@ -3253,7 +3139,7 @@
                         </label>
                         <label class="switch">
                             <input type="checkbox" ${settings.ec_reading_quality_alerts !== false ? 'checked' : ''}
-                                onchange="updateAlertSetting('ec', 'reading', this.checked)">
+                                onchange="updateDeviceSetting('ec_reading_quality_alerts', this.checked)">
                             <span class="slider round"></span>
                         </label>
                     </div>
@@ -3264,7 +3150,7 @@
                         </label>
                         <label class="switch">
                             <input type="checkbox" ${settings.ec_communication_alerts !== false ? 'checked' : ''}
-                                onchange="updateAlertSetting('ec', 'communication', this.checked)">
+                                onchange="updateDeviceSetting('ec_communication_alerts', this.checked)">
                             <span class="slider round"></span>
                         </label>
                     </div>
@@ -3279,7 +3165,7 @@
                         </label>
                         <label class="switch">
                             <input type="checkbox" ${settings.water_temp_range_alerts !== false ? 'checked' : ''}
-                                onchange="updateAlertSetting('temp', 'water_range', this.checked)">
+                                onchange="updateDeviceSetting('water_temp_range_alerts', this.checked)">
                             <span class="slider round"></span>
                         </label>
                     </div>
@@ -3290,7 +3176,7 @@
                         </label>
                         <label class="switch">
                             <input type="checkbox" ${settings.water_temp_probe_alerts !== false ? 'checked' : ''}
-                                onchange="updateAlertSetting('temp', 'water_probe', this.checked)">
+                                onchange="updateDeviceSetting('water_temp_probe_alerts', this.checked)">
                             <span class="slider round"></span>
                         </label>
                     </div>
@@ -3301,7 +3187,7 @@
                         </label>
                         <label class="switch">
                             <input type="checkbox" ${settings.air_temp_range_alerts !== false ? 'checked' : ''}
-                                onchange="updateAlertSetting('temp', 'air_range', this.checked)">
+                                onchange="updateDeviceSetting('air_temp_range_alerts', this.checked)">
                             <span class="slider round"></span>
                         </label>
                     </div>
@@ -3312,7 +3198,7 @@
                         </label>
                         <label class="switch">
                             <input type="checkbox" ${settings.air_temp_probe_alerts !== false ? 'checked' : ''}
-                                onchange="updateAlertSetting('temp', 'air_probe', this.checked)">
+                                onchange="updateDeviceSetting('air_temp_probe_alerts', this.checked)">
                             <span class="slider round"></span>
                         </label>
                     </div>
@@ -3327,7 +3213,7 @@
                         </label>
                         <label class="switch">
                             <input type="checkbox" ${settings.leak_detection_alerts !== false ? 'checked' : ''}
-                                onchange="updateAlertSetting('leak', 'leak', this.checked)">
+                                onchange="updateDeviceSetting('leak_detection_alerts', this.checked)">
                             <span class="slider round"></span>
                         </label>
                     </div>
