@@ -2808,7 +2808,8 @@
                 <button class="refresh-btn" onclick="refreshModalSettings()">🔄 Refresh Settings</button>
 
                 <div class="setting-group">
-                    <h4>Auto-Fill Configuration</h4>
+                    <h4>Auto-Fill</h4>
+                    <p style="margin: 0 0 1rem 0; opacity: 0.7; font-size: 0.85rem;">Automatically fill reservoir when water level drops below threshold.</p>
                     <div class="setting-row">
                         <label class="setting-label">Enable Auto-Fill</label>
                         <label class="switch">
@@ -2818,67 +2819,28 @@
                         </label>
                     </div>
                     <div class="setting-row">
-                        <label class="setting-label">Fill Start Level (%)</label>
-                        <input type="number" class="setting-input" step="1" min="0" max="95"
-                            value="${settings.auto_fill_start || 20}"
-                            onchange="updateDeviceSetting('auto_fill_start', parseInt(this.value))">
+                        <label class="setting-label">Start Filling When Level Drops To</label>
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <input type="number" class="setting-input" step="1" min="0" max="95"
+                                value="${settings.auto_fill_start || 20}" style="width: 80px;"
+                                onchange="updateDeviceSetting('auto_fill_start', parseInt(this.value))">
+                            <span>%</span>
+                        </div>
                     </div>
                     <div class="setting-row">
-                        <label class="setting-label">Fill Stop Level (%)</label>
-                        <input type="number" class="setting-input" step="1" min="5" max="100"
-                            value="${settings.auto_fill_stop || 99}"
-                            onchange="updateDeviceSetting('auto_fill_stop', parseInt(this.value))">
+                        <label class="setting-label">Stop Filling When Level Reaches</label>
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <input type="number" class="setting-input" step="1" min="5" max="100"
+                                value="${settings.auto_fill_stop || 99}" style="width: 80px;"
+                                onchange="updateDeviceSetting('auto_fill_stop', parseInt(this.value))">
+                            <span>%</span>
+                        </div>
                     </div>
                 </div>
 
                 <div class="setting-group">
-                    <h4>Remote Fill Valve</h4>
-                    <div class="setting-row">
-                        <label class="setting-label">Fill Valve Host</label>
-                        <input type="text" class="setting-input" style="width: 250px;"
-                            value="${settings.fill_valve_host || ''}"
-                            placeholder="192.168.1.100"
-                            onchange="updateDeviceSetting('fill_valve_host', this.value)">
-                    </div>
-                    <div class="setting-row">
-                        <label class="setting-label">Fill Valve Port</label>
-                        <input type="number" class="setting-input" min="1" max="65535"
-                            value="${settings.fill_valve_port || 80}"
-                            onchange="updateDeviceSetting('fill_valve_port', parseInt(this.value))">
-                    </div>
-                    <div class="setting-row">
-                        <label class="setting-label">Fill Valve Number</label>
-                        <input type="number" class="setting-input" min="1" max="8"
-                            value="${settings.fill_valve_num || 1}"
-                            onchange="updateDeviceSetting('fill_valve_num', parseInt(this.value))">
-                    </div>
-                </div>
-
-                <div class="setting-group">
-                    <h4>Remote Drain Valve</h4>
-                    <div class="setting-row">
-                        <label class="setting-label">Drain Valve Host</label>
-                        <input type="text" class="setting-input" style="width: 250px;"
-                            value="${settings.drain_valve_host || ''}"
-                            placeholder="192.168.1.100"
-                            onchange="updateDeviceSetting('drain_valve_host', this.value)">
-                    </div>
-                    <div class="setting-row">
-                        <label class="setting-label">Drain Valve Port</label>
-                        <input type="number" class="setting-input" min="1" max="65535"
-                            value="${settings.drain_valve_port || 80}"
-                            onchange="updateDeviceSetting('drain_valve_port', parseInt(this.value))">
-                    </div>
-                    <div class="setting-row">
-                        <label class="setting-label">Drain Valve Number</label>
-                        <input type="number" class="setting-input" min="1" max="8"
-                            value="${settings.drain_valve_num || 2}"
-                            onchange="updateDeviceSetting('drain_valve_num', parseInt(this.value))">
-                    </div>
-                </div>
-
-                <div class="setting-group">
-                    <h4>Leak Detection</h4>
+                    <h4>Water Leak Sensor</h4>
+                    <p style="margin: 0 0 1rem 0; opacity: 0.7; font-size: 0.85rem;">Emergency valve shutoff on leak detection.</p>
                     <div class="setting-row">
                         <label class="setting-label">Enable Leak Detection</label>
                         <label class="switch">
@@ -2934,8 +2896,9 @@
 
                 <div class="setting-group">
                     <h4>Temperature Compensation</h4>
+                    <p style="margin: 0 0 1rem 0; opacity: 0.7; font-size: 0.85rem;">Use water temperature to improve pH and EC accuracy.</p>
                     <div class="setting-row">
-                        <label class="setting-label">pH Temperature Compensation</label>
+                        <label class="setting-label">pH Compensation</label>
                         <label class="switch">
                             <input type="checkbox" ${settings.ph_temp_compensation ? 'checked' : ''}
                                 onchange="updateDeviceSetting('ph_temp_compensation', this.checked)">
@@ -2943,7 +2906,7 @@
                         </label>
                     </div>
                     <div class="setting-row">
-                        <label class="setting-label">EC Temperature Compensation</label>
+                        <label class="setting-label">EC Compensation</label>
                         <label class="switch">
                             <input type="checkbox" ${settings.ec_temp_compensation ? 'checked' : ''}
                                 onchange="updateDeviceSetting('ec_temp_compensation', this.checked)">
@@ -2954,6 +2917,7 @@
 
                 <div class="setting-group">
                     <h4>Auto-Dosing</h4>
+                    <p style="margin: 0 0 1rem 0; opacity: 0.7; font-size: 0.85rem;">Automatically check pH at regular intervals and dose if outside the acceptable range.</p>
                     <div class="setting-row">
                         <label class="setting-label">Enable Auto-Dosing</label>
                         <label class="switch">
@@ -2963,10 +2927,13 @@
                         </label>
                     </div>
                     <div class="setting-row">
-                        <label class="setting-label">Check Interval (minutes)</label>
-                        <input type="number" class="setting-input" step="1" min="1" max="1440"
-                            value="${settings.auto_dose_interval || 240}"
-                            onchange="updateDeviceSetting('auto_dose_interval', parseInt(this.value))">
+                        <label class="setting-label">Check Interval</label>
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <input type="number" class="setting-input" step="1" min="1" max="1440"
+                                value="${settings.auto_dose_interval || 240}" style="width: 100px;"
+                                onchange="updateDeviceSetting('auto_dose_interval', parseInt(this.value))">
+                            <span style="opacity: 0.7;">minutes</span>
+                        </div>
                     </div>
                 </div>
             `;
