@@ -3051,7 +3051,7 @@
                             <span class="setting-sublabel">Alerts when EC is outside target range</span>
                         </label>
                         <label class="switch">
-                            <input type="checkbox" ${settings.ec_range_alerts !== false ? 'checked' : ''}
+                            <input type="checkbox" ${settings.ec_range_alerts === true ? 'checked' : ''}
                                 onchange="updateDeviceSetting('ec_range_alerts', this.checked)">
                             <span class="slider round"></span>
                         </label>
@@ -3062,7 +3062,7 @@
                             <span class="setting-sublabel">Reminders when calibration is due</span>
                         </label>
                         <label class="switch">
-                            <input type="checkbox" ${settings.ec_calibration_alerts !== false ? 'checked' : ''}
+                            <input type="checkbox" ${settings.ec_calibration_alerts === true ? 'checked' : ''}
                                 onchange="updateDeviceSetting('ec_calibration_alerts', this.checked)">
                             <span class="slider round"></span>
                         </label>
@@ -3073,7 +3073,7 @@
                             <span class="setting-sublabel">Warnings when probe K value degrades</span>
                         </label>
                         <label class="switch">
-                            <input type="checkbox" ${settings.ec_probe_health_alerts !== false ? 'checked' : ''}
+                            <input type="checkbox" ${settings.ec_probe_health_alerts === true ? 'checked' : ''}
                                 onchange="updateDeviceSetting('ec_probe_health_alerts', this.checked)">
                             <span class="slider round"></span>
                         </label>
@@ -3084,7 +3084,7 @@
                             <span class="setting-sublabel">Alerts for stuck or unrealistic readings</span>
                         </label>
                         <label class="switch">
-                            <input type="checkbox" ${settings.ec_reading_quality_alerts !== false ? 'checked' : ''}
+                            <input type="checkbox" ${settings.ec_reading_quality_alerts === true ? 'checked' : ''}
                                 onchange="updateDeviceSetting('ec_reading_quality_alerts', this.checked)">
                             <span class="slider round"></span>
                         </label>
@@ -3095,7 +3095,7 @@
                             <span class="setting-sublabel">Alerts for sensor connection failures</span>
                         </label>
                         <label class="switch">
-                            <input type="checkbox" ${settings.ec_communication_alerts !== false ? 'checked' : ''}
+                            <input type="checkbox" ${settings.ec_communication_alerts === true ? 'checked' : ''}
                                 onchange="updateDeviceSetting('ec_communication_alerts', this.checked)">
                             <span class="slider round"></span>
                         </label>
