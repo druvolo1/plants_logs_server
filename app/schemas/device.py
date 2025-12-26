@@ -16,7 +16,7 @@ class AssignedPlantInfo(BaseModel):
 class DeviceCreate(BaseModel):
     device_id: str
     name: Optional[str] = None
-    device_type: Optional[str] = 'feeding_system'  # 'feeding_system', 'environmental', 'valve_controller', 'other'
+    device_type: Optional[str] = 'feeding_system'  # 'feeding_system', 'environmental', 'valve_controller', 'hydroponic_controller', 'smart_outlet', 'other'
     scope: Optional[str] = 'plant'  # 'plant' or 'room'
     location_id: Optional[int] = None  # Location assignment
 
@@ -61,8 +61,10 @@ class DeviceRead(BaseModel):
     shared_by_email: Optional[str] = None  # Email of owner if shared device
     assigned_plants: List[AssignedPlantInfo] = []  # All plants currently assigned to device
     assigned_plant_count: int = 0  # Count of assigned plants
-    # Linked devices (env sensors, valve controllers linked to this feeding system)
+    # Linked devices (env sensors, valve controllers linked to this feeding system) - LEGACY
     linked_devices: List[LinkedDeviceInfo] = []
+    # Connected devices (hydro → valve, valve → outlet) - NEW
+    connected_devices: List['DeviceConnectionRead'] = []
     # Legacy fields (kept for backward compatibility)
     active_plant_name: Optional[str] = None  # Name of first assigned plant
     active_plant_id: Optional[str] = None  # ID of first assigned plant
@@ -178,3 +180,35 @@ class AvailableDeviceForLinking(BaseModel):
     location_id: Optional[int] = None
     location_name: Optional[str] = None
     is_same_location: bool = False  # True if in same location as parent device
+
+
+# Device Connection Pydantic models (for device-to-device connections)
+class DeviceConnectionCreate(BaseModel):
+    """Create a connection between two devices"""
+    target_device_id: str  # UUID of target device
+    connection_type: str  # 'valve_control', 'power_monitoring', etc.
+    config: Optional[dict] = None  # Connection-specific config
+
+
+class DeviceConnectionUpdate(BaseModel):
+    """Update a device connection's configuration"""
+    config: Optional[dict] = None
+
+
+class DeviceConnectionRead(BaseModel):
+    """Read model for device connections"""
+    id: int
+    connection_type: str
+    config: Optional[dict] = None
+    created_at: datetime
+    updated_at: datetime
+    # Source device info
+    source_device_id: str
+    source_device_name: Optional[str] = None
+    source_device_type: Optional[str] = None
+    source_device_is_online: bool = False
+    # Target device info
+    target_device_id: str
+    target_device_name: Optional[str] = None
+    target_device_type: Optional[str] = None
+    target_device_is_online: bool = False

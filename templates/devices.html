@@ -1296,7 +1296,7 @@
                 ? `<div class="device-plant-info">🌱 ${device.active_plant_name} (${device.active_phase})</div>`
                 : '';
 
-            // Linked devices for feeding systems
+            // Linked devices for feeding systems (legacy)
             let linkedChips = '';
             if (deviceType === 'feeding_system' && device.linked_devices && device.linked_devices.length > 0) {
                 linkedChips = device.linked_devices.map(linked => {
@@ -1305,6 +1305,27 @@
                     return `<span class="linked-chip"><span class="dot ${dotClass}"></span>${icon} ${linked.name || linked.device_id.substring(0, 8)}</span>`;
                 }).join('');
             }
+
+            // Connected devices (new device connections)
+            let connectedChips = '';
+            if (device.connected_devices && device.connected_devices.length > 0) {
+                connectedChips = device.connected_devices.map(conn => {
+                    // Choose icon based on connection type
+                    let icon = '🔗';
+                    if (conn.connection_type === 'valve_control') icon = '🚿';
+                    else if (conn.connection_type === 'power_monitoring') icon = '⚡';
+
+                    const dotClass = conn.target_device_is_online ? 'online' : 'offline';
+                    const displayName = conn.target_device_name || conn.target_device_id.substring(0, 8);
+                    const tooltip = `${conn.connection_type}: ${displayName}`;
+
+                    return `<span class="linked-chip" title="${tooltip}"><span class="dot ${dotClass}"></span>${icon} ${displayName}</span>`;
+                }).join('');
+            }
+
+            // Combine both types of links
+            const allLinks = [linkedChips, connectedChips].filter(x => x).join('');
+            const linksDisplay = allLinks || '-';
 
             // Network info
             const networkInfo = [];
@@ -1341,7 +1362,7 @@
                 </td>
                 <td>${networkCell}</td>
                 <td>
-                    <div class="linked-devices">${linkedChips || '-'}</div>
+                    <div class="linked-devices">${linksDisplay}</div>
                 </td>
                 <td>
                     <div class="table-actions">

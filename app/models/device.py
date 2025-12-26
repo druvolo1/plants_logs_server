@@ -91,6 +91,33 @@ class DeviceLink(Base):
     child_device = relationship("Device", foreign_keys=[child_device_id], back_populates="linked_parent_devices")
 
 
+class DeviceConnection(Base):
+    """
+    Tracks device-to-device connections (e.g., hydro controller to valve controller).
+
+    Example connections:
+    - Hydro Controller → Valve Controller (valve_control): for fill/drain valve control
+    - Valve Controller → Smart Outlet (power_monitoring): for pump power monitoring
+
+    Config JSON examples:
+    - valve_control: {"fill_valve_id": 1, "drain_valve_id": 2, "host": "192.168.1.100", "port": 80}
+    - power_monitoring: {"assigned_valves": [1, 3, 5]}
+    """
+    __tablename__ = "device_connections"
+    id = Column(Integer, primary_key=True, index=True)
+    source_device_id = Column(Integer, ForeignKey("devices.id", ondelete="CASCADE"), nullable=False)
+    target_device_id = Column(Integer, ForeignKey("devices.id", ondelete="CASCADE"), nullable=False)
+    connection_type = Column(String(50), nullable=False)  # 'valve_control', 'power_monitoring', etc.
+    config = Column(Text, nullable=True)  # JSON string with connection-specific configuration
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    removed_at = Column(DateTime, nullable=True)  # Soft delete for history tracking
+
+    # Relationships
+    source_device = relationship("Device", foreign_keys=[source_device_id])
+    target_device = relationship("Device", foreign_keys=[target_device_id])
+
+
 class DeviceDebugLog(Base):
     """
     Stores metadata for debug log captures from devices.

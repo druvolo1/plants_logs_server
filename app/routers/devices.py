@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_
 import secrets
 
-from app.models import User, Device, DeviceShare, DeviceLink, Plant, DeviceAssignment, Location, DeviceDebugLog
+from app.models import User, Device, DeviceShare, DeviceLink, DeviceConnection, Plant, DeviceAssignment, Location, DeviceDebugLog
 
 # Log storage directory
 LOGS_DIR = Path("logs/device_debug")
@@ -28,6 +28,9 @@ from app.schemas import (
     DeviceLinkRead,
     AvailableDeviceForLinking,
     LinkedDeviceInfo,
+    DeviceConnectionCreate,
+    DeviceConnectionUpdate,
+    DeviceConnectionRead,
 )
 
 router = APIRouter(prefix="/user/devices", tags=["devices"])
@@ -192,6 +195,36 @@ async def list_devices(
                     is_location_inherited=link.is_location_inherited
                 ))
 
+        # Get device connections (hydro->valve, valve->outlet, etc.)
+        connected_devices = []
+        connections_result = await session.execute(
+            select(DeviceConnection, Device)
+            .join(Device, DeviceConnection.target_device_id == Device.id)
+            .where(
+                DeviceConnection.source_device_id == device.id,
+                DeviceConnection.removed_at == None
+            )
+        )
+        for conn, target_device in connections_result.all():
+            import json
+            config_dict = json.loads(conn.config) if conn.config else None
+
+            connected_devices.append(DeviceConnectionRead(
+                id=conn.id,
+                connection_type=conn.connection_type,
+                config=config_dict,
+                created_at=conn.created_at,
+                updated_at=conn.updated_at,
+                source_device_id=device.device_id,
+                source_device_name=device.name,
+                source_device_type=device.device_type,
+                source_device_is_online=device.is_online,
+                target_device_id=target_device.device_id,
+                target_device_name=target_device.name,
+                target_device_type=target_device.device_type,
+                target_device_is_online=target_device.is_online
+            ))
+
         devices_list.append(DeviceRead(
             id=device.id,
             device_id=device.device_id,
@@ -208,7 +241,8 @@ async def list_devices(
             last_seen=device.last_seen,
             is_owner=True,
             assigned_plants=assigned_plants,
-            linked_devices=linked_devices
+            linked_devices=linked_devices,
+            connected_devices=connected_devices
         ))
 
     # Get shared devices (accepted and active)
@@ -249,6 +283,36 @@ async def list_devices(
                 current_phase=plant.current_phase
             ))
 
+        # Get device connections for shared devices
+        connected_devices = []
+        connections_result = await session.execute(
+            select(DeviceConnection, Device)
+            .join(Device, DeviceConnection.target_device_id == Device.id)
+            .where(
+                DeviceConnection.source_device_id == device.id,
+                DeviceConnection.removed_at == None
+            )
+        )
+        for conn, target_device in connections_result.all():
+            import json
+            config_dict = json.loads(conn.config) if conn.config else None
+
+            connected_devices.append(DeviceConnectionRead(
+                id=conn.id,
+                connection_type=conn.connection_type,
+                config=config_dict,
+                created_at=conn.created_at,
+                updated_at=conn.updated_at,
+                source_device_id=device.device_id,
+                source_device_name=device.name,
+                source_device_type=device.device_type,
+                source_device_is_online=device.is_online,
+                target_device_id=target_device.device_id,
+                target_device_name=target_device.name,
+                target_device_type=target_device.device_type,
+                target_device_is_online=target_device.is_online
+            ))
+
         devices_list.append(DeviceRead(
             id=device.id,
             device_id=device.device_id,
@@ -266,7 +330,8 @@ async def list_devices(
             is_owner=False,
             permission_level=share.permission_level,
             shared_by_email=owner_email,
-            assigned_plants=assigned_plants
+            assigned_plants=assigned_plants,
+            connected_devices=connected_devices
         ))
 
     return devices_list
@@ -782,6 +847,247 @@ async def delete_device_link(
     await session.commit()
 
     return {"status": "success", "message": "Device link removed"}
+
+
+# ============================================
+# Device Connections (hydro → valve, valve → outlet)
+# ============================================
+
+@router.get("/{device_id}/connections", response_model=List[DeviceConnectionRead])
+async def get_device_connections(
+    device_id: str,
+    request: Request,
+    user: User = Depends(get_current_user_dependency()),
+    session: AsyncSession = Depends(get_db_dependency())
+):
+    """Get all active connections for a device (both outgoing and incoming)."""
+    effective_user = await get_effective_user(request, user, session)
+
+    # Verify device exists and user has access
+    device_result = await session.execute(
+        select(Device).where(Device.device_id == device_id)
+    )
+    device = device_result.scalars().first()
+
+    if not device:
+        raise HTTPException(404, "Device not found")
+
+    # Check ownership or sharing
+    if device.user_id != effective_user.id:
+        share_result = await session.execute(
+            select(DeviceShare).where(
+                DeviceShare.device_id == device.id,
+                DeviceShare.shared_with_user_id == effective_user.id,
+                DeviceShare.is_active == True
+            )
+        )
+        if not share_result.scalars().first():
+            raise HTTPException(403, "Access denied")
+
+    # Get all connections where this device is source or target
+    connections_result = await session.execute(
+        select(DeviceConnection, Device.device_id, Device.name, Device.device_type, Device.is_online)
+        .join(Device, DeviceConnection.target_device_id == Device.id)
+        .where(
+            DeviceConnection.source_device_id == device.id,
+            DeviceConnection.removed_at == None
+        )
+    )
+
+    connections = []
+    for conn, target_uuid, target_name, target_type, target_online in connections_result.all():
+        import json
+        config_dict = json.loads(conn.config) if conn.config else None
+
+        connections.append(DeviceConnectionRead(
+            id=conn.id,
+            connection_type=conn.connection_type,
+            config=config_dict,
+            created_at=conn.created_at,
+            updated_at=conn.updated_at,
+            source_device_id=device.device_id,
+            source_device_name=device.name,
+            source_device_type=device.device_type,
+            source_device_is_online=device.is_online,
+            target_device_id=target_uuid,
+            target_device_name=target_name,
+            target_device_type=target_type,
+            target_device_is_online=target_online
+        ))
+
+    return connections
+
+
+@router.post("/{device_id}/connections", response_model=DeviceConnectionRead)
+async def create_device_connection(
+    device_id: str,
+    connection: DeviceConnectionCreate,
+    request: Request,
+    user: User = Depends(get_current_user_dependency()),
+    session: AsyncSession = Depends(get_db_dependency())
+):
+    """Create a new connection from this device to another device."""
+    effective_user = await get_effective_user(request, user, session)
+
+    # Verify source device exists and user owns it
+    source_result = await session.execute(
+        select(Device).where(Device.device_id == device_id, Device.user_id == effective_user.id)
+    )
+    source_device = source_result.scalars().first()
+
+    if not source_device:
+        raise HTTPException(404, "Source device not found or access denied")
+
+    # Verify target device exists and user owns it
+    target_result = await session.execute(
+        select(Device).where(Device.device_id == connection.target_device_id, Device.user_id == effective_user.id)
+    )
+    target_device = target_result.scalars().first()
+
+    if not target_device:
+        raise HTTPException(404, "Target device not found or access denied")
+
+    # Check if connection already exists
+    existing_result = await session.execute(
+        select(DeviceConnection).where(
+            DeviceConnection.source_device_id == source_device.id,
+            DeviceConnection.target_device_id == target_device.id,
+            DeviceConnection.connection_type == connection.connection_type,
+            DeviceConnection.removed_at == None
+        )
+    )
+    if existing_result.scalars().first():
+        raise HTTPException(400, "Connection already exists")
+
+    # Create connection
+    import json
+    new_connection = DeviceConnection(
+        source_device_id=source_device.id,
+        target_device_id=target_device.id,
+        connection_type=connection.connection_type,
+        config=json.dumps(connection.config) if connection.config else None
+    )
+
+    session.add(new_connection)
+    await session.commit()
+    await session.refresh(new_connection)
+
+    config_dict = json.loads(new_connection.config) if new_connection.config else None
+
+    return DeviceConnectionRead(
+        id=new_connection.id,
+        connection_type=new_connection.connection_type,
+        config=config_dict,
+        created_at=new_connection.created_at,
+        updated_at=new_connection.updated_at,
+        source_device_id=source_device.device_id,
+        source_device_name=source_device.name,
+        source_device_type=source_device.device_type,
+        source_device_is_online=source_device.is_online,
+        target_device_id=target_device.device_id,
+        target_device_name=target_device.name,
+        target_device_type=target_device.device_type,
+        target_device_is_online=target_device.is_online
+    )
+
+
+@router.put("/{device_id}/connections/{connection_id}", response_model=DeviceConnectionRead)
+async def update_device_connection(
+    device_id: str,
+    connection_id: int,
+    connection_update: DeviceConnectionUpdate,
+    request: Request,
+    user: User = Depends(get_current_user_dependency()),
+    session: AsyncSession = Depends(get_db_dependency())
+):
+    """Update a device connection's configuration."""
+    effective_user = await get_effective_user(request, user, session)
+
+    # Get connection with devices
+    conn_result = await session.execute(
+        select(DeviceConnection, Device)
+        .join(Device, DeviceConnection.source_device_id == Device.id)
+        .where(
+            DeviceConnection.id == connection_id,
+            Device.device_id == device_id,
+            Device.user_id == effective_user.id,
+            DeviceConnection.removed_at == None
+        )
+    )
+    result = conn_result.first()
+
+    if not result:
+        raise HTTPException(404, "Connection not found or access denied")
+
+    conn, source_device = result
+
+    # Update configuration
+    if connection_update.config is not None:
+        import json
+        conn.config = json.dumps(connection_update.config)
+
+    await session.commit()
+    await session.refresh(conn)
+
+    # Get target device info
+    target_result = await session.execute(
+        select(Device).where(Device.id == conn.target_device_id)
+    )
+    target_device = target_result.scalars().first()
+
+    config_dict = json.loads(conn.config) if conn.config else None
+
+    return DeviceConnectionRead(
+        id=conn.id,
+        connection_type=conn.connection_type,
+        config=config_dict,
+        created_at=conn.created_at,
+        updated_at=conn.updated_at,
+        source_device_id=source_device.device_id,
+        source_device_name=source_device.name,
+        source_device_type=source_device.device_type,
+        source_device_is_online=source_device.is_online,
+        target_device_id=target_device.device_id,
+        target_device_name=target_device.name,
+        target_device_type=target_device.device_type,
+        target_device_is_online=target_device.is_online
+    )
+
+
+@router.delete("/{device_id}/connections/{connection_id}")
+async def delete_device_connection(
+    device_id: str,
+    connection_id: int,
+    request: Request,
+    user: User = Depends(get_current_user_dependency()),
+    session: AsyncSession = Depends(get_db_dependency())
+):
+    """Soft-delete a device connection."""
+    effective_user = await get_effective_user(request, user, session)
+
+    # Get connection with device
+    conn_result = await session.execute(
+        select(DeviceConnection, Device)
+        .join(Device, DeviceConnection.source_device_id == Device.id)
+        .where(
+            DeviceConnection.id == connection_id,
+            Device.device_id == device_id,
+            Device.user_id == effective_user.id,
+            DeviceConnection.removed_at == None
+        )
+    )
+    result = conn_result.first()
+
+    if not result:
+        raise HTTPException(404, "Connection not found or access denied")
+
+    conn, _ = result
+
+    # Soft delete
+    conn.removed_at = datetime.utcnow()
+    await session.commit()
+
+    return {"status": "success", "message": "Connection removed"}
 
 
 # API Endpoints (for devices using API keys)

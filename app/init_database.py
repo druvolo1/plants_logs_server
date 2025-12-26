@@ -370,6 +370,32 @@ async def init_database():
                 """
             )
 
+            print("\nChecking 'device_connections' table...")
+
+            # Create device_connections table for tracking device-to-device relationships
+            await check_and_create_table(
+                conn,
+                'device_connections',
+                """
+                CREATE TABLE device_connections (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    source_device_id INT NOT NULL COMMENT 'Device initiating the connection',
+                    target_device_id INT NOT NULL COMMENT 'Device being connected to',
+                    connection_type VARCHAR(50) NOT NULL COMMENT 'valve_control, power_monitoring, etc',
+                    config JSON NULL COMMENT 'Connection-specific configuration (valve IDs, etc)',
+                    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    removed_at DATETIME NULL COMMENT 'Soft delete timestamp',
+                    INDEX idx_source_device (source_device_id),
+                    INDEX idx_target_device (target_device_id),
+                    INDEX idx_connection_type (connection_type),
+                    INDEX idx_active (source_device_id, removed_at),
+                    FOREIGN KEY (source_device_id) REFERENCES devices(id) ON DELETE CASCADE,
+                    FOREIGN KEY (target_device_id) REFERENCES devices(id) ON DELETE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+                """
+            )
+
             print("\nChecking 'locations' table...")
 
             # Create locations table if it doesn't exist
