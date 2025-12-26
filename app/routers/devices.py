@@ -351,14 +351,72 @@ async def update_device(
     if not device:
         raise HTTPException(404, "Device not found or access denied")
 
+    name_changed = False
+    old_name = device.name
+
     # Update fields if provided
-    if device_update.name is not None:
+    if device_update.name is not None and device_update.name != device.name:
         device.name = device_update.name
+        name_changed = True
     if device_update.location_id is not None:
         device.location_id = device_update.location_id
 
     await session.commit()
     await session.refresh(device)
+
+    # Send WebSocket notifications if name changed
+    if name_changed:
+        from app.routers.websocket import user_connections, device_connections as ws_device_connections
+
+        # Notify users viewing this device to update the card
+        for user_ws in user_connections.get(device_id, []):
+            try:
+                await user_ws.send_json({
+                    "type": "device_name_change",
+                    "device_id": device_id,
+                    "name": device.name
+                })
+            except:
+                pass
+
+        # Notify the device itself to update its local name
+        device_ws = ws_device_connections.get(device_id)
+        if device_ws:
+            try:
+                await device_ws.send_json({
+                    "type": "settings_update",
+                    "system_name": device.name
+                })
+            except:
+                pass
+
+        # Find all devices that have connections TO this device and notify users viewing them
+        connections_result = await session.execute(
+            select(DeviceConnection)
+            .where(
+                DeviceConnection.target_device_id == device.id,
+                DeviceConnection.removed_at == None
+            )
+        )
+        connected_from_devices = connections_result.scalars().all()
+
+        for conn in connected_from_devices:
+            source_device_result = await session.execute(
+                select(Device).where(Device.id == conn.source_device_id)
+            )
+            source_device = source_device_result.scalar_one_or_none()
+
+            if source_device:
+                for user_ws in user_connections.get(source_device.device_id, []):
+                    try:
+                        await user_ws.send_json({
+                            "type": "connected_device_name_change",
+                            "source_device_id": source_device.device_id,
+                            "target_device_id": device_id,
+                            "target_device_name": device.name
+                        })
+                    except:
+                        pass
 
     return {"status": "success", "message": "Device updated"}
 
