@@ -366,18 +366,22 @@ async def update_device(
 
     # Send WebSocket notifications if name changed
     if name_changed:
+        print(f"[DEVICE UPDATE] Name changed from '{old_name}' to '{device.name}' for device {device_id}")
         from app.routers.websocket import user_connections, device_connections as ws_device_connections
 
         # Notify users viewing this device to update the card
-        for user_ws in user_connections.get(device_id, []):
+        user_ws_list = user_connections.get(device_id, [])
+        print(f"[DEVICE UPDATE] Notifying {len(user_ws_list)} users viewing device {device_id}")
+        for user_ws in user_ws_list:
             try:
                 await user_ws.send_json({
                     "type": "device_name_change",
                     "device_id": device_id,
                     "name": device.name
                 })
-            except:
-                pass
+                print(f"[DEVICE UPDATE] Sent device_name_change to user")
+            except Exception as e:
+                print(f"[DEVICE UPDATE] Failed to send to user: {e}")
 
         # Notify the device itself to update its local name
         device_ws = ws_device_connections.get(device_id)
@@ -399,6 +403,7 @@ async def update_device(
             )
         )
         connected_from_devices = connections_result.scalars().all()
+        print(f"[DEVICE UPDATE] Found {len(connected_from_devices)} devices with connections to {device_id}")
 
         for conn in connected_from_devices:
             source_device_result = await session.execute(
@@ -407,6 +412,7 @@ async def update_device(
             source_device = source_device_result.scalar_one_or_none()
 
             if source_device:
+                print(f"[DEVICE UPDATE] Notifying users viewing {source_device.device_id} about name change")
                 for user_ws in user_connections.get(source_device.device_id, []):
                     try:
                         await user_ws.send_json({
@@ -415,8 +421,9 @@ async def update_device(
                             "target_device_id": device_id,
                             "target_device_name": device.name
                         })
-                    except:
-                        pass
+                        print(f"[DEVICE UPDATE] Sent connected_device_name_change notification")
+                    except Exception as e:
+                        print(f"[DEVICE UPDATE] Failed to send: {e}")
 
     return {"status": "success", "message": "Device updated"}
 
