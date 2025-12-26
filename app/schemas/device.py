@@ -45,6 +45,38 @@ class LinkedDeviceInfo(BaseModel):
     is_location_inherited: bool
 
 
+# Device Connection Pydantic models (for device-to-device connections)
+class DeviceConnectionCreate(BaseModel):
+    """Create a connection between two devices"""
+    target_device_id: str  # UUID of target device
+    connection_type: str  # 'valve_control', 'power_monitoring', etc.
+    config: Optional[dict] = None  # Connection-specific config
+
+
+class DeviceConnectionUpdate(BaseModel):
+    """Update a device connection's configuration"""
+    config: Optional[dict] = None
+
+
+class DeviceConnectionRead(BaseModel):
+    """Read model for device connections"""
+    id: int
+    connection_type: str
+    config: Optional[dict] = None
+    created_at: datetime
+    updated_at: datetime
+    # Source device info
+    source_device_id: str
+    source_device_name: Optional[str] = None
+    source_device_type: Optional[str] = None
+    source_device_is_online: bool = False
+    # Target device info
+    target_device_id: str
+    target_device_name: Optional[str] = None
+    target_device_type: Optional[str] = None
+    target_device_is_online: bool = False
+
+
 class DeviceRead(BaseModel):
     device_id: str
     name: Optional[str] = None  # User-set custom name
@@ -182,35 +214,3 @@ class AvailableDeviceForLinking(BaseModel):
     location_id: Optional[int] = None
     location_name: Optional[str] = None
     is_same_location: bool = False  # True if in same location as parent device
-
-
-# Device Connection Pydantic models (for device-to-device connections)
-class DeviceConnectionCreate(BaseModel):
-    """Create a connection between two devices"""
-    target_device_id: str  # UUID of target device
-    connection_type: str  # 'valve_control', 'power_monitoring', etc.
-    config: Optional[dict] = None  # Connection-specific config
-
-
-class DeviceConnectionUpdate(BaseModel):
-    """Update a device connection's configuration"""
-    config: Optional[dict] = None
-
-
-class DeviceConnectionRead(BaseModel):
-    """Read model for device connections"""
-    id: int
-    connection_type: str
-    config: Optional[dict] = None
-    created_at: datetime
-    updated_at: datetime
-    # Source device info
-    source_device_id: str
-    source_device_name: Optional[str] = None
-    source_device_type: Optional[str] = None
-    source_device_is_online: bool = False
-    # Target device info
-    target_device_id: str
-    target_device_name: Optional[str] = None
-    target_device_type: Optional[str] = None
-    target_device_is_online: bool = False
