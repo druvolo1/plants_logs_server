@@ -20,6 +20,9 @@ from .device import (
     DeviceLinkRead,
     LinkedDeviceInfo,
     AvailableDeviceForLinking,
+    DeviceConnectionCreate,
+    DeviceConnectionUpdate,
+    DeviceConnectionRead,
     FirmwareInfo,
     RemoteLogRequest,
 )
@@ -82,6 +85,9 @@ __all__ = [
     "DeviceLinkRead",
     "LinkedDeviceInfo",
     "AvailableDeviceForLinking",
+    "DeviceConnectionCreate",
+    "DeviceConnectionUpdate",
+    "DeviceConnectionRead",
     "FirmwareInfo",
     "RemoteLogRequest",
     # Location schemas
