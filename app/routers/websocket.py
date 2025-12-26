@@ -307,6 +307,38 @@ async def device_websocket(
                         except:
                             pass
 
+                    # Find all devices that have connections TO this device (as target)
+                    # and notify users viewing those devices to refresh
+                    connections_result = await session.execute(
+                        select(DeviceConnection)
+                        .where(
+                            DeviceConnection.target_device_id == device.id,
+                            DeviceConnection.removed_at == None
+                        )
+                    )
+                    connected_from_devices = connections_result.scalars().all()
+
+                    # Get the source device IDs
+                    for conn in connected_from_devices:
+                        source_device_result = await session.execute(
+                            select(Device).where(Device.id == conn.source_device_id)
+                        )
+                        source_device = source_device_result.scalar_one_or_none()
+
+                        if source_device:
+                            # Notify users viewing the source device to refresh
+                            for user_ws in user_connections.get(source_device.device_id, []):
+                                try:
+                                    await user_ws.send_json({
+                                        "type": "connected_device_name_change",
+                                        "source_device_id": source_device.device_id,
+                                        "target_device_id": device_id,
+                                        "target_device_name": device_name
+                                    })
+                                    print(f"Notified users of {source_device.device_id} about name change of connected device {device_id}")
+                                except:
+                                    pass
+
             # Extract and save system_name if present in the payload
             if data.get('type') == 'full_sync' or 'data' in data:
                 payload = data.get('data', data)

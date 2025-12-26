@@ -4186,6 +4186,32 @@
                     }
                 }
 
+                // Handle connected device name change (when a device this one is connected to changes its name)
+                if (data.type === 'connected_device_name_change') {
+                    console.log(`[WS] Connected device name changed: ${data.target_device_id} -> ${data.target_device_name}`);
+                    // Update the device's connected_devices array in allDevices
+                    const deviceIndex = allDevices.findIndex(d => d.device_id === data.source_device_id);
+                    if (deviceIndex !== -1) {
+                        const device = allDevices[deviceIndex];
+                        if (device.connected_devices) {
+                            // Find and update the connection with the new name
+                            device.connected_devices.forEach(conn => {
+                                if (conn.target_device_id === data.target_device_id) {
+                                    conn.target_device_name = data.target_device_name;
+                                }
+                            });
+                            // Re-render the device row to show updated name
+                            const deviceCard = document.getElementById(`device-${data.source_device_id}`);
+                            if (deviceCard) {
+                                const newRow = createDeviceRow(device);
+                                deviceCard.replaceWith(newRow);
+                                // Reconnect WebSocket for the refreshed card
+                                connectWebSocket(data.source_device_id);
+                            }
+                        }
+                    }
+                }
+
                 // Update version from full_sync, status_update, or sensors
                 const settings = (data.type === 'sensors' && data.settings) ? data.settings :
                                  ((data.type === 'full_sync' || data.type === 'status_update') && data.data && data.data.settings) ? data.data.settings : null;
