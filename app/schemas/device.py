@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 # app/schemas/device.py
 """
 Device-related Pydantic schemas.
