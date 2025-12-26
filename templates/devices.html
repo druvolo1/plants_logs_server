@@ -201,74 +201,6 @@
             color: white;
         }
 
-        /* Linked Devices Section */
-        .linked-devices-section {
-            margin-top: 1rem;
-            padding: 1rem;
-            background: rgba(59, 130, 246, 0.1);
-            border-radius: 8px;
-            border-left: 3px solid #3b82f6;
-        }
-
-        .linked-devices-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 0.75rem;
-        }
-
-        .linked-devices-header h4 {
-            margin: 0;
-            color: #3b82f6;
-            font-size: 0.95rem;
-        }
-
-        .linked-device-chip {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 0.4rem 0.75rem;
-            background: #1e293b;
-            border: 1px solid #334155;
-            border-radius: 6px;
-            margin-right: 0.5rem;
-            margin-bottom: 0.5rem;
-            font-size: 0.85rem;
-        }
-
-        .linked-device-chip.online {
-            border-color: #10b981;
-        }
-
-        .linked-device-chip .status-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-        }
-
-        .linked-device-chip .status-dot.online {
-            background: #10b981;
-        }
-
-        .linked-device-chip .status-dot.offline {
-            background: #64748b;
-        }
-
-        .linked-device-chip .unlink-btn {
-            background: none;
-            border: none;
-            color: #ef4444;
-            cursor: pointer;
-            padding: 0;
-            margin-left: 0.25rem;
-            font-size: 1rem;
-            line-height: 1;
-        }
-
-        .linked-device-chip .unlink-btn:hover {
-            color: #dc2626;
-        }
-
         .link-device-btn {
             font-size: 0.8rem;
             padding: 0.35rem 0.75rem;
@@ -438,34 +370,6 @@
 
         .device-network-info div:last-child {
             margin-bottom: 0;
-        }
-
-        .linked-devices {
-            display: flex;
-            gap: 0.3rem;
-            flex-wrap: wrap;
-        }
-
-        .linked-chip {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.3rem;
-            padding: 0.15rem 0.5rem;
-            background: rgba(59, 130, 246, 0.2);
-            border-radius: 4px;
-            font-size: 0.7rem;
-            color: #93c5fd;
-        }
-
-        .linked-chip .dot {
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
-            background: #64748b;
-        }
-
-        .linked-chip .dot.online {
-            background: #10b981;
         }
 
         .table-actions {
@@ -1190,7 +1094,6 @@
                     <th>Status</th>
                     <th>Version</th>
                     <th>Network</th>
-                    <th>Links</th>
                     <th>Actions</th>
                 </tr>
             `;
@@ -1296,39 +1199,6 @@
                 ? `<div class="device-plant-info">🌱 ${device.active_plant_name} (${device.active_phase})</div>`
                 : '';
 
-            // Linked devices for feeding systems (legacy)
-            let linkedChips = '';
-            if (deviceType === 'feeding_system' && device.linked_devices && device.linked_devices.length > 0) {
-                linkedChips = device.linked_devices.map(linked => {
-                    const icon = linked.device_type === 'environmental' ? '🌡️' : '🚿';
-                    const dotClass = linked.is_online ? 'online' : '';
-                    return `<span class="linked-chip"><span class="dot ${dotClass}"></span>${icon} ${linked.name || linked.device_id.substring(0, 8)}</span>`;
-                }).join('');
-            }
-
-            // Connected devices (new device connections)
-            let connectedChips = '';
-            if (device.connected_devices && device.connected_devices.length > 0) {
-                console.log(`[RENDER] Device ${device.device_id.substring(0, 8)} has ${device.connected_devices.length} connections:`, device.connected_devices);
-                connectedChips = device.connected_devices.map(conn => {
-                    console.log(`[RENDER] Connection: ${conn.connection_type} -> ${conn.target_device_id.substring(0, 8)} (valve_id: ${conn.config?.valve_id})`);
-                    // Choose icon based on connection type
-                    let icon = '🔗';
-                    if (conn.connection_type === 'valve_control') icon = '🚿';
-                    else if (conn.connection_type === 'power_monitoring') icon = '⚡';
-
-                    const dotClass = conn.target_device_is_online ? 'online' : 'offline';
-                    const displayName = conn.target_device_name || conn.target_device_id.substring(0, 8);
-                    const tooltip = `${conn.connection_type}: ${displayName}`;
-
-                    return `<span class="linked-chip" title="${tooltip}"><span class="dot ${dotClass}"></span>${icon} ${displayName}</span>`;
-                }).join('');
-            }
-
-            // Combine both types of links
-            const allLinks = [linkedChips, connectedChips].filter(x => x).join('');
-            const linksDisplay = allLinks || '-';
-
             // Network info
             const networkInfo = [];
             if (device.ip_address) networkInfo.push(`IP: ${device.ip_address}`);
@@ -1363,9 +1233,6 @@
                     <span id="update-badge-${device.device_id}"></span>
                 </td>
                 <td>${networkCell}</td>
-                <td>
-                    <div class="linked-devices">${linksDisplay}</div>
-                </td>
                 <td>
                     <div class="table-actions">
                         ${actionButtons}
@@ -4185,50 +4052,6 @@
                     const deviceIndex = allDevices.findIndex(d => d.device_id === device_id);
                     if (deviceIndex !== -1) {
                         allDevices[deviceIndex].name = data.system_name;
-                    }
-                }
-
-                // Handle connected device name change (when a device this one is connected to changes its name)
-                if (data.type === 'connected_device_name_change') {
-                    console.log(`[WS] Connected device name changed: ${data.target_device_id} -> ${data.target_device_name}`);
-                    console.log(`[WS] Source device: ${data.source_device_id}`);
-
-                    // Update in allDevices array for consistency
-                    const deviceIndex = allDevices.findIndex(d => d.device_id === data.source_device_id);
-                    console.log(`[WS] Device index: ${deviceIndex}`);
-                    if (deviceIndex !== -1 && allDevices[deviceIndex].connected_devices) {
-                        console.log(`[WS] Connected devices count: ${allDevices[deviceIndex].connected_devices.length}`);
-                        allDevices[deviceIndex].connected_devices.forEach(conn => {
-                            if (conn.target_device_id === data.target_device_id) {
-                                console.log(`[WS] Updating connection: ${conn.connection_type} valve_id:${conn.config?.valve_id}`);
-                                conn.target_device_name = data.target_device_name;
-                            }
-                        });
-                    }
-
-                    // Update the Links column directly without re-rendering the whole card
-                    const linksCell = document.querySelector(`#device-${data.source_device_id} .links-chips`);
-                    console.log(`[WS] Links cell found: ${!!linksCell}`);
-                    if (linksCell) {
-                        // Find all link chips and update the one matching the target device
-                        const linkChips = linksCell.querySelectorAll('.linked-chip');
-                        console.log(`[WS] Link chips found: ${linkChips.length}`);
-                        linkChips.forEach((chip, idx) => {
-                            const title = chip.getAttribute('title');
-                            console.log(`[WS] Chip ${idx} title: ${title}`);
-                            // Check if this chip is for the updated device (title contains device ID or name)
-                            if (title && title.includes(data.target_device_id.substring(0, 8))) {
-                                console.log(`[WS] Updating chip ${idx}`);
-                                // Update the chip text (keep icon and dot, just update name)
-                                const icon = chip.querySelector('span:last-child') ? chip.textContent.split(' ')[0] : '🔗';
-                                const dotSpan = chip.querySelector('.dot');
-                                const newName = data.target_device_name || data.target_device_id.substring(0, 8);
-                                chip.innerHTML = `${dotSpan.outerHTML}${icon} ${newName}`;
-                                // Update tooltip
-                                const connType = title.split(':')[0];
-                                chip.setAttribute('title', `${connType}: ${newName}`);
-                            }
-                        });
                     }
                 }
 
