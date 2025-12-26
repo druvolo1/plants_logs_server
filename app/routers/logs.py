@@ -381,10 +381,25 @@ async def environment_heartbeat(
 
     # Update device last_seen and is_online status
     now = datetime.utcnow()
+    update_values = {
+        'is_online': True,
+        'last_seen': now
+    }
+
+    # Update mDNS hostname if provided
+    if data.mdns_hostname:
+        update_values['mdns_hostname'] = data.mdns_hostname
+        print(f"[Heartbeat] Updated mDNS hostname for {device_id}: {data.mdns_hostname}")
+
+    # Update IP address if provided
+    if data.ip_address:
+        update_values['ip_address'] = data.ip_address
+        print(f"[Heartbeat] Updated IP address for {device_id}: {data.ip_address}")
+
     await session.execute(
         update(Device)
         .where(Device.device_id == device_id)
-        .values(is_online=True, last_seen=now)
+        .values(**update_values)
     )
     await session.commit()
 

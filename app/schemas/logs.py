@@ -50,6 +50,8 @@ class LogEntryRead(BaseModel):
 class EnvironmentDataCreate(BaseModel):
     # Device info
     firmware_version: Optional[str] = None
+    mdns_hostname: Optional[str] = None
+    ip_address: Optional[str] = None
     # Air Quality
     co2: Optional[int] = None
     temperature: Optional[float] = None
