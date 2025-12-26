@@ -13,7 +13,7 @@ from sqlalchemy import select, update, or_
 from starlette.websockets import WebSocketDisconnect
 import jwt
 
-from app.models import User, Device, DeviceShare, LocationShare, DeviceFirmwareAssignment
+from app.models import User, Device, DeviceShare, LocationShare, DeviceFirmwareAssignment, DeviceConnection
 
 router = APIRouter(tags=["websocket"])
 
@@ -221,6 +221,67 @@ async def device_websocket(
                     )
                     await session.commit()
                     print(f"Updated device {device_id} with: {updates}")
+
+            # Handle device_connections message for auto-reporting connections
+            if data.get('type') == 'device_connections':
+                connections = data.get('connections', [])
+                print(f"Device {device_id} reporting {len(connections)} connections")
+
+                # Get the source device database record
+                source_device_result = await session.execute(
+                    select(Device).where(Device.device_id == device_id)
+                )
+                source_device = source_device_result.scalar_one_or_none()
+
+                if not source_device:
+                    print(f"ERROR: Source device {device_id} not found in database")
+                else:
+                    # Soft-delete all existing connections from this device
+                    await session.execute(
+                        update(DeviceConnection)
+                        .where(
+                            DeviceConnection.source_device_id == source_device.id,
+                            DeviceConnection.removed_at == None
+                        )
+                        .values(removed_at=datetime.utcnow())
+                    )
+                    print(f"Soft-deleted existing connections for device {device_id}")
+
+                    # Create new connections
+                    for conn_data in connections:
+                        target_device_id = conn_data.get('target_device_id')
+                        connection_type = conn_data.get('connection_type')
+                        config = conn_data.get('config')
+
+                        if not target_device_id or not connection_type:
+                            print(f"WARNING: Invalid connection data: {conn_data}")
+                            continue
+
+                        # Look up target device by device_id (UUID)
+                        target_device_result = await session.execute(
+                            select(Device).where(Device.device_id == target_device_id)
+                        )
+                        target_device = target_device_result.scalar_one_or_none()
+
+                        if not target_device:
+                            print(f"WARNING: Target device {target_device_id} not found")
+                            continue
+
+                        # Create the connection
+                        new_connection = DeviceConnection(
+                            source_device_id=source_device.id,
+                            target_device_id=target_device.id,
+                            connection_type=connection_type,
+                            config=json.dumps(config) if config else None,
+                            created_at=datetime.utcnow(),
+                            updated_at=datetime.utcnow()
+                        )
+                        session.add(new_connection)
+                        print(f"Created connection: {device_id} -> {target_device_id} ({connection_type})")
+
+                    # Commit all changes
+                    await session.commit()
+                    print(f"Successfully updated {len(connections)} connections for device {device_id}")
 
             # Handle device name updates from device
             if data.get('type') == 'device_name_update':
