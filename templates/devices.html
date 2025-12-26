@@ -1309,7 +1309,9 @@
             // Connected devices (new device connections)
             let connectedChips = '';
             if (device.connected_devices && device.connected_devices.length > 0) {
+                console.log(`[RENDER] Device ${device.device_id.substring(0, 8)} has ${device.connected_devices.length} connections:`, device.connected_devices);
                 connectedChips = device.connected_devices.map(conn => {
+                    console.log(`[RENDER] Connection: ${conn.connection_type} -> ${conn.target_device_id.substring(0, 8)} (valve_id: ${conn.config?.valve_id})`);
                     // Choose icon based on connection type
                     let icon = '🔗';
                     if (conn.connection_type === 'valve_control') icon = '🚿';
@@ -4189,12 +4191,16 @@
                 // Handle connected device name change (when a device this one is connected to changes its name)
                 if (data.type === 'connected_device_name_change') {
                     console.log(`[WS] Connected device name changed: ${data.target_device_id} -> ${data.target_device_name}`);
+                    console.log(`[WS] Source device: ${data.source_device_id}`);
 
                     // Update in allDevices array for consistency
                     const deviceIndex = allDevices.findIndex(d => d.device_id === data.source_device_id);
+                    console.log(`[WS] Device index: ${deviceIndex}`);
                     if (deviceIndex !== -1 && allDevices[deviceIndex].connected_devices) {
+                        console.log(`[WS] Connected devices count: ${allDevices[deviceIndex].connected_devices.length}`);
                         allDevices[deviceIndex].connected_devices.forEach(conn => {
                             if (conn.target_device_id === data.target_device_id) {
+                                console.log(`[WS] Updating connection: ${conn.connection_type} valve_id:${conn.config?.valve_id}`);
                                 conn.target_device_name = data.target_device_name;
                             }
                         });
@@ -4202,13 +4208,17 @@
 
                     // Update the Links column directly without re-rendering the whole card
                     const linksCell = document.querySelector(`#device-${data.source_device_id} .links-chips`);
+                    console.log(`[WS] Links cell found: ${!!linksCell}`);
                     if (linksCell) {
                         // Find all link chips and update the one matching the target device
                         const linkChips = linksCell.querySelectorAll('.linked-chip');
-                        linkChips.forEach(chip => {
+                        console.log(`[WS] Link chips found: ${linkChips.length}`);
+                        linkChips.forEach((chip, idx) => {
                             const title = chip.getAttribute('title');
+                            console.log(`[WS] Chip ${idx} title: ${title}`);
                             // Check if this chip is for the updated device (title contains device ID or name)
                             if (title && title.includes(data.target_device_id.substring(0, 8))) {
+                                console.log(`[WS] Updating chip ${idx}`);
                                 // Update the chip text (keep icon and dot, just update name)
                                 const icon = chip.querySelector('span:last-child') ? chip.textContent.split(' ')[0] : '🔗';
                                 const dotSpan = chip.querySelector('.dot');
