@@ -4189,26 +4189,36 @@
                 // Handle connected device name change (when a device this one is connected to changes its name)
                 if (data.type === 'connected_device_name_change') {
                     console.log(`[WS] Connected device name changed: ${data.target_device_id} -> ${data.target_device_name}`);
-                    // Update the device's connected_devices array in allDevices
+
+                    // Update in allDevices array for consistency
                     const deviceIndex = allDevices.findIndex(d => d.device_id === data.source_device_id);
-                    if (deviceIndex !== -1) {
-                        const device = allDevices[deviceIndex];
-                        if (device.connected_devices) {
-                            // Find and update the connection with the new name
-                            device.connected_devices.forEach(conn => {
-                                if (conn.target_device_id === data.target_device_id) {
-                                    conn.target_device_name = data.target_device_name;
-                                }
-                            });
-                            // Re-render the device row to show updated name
-                            const deviceCard = document.getElementById(`device-${data.source_device_id}`);
-                            if (deviceCard) {
-                                const newRow = createDeviceRow(device);
-                                deviceCard.replaceWith(newRow);
-                                // Reconnect WebSocket for the refreshed card
-                                connectWebSocket(data.source_device_id);
+                    if (deviceIndex !== -1 && allDevices[deviceIndex].connected_devices) {
+                        allDevices[deviceIndex].connected_devices.forEach(conn => {
+                            if (conn.target_device_id === data.target_device_id) {
+                                conn.target_device_name = data.target_device_name;
                             }
-                        }
+                        });
+                    }
+
+                    // Update the Links column directly without re-rendering the whole card
+                    const linksCell = document.querySelector(`#device-${data.source_device_id} .links-chips`);
+                    if (linksCell) {
+                        // Find all link chips and update the one matching the target device
+                        const linkChips = linksCell.querySelectorAll('.linked-chip');
+                        linkChips.forEach(chip => {
+                            const title = chip.getAttribute('title');
+                            // Check if this chip is for the updated device (title contains device ID or name)
+                            if (title && title.includes(data.target_device_id.substring(0, 8))) {
+                                // Update the chip text (keep icon and dot, just update name)
+                                const icon = chip.querySelector('span:last-child') ? chip.textContent.split(' ')[0] : '🔗';
+                                const dotSpan = chip.querySelector('.dot');
+                                const newName = data.target_device_name || data.target_device_id.substring(0, 8);
+                                chip.innerHTML = `${dotSpan.outerHTML}${icon} ${newName}`;
+                                // Update tooltip
+                                const connType = title.split(':')[0];
+                                chip.setAttribute('title', `${connType}: ${newName}`);
+                            }
+                        });
                     }
                 }
 
