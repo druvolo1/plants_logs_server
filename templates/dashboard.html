@@ -1396,6 +1396,50 @@
                                             </div>
                                         </div>
                                     </div>
+
+                                    <!-- Water Level Card -->
+                                    <div class="card" id="water-level-card-${device.device_id}" data-card-type="water-level" draggable="true" style="display: none;">
+                                        <div class="card-drag-handle" title="Drag to reorder">⋮⋮</div>
+                                        <div class="card-content">
+                                            <div class="card-title">💧 Water Level</div>
+
+                                            <!-- ETape Sensor Display -->
+                                            <div id="water-level-etape-${device.device_id}" style="display: none;">
+                                                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                                                    <div>
+                                                        <div style="font-size: 0.65em; opacity: 0.7;">Level</div>
+                                                        <div style="font-size: 1em; font-weight: bold;" id="water-level-percent-${device.device_id}">--%</div>
+                                                    </div>
+                                                    <div>
+                                                        <div style="font-size: 0.65em; opacity: 0.7;">Volume</div>
+                                                        <div style="font-size: 1em; font-weight: bold;" id="water-level-volume-${device.device_id}">--</div>
+                                                    </div>
+                                                    <div style="flex: 1; text-align: right;">
+                                                        <div style="font-size: 0.65em; opacity: 0.7;">Status</div>
+                                                        <div style="font-size: 0.9em; font-weight: 500;" id="water-level-status-${device.device_id}">--</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- 3-Point Sensor Display -->
+                                            <div id="water-level-3point-${device.device_id}" style="display: none;">
+                                                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px;">
+                                                    <div style="text-align: center; padding: 4px; background: rgba(0,0,0,0.2); border-radius: 4px;">
+                                                        <div style="font-size: 0.65em; opacity: 0.7;">Full</div>
+                                                        <div style="font-size: 0.9em; font-weight: bold;" id="water-level-full-${device.device_id}">--</div>
+                                                    </div>
+                                                    <div style="text-align: center; padding: 4px; background: rgba(0,0,0,0.2); border-radius: 4px;">
+                                                        <div style="font-size: 0.65em; opacity: 0.7;">OK</div>
+                                                        <div style="font-size: 0.9em; font-weight: bold;" id="water-level-ok-${device.device_id}">--</div>
+                                                    </div>
+                                                    <div style="text-align: center; padding: 4px; background: rgba(0,0,0,0.2); border-radius: 4px;">
+                                                        <div style="font-size: 0.65em; opacity: 0.7;">Empty</div>
+                                                        <div style="font-size: 0.9em; font-weight: bold;" id="water-level-empty-${device.device_id}">--</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
                                     ` : `
                                     <!-- Placeholder for other device types -->
                                     <div style="text-align: center; color: #888; padding: 2rem;">
@@ -2341,6 +2385,65 @@
                     } else if (drainOutletDiv) {
                         drainOutletDiv.style.display = 'none';
                     }
+                }
+            }
+
+            // Update water level
+            if (data.waterLevel) {
+                const card = document.getElementById(`water-level-card-${device_id}`);
+                const etapeDiv = document.getElementById(`water-level-etape-${device_id}`);
+                const threePointDiv = document.getElementById(`water-level-3point-${device_id}`);
+
+                // sensor_type: 0 = NONE, 1 = ETAPE, 2 = WATER_SENSORS (3-point)
+                if (data.waterLevel.sensor_type === 1) {
+                    // ETape sensor
+                    if (card) card.style.display = 'block';
+                    if (etapeDiv) etapeDiv.style.display = 'block';
+                    if (threePointDiv) threePointDiv.style.display = 'none';
+
+                    // Update level percentage
+                    const percentEl = document.getElementById(`water-level-percent-${device_id}`);
+                    if (percentEl) {
+                        percentEl.textContent = data.waterLevel.percent >= 0 ? Math.round(data.waterLevel.percent) + '%' : '--%';
+                    }
+
+                    // Update volume
+                    const volumeEl = document.getElementById(`water-level-volume-${device_id}`);
+                    if (volumeEl) {
+                        if (data.waterLevel.volume >= 0 && data.waterLevel.capacity > 0) {
+                            volumeEl.textContent = '~' + data.waterLevel.volume.toFixed(1) + ' ' + data.waterLevel.unit;
+                        } else {
+                            volumeEl.textContent = '--';
+                        }
+                    }
+
+                    // Update status with color coding
+                    const statusEl = document.getElementById(`water-level-status-${device_id}`);
+                    if (statusEl) {
+                        const status = data.waterLevel.status || '--';
+                        statusEl.textContent = status.charAt(0).toUpperCase() + status.slice(1);
+                        statusEl.style.color = status === 'ok' ? '#2ed573' :
+                                              status === 'full' ? '#3498db' :
+                                              status === 'low' ? '#fbbf24' :
+                                              status === 'empty' ? '#ee5a6f' : '#888';
+                    }
+                } else if (data.waterLevel.sensor_type === 2) {
+                    // 3-point water sensors
+                    if (card) card.style.display = 'block';
+                    if (etapeDiv) etapeDiv.style.display = 'none';
+                    if (threePointDiv) threePointDiv.style.display = 'block';
+
+                    // Update sensor states (checkmark if triggered)
+                    const fullEl = document.getElementById(`water-level-full-${device_id}`);
+                    const okEl = document.getElementById(`water-level-ok-${device_id}`);
+                    const emptyEl = document.getElementById(`water-level-empty-${device_id}`);
+
+                    if (fullEl) fullEl.textContent = data.waterLevel.ws_full ? '✓' : '--';
+                    if (okEl) okEl.textContent = data.waterLevel.ws_ok ? '✓' : '--';
+                    if (emptyEl) emptyEl.textContent = data.waterLevel.ws_empty ? '✓' : '--';
+                } else {
+                    // Sensor disabled or not available
+                    if (card) card.style.display = 'none';
                 }
             }
         }
