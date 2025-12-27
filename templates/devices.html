@@ -358,20 +358,6 @@
             cursor: pointer;
         }
 
-        .device-network-info {
-            font-size: 0.75rem;
-            color: #94a3b8;
-            line-height: 1.4;
-        }
-
-        .device-network-info div {
-            margin-bottom: 0.15rem;
-        }
-
-        .device-network-info div:last-child {
-            margin-bottom: 0;
-        }
-
         .table-actions {
             display: flex;
             gap: 0.3rem;
@@ -1093,7 +1079,9 @@
                     <th>Device</th>
                     <th>Status</th>
                     <th>Version</th>
-                    <th>Network</th>
+                    <th>IP Address</th>
+                    <th>mDNS Hostname</th>
+                    <th>Last Seen</th>
                     <th>Actions</th>
                 </tr>
             `;
@@ -1199,14 +1187,10 @@
                 ? `<div class="device-plant-info">🌱 ${device.active_plant_name} (${device.active_phase})</div>`
                 : '';
 
-            // Network info
-            const networkInfo = [];
-            if (device.ip_address) networkInfo.push(`IP: ${device.ip_address}`);
-            if (device.mdns_hostname) networkInfo.push(`mDNS: ${device.mdns_hostname}`);
-            if (device.last_seen) networkInfo.push(`Last: ${formatLastSeen(device.last_seen)}`);
-            const networkCell = networkInfo.length > 0
-                ? `<div class="device-network-info">${networkInfo.map(info => `<div>${info}</div>`).join('')}</div>`
-                : '-';
+            // Network info - separate columns
+            const ipAddress = device.ip_address || '-';
+            const mdnsHostname = device.mdns_hostname || '-';
+            const lastSeen = device.last_seen ? formatLastSeen(device.last_seen) : '-';
 
             // Action buttons
             let actionButtons = '';
@@ -1232,7 +1216,9 @@
                     <div class="device-version" id="version-${device.device_id}">...</div>
                     <span id="update-badge-${device.device_id}"></span>
                 </td>
-                <td>${networkCell}</td>
+                <td>${ipAddress}</td>
+                <td>${mdnsHostname}</td>
+                <td>${lastSeen}</td>
                 <td>
                     <div class="table-actions">
                         ${actionButtons}
