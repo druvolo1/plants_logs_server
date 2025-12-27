@@ -2344,15 +2344,15 @@
                 leakAlert.style.display = 'none';
             }
 
-            // Update sensor readings
-            if (data.ph !== null && data.ph !== undefined) {
-                document.getElementById(`ph-value-${device_id}`).textContent = data.ph.toFixed(2);
+            // Update sensor readings (note: field is "pH" with capital H)
+            if (data.pH !== null && data.pH !== undefined) {
+                document.getElementById(`ph-value-${device_id}`).textContent = data.pH.toFixed(2);
             }
             if (data.ec !== null && data.ec !== undefined) {
                 document.getElementById(`ec-value-${device_id}`).textContent = `${data.ec.toFixed(2)} mS/cm`;
-            }
-            if (data.tds !== null && data.tds !== undefined) {
-                document.getElementById(`tds-value-${device_id}`).textContent = `${data.tds.toFixed(0)} ppm`;
+                // Calculate TDS from EC (TDS ≈ EC * 500)
+                const tds = data.ec * 500;
+                document.getElementById(`tds-value-${device_id}`).textContent = `${tds.toFixed(0)} ppm`;
             }
 
             // Update calibration warnings
@@ -2370,11 +2370,12 @@
             }
 
             // Update water level card and content (conditional based on sensor type)
+            // water_level_type: 0=NONE, 1=ETAPE, 2=WATER_SENSORS
             const waterLevelCard = document.getElementById(`water-level-card-${device_id}`);
             const eTapeDisplay = document.getElementById(`etape-display-${device_id}`);
             const threePointDisplay = document.getElementById(`threepoint-display-${device_id}`);
 
-            if (data.water_level_type === 'etape') {
+            if (data.water_level_type === 1) {  // ETAPE
                 waterLevelCard.style.display = 'block';
                 eTapeDisplay.style.display = 'block';
                 threePointDisplay.style.display = 'none';
@@ -2385,7 +2386,7 @@
                 if (data.water_volume !== null && data.water_volume !== undefined) {
                     document.getElementById(`water-volume-${device_id}`).textContent = `${data.water_volume.toFixed(1)} L`;
                 }
-            } else if (data.water_level_type === 'threepoint' || data.water_level_type === '3point') {
+            } else if (data.water_level_type === 2) {  // WATER_SENSORS (3-point)
                 waterLevelCard.style.display = 'block';
                 eTapeDisplay.style.display = 'none';
                 threePointDisplay.style.display = 'block';
