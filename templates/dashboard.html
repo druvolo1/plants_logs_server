@@ -2319,6 +2319,14 @@
         }
 
         function updateHydroControllerDisplay(device_id, data) {
+            // Store device settings for temperature unit
+            if (!window.hydroDeviceSettings) window.hydroDeviceSettings = {};
+            if (data.settings && data.settings.use_fahrenheit !== undefined) {
+                window.hydroDeviceSettings[device_id] = {
+                    use_fahrenheit: data.settings.use_fahrenheit
+                };
+            }
+
             // Update firmware version if provided
             if (data.firmware_version) {
                 const versionEl = document.getElementById(`version-${device_id}`);
@@ -2404,9 +2412,14 @@
             const airTempRow = document.getElementById(`air-temp-row-${device_id}`);
             let hasTemp = false;
 
+            // Get temperature unit (default to Fahrenheit if not set)
+            const settings = window.hydroDeviceSettings?.[device_id] || {};
+            const useFahrenheit = settings.use_fahrenheit !== false; // Default to F
+            const tempUnit = useFahrenheit ? '°F' : '°C';
+
             if (data.water_temp !== null && data.water_temp !== undefined) {
                 waterTempRow.style.display = 'flex';
-                document.getElementById(`water-temp-${device_id}`).textContent = `${data.water_temp.toFixed(1)}°C`;
+                document.getElementById(`water-temp-${device_id}`).textContent = `${Math.round(data.water_temp)}${tempUnit}`;
                 hasTemp = true;
             } else {
                 waterTempRow.style.display = 'none';
@@ -2414,7 +2427,7 @@
 
             if (data.air_temp !== null && data.air_temp !== undefined) {
                 airTempRow.style.display = 'flex';
-                document.getElementById(`air-temp-${device_id}`).textContent = `${data.air_temp.toFixed(1)}°C`;
+                document.getElementById(`air-temp-${device_id}`).textContent = `${Math.round(data.air_temp)}${tempUnit}`;
                 hasTemp = true;
             } else {
                 airTempRow.style.display = 'none';
