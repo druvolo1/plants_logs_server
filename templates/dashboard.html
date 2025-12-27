@@ -1281,72 +1281,11 @@
                                             </div>
                                         </div>
                                     </div>
-                                    ` : deviceType === 'valve_controller' ? `
-                                    <!-- Valve Controller Card -->
-                                    <div class="card" id="valve-controller-card-${device.device_id}" data-card-type="valve-controller" draggable="true" style="min-width: 100%;">
-                                        <div class="card-drag-handle" title="Drag to reorder">⋮⋮</div>
-                                        <div class="card-content">
-                                            <div class="card-title">🚿 Valve Controls</div>
-                                            <div id="valve-controls-grid-${device.device_id}" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-top: 0.5rem;">
-                                                <!-- Valve controls will be populated via WebSocket -->
-                                                <div style="grid-column: 1 / -1; text-align: center; color: #888; padding: 1rem;">Connecting...</div>
-                                            </div>
-                                        </div>
-                                    </div>
                                     ` : `
-                                    <!-- Plant System Cards -->
-                                    <!-- Water Level Card -->
-                                    <div class="card" id="water-level-card-${device.device_id}" data-card-type="water-level" draggable="true">
-                                        <div class="card-drag-handle" title="Drag to reorder">⋮⋮</div>
-                                        <div class="card-content">
-                                            <div class="card-title">💧 Water Level</div>
-                                            <div class="bucket-container">
-                                                <div class="water-bucket-wrapper">
-                                                    <div class="water-bucket">
-                                                        <div class="water-level" id="water-level-${device.device_id}"></div>
-                                                        <div class="sensor-marker sensor-full">
-                                                            <span class="sensor-label" id="sensor1-label-${device.device_id}">Full</span>
-                                                        </div>
-                                                        <div class="sensor-marker sensor-low">
-                                                            <span class="sensor-label" id="sensor2-label-${device.device_id}">Low</span>
-                                                        </div>
-                                                        <div class="sensor-marker sensor-empty">
-                                                            <span class="sensor-label" id="sensor3-label-${device.device_id}">Empty</span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <!-- Valves Card -->
-                                    <div class="card" id="valves-card-${device.device_id}" data-card-type="valves" draggable="true" style="display:none;">
-                                        <div class="card-drag-handle" title="Drag to reorder">⋮⋮</div>
-                                        <div class="card-content">
-                                            <div class="card-title">🚰 Valve Controls</div>
-                                            <div id="valve-controls-${device.device_id}"></div>
-                                        </div>
-                                    </div>
-
-                                    <!-- pH Dosing Card (inline with others) -->
-                                    <div class="card" id="dosing-card-${device.device_id}" data-card-type="dosing" draggable="true" style="display:none;">
-                                        <div class="card-drag-handle" title="Drag to reorder">⋮⋮</div>
-                                        <div class="card-content">
-                                            <div class="card-title">
-                                                <span>⚗️ pH Dosing</span>
-                                                <span id="ph-title-${device.device_id}" style="float: right; font-size: 0.8rem; color: var(--text-secondary);"></span>
-                                            </div>
-                                            <div id="dosing-controls-${device.device_id}"></div>
-                                        </div>
-                                    </div>
-
-                                    <!-- All Valves Card -->
-                                    <div class="card" id="all-valves-card-${device.device_id}" data-card-type="all-valves" draggable="true" style="display:none;">
-                                        <div class="card-drag-handle" title="Drag to reorder">⋮⋮</div>
-                                        <div class="card-content">
-                                            <div class="card-title">🎛️ All Valves</div>
-                                            <div id="all-valves-controls-${device.device_id}"></div>
-                                        </div>
+                                    <!-- Placeholder for other device types -->
+                                    <div style="text-align: center; color: #888; padding: 2rem;">
+                                        <p>No cards configured for this device type yet.</p>
+                                        <p style="font-size: 0.9em; margin-top: 0.5rem;">Device Type: ${deviceType}</p>
                                     </div>
                                     `}
                                 </div>
