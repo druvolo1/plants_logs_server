@@ -1333,6 +1333,69 @@
                                             </div>
                                         </div>
                                     </div>
+
+                                    <!-- Remote Valves Card -->
+                                    <div class="card" id="remote-valves-card-${device.device_id}" data-card-type="remote-valves" draggable="true" style="display: none;">
+                                        <div class="card-drag-handle" title="Drag to reorder">⋮⋮</div>
+                                        <div class="card-content">
+                                            <div class="card-title">🚰 Remote Valves</div>
+                                            <div style="display: flex; flex-direction: column; gap: 15px;">
+                                                <!-- Fill Valve -->
+                                                <div id="fill-valve-section-${device.device_id}" style="display: none;">
+                                                    <div style="font-weight: bold; margin-bottom: 8px;">Fill Valve</div>
+                                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                                        <span id="fill-valve-label-${device.device_id}" style="font-size: 0.9em;">--</span>
+                                                        <span id="fill-valve-state-${device.device_id}" style="font-weight: bold; padding: 4px 12px; border-radius: 4px; background: #ddd;">OFF</span>
+                                                    </div>
+                                                    <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+                                                        <button id="fill-on-btn-${device.device_id}" onclick="window.controlRemoteValve('${device.device_id}', 'fill', 'on')"
+                                                                style="flex: 1; padding: 0.5rem; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">
+                                                            ON
+                                                        </button>
+                                                        <button id="fill-off-btn-${device.device_id}" onclick="window.controlRemoteValve('${device.device_id}', 'fill', 'off')"
+                                                                style="flex: 1; padding: 0.5rem; background: #f44336; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">
+                                                            OFF
+                                                        </button>
+                                                    </div>
+                                                    <div style="display: flex; align-items: center; gap: 6px; font-size: 0.85em; margin-bottom: 4px;">
+                                                        <span id="fill-conn-indicator-${device.device_id}" style="width: 8px; height: 8px; border-radius: 50%; background: #888;"></span>
+                                                        <span id="fill-conn-status-${device.device_id}">Disconnected</span>
+                                                    </div>
+                                                    <div id="fill-outlet-status-div-${device.device_id}" style="display: none; align-items: center; gap: 6px; font-size: 0.85em;">
+                                                        <span id="fill-outlet-indicator-${device.device_id}" style="width: 8px; height: 8px; border-radius: 50%; background: #888;"></span>
+                                                        <span id="fill-outlet-status-${device.device_id}">Outlet Offline</span>
+                                                    </div>
+                                                </div>
+
+                                                <!-- Drain Valve -->
+                                                <div id="drain-valve-section-${device.device_id}" style="display: none;">
+                                                    <div style="font-weight: bold; margin-bottom: 8px;">Drain Valve</div>
+                                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                                        <span id="drain-valve-label-${device.device_id}" style="font-size: 0.9em;">--</span>
+                                                        <span id="drain-valve-state-${device.device_id}" style="font-weight: bold; padding: 4px 12px; border-radius: 4px; background: #ddd;">OFF</span>
+                                                    </div>
+                                                    <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+                                                        <button id="drain-on-btn-${device.device_id}" onclick="window.controlRemoteValve('${device.device_id}', 'drain', 'on')"
+                                                                style="flex: 1; padding: 0.5rem; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">
+                                                            ON
+                                                        </button>
+                                                        <button id="drain-off-btn-${device.device_id}" onclick="window.controlRemoteValve('${device.device_id}', 'drain', 'off')"
+                                                                style="flex: 1; padding: 0.5rem; background: #f44336; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">
+                                                            OFF
+                                                        </button>
+                                                    </div>
+                                                    <div style="display: flex; align-items: center; gap: 6px; font-size: 0.85em; margin-bottom: 4px;">
+                                                        <span id="drain-conn-indicator-${device.device_id}" style="width: 8px; height: 8px; border-radius: 50%; background: #888;"></span>
+                                                        <span id="drain-conn-status-${device.device_id}">Disconnected</span>
+                                                    </div>
+                                                    <div id="drain-outlet-status-div-${device.device_id}" style="display: none; align-items: center; gap: 6px; font-size: 0.85em;">
+                                                        <span id="drain-outlet-indicator-${device.device_id}" style="width: 8px; height: 8px; border-radius: 50%; background: #888;"></span>
+                                                        <span id="drain-outlet-status-${device.device_id}">Outlet Offline</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
                                     ` : `
                                     <!-- Placeholder for other device types -->
                                     <div style="text-align: center; color: #888; padding: 2rem;">
@@ -2159,7 +2222,144 @@
             if (airTempEl && data.air_temp !== null && data.air_temp !== undefined) {
                 airTempEl.textContent = `${Math.round(data.air_temp)}${tempUnit}`;
             }
+
+            // Update remote valves
+            if (data.remote_valves) {
+                const card = document.getElementById(`remote-valves-card-${device_id}`);
+                const fillEnabled = data.remote_valves.fill && data.remote_valves.fill.enabled;
+                const drainEnabled = data.remote_valves.drain && data.remote_valves.drain.enabled;
+
+                // Show card if either valve is enabled
+                if (fillEnabled || drainEnabled) {
+                    if (card) card.style.display = 'block';
+                } else {
+                    if (card) card.style.display = 'none';
+                    return;
+                }
+
+                // Update fill valve
+                if (fillEnabled) {
+                    const fillSection = document.getElementById(`fill-valve-section-${device_id}`);
+                    if (fillSection) fillSection.style.display = 'block';
+
+                    const fill = data.remote_valves.fill;
+                    const fillLabelEl = document.getElementById(`fill-valve-label-${device_id}`);
+                    const fillStateEl = document.getElementById(`fill-valve-state-${device_id}`);
+                    const fillConnIndicator = document.getElementById(`fill-conn-indicator-${device_id}`);
+                    const fillConnStatus = document.getElementById(`fill-conn-status-${device_id}`);
+                    const fillOnBtn = document.getElementById(`fill-on-btn-${device_id}`);
+                    const fillOffBtn = document.getElementById(`fill-off-btn-${device_id}`);
+
+                    if (fillLabelEl) fillLabelEl.textContent = fill.label || `Valve ${fill.valve_id || ''}`;
+
+                    if (fillStateEl) {
+                        const fillIsOn = fill.state === 'on';
+                        fillStateEl.textContent = fillIsOn ? 'ON' : 'OFF';
+                        fillStateEl.style.background = fillIsOn ? '#4CAF50' : '#ddd';
+                        fillStateEl.style.color = fillIsOn ? 'white' : '#333';
+                    }
+
+                    if (fillConnIndicator) {
+                        fillConnIndicator.style.background = fill.connected ? '#4CAF50' : '#888';
+                    }
+                    if (fillConnStatus) {
+                        fillConnStatus.textContent = fill.connected ? 'Valve: Connected' : 'Valve: Disconnected';
+                    }
+
+                    // Enable/disable buttons
+                    const fillHasValve = fill.valve_id > 0;
+                    if (fillOnBtn) fillOnBtn.disabled = !fillHasValve;
+                    if (fillOffBtn) fillOffBtn.disabled = !fillHasValve;
+
+                    // Update outlet status if assigned
+                    const fillOutletDiv = document.getElementById(`fill-outlet-status-div-${device_id}`);
+                    if (fillOutletDiv && fill.outlet_assigned) {
+                        fillOutletDiv.style.display = 'flex';
+                        const fillOutletIndicator = document.getElementById(`fill-outlet-indicator-${device_id}`);
+                        const fillOutletStatus = document.getElementById(`fill-outlet-status-${device_id}`);
+
+                        if (fill.outlet_connected && fill.outlet_no_load_alert) {
+                            if (fillOutletIndicator) fillOutletIndicator.style.background = '#ff9800'; // Warning
+                            if (fillOutletStatus) fillOutletStatus.textContent = 'Remote Outlet: No Load Detected';
+                        } else {
+                            if (fillOutletIndicator) fillOutletIndicator.style.background = fill.outlet_connected ? '#4CAF50' : '#888';
+                            if (fillOutletStatus) fillOutletStatus.textContent = fill.outlet_connected ? 'Remote Outlet: Connected' : 'Remote Outlet: Offline';
+                        }
+                    } else if (fillOutletDiv) {
+                        fillOutletDiv.style.display = 'none';
+                    }
+                }
+
+                // Update drain valve
+                if (drainEnabled) {
+                    const drainSection = document.getElementById(`drain-valve-section-${device_id}`);
+                    if (drainSection) drainSection.style.display = 'block';
+
+                    const drain = data.remote_valves.drain;
+                    const drainLabelEl = document.getElementById(`drain-valve-label-${device_id}`);
+                    const drainStateEl = document.getElementById(`drain-valve-state-${device_id}`);
+                    const drainConnIndicator = document.getElementById(`drain-conn-indicator-${device_id}`);
+                    const drainConnStatus = document.getElementById(`drain-conn-status-${device_id}`);
+                    const drainOnBtn = document.getElementById(`drain-on-btn-${device_id}`);
+                    const drainOffBtn = document.getElementById(`drain-off-btn-${device_id}`);
+
+                    if (drainLabelEl) drainLabelEl.textContent = drain.label || `Valve ${drain.valve_id || ''}`;
+
+                    if (drainStateEl) {
+                        const drainIsOn = drain.state === 'on';
+                        drainStateEl.textContent = drainIsOn ? 'ON' : 'OFF';
+                        drainStateEl.style.background = drainIsOn ? '#4CAF50' : '#ddd';
+                        drainStateEl.style.color = drainIsOn ? 'white' : '#333';
+                    }
+
+                    if (drainConnIndicator) {
+                        drainConnIndicator.style.background = drain.connected ? '#4CAF50' : '#888';
+                    }
+                    if (drainConnStatus) {
+                        drainConnStatus.textContent = drain.connected ? 'Valve: Connected' : 'Valve: Disconnected';
+                    }
+
+                    // Enable/disable buttons
+                    const drainHasValve = drain.valve_id > 0;
+                    if (drainOnBtn) drainOnBtn.disabled = !drainHasValve;
+                    if (drainOffBtn) drainOffBtn.disabled = !drainHasValve;
+
+                    // Update outlet status if assigned
+                    const drainOutletDiv = document.getElementById(`drain-outlet-status-div-${device_id}`);
+                    if (drainOutletDiv && drain.outlet_assigned) {
+                        drainOutletDiv.style.display = 'flex';
+                        const drainOutletIndicator = document.getElementById(`drain-outlet-indicator-${device_id}`);
+                        const drainOutletStatus = document.getElementById(`drain-outlet-status-${device_id}`);
+
+                        if (drain.outlet_connected && drain.outlet_no_load_alert) {
+                            if (drainOutletIndicator) drainOutletIndicator.style.background = '#ff9800'; // Warning
+                            if (drainOutletStatus) drainOutletStatus.textContent = 'Remote Outlet: No Load Detected';
+                        } else {
+                            if (drainOutletIndicator) drainOutletIndicator.style.background = drain.outlet_connected ? '#4CAF50' : '#888';
+                            if (drainOutletStatus) drainOutletStatus.textContent = drain.outlet_connected ? 'Remote Outlet: Connected' : 'Remote Outlet: Offline';
+                        }
+                    } else if (drainOutletDiv) {
+                        drainOutletDiv.style.display = 'none';
+                    }
+                }
+            }
         }
+
+        // Remote valve control function
+        window.controlRemoteValve = function(device_id, valve, action) {
+            const ws = wsMap[device_id];
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                    type: 'control_remote_valve',
+                    valve: valve,
+                    action: action
+                }));
+                console.log(`Sent remote valve control: ${valve} ${action}`);
+            } else {
+                console.error(`WebSocket not connected for device ${device_id}`);
+                alert('Device not connected');
+            }
+        };
 
         function connectToDevice(device_id) {
             if (wsMap[device_id]) return;
