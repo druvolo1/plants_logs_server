@@ -1294,38 +1294,12 @@
                                     ` : deviceType === 'hydroponic_controller' || deviceType === 'feeding_system' ? `
                                     <!-- Hydro Controller Cards -->
 
-                                    <!-- Feeding Mode Banner -->
-                                    <div id="feeding-banner-${device.device_id}" class="banner" style="display: none; background: #ff6b6b; color: white; padding: 1rem; border-radius: 8px; margin-bottom: 1rem; text-align: center;">
-                                        <div style="font-size: 1.2rem; font-weight: bold;">⚠️ FEEDING MODE ACTIVE ⚠️</div>
-                                        <div id="feeding-info-${device.device_id}" style="margin-top: 0.5rem;"></div>
-                                        <button onclick="window.sendToDevice('${device.device_id}', {type: 'stop_feeding'})"
-                                                style="margin-top: 0.5rem; padding: 0.5rem 1rem; background: white; color: #ff6b6b; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">
-                                            STOP FEEDING
-                                        </button>
-                                    </div>
-
-                                    <!-- Leak Alert Banner -->
-                                    <div id="leak-alert-${device.device_id}" class="banner" style="display: none; background: #ff4444; color: white; padding: 1rem; border-radius: 8px; margin-bottom: 1rem; text-align: center; animation: pulse 1s infinite;">
-                                        <div style="font-size: 1.2rem; font-weight: bold;">🚨 LEAK DETECTED! 🚨</div>
-                                        <div style="margin-top: 0.5rem;">Water leak sensor triggered. All valves have been closed automatically.</div>
-                                        <button onclick="window.sendToDevice('${device.device_id}', {type: 'clear_leak'})"
-                                                style="margin-top: 0.5rem; padding: 0.5rem 1rem; background: white; color: #ff4444; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">
-                                            CLEAR LEAK ALERT
-                                        </button>
-                                    </div>
-
                                     <!-- Sensor Readings Card -->
                                     <div class="card" id="sensor-readings-card-${device.device_id}" data-card-type="sensor-readings" draggable="true">
                                         <div class="card-drag-handle" title="Drag to reorder">⋮⋮</div>
                                         <div class="card-content">
                                             <div class="card-title">📊 Sensor Readings</div>
                                             <div style="display: flex; flex-direction: column; gap: 10px;">
-                                                <div id="ph-warning-${device.device_id}" class="warning-banner" style="display: none; background: #fff3cd; padding: 8px; border-radius: 4px; margin-bottom: 10px;">
-                                                    ⚠️ pH sensor needs calibration
-                                                </div>
-                                                <div id="ec-warning-${device.device_id}" class="warning-banner" style="display: none; background: #fff3cd; padding: 8px; border-radius: 4px; margin-bottom: 10px;">
-                                                    ⚠️ EC sensor needs calibration
-                                                </div>
                                                 <div style="display: flex; justify-content: space-between;">
                                                     <span>pH:</span>
                                                     <span id="ph-value-${device.device_id}" style="font-weight: bold;">--</span>
@@ -1342,202 +1316,19 @@
                                         </div>
                                     </div>
 
-                                    <!-- Water Level Card (Conditional) -->
-                                    <div class="card" id="water-level-card-${device.device_id}" data-card-type="water-level" draggable="true" style="display: none;">
-                                        <div class="card-drag-handle" title="Drag to reorder">⋮⋮</div>
-                                        <div class="card-content">
-                                            <div class="card-title">💧 Water Level</div>
-                                            <div id="water-level-content-${device.device_id}">
-                                                <!-- eTape display -->
-                                                <div id="etape-display-${device.device_id}" style="display: none;">
-                                                    <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
-                                                        <span>Level:</span>
-                                                        <span id="water-level-${device.device_id}" style="font-weight: bold;">--</span>
-                                                    </div>
-                                                    <div style="display: flex; justify-content: space-between;">
-                                                        <span>Volume:</span>
-                                                        <span id="water-volume-${device.device_id}" style="font-weight: bold;">--</span>
-                                                    </div>
-                                                </div>
-
-                                                <!-- 3-Point display -->
-                                                <div id="threepoint-display-${device.device_id}" style="display: none;">
-                                                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                                                        <span>Full:</span>
-                                                        <span id="level-full-${device.device_id}" style="font-weight: bold;">--</span>
-                                                    </div>
-                                                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                                                        <span>Mid:</span>
-                                                        <span id="level-mid-${device.device_id}" style="font-weight: bold;">--</span>
-                                                    </div>
-                                                    <div style="display: flex; justify-content: space-between;">
-                                                        <span>Low:</span>
-                                                        <span id="level-low-${device.device_id}" style="font-weight: bold;">--</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <!-- Temperature Card (Conditional) -->
-                                    <div class="card" id="temperature-card-${device.device_id}" data-card-type="temperature" draggable="true" style="display: none;">
+                                    <!-- Temperature Card -->
+                                    <div class="card" id="temperature-card-${device.device_id}" data-card-type="temperature" draggable="true">
                                         <div class="card-drag-handle" title="Drag to reorder">⋮⋮</div>
                                         <div class="card-content">
                                             <div class="card-title">🌡️ Temperature</div>
                                             <div style="display: flex; flex-direction: column; gap: 10px;">
-                                                <div id="water-temp-row-${device.device_id}" style="display: none; justify-content: space-between;">
+                                                <div id="water-temp-row-${device.device_id}" style="display: flex; justify-content: space-between;">
                                                     <span>Water:</span>
                                                     <span id="water-temp-${device.device_id}" style="font-weight: bold;">--</span>
                                                 </div>
-                                                <div id="air-temp-row-${device.device_id}" style="display: none; justify-content: space-between;">
+                                                <div id="air-temp-row-${device.device_id}" style="display: flex; justify-content: space-between;">
                                                     <span>Air:</span>
                                                     <span id="air-temp-${device.device_id}" style="font-weight: bold;">--</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <!-- Remote Valves Card -->
-                                    <div class="card" id="remote-valves-card-${device.device_id}" data-card-type="remote-valves" draggable="true">
-                                        <div class="card-drag-handle" title="Drag to reorder">⋮⋮</div>
-                                        <div class="card-content">
-                                            <div class="card-title">🚰 Remote Valves</div>
-                                            <div style="display: flex; flex-direction: column; gap: 12px;">
-                                                <div style="display: flex; justify-content: space-between; align-items: center;">
-                                                    <span>Fill Valve:</span>
-                                                    <button id="fill-valve-btn-${device.device_id}"
-                                                            onclick="window.sendToDevice('${device.device_id}', {type: 'toggle_fill_valve'})"
-                                                            style="padding: 0.5rem 1rem; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">
-                                                        --
-                                                    </button>
-                                                </div>
-                                                <div style="display: flex; justify-content: space-between; align-items: center;">
-                                                    <span>Drain Valve:</span>
-                                                    <button id="drain-valve-btn-${device.device_id}"
-                                                            onclick="window.sendToDevice('${device.device_id}', {type: 'toggle_drain_valve'})"
-                                                            style="padding: 0.5rem 1rem; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">
-                                                        --
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <!-- Auto-Dosing Card (Conditional) -->
-                                    <div class="card" id="auto-dosing-card-${device.device_id}" data-card-type="auto-dosing" draggable="true" style="display: none;">
-                                        <div class="card-drag-handle" title="Drag to reorder">⋮⋮</div>
-                                        <div class="card-content">
-                                            <div class="card-title">⚗️ Auto-Dosing</div>
-                                            <div id="auto-dosing-disabled-${device.device_id}" style="display: none; text-align: center; color: #888; padding: 1rem;">
-                                                Auto-dosing is disabled
-                                            </div>
-                                            <div id="auto-dosing-enabled-${device.device_id}" style="display: none;">
-                                                <div style="display: flex; flex-direction: column; gap: 10px;">
-                                                    <div style="display: flex; justify-content: space-between;">
-                                                        <span>Status:</span>
-                                                        <span id="dosing-status-${device.device_id}" style="font-weight: bold;">--</span>
-                                                    </div>
-                                                    <div style="display: flex; justify-content: space-between;">
-                                                        <span>Next Dose:</span>
-                                                        <span id="next-dose-${device.device_id}" style="font-weight: bold;">--</span>
-                                                    </div>
-                                                    <div style="display: flex; justify-content: space-between;">
-                                                        <span>Last Dose:</span>
-                                                        <span id="last-dose-${device.device_id}" style="font-weight: bold;">--</span>
-                                                    </div>
-                                                    <button onclick="window.sendToDevice('${device.device_id}', {type: 'toggle_auto_dosing'})"
-                                                            style="margin-top: 0.5rem; padding: 0.5rem; background: #ff6b6b; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">
-                                                        Disable Auto-Dosing
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <!-- Dosing Pumps Card -->
-                                    <div class="card" id="dosing-pumps-card-${device.device_id}" data-card-type="dosing-pumps" draggable="true">
-                                        <div class="card-drag-handle" title="Drag to reorder">⋮⋮</div>
-                                        <div class="card-content">
-                                            <div class="card-title">💉 Dosing Pumps</div>
-                                            <div style="display: flex; flex-direction: column; gap: 15px;">
-                                                <!-- pH Down Pump -->
-                                                <div style="border-bottom: 1px solid #ddd; padding-bottom: 10px;">
-                                                    <div style="font-weight: bold; margin-bottom: 8px;">pH Down</div>
-                                                    <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-                                                        <span>Calculated Dose:</span>
-                                                        <span id="ph-down-calc-${device.device_id}">--</span>
-                                                    </div>
-                                                    <div style="display: flex; gap: 5px; align-items: center;">
-                                                        <input type="number" id="ph-down-ml-${device.device_id}" placeholder="mL"
-                                                               style="flex: 1; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
-                                                        <button onclick="window.dosePhDown('${device.device_id}')"
-                                                                style="padding: 0.5rem 1rem; background: #4da6ff; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                                                            Dose
-                                                        </button>
-                                                    </div>
-                                                    <div id="ph-down-countdown-${device.device_id}" style="display: none; margin-top: 5px; color: #ff6b6b; font-weight: bold;">
-                                                        Dosing... <span id="ph-down-time-${device.device_id}">0</span>s
-                                                    </div>
-                                                </div>
-
-                                                <!-- pH Up Pump -->
-                                                <div style="border-bottom: 1px solid #ddd; padding-bottom: 10px;">
-                                                    <div style="font-weight: bold; margin-bottom: 8px;">pH Up</div>
-                                                    <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-                                                        <span>Calculated Dose:</span>
-                                                        <span id="ph-up-calc-${device.device_id}">--</span>
-                                                    </div>
-                                                    <div style="display: flex; gap: 5px; align-items: center;">
-                                                        <input type="number" id="ph-up-ml-${device.device_id}" placeholder="mL"
-                                                               style="flex: 1; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
-                                                        <button onclick="window.dosePhUp('${device.device_id}')"
-                                                                style="padding: 0.5rem 1rem; background: #4da6ff; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                                                            Dose
-                                                        </button>
-                                                    </div>
-                                                    <div id="ph-up-countdown-${device.device_id}" style="display: none; margin-top: 5px; color: #ff6b6b; font-weight: bold;">
-                                                        Dosing... <span id="ph-up-time-${device.device_id}">0</span>s
-                                                    </div>
-                                                </div>
-
-                                                <!-- Nutrient A Pump -->
-                                                <div style="border-bottom: 1px solid #ddd; padding-bottom: 10px;">
-                                                    <div style="font-weight: bold; margin-bottom: 8px;">Nutrient A</div>
-                                                    <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-                                                        <span>Calculated Dose:</span>
-                                                        <span id="nutrient-a-calc-${device.device_id}">--</span>
-                                                    </div>
-                                                    <div style="display: flex; gap: 5px; align-items: center;">
-                                                        <input type="number" id="nutrient-a-ml-${device.device_id}" placeholder="mL"
-                                                               style="flex: 1; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
-                                                        <button onclick="window.doseNutrientA('${device.device_id}')"
-                                                                style="padding: 0.5rem 1rem; background: #4da6ff; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                                                            Dose
-                                                        </button>
-                                                    </div>
-                                                    <div id="nutrient-a-countdown-${device.device_id}" style="display: none; margin-top: 5px; color: #ff6b6b; font-weight: bold;">
-                                                        Dosing... <span id="nutrient-a-time-${device.device_id}">0</span>s
-                                                    </div>
-                                                </div>
-
-                                                <!-- Nutrient B Pump -->
-                                                <div>
-                                                    <div style="font-weight: bold; margin-bottom: 8px;">Nutrient B</div>
-                                                    <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-                                                        <span>Calculated Dose:</span>
-                                                        <span id="nutrient-b-calc-${device.device_id}">--</span>
-                                                    </div>
-                                                    <div style="display: flex; gap: 5px; align-items: center;">
-                                                        <input type="number" id="nutrient-b-ml-${device.device_id}" placeholder="mL"
-                                                               style="flex: 1; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
-                                                        <button onclick="window.doseNutrientB('${device.device_id}')"
-                                                                style="padding: 0.5rem 1rem; background: #4da6ff; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                                                            Dose
-                                                        </button>
-                                                    </div>
-                                                    <div id="nutrient-b-countdown-${device.device_id}" style="display: none; margin-top: 5px; color: #ff6b6b; font-weight: bold;">
-                                                        Dosing... <span id="nutrient-b-time-${device.device_id}">0</span>s
-                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
@@ -2333,221 +2124,42 @@
                 if (versionEl) versionEl.textContent = data.firmware_version;
             }
 
-            // Update feeding mode banner
-            const feedingBanner = document.getElementById(`feeding-banner-${device_id}`);
-            const feedingInfo = document.getElementById(`feeding-info-${device_id}`);
-            if (data.feeding_mode && data.feeding_mode.active) {
-                feedingBanner.style.display = 'block';
-                const remaining = Math.max(0, Math.ceil(data.feeding_mode.remaining_ms / 1000));
-                feedingInfo.textContent = `Time remaining: ${Math.floor(remaining / 60)}:${(remaining % 60).toString().padStart(2, '0')}`;
-            } else {
-                feedingBanner.style.display = 'none';
-            }
-
-            // Update leak alert banner
-            const leakAlert = document.getElementById(`leak-alert-${device_id}`);
-            if (data.leak_detected) {
-                leakAlert.style.display = 'block';
-            } else {
-                leakAlert.style.display = 'none';
-            }
-
             // Update sensor readings (note: field is "pH" with capital H)
-            if (data.pH !== null && data.pH !== undefined) {
-                document.getElementById(`ph-value-${device_id}`).textContent = data.pH.toFixed(2);
+            const phEl = document.getElementById(`ph-value-${device_id}`);
+            const ecEl = document.getElementById(`ec-value-${device_id}`);
+            const tdsEl = document.getElementById(`tds-value-${device_id}`);
+
+            if (phEl && data.pH !== null && data.pH !== undefined) {
+                phEl.textContent = data.pH.toFixed(2);
             }
-            if (data.ec !== null && data.ec !== undefined) {
-                document.getElementById(`ec-value-${device_id}`).textContent = `${data.ec.toFixed(2)} mS/cm`;
+
+            if (ecEl && data.ec !== null && data.ec !== undefined) {
+                ecEl.textContent = `${data.ec.toFixed(2)} mS/cm`;
+
                 // Calculate TDS from EC (TDS ≈ EC * 500)
-                const tds = data.ec * 500;
-                document.getElementById(`tds-value-${device_id}`).textContent = `${tds.toFixed(0)} ppm`;
-            }
-
-            // Update calibration warnings
-            const phWarning = document.getElementById(`ph-warning-${device_id}`);
-            const ecWarning = document.getElementById(`ec-warning-${device_id}`);
-            if (data.ph_needs_calibration) {
-                phWarning.style.display = 'block';
-            } else {
-                phWarning.style.display = 'none';
-            }
-            if (data.ec_needs_calibration) {
-                ecWarning.style.display = 'block';
-            } else {
-                ecWarning.style.display = 'none';
-            }
-
-            // Update water level card and content (conditional based on sensor type)
-            // water_level_type: 0=NONE, 1=ETAPE, 2=WATER_SENSORS
-            const waterLevelCard = document.getElementById(`water-level-card-${device_id}`);
-            const eTapeDisplay = document.getElementById(`etape-display-${device_id}`);
-            const threePointDisplay = document.getElementById(`threepoint-display-${device_id}`);
-
-            if (data.water_level_type === 1) {  // ETAPE
-                waterLevelCard.style.display = 'block';
-                eTapeDisplay.style.display = 'block';
-                threePointDisplay.style.display = 'none';
-
-                if (data.water_level !== null && data.water_level !== undefined) {
-                    document.getElementById(`water-level-${device_id}`).textContent = `${data.water_level.toFixed(1)}%`;
+                if (tdsEl) {
+                    const tds = data.ec * 500;
+                    tdsEl.textContent = `${tds.toFixed(0)} ppm`;
                 }
-                if (data.water_volume !== null && data.water_volume !== undefined) {
-                    document.getElementById(`water-volume-${device_id}`).textContent = `${data.water_volume.toFixed(1)} L`;
-                }
-            } else if (data.water_level_type === 2) {  // WATER_SENSORS (3-point)
-                waterLevelCard.style.display = 'block';
-                eTapeDisplay.style.display = 'none';
-                threePointDisplay.style.display = 'block';
-
-                document.getElementById(`level-full-${device_id}`).textContent = data.level_full ? '✓' : '✗';
-                document.getElementById(`level-mid-${device_id}`).textContent = data.level_mid ? '✓' : '✗';
-                document.getElementById(`level-low-${device_id}`).textContent = data.level_low ? '✓' : '✗';
-            } else {
-                waterLevelCard.style.display = 'none';
             }
 
-            // Update temperature card (conditional)
-            const tempCard = document.getElementById(`temperature-card-${device_id}`);
-            const waterTempRow = document.getElementById(`water-temp-row-${device_id}`);
-            const airTempRow = document.getElementById(`air-temp-row-${device_id}`);
-            let hasTemp = false;
+            // Update temperatures
+            const waterTempEl = document.getElementById(`water-temp-${device_id}`);
+            const airTempEl = document.getElementById(`air-temp-${device_id}`);
 
             // Get temperature unit (default to Fahrenheit if not set)
             const settings = window.hydroDeviceSettings?.[device_id] || {};
             const useFahrenheit = settings.use_fahrenheit !== false; // Default to F
             const tempUnit = useFahrenheit ? '°F' : '°C';
 
-            if (data.water_temp !== null && data.water_temp !== undefined) {
-                waterTempRow.style.display = 'flex';
-                document.getElementById(`water-temp-${device_id}`).textContent = `${Math.round(data.water_temp)}${tempUnit}`;
-                hasTemp = true;
-            } else {
-                waterTempRow.style.display = 'none';
+            if (waterTempEl && data.water_temp !== null && data.water_temp !== undefined) {
+                waterTempEl.textContent = `${Math.round(data.water_temp)}${tempUnit}`;
             }
 
-            if (data.air_temp !== null && data.air_temp !== undefined) {
-                airTempRow.style.display = 'flex';
-                document.getElementById(`air-temp-${device_id}`).textContent = `${Math.round(data.air_temp)}${tempUnit}`;
-                hasTemp = true;
-            } else {
-                airTempRow.style.display = 'none';
-            }
-
-            tempCard.style.display = hasTemp ? 'block' : 'none';
-
-            // Update remote valves
-            const fillValveBtn = document.getElementById(`fill-valve-btn-${device_id}`);
-            const drainValveBtn = document.getElementById(`drain-valve-btn-${device_id}`);
-
-            if (data.fill_valve !== undefined) {
-                fillValveBtn.textContent = data.fill_valve ? 'OPEN' : 'CLOSED';
-                fillValveBtn.style.background = data.fill_valve ? '#4CAF50' : '#ddd';
-                fillValveBtn.style.color = data.fill_valve ? 'white' : '#333';
-            }
-
-            if (data.drain_valve !== undefined) {
-                drainValveBtn.textContent = data.drain_valve ? 'OPEN' : 'CLOSED';
-                drainValveBtn.style.background = data.drain_valve ? '#4CAF50' : '#ddd';
-                drainValveBtn.style.color = data.drain_valve ? 'white' : '#333';
-            }
-
-            // Update auto-dosing card
-            const autoDosingCard = document.getElementById(`auto-dosing-card-${device_id}`);
-            const autoDosingDisabled = document.getElementById(`auto-dosing-disabled-${device_id}`);
-            const autoDosingEnabled = document.getElementById(`auto-dosing-enabled-${device_id}`);
-
-            if (data.auto_dosing_enabled) {
-                autoDosingCard.style.display = 'block';
-                autoDosingDisabled.style.display = 'none';
-                autoDosingEnabled.style.display = 'block';
-
-                document.getElementById(`dosing-status-${device_id}`).textContent = data.dosing_status || '--';
-                document.getElementById(`next-dose-${device_id}`).textContent = data.next_dose || '--';
-                document.getElementById(`last-dose-${device_id}`).textContent = data.last_dose || '--';
-            } else {
-                autoDosingCard.style.display = 'block';
-                autoDosingDisabled.style.display = 'block';
-                autoDosingEnabled.style.display = 'none';
-            }
-
-            // Update dosing pump calculated doses
-            if (data.calculated_doses) {
-                if (data.calculated_doses.ph_down !== undefined) {
-                    document.getElementById(`ph-down-calc-${device_id}`).textContent = `${data.calculated_doses.ph_down.toFixed(1)} mL`;
-                }
-                if (data.calculated_doses.ph_up !== undefined) {
-                    document.getElementById(`ph-up-calc-${device_id}`).textContent = `${data.calculated_doses.ph_up.toFixed(1)} mL`;
-                }
-                if (data.calculated_doses.nutrient_a !== undefined) {
-                    document.getElementById(`nutrient-a-calc-${device_id}`).textContent = `${data.calculated_doses.nutrient_a.toFixed(1)} mL`;
-                }
-                if (data.calculated_doses.nutrient_b !== undefined) {
-                    document.getElementById(`nutrient-b-calc-${device_id}`).textContent = `${data.calculated_doses.nutrient_b.toFixed(1)} mL`;
-                }
-            }
-
-            // Update dosing countdowns
-            if (data.dosing_countdowns) {
-                updateDosingCountdown(device_id, 'ph-down', data.dosing_countdowns.ph_down);
-                updateDosingCountdown(device_id, 'ph-up', data.dosing_countdowns.ph_up);
-                updateDosingCountdown(device_id, 'nutrient-a', data.dosing_countdowns.nutrient_a);
-                updateDosingCountdown(device_id, 'nutrient-b', data.dosing_countdowns.nutrient_b);
+            if (airTempEl && data.air_temp !== null && data.air_temp !== undefined) {
+                airTempEl.textContent = `${Math.round(data.air_temp)}${tempUnit}`;
             }
         }
-
-        function updateDosingCountdown(device_id, pumpType, remaining) {
-            const countdownDiv = document.getElementById(`${pumpType}-countdown-${device_id}`);
-            const timeSpan = document.getElementById(`${pumpType}-time-${device_id}`);
-
-            if (remaining && remaining > 0) {
-                countdownDiv.style.display = 'block';
-                timeSpan.textContent = Math.ceil(remaining / 1000);
-            } else {
-                countdownDiv.style.display = 'none';
-            }
-        }
-
-        // Helper functions for button controls
-        window.sendToDevice = function(device_id, message) {
-            const ws = wsMap[device_id];
-            if (ws && ws.readyState === WebSocket.OPEN) {
-                ws.send(JSON.stringify(message));
-            } else {
-                console.error(`WebSocket not connected for device ${device_id}`);
-            }
-        };
-
-        window.dosePhDown = function(device_id) {
-            const ml = parseFloat(document.getElementById(`ph-down-ml-${device_id}`).value);
-            if (ml > 0) {
-                window.sendToDevice(device_id, { type: 'dose_ph_down', ml: ml });
-                document.getElementById(`ph-down-ml-${device_id}`).value = '';
-            }
-        };
-
-        window.dosePhUp = function(device_id) {
-            const ml = parseFloat(document.getElementById(`ph-up-ml-${device_id}`).value);
-            if (ml > 0) {
-                window.sendToDevice(device_id, { type: 'dose_ph_up', ml: ml });
-                document.getElementById(`ph-up-ml-${device_id}`).value = '';
-            }
-        };
-
-        window.doseNutrientA = function(device_id) {
-            const ml = parseFloat(document.getElementById(`nutrient-a-ml-${device_id}`).value);
-            if (ml > 0) {
-                window.sendToDevice(device_id, { type: 'dose_nutrient_a', ml: ml });
-                document.getElementById(`nutrient-a-ml-${device_id}`).value = '';
-            }
-        };
-
-        window.doseNutrientB = function(device_id) {
-            const ml = parseFloat(document.getElementById(`nutrient-b-ml-${device_id}`).value);
-            if (ml > 0) {
-                window.sendToDevice(device_id, { type: 'dose_nutrient_b', ml: ml });
-                document.getElementById(`nutrient-b-ml-${device_id}`).value = '';
-            }
-        };
 
         function connectToDevice(device_id) {
             if (wsMap[device_id]) return;
