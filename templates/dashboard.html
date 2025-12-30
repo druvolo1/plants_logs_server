@@ -384,10 +384,15 @@
         }
 
         /* Hydro Controller Single Row Layout */
+        .card[data-card-type="hydro-all"] {
+            grid-column: 1 / -1; /* Span all columns */
+        }
+
         .hydro-single-row {
             display: flex;
             align-items: stretch;
             gap: 0;
+            width: 100%;
         }
 
         .hydro-divider {
