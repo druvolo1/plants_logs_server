@@ -329,6 +329,7 @@
             padding: 10px;
             cursor: grab;
             transition: transform 0.3s ease, opacity 0.3s ease;
+            min-height: 50px;
         }
 
         .card.dragging {
@@ -2725,6 +2726,7 @@
                 }
                 // Handle sensor_update from hydro controller
                 else if (data.type === 'sensor_update') {
+                    console.log('Hydro sensor_update received:', device_id, data);
                     updateOnlineStatus(device_id, true);
                     updateHydroControllerDisplay(device_id, data);
                 }
