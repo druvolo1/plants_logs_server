@@ -382,7 +382,237 @@
             border-bottom: 1px solid #444;
             padding-bottom: 6px;
         }
-        
+
+        /* Hydro Controller Single Row Layout */
+        .hydro-single-row {
+            display: flex;
+            align-items: stretch;
+            gap: 0;
+        }
+
+        .hydro-divider {
+            width: 2px;
+            background: linear-gradient(to bottom,
+                transparent,
+                rgba(16, 185, 129, 0.3) 20%,
+                rgba(16, 185, 129, 0.5) 50%,
+                rgba(16, 185, 129, 0.3) 80%,
+                transparent
+            );
+            margin: 0 24px;
+            box-shadow: 0 0 8px rgba(16, 185, 129, 0.2);
+        }
+
+        .hydro-metrics-section {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .hydro-metric-box {
+            text-align: center;
+            min-width: 100px;
+        }
+
+        .hydro-metric-label {
+            font-size: 0.7em;
+            opacity: 0.6;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 6px;
+        }
+
+        .hydro-metric-value {
+            font-size: 2em;
+            font-weight: 700;
+            color: #10b981;
+            line-height: 1;
+        }
+
+        .hydro-metric-unit {
+            font-size: 0.65em;
+            color: #888;
+            margin-top: 3px;
+        }
+
+        .hydro-temp-section {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .hydro-section-title {
+            font-size: 0.8em;
+            color: #4da6ff;
+            writing-mode: vertical-rl;
+            text-orientation: mixed;
+            margin-right: 8px;
+            opacity: 0.8;
+        }
+
+        .hydro-temp-items {
+            display: flex;
+            gap: 12px;
+        }
+
+        .hydro-temp-box {
+            text-align: center;
+        }
+
+        .hydro-temp-label {
+            font-size: 0.7em;
+            opacity: 0.6;
+            margin-bottom: 4px;
+        }
+
+        .hydro-temp-value {
+            font-size: 1.4em;
+            font-weight: 700;
+        }
+
+        .hydro-valves-section {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .hydro-valve-items {
+            display: flex;
+            gap: 10px;
+        }
+
+        .hydro-valve-item {
+            min-width: 90px;
+        }
+
+        .hydro-valve-name {
+            font-size: 0.75em;
+            opacity: 0.7;
+            margin-bottom: 4px;
+        }
+
+        .hydro-valve-indicator {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 4px;
+        }
+
+        .hydro-valve-status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .hydro-valve-status-dot.on {
+            background: #10b981;
+            box-shadow: 0 0 8px #10b981;
+        }
+
+        .hydro-valve-status-dot.off {
+            background: #666;
+        }
+
+        .hydro-valve-status-text {
+            font-size: 0.75em;
+            font-weight: 600;
+        }
+
+        .hydro-valve-buttons {
+            display: flex;
+            gap: 3px;
+        }
+
+        .hydro-valve-buttons button {
+            flex: 1;
+            padding: 3px 8px;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.7em;
+        }
+
+        .hydro-valve-buttons button.on {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .hydro-valve-buttons button.off {
+            background: #f44336;
+            color: white;
+        }
+
+        .hydro-valve-buttons button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .hydro-water-section {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .hydro-water-items {
+            display: flex;
+            gap: 12px;
+        }
+
+        .hydro-water-item {
+            text-align: center;
+        }
+
+        .hydro-water-label {
+            font-size: 0.7em;
+            opacity: 0.6;
+            margin-bottom: 4px;
+        }
+
+        .hydro-water-value {
+            font-size: 1.2em;
+            font-weight: 700;
+        }
+
+        /* Responsive - Stack on smaller screens */
+        @media (max-width: 1400px) {
+            .hydro-single-row {
+                flex-wrap: wrap;
+            }
+
+            .hydro-divider {
+                display: none;
+            }
+
+            .hydro-metrics-section,
+            .hydro-temp-section,
+            .hydro-valves-section,
+            .hydro-water-section {
+                padding: 12px;
+                border: 1px solid rgba(255, 255, 255, 0.05);
+                border-radius: 6px;
+                background: rgba(0, 0, 0, 0.2);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .hydro-single-row {
+                flex-direction: column;
+                gap: 12px;
+            }
+
+            .hydro-metrics-section {
+                flex-direction: column;
+                gap: 12px;
+            }
+
+            .hydro-section-title {
+                writing-mode: horizontal-tb;
+                margin-right: 0;
+                margin-bottom: 8px;
+            }
+        }
+
         /* Water bucket - Styles are in style.css */
         .sensor-full { top: 10%; }
         .sensor-low { top: 50%; }
@@ -1294,147 +1524,114 @@
                                     ` : deviceType === 'hydroponic_controller' || deviceType === 'feeding_system' ? `
                                     <!-- Hydro Controller Cards -->
 
-                                    <!-- Sensor Readings Card -->
-                                    <div class="card" id="sensor-readings-card-${device.device_id}" data-card-type="sensor-readings" draggable="true">
+                                    <!-- Hydro Controller - Single Row Compressed Layout -->
+                                    <div class="card" id="hydro-single-card-${device.device_id}" data-card-type="hydro-all" draggable="true">
                                         <div class="card-drag-handle" title="Drag to reorder">⋮⋮</div>
                                         <div class="card-content">
-                                            <div class="card-title">📊 Sensor Readings</div>
-                                            <div style="display: flex; flex-direction: column; gap: 10px;">
-                                                <div style="display: flex; justify-content: space-between;">
-                                                    <span>pH:</span>
-                                                    <span id="ph-value-${device.device_id}" style="font-weight: bold;">--</span>
-                                                </div>
-                                                <div style="display: flex; justify-content: space-between;">
-                                                    <span>EC:</span>
-                                                    <span id="ec-value-${device.device_id}" style="font-weight: bold;">--</span>
-                                                </div>
-                                                <div style="display: flex; justify-content: space-between;">
-                                                    <span>TDS:</span>
-                                                    <span id="tds-value-${device.device_id}" style="font-weight: bold;">--</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <!-- Temperature Card -->
-                                    <div class="card" id="temperature-card-${device.device_id}" data-card-type="temperature" draggable="true">
-                                        <div class="card-drag-handle" title="Drag to reorder">⋮⋮</div>
-                                        <div class="card-content">
-                                            <div class="card-title">🌡️ Temperature</div>
-                                            <div style="display: flex; flex-direction: column; gap: 10px;">
-                                                <div id="water-temp-row-${device.device_id}" style="display: flex; justify-content: space-between;">
-                                                    <span>Water:</span>
-                                                    <span id="water-temp-${device.device_id}" style="font-weight: bold;">--</span>
-                                                </div>
-                                                <div id="air-temp-row-${device.device_id}" style="display: flex; justify-content: space-between;">
-                                                    <span>Air:</span>
-                                                    <span id="air-temp-${device.device_id}" style="font-weight: bold;">--</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <!-- Remote Valves Card -->
-                                    <div class="card" id="remote-valves-card-${device.device_id}" data-card-type="remote-valves" draggable="true" style="display: none;">
-                                        <div class="card-drag-handle" title="Drag to reorder">⋮⋮</div>
-                                        <div class="card-content">
-                                            <div class="card-title">🚰 Remote Valves</div>
-                                            <div style="display: flex; flex-direction: column; gap: 15px;">
-                                                <!-- Fill Valve -->
-                                                <div id="fill-valve-section-${device.device_id}" style="display: none;">
-                                                    <div style="font-weight: bold; margin-bottom: 8px;">Fill Valve</div>
-                                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                                                        <span id="fill-valve-label-${device.device_id}" style="font-size: 0.9em;">--</span>
-                                                        <span id="fill-valve-state-${device.device_id}" style="font-weight: bold; padding: 4px 12px; border-radius: 4px; background: #ddd;">OFF</span>
+                                            <div class="hydro-single-row">
+                                                <!-- pH/EC/TDS Metrics -->
+                                                <div class="hydro-metrics-section">
+                                                    <div class="hydro-metric-box">
+                                                        <div class="hydro-metric-label">pH</div>
+                                                        <div class="hydro-metric-value" id="ph-value-${device.device_id}">--</div>
                                                     </div>
-                                                    <div style="display: flex; gap: 8px; margin-bottom: 8px;">
-                                                        <button id="fill-on-btn-${device.device_id}" onclick="window.controlRemoteValve('${device.device_id}', 'fill', 'on')"
-                                                                style="flex: 1; padding: 0.5rem; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">
-                                                            ON
-                                                        </button>
-                                                        <button id="fill-off-btn-${device.device_id}" onclick="window.controlRemoteValve('${device.device_id}', 'fill', 'off')"
-                                                                style="flex: 1; padding: 0.5rem; background: #f44336; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">
-                                                            OFF
-                                                        </button>
+                                                    <div class="hydro-metric-box">
+                                                        <div class="hydro-metric-label">EC</div>
+                                                        <div class="hydro-metric-value" id="ec-value-${device.device_id}">--</div>
+                                                        <div class="hydro-metric-unit" id="ec-unit-${device.device_id}">mS/cm</div>
                                                     </div>
-                                                    <div style="display: flex; align-items: center; gap: 6px; font-size: 0.85em; margin-bottom: 4px;">
-                                                        <span id="fill-conn-indicator-${device.device_id}" style="width: 8px; height: 8px; border-radius: 50%; background: #888;"></span>
-                                                        <span id="fill-conn-status-${device.device_id}">Disconnected</span>
-                                                    </div>
-                                                    <div id="fill-outlet-status-div-${device.device_id}" style="display: none; align-items: center; gap: 6px; font-size: 0.85em;">
-                                                        <span id="fill-outlet-indicator-${device.device_id}" style="width: 8px; height: 8px; border-radius: 50%; background: #888;"></span>
-                                                        <span id="fill-outlet-status-${device.device_id}">Outlet Offline</span>
+                                                    <div class="hydro-metric-box">
+                                                        <div class="hydro-metric-label">TDS</div>
+                                                        <div class="hydro-metric-value" id="tds-value-${device.device_id}">--</div>
+                                                        <div class="hydro-metric-unit">ppm</div>
                                                     </div>
                                                 </div>
 
-                                                <!-- Drain Valve -->
-                                                <div id="drain-valve-section-${device.device_id}" style="display: none;">
-                                                    <div style="font-weight: bold; margin-bottom: 8px;">Drain Valve</div>
-                                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                                                        <span id="drain-valve-label-${device.device_id}" style="font-size: 0.9em;">--</span>
-                                                        <span id="drain-valve-state-${device.device_id}" style="font-weight: bold; padding: 4px 12px; border-radius: 4px; background: #ddd;">OFF</span>
-                                                    </div>
-                                                    <div style="display: flex; gap: 8px; margin-bottom: 8px;">
-                                                        <button id="drain-on-btn-${device.device_id}" onclick="window.controlRemoteValve('${device.device_id}', 'drain', 'on')"
-                                                                style="flex: 1; padding: 0.5rem; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">
-                                                            ON
-                                                        </button>
-                                                        <button id="drain-off-btn-${device.device_id}" onclick="window.controlRemoteValve('${device.device_id}', 'drain', 'off')"
-                                                                style="flex: 1; padding: 0.5rem; background: #f44336; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">
-                                                            OFF
-                                                        </button>
-                                                    </div>
-                                                    <div style="display: flex; align-items: center; gap: 6px; font-size: 0.85em; margin-bottom: 4px;">
-                                                        <span id="drain-conn-indicator-${device.device_id}" style="width: 8px; height: 8px; border-radius: 50%; background: #888;"></span>
-                                                        <span id="drain-conn-status-${device.device_id}">Disconnected</span>
-                                                    </div>
-                                                    <div id="drain-outlet-status-div-${device.device_id}" style="display: none; align-items: center; gap: 6px; font-size: 0.85em;">
-                                                        <span id="drain-outlet-indicator-${device.device_id}" style="width: 8px; height: 8px; border-radius: 50%; background: #888;"></span>
-                                                        <span id="drain-outlet-status-${device.device_id}">Outlet Offline</span>
+                                                <!-- Temperature Section -->
+                                                <div class="hydro-divider" id="temp-divider-${device.device_id}"></div>
+                                                <div class="hydro-temp-section" id="temp-section-${device.device_id}" style="display: none;">
+                                                    <div class="hydro-section-title">🌡️ TEMP</div>
+                                                    <div class="hydro-temp-items">
+                                                        <div class="hydro-temp-box" id="water-temp-box-${device.device_id}" style="display: none;">
+                                                            <div class="hydro-temp-label">Water</div>
+                                                            <div class="hydro-temp-value" id="water-temp-${device.device_id}">--</div>
+                                                        </div>
+                                                        <div class="hydro-temp-box" id="air-temp-box-${device.device_id}" style="display: none;">
+                                                            <div class="hydro-temp-label">Air</div>
+                                                            <div class="hydro-temp-value" id="air-temp-${device.device_id}">--</div>
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            </div>
-                                        </div>
-                                    </div>
 
-                                    <!-- Water Level Card -->
-                                    <div class="card" id="water-level-card-${device.device_id}" data-card-type="water-level" draggable="true" style="display: none;">
-                                        <div class="card-drag-handle" title="Drag to reorder">⋮⋮</div>
-                                        <div class="card-content">
-                                            <div class="card-title">💧 Water Level</div>
+                                                <!-- Remote Valves Section -->
+                                                <div class="hydro-divider" id="valves-divider-${device.device_id}" style="display: none;"></div>
+                                                <div class="hydro-valves-section" id="valves-section-${device.device_id}" style="display: none;">
+                                                    <div class="hydro-section-title">🚰 VALVES</div>
+                                                    <div class="hydro-valve-items">
+                                                        <!-- Fill Valve -->
+                                                        <div class="hydro-valve-item" id="fill-valve-item-${device.device_id}" style="display: none;">
+                                                            <div class="hydro-valve-name" id="fill-valve-label-${device.device_id}">Fill</div>
+                                                            <div class="hydro-valve-indicator">
+                                                                <div class="hydro-valve-status-dot off" id="fill-status-dot-${device.device_id}"></div>
+                                                                <span class="hydro-valve-status-text" id="fill-valve-state-${device.device_id}">OFF</span>
+                                                            </div>
+                                                            <div class="hydro-valve-buttons">
+                                                                <button class="on" id="fill-on-btn-${device.device_id}" onclick="window.controlRemoteValve('${device.device_id}', 'fill', 'on')">ON</button>
+                                                                <button class="off" id="fill-off-btn-${device.device_id}" onclick="window.controlRemoteValve('${device.device_id}', 'fill', 'off')">OFF</button>
+                                                            </div>
+                                                        </div>
 
-                                            <!-- ETape Sensor Display -->
-                                            <div id="water-level-etape-${device.device_id}" style="display: none;">
-                                                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-                                                    <div>
-                                                        <div style="font-size: 0.65em; opacity: 0.7;">Level</div>
-                                                        <div style="font-size: 1em; font-weight: bold;" id="water-level-percent-${device.device_id}">--%</div>
-                                                    </div>
-                                                    <div>
-                                                        <div style="font-size: 0.65em; opacity: 0.7;">Volume</div>
-                                                        <div style="font-size: 1em; font-weight: bold;" id="water-level-volume-${device.device_id}">--</div>
-                                                    </div>
-                                                    <div style="flex: 1; text-align: right;">
-                                                        <div style="font-size: 0.65em; opacity: 0.7;">Status</div>
-                                                        <div style="font-size: 0.9em; font-weight: 500;" id="water-level-status-${device.device_id}">--</div>
+                                                        <!-- Drain Valve -->
+                                                        <div class="hydro-valve-item" id="drain-valve-item-${device.device_id}" style="display: none;">
+                                                            <div class="hydro-valve-name" id="drain-valve-label-${device.device_id}">Drain</div>
+                                                            <div class="hydro-valve-indicator">
+                                                                <div class="hydro-valve-status-dot off" id="drain-status-dot-${device.device_id}"></div>
+                                                                <span class="hydro-valve-status-text" id="drain-valve-state-${device.device_id}">OFF</span>
+                                                            </div>
+                                                            <div class="hydro-valve-buttons">
+                                                                <button class="on" id="drain-on-btn-${device.device_id}" onclick="window.controlRemoteValve('${device.device_id}', 'drain', 'on')">ON</button>
+                                                                <button class="off" id="drain-off-btn-${device.device_id}" onclick="window.controlRemoteValve('${device.device_id}', 'drain', 'off')">OFF</button>
+                                                            </div>
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            </div>
 
-                                            <!-- 3-Point Sensor Display -->
-                                            <div id="water-level-3point-${device.device_id}" style="display: none;">
-                                                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px;">
-                                                    <div style="text-align: center; padding: 4px; background: rgba(0,0,0,0.2); border-radius: 4px;">
-                                                        <div style="font-size: 0.65em; opacity: 0.7;">Full</div>
-                                                        <div style="font-size: 0.9em; font-weight: bold;" id="water-level-full-${device.device_id}">--</div>
-                                                    </div>
-                                                    <div style="text-align: center; padding: 4px; background: rgba(0,0,0,0.2); border-radius: 4px;">
-                                                        <div style="font-size: 0.65em; opacity: 0.7;">OK</div>
-                                                        <div style="font-size: 0.9em; font-weight: bold;" id="water-level-ok-${device.device_id}">--</div>
-                                                    </div>
-                                                    <div style="text-align: center; padding: 4px; background: rgba(0,0,0,0.2); border-radius: 4px;">
-                                                        <div style="font-size: 0.65em; opacity: 0.7;">Empty</div>
-                                                        <div style="font-size: 0.9em; font-weight: bold;" id="water-level-empty-${device.device_id}">--</div>
+                                                <!-- Water Level Section -->
+                                                <div class="hydro-divider" id="water-divider-${device.device_id}" style="display: none;"></div>
+                                                <div class="hydro-water-section" id="water-section-${device.device_id}" style="display: none;">
+                                                    <div class="hydro-section-title">💧 WATER</div>
+                                                    <div class="hydro-water-items">
+                                                        <!-- ETape Sensor Display -->
+                                                        <div id="water-level-etape-${device.device_id}" style="display: none; contents;">
+                                                            <div class="hydro-water-item">
+                                                                <div class="hydro-water-label">Level</div>
+                                                                <div class="hydro-water-value" id="water-level-percent-${device.device_id}">--%</div>
+                                                            </div>
+                                                            <div class="hydro-water-item">
+                                                                <div class="hydro-water-label">Volume</div>
+                                                                <div class="hydro-water-value" id="water-level-volume-${device.device_id}">--</div>
+                                                            </div>
+                                                            <div class="hydro-water-item">
+                                                                <div class="hydro-water-label">Status</div>
+                                                                <div class="hydro-water-value" id="water-level-status-${device.device_id}">--</div>
+                                                            </div>
+                                                        </div>
+
+                                                        <!-- 3-Point Sensor Display -->
+                                                        <div id="water-level-3point-${device.device_id}" style="display: none; contents;">
+                                                            <div class="hydro-water-item">
+                                                                <div class="hydro-water-label">Full</div>
+                                                                <div class="hydro-water-value" id="water-level-full-${device.device_id}">--</div>
+                                                            </div>
+                                                            <div class="hydro-water-item">
+                                                                <div class="hydro-water-label">OK</div>
+                                                                <div class="hydro-water-value" id="water-level-ok-${device.device_id}">--</div>
+                                                            </div>
+                                                            <div class="hydro-water-item">
+                                                                <div class="hydro-water-label">Empty</div>
+                                                                <div class="hydro-water-value" id="water-level-empty-${device.device_id}">--</div>
+                                                            </div>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
@@ -2241,164 +2438,136 @@
             }
 
             if (ecEl && data.ec !== null && data.ec !== undefined) {
-                ecEl.textContent = `${data.ec.toFixed(2)} mS/cm`;
+                ecEl.textContent = data.ec.toFixed(2);
 
                 // Calculate TDS from EC (TDS ≈ EC * 500)
                 if (tdsEl) {
                     const tds = data.ec * 500;
-                    tdsEl.textContent = `${tds.toFixed(0)} ppm`;
+                    tdsEl.textContent = tds.toFixed(0);
                 }
             }
 
-            // Update temperatures
+            // Update temperatures - show section if either temp is available
             const waterTempEl = document.getElementById(`water-temp-${device_id}`);
             const airTempEl = document.getElementById(`air-temp-${device_id}`);
+            const waterTempBox = document.getElementById(`water-temp-box-${device_id}`);
+            const airTempBox = document.getElementById(`air-temp-box-${device_id}`);
+            const tempSection = document.getElementById(`temp-section-${device_id}`);
+            const tempDivider = document.getElementById(`temp-divider-${device_id}`);
 
             // Get temperature unit (default to Fahrenheit if not set)
             const settings = window.hydroDeviceSettings?.[device_id] || {};
             const useFahrenheit = settings.use_fahrenheit !== false; // Default to F
             const tempUnit = useFahrenheit ? '°F' : '°C';
 
+            let hasTempData = false;
+
             if (waterTempEl && data.water_temp !== null && data.water_temp !== undefined) {
                 waterTempEl.textContent = `${Math.round(data.water_temp)}${tempUnit}`;
+                if (waterTempBox) waterTempBox.style.display = 'block';
+                hasTempData = true;
+            } else if (waterTempBox) {
+                waterTempBox.style.display = 'none';
             }
 
             if (airTempEl && data.air_temp !== null && data.air_temp !== undefined) {
                 airTempEl.textContent = `${Math.round(data.air_temp)}${tempUnit}`;
+                if (airTempBox) airTempBox.style.display = 'block';
+                hasTempData = true;
+            } else if (airTempBox) {
+                airTempBox.style.display = 'none';
             }
 
-            // Update remote valves
+            // Show/hide temp section and divider
+            if (tempSection) tempSection.style.display = hasTempData ? 'flex' : 'none';
+            if (tempDivider) tempDivider.style.display = hasTempData ? 'block' : 'none';
+
+            // Update remote valves - show section if either valve is enabled
             if (data.remote_valves) {
-                const card = document.getElementById(`remote-valves-card-${device_id}`);
+                const valvesSection = document.getElementById(`valves-section-${device_id}`);
+                const valvesDivider = document.getElementById(`valves-divider-${device_id}`);
+                const fillItem = document.getElementById(`fill-valve-item-${device_id}`);
+                const drainItem = document.getElementById(`drain-valve-item-${device_id}`);
+
                 const fillEnabled = data.remote_valves.fill && data.remote_valves.fill.enabled;
                 const drainEnabled = data.remote_valves.drain && data.remote_valves.drain.enabled;
 
-                // Show card if either valve is enabled
-                if (fillEnabled || drainEnabled) {
-                    if (card) card.style.display = 'block';
-                } else {
-                    if (card) card.style.display = 'none';
-                    return;
-                }
+                const hasValveData = fillEnabled || drainEnabled;
+
+                // Show/hide valves section and divider
+                if (valvesSection) valvesSection.style.display = hasValveData ? 'flex' : 'none';
+                if (valvesDivider) valvesDivider.style.display = hasValveData ? 'block' : 'none';
 
                 // Update fill valve
-                if (fillEnabled) {
-                    const fillSection = document.getElementById(`fill-valve-section-${device_id}`);
-                    if (fillSection) fillSection.style.display = 'block';
+                if (fillEnabled && fillItem) {
+                    fillItem.style.display = 'block';
 
                     const fill = data.remote_valves.fill;
                     const fillLabelEl = document.getElementById(`fill-valve-label-${device_id}`);
                     const fillStateEl = document.getElementById(`fill-valve-state-${device_id}`);
-                    const fillConnIndicator = document.getElementById(`fill-conn-indicator-${device_id}`);
-                    const fillConnStatus = document.getElementById(`fill-conn-status-${device_id}`);
+                    const fillStatusDot = document.getElementById(`fill-status-dot-${device_id}`);
                     const fillOnBtn = document.getElementById(`fill-on-btn-${device_id}`);
                     const fillOffBtn = document.getElementById(`fill-off-btn-${device_id}`);
 
-                    if (fillLabelEl) fillLabelEl.textContent = fill.label || `Valve ${fill.valve_id || ''}`;
+                    if (fillLabelEl) fillLabelEl.textContent = fill.label || 'Fill';
 
-                    if (fillStateEl) {
-                        const fillIsOn = fill.state === 'on';
-                        fillStateEl.textContent = fillIsOn ? 'ON' : 'OFF';
-                        fillStateEl.style.background = fillIsOn ? '#4CAF50' : '#ddd';
-                        fillStateEl.style.color = fillIsOn ? 'white' : '#333';
-                    }
+                    const fillIsOn = fill.state === 'on';
+                    if (fillStateEl) fillStateEl.textContent = fillIsOn ? 'ON' : 'OFF';
 
-                    if (fillConnIndicator) {
-                        fillConnIndicator.style.background = fill.connected ? '#4CAF50' : '#888';
-                    }
-                    if (fillConnStatus) {
-                        fillConnStatus.textContent = fill.connected ? 'Valve: Connected' : 'Valve: Disconnected';
+                    if (fillStatusDot) {
+                        fillStatusDot.className = fillIsOn ? 'hydro-valve-status-dot on' : 'hydro-valve-status-dot off';
                     }
 
                     // Enable/disable buttons
                     const fillHasValve = fill.valve_id > 0;
                     if (fillOnBtn) fillOnBtn.disabled = !fillHasValve;
                     if (fillOffBtn) fillOffBtn.disabled = !fillHasValve;
-
-                    // Update outlet status if assigned
-                    const fillOutletDiv = document.getElementById(`fill-outlet-status-div-${device_id}`);
-                    if (fillOutletDiv && fill.outlet_assigned) {
-                        fillOutletDiv.style.display = 'flex';
-                        const fillOutletIndicator = document.getElementById(`fill-outlet-indicator-${device_id}`);
-                        const fillOutletStatus = document.getElementById(`fill-outlet-status-${device_id}`);
-
-                        if (fill.outlet_connected && fill.outlet_no_load_alert) {
-                            if (fillOutletIndicator) fillOutletIndicator.style.background = '#ff9800'; // Warning
-                            if (fillOutletStatus) fillOutletStatus.textContent = 'Remote Outlet: No Load Detected';
-                        } else {
-                            if (fillOutletIndicator) fillOutletIndicator.style.background = fill.outlet_connected ? '#4CAF50' : '#888';
-                            if (fillOutletStatus) fillOutletStatus.textContent = fill.outlet_connected ? 'Remote Outlet: Connected' : 'Remote Outlet: Offline';
-                        }
-                    } else if (fillOutletDiv) {
-                        fillOutletDiv.style.display = 'none';
-                    }
+                } else if (fillItem) {
+                    fillItem.style.display = 'none';
                 }
 
                 // Update drain valve
-                if (drainEnabled) {
-                    const drainSection = document.getElementById(`drain-valve-section-${device_id}`);
-                    if (drainSection) drainSection.style.display = 'block';
+                if (drainEnabled && drainItem) {
+                    drainItem.style.display = 'block';
 
                     const drain = data.remote_valves.drain;
                     const drainLabelEl = document.getElementById(`drain-valve-label-${device_id}`);
                     const drainStateEl = document.getElementById(`drain-valve-state-${device_id}`);
-                    const drainConnIndicator = document.getElementById(`drain-conn-indicator-${device_id}`);
-                    const drainConnStatus = document.getElementById(`drain-conn-status-${device_id}`);
+                    const drainStatusDot = document.getElementById(`drain-status-dot-${device_id}`);
                     const drainOnBtn = document.getElementById(`drain-on-btn-${device_id}`);
                     const drainOffBtn = document.getElementById(`drain-off-btn-${device_id}`);
 
-                    if (drainLabelEl) drainLabelEl.textContent = drain.label || `Valve ${drain.valve_id || ''}`;
+                    if (drainLabelEl) drainLabelEl.textContent = drain.label || 'Drain';
 
-                    if (drainStateEl) {
-                        const drainIsOn = drain.state === 'on';
-                        drainStateEl.textContent = drainIsOn ? 'ON' : 'OFF';
-                        drainStateEl.style.background = drainIsOn ? '#4CAF50' : '#ddd';
-                        drainStateEl.style.color = drainIsOn ? 'white' : '#333';
-                    }
+                    const drainIsOn = drain.state === 'on';
+                    if (drainStateEl) drainStateEl.textContent = drainIsOn ? 'ON' : 'OFF';
 
-                    if (drainConnIndicator) {
-                        drainConnIndicator.style.background = drain.connected ? '#4CAF50' : '#888';
-                    }
-                    if (drainConnStatus) {
-                        drainConnStatus.textContent = drain.connected ? 'Valve: Connected' : 'Valve: Disconnected';
+                    if (drainStatusDot) {
+                        drainStatusDot.className = drainIsOn ? 'hydro-valve-status-dot on' : 'hydro-valve-status-dot off';
                     }
 
                     // Enable/disable buttons
                     const drainHasValve = drain.valve_id > 0;
                     if (drainOnBtn) drainOnBtn.disabled = !drainHasValve;
                     if (drainOffBtn) drainOffBtn.disabled = !drainHasValve;
-
-                    // Update outlet status if assigned
-                    const drainOutletDiv = document.getElementById(`drain-outlet-status-div-${device_id}`);
-                    if (drainOutletDiv && drain.outlet_assigned) {
-                        drainOutletDiv.style.display = 'flex';
-                        const drainOutletIndicator = document.getElementById(`drain-outlet-indicator-${device_id}`);
-                        const drainOutletStatus = document.getElementById(`drain-outlet-status-${device_id}`);
-
-                        if (drain.outlet_connected && drain.outlet_no_load_alert) {
-                            if (drainOutletIndicator) drainOutletIndicator.style.background = '#ff9800'; // Warning
-                            if (drainOutletStatus) drainOutletStatus.textContent = 'Remote Outlet: No Load Detected';
-                        } else {
-                            if (drainOutletIndicator) drainOutletIndicator.style.background = drain.outlet_connected ? '#4CAF50' : '#888';
-                            if (drainOutletStatus) drainOutletStatus.textContent = drain.outlet_connected ? 'Remote Outlet: Connected' : 'Remote Outlet: Offline';
-                        }
-                    } else if (drainOutletDiv) {
-                        drainOutletDiv.style.display = 'none';
-                    }
+                } else if (drainItem) {
+                    drainItem.style.display = 'none';
                 }
             }
 
-            // Update water level
+            // Update water level - show section if sensor is enabled
             if (data.waterLevel) {
-                const card = document.getElementById(`water-level-card-${device_id}`);
+                const waterSection = document.getElementById(`water-section-${device_id}`);
+                const waterDivider = document.getElementById(`water-divider-${device_id}`);
                 const etapeDiv = document.getElementById(`water-level-etape-${device_id}`);
                 const threePointDiv = document.getElementById(`water-level-3point-${device_id}`);
 
                 // sensor_type: 0 = NONE, 1 = ETAPE, 2 = WATER_SENSORS (3-point)
                 if (data.waterLevel.sensor_type === 1) {
                     // ETape sensor
-                    if (card) card.style.display = 'block';
-                    if (etapeDiv) etapeDiv.style.display = 'block';
+                    if (waterSection) waterSection.style.display = 'flex';
+                    if (waterDivider) waterDivider.style.display = 'block';
+                    if (etapeDiv) etapeDiv.style.display = 'contents';
                     if (threePointDiv) threePointDiv.style.display = 'none';
 
                     // Update level percentage
@@ -2429,9 +2598,10 @@
                     }
                 } else if (data.waterLevel.sensor_type === 2) {
                     // 3-point water sensors
-                    if (card) card.style.display = 'block';
+                    if (waterSection) waterSection.style.display = 'flex';
+                    if (waterDivider) waterDivider.style.display = 'block';
                     if (etapeDiv) etapeDiv.style.display = 'none';
-                    if (threePointDiv) threePointDiv.style.display = 'block';
+                    if (threePointDiv) threePointDiv.style.display = 'contents';
 
                     // Update sensor states (checkmark if triggered)
                     const fullEl = document.getElementById(`water-level-full-${device_id}`);
@@ -2443,7 +2613,8 @@
                     if (emptyEl) emptyEl.textContent = data.waterLevel.ws_empty ? '✓' : '--';
                 } else {
                     // Sensor disabled or not available
-                    if (card) card.style.display = 'none';
+                    if (waterSection) waterSection.style.display = 'none';
+                    if (waterDivider) waterDivider.style.display = 'none';
                 }
             }
         }
