@@ -2651,7 +2651,8 @@
             };
             ws.onmessage = (event) => {
                 const data = JSON.parse(event.data);
-                
+                console.log(`[WS] ${device_id} type=${data.type}:`, data);
+
                 // Handle device status messages
                 if (data.error === 'Device offline') {
                     updateOnlineStatus(device_id, false);
