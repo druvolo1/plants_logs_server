@@ -3342,14 +3342,14 @@
 
             document.getElementById('settings-modal-body').innerHTML = html;
 
-            // Pre-populate valve selection if saved
+            // Show saved valve IDs in dropdowns if configured
             if (config.fill.valve_id > 0) {
                 const fillSelect = document.getElementById('fill-valve-id');
-                fillSelect.innerHTML = '<option value="' + config.fill.valve_id + '" selected>Valve ' + config.fill.valve_id + '</option>';
+                fillSelect.innerHTML = '<option value="' + config.fill.valve_id + '" selected>Valve ' + config.fill.valve_id + ' (configured)</option>';
             }
             if (config.drain.valve_id > 0) {
                 const drainSelect = document.getElementById('drain-valve-id');
-                drainSelect.innerHTML = '<option value="' + config.drain.valve_id + '" selected>Valve ' + config.drain.valve_id + '</option>';
+                drainSelect.innerHTML = '<option value="' + config.drain.valve_id + '" selected>Valve ' + config.drain.valve_id + ' (configured)</option>';
             }
         }
 
@@ -3425,14 +3425,30 @@
         }
 
         function handleValveListResponse(valves) {
-            // valves is an array like: [{"id":1,"label":"Valve 1","state":"off"}, ...]
+            // valves might be a string or array, need to parse if string
+            let valveArray = valves;
+            if (typeof valves === 'string') {
+                try {
+                    valveArray = JSON.parse(valves);
+                } catch (e) {
+                    console.error('[Valve Config] Failed to parse valves:', e);
+                    alert('Failed to parse valve list from controller');
+                    return;
+                }
+            }
+
+            if (!Array.isArray(valveArray)) {
+                console.error('[Valve Config] Valves is not an array:', valveArray);
+                alert('Invalid valve list format received from controller');
+                return;
+            }
 
             const valveType = window.currentFetchingValveType || 'fill';
             const selectElement = document.getElementById(valveType + '-valve-id');
 
             if (selectElement) {
                 let options = '<option value="0">-- Select a valve --</option>';
-                valves.forEach(valve => {
+                valveArray.forEach(valve => {
                     options += '<option value="' + valve.id + '">' + valve.label + '</option>';
                 });
                 selectElement.innerHTML = options;
@@ -4420,6 +4436,7 @@
 
                 // Handle valve list response
                 if (data.type === 'valve_list' && data.valves) {
+                    console.log('[Valve Config] Received valve list:', typeof data.valves, data.valves);
                     handleValveListResponse(data.valves);
                 }
 
