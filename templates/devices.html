@@ -3439,12 +3439,22 @@
             const enabled = document.getElementById('fill-enabled').checked;
             const fields = document.getElementById('fill-config-fields');
             fields.style.display = enabled ? 'block' : 'none';
+
+            // If disabling, immediately save to device
+            if (!enabled) {
+                saveValveConfig('fill');
+            }
         }
 
         function toggleDrainFields() {
             const enabled = document.getElementById('drain-enabled').checked;
             const fields = document.getElementById('drain-config-fields');
             fields.style.display = enabled ? 'block' : 'none';
+
+            // If disabling, immediately save to device
+            if (!enabled) {
+                saveValveConfig('drain');
+            }
         }
 
         function saveValveConfig(valveType) {
