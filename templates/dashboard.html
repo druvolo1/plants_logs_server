@@ -600,6 +600,55 @@
             cursor: not-allowed;
         }
 
+        /* Valve Outlet Status */
+        .hydro-valve-outlet-status {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 8px;
+            padding: 6px 8px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 4px;
+            font-size: 0.75em;
+        }
+
+        .outlet-status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .outlet-status-dot.online {
+            background: #10b981;
+            box-shadow: 0 0 8px rgba(16, 185, 129, 0.6);
+        }
+
+        .outlet-status-dot.offline {
+            background: #ef4444;
+            box-shadow: 0 0 8px rgba(239, 68, 68, 0.6);
+        }
+
+        .outlet-status-dot.warning {
+            background: #f59e0b;
+            box-shadow: 0 0 8px rgba(245, 158, 11, 0.6);
+            animation: pulse-warning 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse-warning {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        .outlet-status-text {
+            color: #aaa;
+            font-weight: 500;
+        }
+
         .hydro-water-section {
             display: flex;
             gap: 12px;
@@ -1809,6 +1858,11 @@
                                                             <button class="on" id="fill-on-btn-${device.device_id}" onclick="event.stopPropagation(); window.controlRemoteValve('${device.device_id}', 'fill', 'on')">ON</button>
                                                             <button class="off" id="fill-off-btn-${device.device_id}" onclick="event.stopPropagation(); window.controlRemoteValve('${device.device_id}', 'fill', 'off')">OFF</button>
                                                         </div>
+                                                        <!-- Outlet Status -->
+                                                        <div class="hydro-valve-outlet-status" id="fill-outlet-status-${device.device_id}" style="display: none;">
+                                                            <span class="outlet-status-dot" id="fill-outlet-dot-${device.device_id}"></span>
+                                                            <span class="outlet-status-text" id="fill-outlet-text-${device.device_id}">Outlet Offline</span>
+                                                        </div>
                                                     </div>
 
                                                     <!-- Drain Valve -->
@@ -1821,6 +1875,11 @@
                                                         <div class="hydro-valve-buttons">
                                                             <button class="on" id="drain-on-btn-${device.device_id}" onclick="event.stopPropagation(); window.controlRemoteValve('${device.device_id}', 'drain', 'on')">ON</button>
                                                             <button class="off" id="drain-off-btn-${device.device_id}" onclick="event.stopPropagation(); window.controlRemoteValve('${device.device_id}', 'drain', 'off')">OFF</button>
+                                                        </div>
+                                                        <!-- Outlet Status -->
+                                                        <div class="hydro-valve-outlet-status" id="drain-outlet-status-${device.device_id}" style="display: none;">
+                                                            <span class="outlet-status-dot" id="drain-outlet-dot-${device.device_id}"></span>
+                                                            <span class="outlet-status-text" id="drain-outlet-text-${device.device_id}">Outlet Offline</span>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -2740,6 +2799,29 @@
                     const fillHasValve = fill.valve_id > 0;
                     if (fillOnBtn) fillOnBtn.disabled = !fillHasValve;
                     if (fillOffBtn) fillOffBtn.disabled = !fillHasValve;
+
+                    // Update outlet status if assigned
+                    const fillOutletStatus = document.getElementById(`fill-outlet-status-${device_id}`);
+                    const fillOutletDot = document.getElementById(`fill-outlet-dot-${device_id}`);
+                    const fillOutletText = document.getElementById(`fill-outlet-text-${device_id}`);
+
+                    if (fill.outlet_assigned && fillOutletStatus) {
+                        fillOutletStatus.style.display = 'flex';
+
+                        // Determine status: warning (no load), offline, or online
+                        if (fill.outlet_connected && fill.outlet_no_load_alert) {
+                            if (fillOutletDot) fillOutletDot.className = 'outlet-status-dot warning';
+                            if (fillOutletText) fillOutletText.textContent = 'Remote Outlet: No Load Detected';
+                        } else if (!fill.outlet_connected) {
+                            if (fillOutletDot) fillOutletDot.className = 'outlet-status-dot offline';
+                            if (fillOutletText) fillOutletText.textContent = 'Remote Outlet: Offline';
+                        } else {
+                            if (fillOutletDot) fillOutletDot.className = 'outlet-status-dot online';
+                            if (fillOutletText) fillOutletText.textContent = 'Remote Outlet: Connected';
+                        }
+                    } else if (fillOutletStatus) {
+                        fillOutletStatus.style.display = 'none';
+                    }
                 } else if (fillItem) {
                     fillItem.style.display = 'none';
                 }
@@ -2768,6 +2850,29 @@
                     const drainHasValve = drain.valve_id > 0;
                     if (drainOnBtn) drainOnBtn.disabled = !drainHasValve;
                     if (drainOffBtn) drainOffBtn.disabled = !drainHasValve;
+
+                    // Update outlet status if assigned
+                    const drainOutletStatus = document.getElementById(`drain-outlet-status-${device_id}`);
+                    const drainOutletDot = document.getElementById(`drain-outlet-dot-${device_id}`);
+                    const drainOutletText = document.getElementById(`drain-outlet-text-${device_id}`);
+
+                    if (drain.outlet_assigned && drainOutletStatus) {
+                        drainOutletStatus.style.display = 'flex';
+
+                        // Determine status: warning (no load), offline, or online
+                        if (drain.outlet_connected && drain.outlet_no_load_alert) {
+                            if (drainOutletDot) drainOutletDot.className = 'outlet-status-dot warning';
+                            if (drainOutletText) drainOutletText.textContent = 'Remote Outlet: No Load Detected';
+                        } else if (!drain.outlet_connected) {
+                            if (drainOutletDot) drainOutletDot.className = 'outlet-status-dot offline';
+                            if (drainOutletText) drainOutletText.textContent = 'Remote Outlet: Offline';
+                        } else {
+                            if (drainOutletDot) drainOutletDot.className = 'outlet-status-dot online';
+                            if (drainOutletText) drainOutletText.textContent = 'Remote Outlet: Connected';
+                        }
+                    } else if (drainOutletStatus) {
+                        drainOutletStatus.style.display = 'none';
+                    }
                 } else if (drainItem) {
                     drainItem.style.display = 'none';
                 }
