@@ -3342,12 +3342,35 @@
 
             document.getElementById('settings-modal-body').innerHTML = html;
 
-            // Show saved valve IDs in dropdowns if configured
-            if (config.fill.valve_id > 0) {
+            // Auto-fetch valve lists if hosts are configured
+            if (config.fill.enabled && config.fill.host) {
+                // Set the host field
+                const fillHostInput = document.getElementById('fill-host');
+                if (fillHostInput) fillHostInput.value = config.fill.host;
+
+                // Mark which valve is configured before fetching
+                window.configuredFillValveId = config.fill.valve_id;
+
+                // Auto-fetch the valve list
+                setTimeout(() => fetchRemoteValves('fill'), 100);
+            } else if (config.fill.valve_id > 0) {
+                // No host configured but valve ID exists - show placeholder
                 const fillSelect = document.getElementById('fill-valve-id');
                 fillSelect.innerHTML = '<option value="' + config.fill.valve_id + '" selected>Valve ' + config.fill.valve_id + ' (configured)</option>';
             }
-            if (config.drain.valve_id > 0) {
+
+            if (config.drain.enabled && config.drain.host) {
+                // Set the host field
+                const drainHostInput = document.getElementById('drain-host');
+                if (drainHostInput) drainHostInput.value = config.drain.host;
+
+                // Mark which valve is configured before fetching
+                window.configuredDrainValveId = config.drain.valve_id;
+
+                // Auto-fetch the valve list
+                setTimeout(() => fetchRemoteValves('drain'), 200);
+            } else if (config.drain.valve_id > 0) {
+                // No host configured but valve ID exists - show placeholder
                 const drainSelect = document.getElementById('drain-valve-id');
                 drainSelect.innerHTML = '<option value="' + config.drain.valve_id + '" selected>Valve ' + config.drain.valve_id + ' (configured)</option>';
             }
@@ -3456,14 +3479,24 @@
             const selectElement = document.getElementById(valveType + '-valve-id');
 
             if (selectElement) {
+                // Get the configured valve ID if this is an auto-fetch
+                const configuredId = valveType === 'fill' ? window.configuredFillValveId : window.configuredDrainValveId;
+
                 let options = '<option value="0">-- Select a valve --</option>';
                 valveArray.forEach(valve => {
-                    options += '<option value="' + valve.id + '">' + valve.label + '</option>';
+                    const selected = configuredId && valve.id == configuredId ? ' selected' : '';
+                    options += '<option value="' + valve.id + '"' + selected + '>' + valve.label + '</option>';
                 });
                 selectElement.innerHTML = options;
                 selectElement.disabled = false;
             }
 
+            // Clear the configured ID markers
+            if (valveType === 'fill') {
+                window.configuredFillValveId = null;
+            } else {
+                window.configuredDrainValveId = null;
+            }
             window.currentFetchingValveType = null;
         }
 
