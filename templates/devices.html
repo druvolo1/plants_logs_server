@@ -3606,29 +3606,35 @@
             const deviceName = device ? device.name : deviceId;
             document.getElementById('labels-device-name').textContent = deviceName;
 
-            // Get current labels from the valve panel if available
-            const grid = document.getElementById(`valve-grid-${deviceId}`);
-            if (grid) {
-                const labels = grid.querySelectorAll('.valve-label');
-                labels.forEach((label, index) => {
-                    const input = document.getElementById(`label-${index + 1}`);
-                    if (input) {
-                        input.value = label.textContent || `Valve ${index + 1}`;
-                        currentValveLabels[index + 1] = label.textContent;
-                    }
-                });
-            } else {
-                // Default labels if no data yet
-                for (let i = 1; i <= 8; i++) {
-                    const input = document.getElementById(`label-${i}`);
-                    if (input) {
-                        input.value = `Valve ${i}`;
-                        currentValveLabels[i] = `Valve ${i}`;
-                    }
+            // Show modal with loading state
+            document.getElementById('labels-modal').style.display = 'block';
+
+            // Clear inputs and show loading
+            for (let i = 1; i <= 8; i++) {
+                const input = document.getElementById(`label-${i}`);
+                if (input) {
+                    input.value = '';
+                    input.placeholder = 'Loading...';
+                    input.disabled = true;
                 }
             }
 
-            document.getElementById('labels-modal').style.display = 'block';
+            // Request actual labels from device via WebSocket
+            const ws = wsMap[deviceId];
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                console.log('[Edit Labels] Requesting valve labels from device');
+                ws.send(JSON.stringify({ type: 'get_settings' }));
+            } else {
+                console.warn('[Edit Labels] WebSocket not connected, using empty labels');
+                // Enable inputs with empty placeholders
+                for (let i = 1; i <= 8; i++) {
+                    const input = document.getElementById(`label-${i}`);
+                    if (input) {
+                        input.placeholder = '*';
+                        input.disabled = false;
+                    }
+                }
+            }
         }
 
         function closeLabelsModal() {
@@ -4484,7 +4490,24 @@
 
                 // Handle settings response
                 if (data.type === 'settings' && data.settings) {
-                    displayDeviceSettings(data.settings);
+                    // Check if labels modal is open for this device
+                    if (currentLabelsDeviceId === device_id && document.getElementById('labels-modal').style.display === 'block') {
+                        // Populate labels modal
+                        console.log('[Edit Labels] Received valve labels:', data.settings.valve_labels);
+                        const valveLabels = data.settings.valve_labels || [];
+                        for (let i = 0; i < 8; i++) {
+                            const input = document.getElementById(`label-${i + 1}`);
+                            if (input) {
+                                input.value = valveLabels[i] || '';
+                                input.placeholder = valveLabels[i] ? '' : '*';
+                                input.disabled = false;
+                                currentValveLabels[i + 1] = valveLabels[i] || '';
+                            }
+                        }
+                    } else {
+                        // Show settings modal
+                        displayDeviceSettings(data.settings);
+                    }
                 }
 
                 // Handle valve configuration response
