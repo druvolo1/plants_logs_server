@@ -1538,15 +1538,20 @@
         }
 
         function displayValveControllerSettings(settings) {
+            console.log('[Valve Controller Settings] Received settings:', settings);
+            console.log('[Valve Controller Settings] valve_labels:', settings.valve_labels);
 
             // Generate valve label inputs
             let valveLabelsHTML = '';
-            const valveLabels = settings.valve_labels || ['Valve 1', 'Valve 2', 'Valve 3', 'Valve 4', 'Valve 5', 'Valve 6', 'Valve 7', 'Valve 8'];
+            const valveLabels = settings.valve_labels || [];
             for (let i = 0; i < 8; i++) {
+                // Use actual label if available, otherwise use empty placeholder
+                const labelValue = valveLabels[i] || '';
+                const placeholder = labelValue ? '' : `placeholder="*"`;
                 valveLabelsHTML += `
                     <div style="display: grid; grid-template-columns: 60px 1fr; gap: 0.75rem; align-items: center;">
                         <label style="color: #94a3b8; font-size: 0.9rem;">Valve ${i + 1}</label>
-                        <input type="text" id="valve-label-${i}" value="${valveLabels[i] || 'Valve ' + (i + 1)}"
+                        <input type="text" id="valve-label-${i}" value="${labelValue}" ${placeholder}
                             onchange="updateValveLabel(${i}, this.value)"
                             style="padding: 0.5rem; background: #0f172a; border: 1px solid #374151; border-radius: 6px; color: #fff; font-size: 0.95rem;">
                     </div>
