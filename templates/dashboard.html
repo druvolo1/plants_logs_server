@@ -389,6 +389,24 @@
             grid-column: 1 / -1; /* Span all columns */
         }
 
+        /* Hydro Controller Header Row Layout */
+        .device-header {
+            display: flex;
+            align-items: center;
+        }
+
+        .hydro-header {
+            padding: 0.75rem 1rem !important;
+        }
+
+        .hydro-header-row {
+            display: flex;
+            align-items: center;
+            gap: 0;
+            width: 100%;
+            flex-wrap: nowrap;
+        }
+
         .hydro-single-row {
             display: flex;
             align-items: stretch;
@@ -1534,6 +1552,96 @@
                     deviceSection.dataset.scope = device.scope || 'plant'; // Store device scope (plant or room)
 
                     deviceSection.innerHTML = `
+                        ${(deviceType === 'hydroponic_controller' || deviceType === 'feeding_system') ? `
+                        <!-- Hydro Controller Header with All Sensor Data -->
+                        <div class="device-header hydro-header" onclick="toggleDevice('${device.device_id}')" style="cursor: pointer; background: ${headerBgColor}; border-color: ${headerBorderColor}; position: relative;">
+                            ${getDeviceTypeIconBar(device.device_type || 'feeding_system', device.scope)}
+                            <div class="hydro-header-row">
+                                <!-- Status Badge -->
+                                <div class="hydro-status-badge" id="hydro-status-badge-${device.device_id}">
+                                    <span class="status-dot online"></span>
+                                    <span class="status-text">ONLINE</span>
+                                </div>
+
+                                <!-- pH/EC/TDS Metrics -->
+                                <div class="hydro-metrics-section">
+                                    <div class="hydro-metric-box">
+                                        <div class="hydro-metric-label">pH</div>
+                                        <div class="hydro-metric-value" id="ph-value-${device.device_id}">--</div>
+                                    </div>
+                                    <div class="hydro-metric-box">
+                                        <div class="hydro-metric-label">EC</div>
+                                        <div class="hydro-metric-value" id="ec-value-${device.device_id}">--</div>
+                                        <div class="hydro-metric-unit" id="ec-unit-${device.device_id}">mS/cm</div>
+                                    </div>
+                                    <div class="hydro-metric-box">
+                                        <div class="hydro-metric-label">TDS</div>
+                                        <div class="hydro-metric-value" id="tds-value-${device.device_id}">--</div>
+                                        <div class="hydro-metric-unit">ppm</div>
+                                    </div>
+                                </div>
+
+                                <!-- Temperature Section -->
+                                <div class="hydro-divider" id="temp-divider-header-${device.device_id}" style="display: none;"></div>
+                                <div class="hydro-temp-section" id="temp-section-header-${device.device_id}" style="display: none;">
+                                    <div class="hydro-section-title">🌡️ TEMP</div>
+                                    <div class="hydro-temp-items">
+                                        <div class="hydro-temp-box" id="water-temp-box-header-${device.device_id}" style="display: none;">
+                                            <div class="hydro-temp-label">Water</div>
+                                            <div class="hydro-temp-value" id="water-temp-header-${device.device_id}">--</div>
+                                        </div>
+                                        <div class="hydro-temp-box" id="air-temp-box-header-${device.device_id}" style="display: none;">
+                                            <div class="hydro-temp-label">Air</div>
+                                            <div class="hydro-temp-value" id="air-temp-header-${device.device_id}">--</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Water Level Section -->
+                                <div class="hydro-divider" id="water-divider-header-${device.device_id}" style="display: none;"></div>
+                                <div class="hydro-water-section" id="water-section-header-${device.device_id}" style="display: none;">
+                                    <div class="hydro-section-title">💧 WATER</div>
+                                    <div class="hydro-water-items">
+                                        <div id="water-level-etape-header-${device.device_id}" style="display: none; contents;">
+                                            <div class="hydro-water-item">
+                                                <div class="hydro-water-label">Level</div>
+                                                <div class="hydro-water-value" id="water-level-percent-header-${device.device_id}">--%</div>
+                                            </div>
+                                            <div class="hydro-water-item">
+                                                <div class="hydro-water-label">Volume</div>
+                                                <div class="hydro-water-value" id="water-level-volume-header-${device.device_id}">--</div>
+                                            </div>
+                                            <div class="hydro-water-item">
+                                                <div class="hydro-water-label">Status</div>
+                                                <div class="hydro-water-value" id="water-level-status-header-${device.device_id}">--</div>
+                                            </div>
+                                        </div>
+                                        <div id="water-level-3point-header-${device.device_id}" style="display: none; contents;">
+                                            <div class="hydro-water-item">
+                                                <div class="hydro-water-label">Full</div>
+                                                <div class="hydro-water-value" id="water-level-full-header-${device.device_id}">--</div>
+                                            </div>
+                                            <div class="hydro-water-item">
+                                                <div class="hydro-water-label">OK</div>
+                                                <div class="hydro-water-value" id="water-level-ok-header-${device.device_id}">--</div>
+                                            </div>
+                                            <div class="hydro-water-item">
+                                                <div class="hydro-water-label">Empty</div>
+                                                <div class="hydro-water-value" id="water-level-empty-header-${device.device_id}">--</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Header Icons -->
+                                <div class="header-icons-wrapper" style="margin-left: auto; display: flex; align-items: center; gap: 1rem;">
+                                    <div class="refresh-icon" id="refresh-icon-${device.device_id}" onclick="event.stopPropagation(); location.reload();" style="cursor: pointer; font-size: 1.5rem; color: #4da6ff; transition: transform 0.3s;" title="Refresh">🔄</div>
+                                    <div class="expand-icon" id="expand-icon-${device.device_id}">▼</div>
+                                </div>
+                            </div>
+                        </div>
+                        ` : `
+                        <!-- Standard Header for Other Device Types -->
                         <div class="device-header" onclick="toggleDevice('${device.device_id}')" style="cursor: ${device.is_online ? 'pointer' : 'not-allowed'}; opacity: ${device.is_online ? '1' : '0.6'}; background: ${headerBgColor}; border-color: ${headerBorderColor}; position: relative;">
                             ${getDeviceTypeIconBar(device.device_type || 'feeding_system', device.scope)}
                             <div class="device-header-left">
@@ -1600,7 +1708,8 @@
                                 <div class="expand-icon" id="expand-icon-${device.device_id}">▼</div>
                             </div>
                         </div>
-                        
+                        `}
+
                         <div class="device-content" id="device-content-${device.device_id}" data-device-id="${device.device_id}">
                             <div class="device-content-inner">
                                 <div class="cards-grid" data-device-id="${device.device_id}">
@@ -1676,121 +1785,37 @@
                                         </div>
                                     </div>
                                     ` : deviceType === 'hydroponic_controller' || deviceType === 'feeding_system' ? `
-                                    <!-- Hydro Controller Cards -->
-
-                                    <!-- Hydro Controller - Single Row Compressed Layout -->
-                                    <div class="card" id="hydro-single-card-${device.device_id}" data-card-type="hydro-all" draggable="true">
+                                    <!-- Hydro Controller Card - Valve Controls Only -->
+                                    <div class="card" id="hydro-valves-card-${device.device_id}" data-card-type="hydro-valves" draggable="true">
                                         <div class="card-drag-handle" title="Drag to reorder">⋮⋮</div>
                                         <div class="card-content">
-                                            <div class="hydro-single-row">
-                                                <!-- Status Badge -->
-                                                <div class="hydro-status-badge" id="hydro-status-badge-${device.device_id}">
-                                                    <span class="status-dot online"></span>
-                                                    <span class="status-text">ONLINE</span>
-                                                </div>
-
-                                                <!-- pH/EC/TDS Metrics -->
-                                                <div class="hydro-metrics-section">
-                                                    <div class="hydro-metric-box">
-                                                        <div class="hydro-metric-label">pH</div>
-                                                        <div class="hydro-metric-value" id="ph-value-${device.device_id}">--</div>
-                                                    </div>
-                                                    <div class="hydro-metric-box">
-                                                        <div class="hydro-metric-label">EC</div>
-                                                        <div class="hydro-metric-value" id="ec-value-${device.device_id}">--</div>
-                                                        <div class="hydro-metric-unit" id="ec-unit-${device.device_id}">mS/cm</div>
-                                                    </div>
-                                                    <div class="hydro-metric-box">
-                                                        <div class="hydro-metric-label">TDS</div>
-                                                        <div class="hydro-metric-value" id="tds-value-${device.device_id}">--</div>
-                                                        <div class="hydro-metric-unit">ppm</div>
-                                                    </div>
-                                                </div>
-
-                                                <!-- Temperature Section -->
-                                                <div class="hydro-divider" id="temp-divider-${device.device_id}"></div>
-                                                <div class="hydro-temp-section" id="temp-section-${device.device_id}" style="display: none;">
-                                                    <div class="hydro-section-title">🌡️ TEMP</div>
-                                                    <div class="hydro-temp-items">
-                                                        <div class="hydro-temp-box" id="water-temp-box-${device.device_id}" style="display: none;">
-                                                            <div class="hydro-temp-label">Water</div>
-                                                            <div class="hydro-temp-value" id="water-temp-${device.device_id}">--</div>
+                                            <!-- Remote Valves Section -->
+                                            <div class="hydro-valves-section" id="valves-section-${device.device_id}" style="display: none;">
+                                                <div class="hydro-section-title">🚰 VALVES</div>
+                                                <div class="hydro-valve-items">
+                                                    <!-- Fill Valve -->
+                                                    <div class="hydro-valve-item" id="fill-valve-item-${device.device_id}" style="display: none;">
+                                                        <div class="hydro-valve-name" id="fill-valve-label-${device.device_id}">Fill</div>
+                                                        <div class="hydro-valve-indicator">
+                                                            <div class="hydro-valve-status-dot off" id="fill-status-dot-${device.device_id}"></div>
+                                                            <span class="hydro-valve-status-text" id="fill-valve-state-${device.device_id}">OFF</span>
                                                         </div>
-                                                        <div class="hydro-temp-box" id="air-temp-box-${device.device_id}" style="display: none;">
-                                                            <div class="hydro-temp-label">Air</div>
-                                                            <div class="hydro-temp-value" id="air-temp-${device.device_id}">--</div>
+                                                        <div class="hydro-valve-buttons">
+                                                            <button class="on" id="fill-on-btn-${device.device_id}" onclick="event.stopPropagation(); window.controlRemoteValve('${device.device_id}', 'fill', 'on')">ON</button>
+                                                            <button class="off" id="fill-off-btn-${device.device_id}" onclick="event.stopPropagation(); window.controlRemoteValve('${device.device_id}', 'fill', 'off')">OFF</button>
                                                         </div>
                                                     </div>
-                                                </div>
 
-                                                <!-- Remote Valves Section -->
-                                                <div class="hydro-divider" id="valves-divider-${device.device_id}" style="display: none;"></div>
-                                                <div class="hydro-valves-section" id="valves-section-${device.device_id}" style="display: none;">
-                                                    <div class="hydro-section-title">🚰 VALVES</div>
-                                                    <div class="hydro-valve-items">
-                                                        <!-- Fill Valve -->
-                                                        <div class="hydro-valve-item" id="fill-valve-item-${device.device_id}" style="display: none;">
-                                                            <div class="hydro-valve-name" id="fill-valve-label-${device.device_id}">Fill</div>
-                                                            <div class="hydro-valve-indicator">
-                                                                <div class="hydro-valve-status-dot off" id="fill-status-dot-${device.device_id}"></div>
-                                                                <span class="hydro-valve-status-text" id="fill-valve-state-${device.device_id}">OFF</span>
-                                                            </div>
-                                                            <div class="hydro-valve-buttons">
-                                                                <button class="on" id="fill-on-btn-${device.device_id}" onclick="window.controlRemoteValve('${device.device_id}', 'fill', 'on')">ON</button>
-                                                                <button class="off" id="fill-off-btn-${device.device_id}" onclick="window.controlRemoteValve('${device.device_id}', 'fill', 'off')">OFF</button>
-                                                            </div>
+                                                    <!-- Drain Valve -->
+                                                    <div class="hydro-valve-item" id="drain-valve-item-${device.device_id}" style="display: none;">
+                                                        <div class="hydro-valve-name" id="drain-valve-label-${device.device_id}">Drain</div>
+                                                        <div class="hydro-valve-indicator">
+                                                            <div class="hydro-valve-status-dot off" id="drain-status-dot-${device.device_id}"></div>
+                                                            <span class="hydro-valve-status-text" id="drain-valve-state-${device.device_id}">OFF</span>
                                                         </div>
-
-                                                        <!-- Drain Valve -->
-                                                        <div class="hydro-valve-item" id="drain-valve-item-${device.device_id}" style="display: none;">
-                                                            <div class="hydro-valve-name" id="drain-valve-label-${device.device_id}">Drain</div>
-                                                            <div class="hydro-valve-indicator">
-                                                                <div class="hydro-valve-status-dot off" id="drain-status-dot-${device.device_id}"></div>
-                                                                <span class="hydro-valve-status-text" id="drain-valve-state-${device.device_id}">OFF</span>
-                                                            </div>
-                                                            <div class="hydro-valve-buttons">
-                                                                <button class="on" id="drain-on-btn-${device.device_id}" onclick="window.controlRemoteValve('${device.device_id}', 'drain', 'on')">ON</button>
-                                                                <button class="off" id="drain-off-btn-${device.device_id}" onclick="window.controlRemoteValve('${device.device_id}', 'drain', 'off')">OFF</button>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-
-                                                <!-- Water Level Section -->
-                                                <div class="hydro-divider" id="water-divider-${device.device_id}" style="display: none;"></div>
-                                                <div class="hydro-water-section" id="water-section-${device.device_id}" style="display: none;">
-                                                    <div class="hydro-section-title">💧 WATER</div>
-                                                    <div class="hydro-water-items">
-                                                        <!-- ETape Sensor Display -->
-                                                        <div id="water-level-etape-${device.device_id}" style="display: none; contents;">
-                                                            <div class="hydro-water-item">
-                                                                <div class="hydro-water-label">Level</div>
-                                                                <div class="hydro-water-value" id="water-level-percent-${device.device_id}">--%</div>
-                                                            </div>
-                                                            <div class="hydro-water-item">
-                                                                <div class="hydro-water-label">Volume</div>
-                                                                <div class="hydro-water-value" id="water-level-volume-${device.device_id}">--</div>
-                                                            </div>
-                                                            <div class="hydro-water-item">
-                                                                <div class="hydro-water-label">Status</div>
-                                                                <div class="hydro-water-value" id="water-level-status-${device.device_id}">--</div>
-                                                            </div>
-                                                        </div>
-
-                                                        <!-- 3-Point Sensor Display -->
-                                                        <div id="water-level-3point-${device.device_id}" style="display: none; contents;">
-                                                            <div class="hydro-water-item">
-                                                                <div class="hydro-water-label">Full</div>
-                                                                <div class="hydro-water-value" id="water-level-full-${device.device_id}">--</div>
-                                                            </div>
-                                                            <div class="hydro-water-item">
-                                                                <div class="hydro-water-label">OK</div>
-                                                                <div class="hydro-water-value" id="water-level-ok-${device.device_id}">--</div>
-                                                            </div>
-                                                            <div class="hydro-water-item">
-                                                                <div class="hydro-water-label">Empty</div>
-                                                                <div class="hydro-water-value" id="water-level-empty-${device.device_id}">--</div>
-                                                            </div>
+                                                        <div class="hydro-valve-buttons">
+                                                            <button class="on" id="drain-on-btn-${device.device_id}" onclick="event.stopPropagation(); window.controlRemoteValve('${device.device_id}', 'drain', 'on')">ON</button>
+                                                            <button class="off" id="drain-off-btn-${device.device_id}" onclick="event.stopPropagation(); window.controlRemoteValve('${device.device_id}', 'drain', 'off')">OFF</button>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -2619,13 +2644,13 @@
                 }
             }
 
-            // Update temperatures - show section if either temp is available
-            const waterTempEl = document.getElementById(`water-temp-${device_id}`);
-            const airTempEl = document.getElementById(`air-temp-${device_id}`);
-            const waterTempBox = document.getElementById(`water-temp-box-${device_id}`);
-            const airTempBox = document.getElementById(`air-temp-box-${device_id}`);
-            const tempSection = document.getElementById(`temp-section-${device_id}`);
-            const tempDivider = document.getElementById(`temp-divider-${device_id}`);
+            // Update temperatures in HEADER - show section if either temp is available
+            const waterTempHeaderEl = document.getElementById(`water-temp-header-${device_id}`);
+            const airTempHeaderEl = document.getElementById(`air-temp-header-${device_id}`);
+            const waterTempBoxHeader = document.getElementById(`water-temp-box-header-${device_id}`);
+            const airTempBoxHeader = document.getElementById(`air-temp-box-header-${device_id}`);
+            const tempSectionHeader = document.getElementById(`temp-section-header-${device_id}`);
+            const tempDividerHeader = document.getElementById(`temp-divider-header-${device_id}`);
 
             // Get temperature unit (default to Fahrenheit if not set)
             const settings = window.hydroDeviceSettings?.[device_id] || {};
@@ -2634,25 +2659,25 @@
 
             let hasTempData = false;
 
-            if (waterTempEl && data.water_temp !== null && data.water_temp !== undefined) {
-                waterTempEl.textContent = `${Math.round(data.water_temp)}${tempUnit}`;
-                if (waterTempBox) waterTempBox.style.display = 'block';
+            if (waterTempHeaderEl && data.water_temp !== null && data.water_temp !== undefined) {
+                waterTempHeaderEl.textContent = `${Math.round(data.water_temp)}${tempUnit}`;
+                if (waterTempBoxHeader) waterTempBoxHeader.style.display = 'block';
                 hasTempData = true;
-            } else if (waterTempBox) {
-                waterTempBox.style.display = 'none';
+            } else if (waterTempBoxHeader) {
+                waterTempBoxHeader.style.display = 'none';
             }
 
-            if (airTempEl && data.air_temp !== null && data.air_temp !== undefined) {
-                airTempEl.textContent = `${Math.round(data.air_temp)}${tempUnit}`;
-                if (airTempBox) airTempBox.style.display = 'block';
+            if (airTempHeaderEl && data.air_temp !== null && data.air_temp !== undefined) {
+                airTempHeaderEl.textContent = `${Math.round(data.air_temp)}${tempUnit}`;
+                if (airTempBoxHeader) airTempBoxHeader.style.display = 'block';
                 hasTempData = true;
-            } else if (airTempBox) {
-                airTempBox.style.display = 'none';
+            } else if (airTempBoxHeader) {
+                airTempBoxHeader.style.display = 'none';
             }
 
-            // Show/hide temp section and divider
-            if (tempSection) tempSection.style.display = hasTempData ? 'flex' : 'none';
-            if (tempDivider) tempDivider.style.display = hasTempData ? 'block' : 'none';
+            // Show/hide temp section and divider in header
+            if (tempSectionHeader) tempSectionHeader.style.display = hasTempData ? 'flex' : 'none';
+            if (tempDividerHeader) tempDividerHeader.style.display = hasTempData ? 'block' : 'none';
 
             // Update remote valves - show section if either valve is enabled
             if (data.remote_valves) {
@@ -2727,66 +2752,66 @@
                 }
             }
 
-            // Update water level - show section if sensor is enabled
+            // Update water level in HEADER - show section if sensor is enabled
             if (data.waterLevel) {
-                const waterSection = document.getElementById(`water-section-${device_id}`);
-                const waterDivider = document.getElementById(`water-divider-${device_id}`);
-                const etapeDiv = document.getElementById(`water-level-etape-${device_id}`);
-                const threePointDiv = document.getElementById(`water-level-3point-${device_id}`);
+                const waterSectionHeader = document.getElementById(`water-section-header-${device_id}`);
+                const waterDividerHeader = document.getElementById(`water-divider-header-${device_id}`);
+                const etapeDivHeader = document.getElementById(`water-level-etape-header-${device_id}`);
+                const threePointDivHeader = document.getElementById(`water-level-3point-header-${device_id}`);
 
                 // sensor_type: 0 = NONE, 1 = ETAPE, 2 = WATER_SENSORS (3-point)
                 if (data.waterLevel.sensor_type === 1) {
                     // ETape sensor
-                    if (waterSection) waterSection.style.display = 'flex';
-                    if (waterDivider) waterDivider.style.display = 'block';
-                    if (etapeDiv) etapeDiv.style.display = 'contents';
-                    if (threePointDiv) threePointDiv.style.display = 'none';
+                    if (waterSectionHeader) waterSectionHeader.style.display = 'flex';
+                    if (waterDividerHeader) waterDividerHeader.style.display = 'block';
+                    if (etapeDivHeader) etapeDivHeader.style.display = 'contents';
+                    if (threePointDivHeader) threePointDivHeader.style.display = 'none';
 
                     // Update level percentage
-                    const percentEl = document.getElementById(`water-level-percent-${device_id}`);
-                    if (percentEl) {
-                        percentEl.textContent = data.waterLevel.percent >= 0 ? Math.round(data.waterLevel.percent) + '%' : '--%';
+                    const percentHeaderEl = document.getElementById(`water-level-percent-header-${device_id}`);
+                    if (percentHeaderEl) {
+                        percentHeaderEl.textContent = data.waterLevel.percent >= 0 ? Math.round(data.waterLevel.percent) + '%' : '--%';
                     }
 
                     // Update volume
-                    const volumeEl = document.getElementById(`water-level-volume-${device_id}`);
-                    if (volumeEl) {
+                    const volumeHeaderEl = document.getElementById(`water-level-volume-header-${device_id}`);
+                    if (volumeHeaderEl) {
                         if (data.waterLevel.volume >= 0 && data.waterLevel.capacity > 0) {
-                            volumeEl.textContent = '~' + data.waterLevel.volume.toFixed(1) + ' ' + data.waterLevel.unit;
+                            volumeHeaderEl.textContent = '~' + data.waterLevel.volume.toFixed(1) + ' ' + data.waterLevel.unit;
                         } else {
-                            volumeEl.textContent = '--';
+                            volumeHeaderEl.textContent = '--';
                         }
                     }
 
                     // Update status with color coding
-                    const statusEl = document.getElementById(`water-level-status-${device_id}`);
-                    if (statusEl) {
+                    const statusHeaderEl = document.getElementById(`water-level-status-header-${device_id}`);
+                    if (statusHeaderEl) {
                         const status = data.waterLevel.status || '--';
-                        statusEl.textContent = status.charAt(0).toUpperCase() + status.slice(1);
-                        statusEl.style.color = status === 'ok' ? '#2ed573' :
+                        statusHeaderEl.textContent = status.charAt(0).toUpperCase() + status.slice(1);
+                        statusHeaderEl.style.color = status === 'ok' ? '#2ed573' :
                                               status === 'full' ? '#3498db' :
                                               status === 'low' ? '#fbbf24' :
                                               status === 'empty' ? '#ee5a6f' : '#888';
                     }
                 } else if (data.waterLevel.sensor_type === 2) {
                     // 3-point water sensors
-                    if (waterSection) waterSection.style.display = 'flex';
-                    if (waterDivider) waterDivider.style.display = 'block';
-                    if (etapeDiv) etapeDiv.style.display = 'none';
-                    if (threePointDiv) threePointDiv.style.display = 'contents';
+                    if (waterSectionHeader) waterSectionHeader.style.display = 'flex';
+                    if (waterDividerHeader) waterDividerHeader.style.display = 'block';
+                    if (etapeDivHeader) etapeDivHeader.style.display = 'none';
+                    if (threePointDivHeader) threePointDivHeader.style.display = 'contents';
 
                     // Update sensor states (checkmark if triggered)
-                    const fullEl = document.getElementById(`water-level-full-${device_id}`);
-                    const okEl = document.getElementById(`water-level-ok-${device_id}`);
-                    const emptyEl = document.getElementById(`water-level-empty-${device_id}`);
+                    const fullHeaderEl = document.getElementById(`water-level-full-header-${device_id}`);
+                    const okHeaderEl = document.getElementById(`water-level-ok-header-${device_id}`);
+                    const emptyHeaderEl = document.getElementById(`water-level-empty-header-${device_id}`);
 
-                    if (fullEl) fullEl.textContent = data.waterLevel.ws_full ? '✓' : '--';
-                    if (okEl) okEl.textContent = data.waterLevel.ws_ok ? '✓' : '--';
-                    if (emptyEl) emptyEl.textContent = data.waterLevel.ws_empty ? '✓' : '--';
+                    if (fullHeaderEl) fullHeaderEl.textContent = data.waterLevel.ws_full ? '✓' : '--';
+                    if (okHeaderEl) okHeaderEl.textContent = data.waterLevel.ws_ok ? '✓' : '--';
+                    if (emptyHeaderEl) emptyHeaderEl.textContent = data.waterLevel.ws_empty ? '✓' : '--';
                 } else {
                     // Sensor disabled or not available
-                    if (waterSection) waterSection.style.display = 'none';
-                    if (waterDivider) waterDivider.style.display = 'none';
+                    if (waterSectionHeader) waterSectionHeader.style.display = 'none';
+                    if (waterDividerHeader) waterDividerHeader.style.display = 'none';
                 }
             }
         }
