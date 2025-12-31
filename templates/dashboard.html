@@ -1858,6 +1858,11 @@
                                                             <button class="on" id="fill-on-btn-${device.device_id}" onclick="event.stopPropagation(); window.controlRemoteValve('${device.device_id}', 'fill', 'on')">ON</button>
                                                             <button class="off" id="fill-off-btn-${device.device_id}" onclick="event.stopPropagation(); window.controlRemoteValve('${device.device_id}', 'fill', 'off')">OFF</button>
                                                         </div>
+                                                        <!-- Valve Controller Status -->
+                                                        <div class="hydro-valve-outlet-status" id="fill-controller-status-${device.device_id}" style="display: none;">
+                                                            <span class="outlet-status-dot" id="fill-controller-dot-${device.device_id}"></span>
+                                                            <span class="outlet-status-text" id="fill-controller-text-${device.device_id}">Valve: Offline</span>
+                                                        </div>
                                                         <!-- Outlet Status -->
                                                         <div class="hydro-valve-outlet-status" id="fill-outlet-status-${device.device_id}" style="display: none;">
                                                             <span class="outlet-status-dot" id="fill-outlet-dot-${device.device_id}"></span>
@@ -1875,6 +1880,11 @@
                                                         <div class="hydro-valve-buttons">
                                                             <button class="on" id="drain-on-btn-${device.device_id}" onclick="event.stopPropagation(); window.controlRemoteValve('${device.device_id}', 'drain', 'on')">ON</button>
                                                             <button class="off" id="drain-off-btn-${device.device_id}" onclick="event.stopPropagation(); window.controlRemoteValve('${device.device_id}', 'drain', 'off')">OFF</button>
+                                                        </div>
+                                                        <!-- Valve Controller Status -->
+                                                        <div class="hydro-valve-outlet-status" id="drain-controller-status-${device.device_id}" style="display: none;">
+                                                            <span class="outlet-status-dot" id="drain-controller-dot-${device.device_id}"></span>
+                                                            <span class="outlet-status-text" id="drain-controller-text-${device.device_id}">Valve: Offline</span>
                                                         </div>
                                                         <!-- Outlet Status -->
                                                         <div class="hydro-valve-outlet-status" id="drain-outlet-status-${device.device_id}" style="display: none;">
@@ -2795,10 +2805,31 @@
                         fillStatusDot.className = fillIsOn ? 'hydro-valve-status-dot on' : 'hydro-valve-status-dot off';
                     }
 
-                    // Enable/disable buttons
+                    // Enable/disable buttons - disable if no valve OR if controller is offline
                     const fillHasValve = fill.valve_id > 0;
-                    if (fillOnBtn) fillOnBtn.disabled = !fillHasValve;
-                    if (fillOffBtn) fillOffBtn.disabled = !fillHasValve;
+                    const fillControllerConnected = fill.connected === true;
+                    const fillButtonsEnabled = fillHasValve && fillControllerConnected;
+                    if (fillOnBtn) fillOnBtn.disabled = !fillButtonsEnabled;
+                    if (fillOffBtn) fillOffBtn.disabled = !fillButtonsEnabled;
+
+                    // Update valve controller connection status
+                    const fillControllerStatus = document.getElementById(`fill-controller-status-${device_id}`);
+                    const fillControllerDot = document.getElementById(`fill-controller-dot-${device_id}`);
+                    const fillControllerText = document.getElementById(`fill-controller-text-${device_id}`);
+
+                    if (fillHasValve && fillControllerStatus) {
+                        fillControllerStatus.style.display = 'flex';
+
+                        if (fillControllerConnected) {
+                            if (fillControllerDot) fillControllerDot.className = 'outlet-status-dot online';
+                            if (fillControllerText) fillControllerText.textContent = 'Valve: Connected';
+                        } else {
+                            if (fillControllerDot) fillControllerDot.className = 'outlet-status-dot offline';
+                            if (fillControllerText) fillControllerText.textContent = 'Valve: Offline';
+                        }
+                    } else if (fillControllerStatus) {
+                        fillControllerStatus.style.display = 'none';
+                    }
 
                     // Update outlet status if assigned
                     const fillOutletStatus = document.getElementById(`fill-outlet-status-${device_id}`);
@@ -2846,10 +2877,31 @@
                         drainStatusDot.className = drainIsOn ? 'hydro-valve-status-dot on' : 'hydro-valve-status-dot off';
                     }
 
-                    // Enable/disable buttons
+                    // Enable/disable buttons - disable if no valve OR if controller is offline
                     const drainHasValve = drain.valve_id > 0;
-                    if (drainOnBtn) drainOnBtn.disabled = !drainHasValve;
-                    if (drainOffBtn) drainOffBtn.disabled = !drainHasValve;
+                    const drainControllerConnected = drain.connected === true;
+                    const drainButtonsEnabled = drainHasValve && drainControllerConnected;
+                    if (drainOnBtn) drainOnBtn.disabled = !drainButtonsEnabled;
+                    if (drainOffBtn) drainOffBtn.disabled = !drainButtonsEnabled;
+
+                    // Update valve controller connection status
+                    const drainControllerStatus = document.getElementById(`drain-controller-status-${device_id}`);
+                    const drainControllerDot = document.getElementById(`drain-controller-dot-${device_id}`);
+                    const drainControllerText = document.getElementById(`drain-controller-text-${device_id}`);
+
+                    if (drainHasValve && drainControllerStatus) {
+                        drainControllerStatus.style.display = 'flex';
+
+                        if (drainControllerConnected) {
+                            if (drainControllerDot) drainControllerDot.className = 'outlet-status-dot online';
+                            if (drainControllerText) drainControllerText.textContent = 'Valve: Connected';
+                        } else {
+                            if (drainControllerDot) drainControllerDot.className = 'outlet-status-dot offline';
+                            if (drainControllerText) drainControllerText.textContent = 'Valve: Offline';
+                        }
+                    } else if (drainControllerStatus) {
+                        drainControllerStatus.style.display = 'none';
+                    }
 
                     // Update outlet status if assigned
                     const drainOutletStatus = document.getElementById(`drain-outlet-status-${device_id}`);
