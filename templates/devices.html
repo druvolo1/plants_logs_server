@@ -3466,7 +3466,11 @@
 
             // Convert object to array if needed (valve controller returns {1: {...}, 2: {...}})
             if (valveArray && typeof valveArray === 'object' && !Array.isArray(valveArray)) {
-                valveArray = Object.values(valveArray);
+                // Convert object to array, preserving the key as the id
+                valveArray = Object.entries(valveArray).map(([id, valve]) => ({
+                    ...valve,
+                    id: id
+                }));
             }
 
             if (!Array.isArray(valveArray)) {
