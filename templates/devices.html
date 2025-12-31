@@ -1334,6 +1334,9 @@
                     <button class="actions-modal-item" onclick="closeActionsModal(); openAutomationsModal('${deviceId}');">
                         <span class="icon">🤖</span> Automations
                     </button>
+                    <button class="actions-modal-item" onclick="closeActionsModal(); openValveConfigModal('${deviceId}');">
+                        <span class="icon">🚰</span> Valve Configuration
+                    </button>
                     <button class="actions-modal-item" onclick="closeActionsModal(); openNotificationsModal('${deviceId}');">
                         <span class="icon">🔔</span> Notifications
                     </button>`;
@@ -1468,6 +1471,35 @@
             }, 5000);
         }
 
+        function requestValveConfig(deviceId) {
+            const ws = wsMap[deviceId];
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                document.getElementById('settings-modal-body').innerHTML = `
+                    <div style="text-align: center; padding: 2rem; color: #ef4444;">
+                        <div style="font-size: 2rem; margin-bottom: 1rem;">❌</div>
+                        <div>WebSocket not connected</div>
+                    </div>
+                `;
+                return;
+            }
+
+            console.log(`[Valve Config] Requesting valve config from ${deviceId}`);
+            ws.send(JSON.stringify({ type: 'get_valve_config' }));
+
+            // Timeout after 5 seconds
+            setTimeout(() => {
+                const body = document.getElementById('settings-modal-body');
+                if (body && body.innerHTML.includes('Loading valve')) {
+                    body.innerHTML = `
+                        <div style="text-align: center; padding: 2rem; color: #ef4444;">
+                            <div style="font-size: 2rem; margin-bottom: 1rem;">⏱️</div>
+                            <div>Request timed out</div>
+                        </div>
+                    `;
+                }
+            }, 5000);
+        }
+
         function displayDeviceSettings(settings) {
             if (!currentSettingsDeviceId) return;
 
@@ -1491,6 +1523,9 @@
                         break;
                     case 'automation':
                         displayHydroAutomationModal(settings);
+                        break;
+                    case 'valves':
+                        displayHydroValveConfigModal(settings);
                         break;
                     case 'notifications':
                         displayHydroNotificationsModal(settings);
@@ -1907,6 +1942,26 @@
             `;
             document.getElementById('settings-modal').style.display = 'block';
             requestDeviceSettings(deviceId);
+        }
+
+        function openValveConfigModal(deviceId) {
+            currentHydroModalType = 'valves';
+            const device = allDevices.find(d => d.device_id === deviceId);
+            const deviceName = device ? device.name : deviceId;
+            const deviceType = device ? device.device_type : 'hydroponic_controller';
+
+            currentSettingsDeviceId = deviceId;
+            currentSettingsDeviceType = deviceType;
+
+            document.getElementById('settings-modal-title').textContent = `${deviceName} - Valve Configuration`;
+            document.getElementById('settings-modal-body').innerHTML = `
+                <div style="text-align: center; padding: 2rem; color: #94a3b8;">
+                    <div style="font-size: 2rem; margin-bottom: 1rem;">⏳</div>
+                    <div>Loading valve configuration...</div>
+                </div>
+            `;
+            document.getElementById('settings-modal').style.display = 'block';
+            requestValveConfig(deviceId);
         }
 
         function openNotificationsModal(deviceId) {
@@ -3184,6 +3239,209 @@
             document.getElementById('settings-modal-body').innerHTML = html;
         }
 
+        function displayHydroValveConfigModal(config) {
+            const html = `
+                <div style="display: flex; flex-direction: column; gap: 2rem;">
+                    <!-- Fill Valve Section -->
+                    <div style="background: rgba(59, 130, 246, 0.05); padding: 1.5rem; border-radius: 8px; border: 1px solid rgba(59, 130, 246, 0.2);">
+                        <h4 style="margin: 0 0 1rem 0; color: #3b82f6; font-size: 1.1rem;">Fill Valve</h4>
+
+                        <!-- Enable Toggle -->
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                            <div>
+                                <div style="font-weight: 500; color: #e2e8f0;">Enable Fill Valve</div>
+                                <div style="color: #94a3b8; font-size: 0.85rem; margin-top: 0.25rem;">Connect to remote valve controller for filling</div>
+                            </div>
+                            <label class="switch">
+                                <input type="checkbox" id="fill-enabled" ${config.fill.enabled ? 'checked' : ''}
+                                    onchange="toggleFillFields()">
+                                <span class="slider round"></span>
+                            </label>
+                        </div>
+
+                        <div id="fill-config-fields" style="${config.fill.enabled ? '' : 'display:none;'}">
+                            <!-- Controller IP/Hostname -->
+                            <div style="margin-bottom: 1rem;">
+                                <label style="display: block; color: #94a3b8; font-size: 0.9rem; margin-bottom: 0.5rem;">Controller IP/Hostname</label>
+                                <input type="text" id="fill-host" value="${config.fill.host || ''}"
+                                    placeholder="192.168.1.100 or valve-controller.local"
+                                    style="width: 100%; padding: 0.75rem; background: #0f172a; border: 1px solid #374151; border-radius: 6px; color: #fff; font-size: 1rem;">
+                            </div>
+
+                            <!-- Valve Selection -->
+                            <div style="margin-bottom: 1rem;">
+                                <label style="display: block; color: #94a3b8; font-size: 0.9rem; margin-bottom: 0.5rem;">Select Valve</label>
+                                <select id="fill-valve-id" style="width: 100%; padding: 0.75rem; background: #0f172a; border: 1px solid #374151; border-radius: 6px; color: #fff; font-size: 1rem;">
+                                    <option value="0">-- Enter IP first --</option>
+                                </select>
+                            </div>
+
+                            <!-- Action Buttons -->
+                            <div style="display: flex; gap: 0.75rem;">
+                                <button onclick="fetchRemoteValves('fill')"
+                                    style="flex: 1; padding: 0.75rem; background: #475569; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 500;">
+                                    Refresh List
+                                </button>
+                                <button onclick="saveValveConfig('fill')"
+                                    style="flex: 1; padding: 0.75rem; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 500;">
+                                    Save Fill Valve
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Drain Valve Section -->
+                    <div style="background: rgba(239, 68, 68, 0.05); padding: 1.5rem; border-radius: 8px; border: 1px solid rgba(239, 68, 68, 0.2);">
+                        <h4 style="margin: 0 0 1rem 0; color: #ef4444; font-size: 1.1rem;">Drain Valve</h4>
+
+                        <!-- Enable Toggle -->
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                            <div>
+                                <div style="font-weight: 500; color: #e2e8f0;">Enable Drain Valve</div>
+                                <div style="color: #94a3b8; font-size: 0.85rem; margin-top: 0.25rem;">Connect to remote valve controller for draining</div>
+                            </div>
+                            <label class="switch">
+                                <input type="checkbox" id="drain-enabled" ${config.drain.enabled ? 'checked' : ''}
+                                    onchange="toggleDrainFields()">
+                                <span class="slider round"></span>
+                            </label>
+                        </div>
+
+                        <div id="drain-config-fields" style="${config.drain.enabled ? '' : 'display:none;'}">
+                            <!-- Controller IP/Hostname -->
+                            <div style="margin-bottom: 1rem;">
+                                <label style="display: block; color: #94a3b8; font-size: 0.9rem; margin-bottom: 0.5rem;">Controller IP/Hostname</label>
+                                <input type="text" id="drain-host" value="${config.drain.host || ''}"
+                                    placeholder="192.168.1.100 or valve-controller.local"
+                                    style="width: 100%; padding: 0.75rem; background: #0f172a; border: 1px solid #374151; border-radius: 6px; color: #fff; font-size: 1rem;">
+                            </div>
+
+                            <!-- Valve Selection -->
+                            <div style="margin-bottom: 1rem;">
+                                <label style="display: block; color: #94a3b8; font-size: 0.9rem; margin-bottom: 0.5rem;">Select Valve</label>
+                                <select id="drain-valve-id" style="width: 100%; padding: 0.75rem; background: #0f172a; border: 1px solid #374151; border-radius: 6px; color: #fff; font-size: 1rem;">
+                                    <option value="0">-- Enter IP first --</option>
+                                </select>
+                            </div>
+
+                            <!-- Action Buttons -->
+                            <div style="display: flex; gap: 0.75rem;">
+                                <button onclick="fetchRemoteValves('drain')"
+                                    style="flex: 1; padding: 0.75rem; background: #475569; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 500;">
+                                    Refresh List
+                                </button>
+                                <button onclick="saveValveConfig('drain')"
+                                    style="flex: 1; padding: 0.75rem; background: #ef4444; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 500;">
+                                    Save Drain Valve
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('settings-modal-body').innerHTML = html;
+
+            // Pre-populate valve selection if saved
+            if (config.fill.valve_id > 0) {
+                const fillSelect = document.getElementById('fill-valve-id');
+                fillSelect.innerHTML = \`<option value="\${config.fill.valve_id}" selected>Valve \${config.fill.valve_id}</option>\`;
+            }
+            if (config.drain.valve_id > 0) {
+                const drainSelect = document.getElementById('drain-valve-id');
+                drainSelect.innerHTML = \`<option value="\${config.drain.valve_id}" selected>Valve \${config.drain.valve_id}</option>\`;
+            }
+        }
+
+        function toggleFillFields() {
+            const enabled = document.getElementById('fill-enabled').checked;
+            const fields = document.getElementById('fill-config-fields');
+            fields.style.display = enabled ? 'block' : 'none';
+        }
+
+        function toggleDrainFields() {
+            const enabled = document.getElementById('drain-enabled').checked;
+            const fields = document.getElementById('drain-config-fields');
+            fields.style.display = enabled ? 'block' : 'none';
+        }
+
+        function fetchRemoteValves(valveType) {
+            const hostInput = document.getElementById(\`\${valveType}-host\`);
+            const host = hostInput.value.trim();
+
+            if (!host) {
+                alert('Please enter controller IP/hostname first');
+                return;
+            }
+
+            const ws = wsMap[currentSettingsDeviceId];
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                alert('WebSocket not connected');
+                return;
+            }
+
+            console.log(\`[Valve Config] Fetching valves from \${host}\`);
+            ws.send(JSON.stringify({
+                type: 'fetch_remote_valves',
+                host: host
+            }));
+
+            // Show loading state
+            const selectElement = document.getElementById(\`\${valveType}-valve-id\`);
+            selectElement.innerHTML = '<option value="0">Loading...</option>';
+            selectElement.disabled = true;
+
+            // Store which valve type is being fetched
+            window.currentFetchingValveType = valveType;
+        }
+
+        function saveValveConfig(valveType) {
+            const enabled = document.getElementById(\`\${valveType}-enabled\`).checked;
+            const host = document.getElementById(\`\${valveType}-host\`).value.trim();
+            const valveId = parseInt(document.getElementById(\`\${valveType}-valve-id\`).value);
+
+            if (enabled && (!host || valveId === 0)) {
+                alert('Please enter controller host and select a valve');
+                return;
+            }
+
+            const ws = wsMap[currentSettingsDeviceId];
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                alert('WebSocket not connected');
+                return;
+            }
+
+            console.log(\`[Valve Config] Saving \${valveType} valve config\`);
+            ws.send(JSON.stringify({
+                type: 'save_valve',
+                valve: valveType,
+                enabled: enabled,
+                host: host,
+                valve_id: valveId
+            }));
+
+            // Show success message
+            alert(\`\${valveType.charAt(0).toUpperCase() + valveType.slice(1)} valve configuration saved!\`);
+        }
+
+        function handleValveListResponse(valves) {
+            // valves is an array like: [{"id":1,"label":"Valve 1","state":"off"}, ...]
+
+            const valveType = window.currentFetchingValveType || 'fill';
+            const selectElement = document.getElementById(\`\${valveType}-valve-id\`);
+
+            if (selectElement) {
+                let options = '<option value="0">-- Select a valve --</option>';
+                valves.forEach(valve => {
+                    options += \`<option value="\${valve.id}">\${valve.label}</option>\`;
+                });
+                selectElement.innerHTML = options;
+                selectElement.disabled = false;
+            }
+
+            window.currentFetchingValveType = null;
+        }
+
         function startHydroSensorUpdates() {
             // Clear any existing interval
             if (hydroSensorUpdateInterval) {
@@ -4151,6 +4409,35 @@
                 // Handle settings response
                 if (data.type === 'settings' && data.settings) {
                     displayDeviceSettings(data.settings);
+                }
+
+                // Handle valve configuration response
+                if (data.type === 'valve_config') {
+                    if (currentHydroModalType === 'valves') {
+                        displayHydroValveConfigModal(data);
+                    }
+                }
+
+                // Handle valve list response
+                if (data.type === 'valve_list' && data.valves) {
+                    handleValveListResponse(data.valves);
+                }
+
+                // Handle valve list error
+                if (data.type === 'valve_list_error') {
+                    alert(\`Failed to fetch valves: \${data.error}\`);
+                    // Reset dropdowns
+                    const fillSelect = document.getElementById('fill-valve-id');
+                    const drainSelect = document.getElementById('drain-valve-id');
+                    if (fillSelect && fillSelect.innerHTML.includes('Loading')) {
+                        fillSelect.innerHTML = '<option value="0">-- Error fetching list --</option>';
+                        fillSelect.disabled = false;
+                    }
+                    if (drainSelect && drainSelect.innerHTML.includes('Loading')) {
+                        drainSelect.innerHTML = '<option value="0">-- Error fetching list --</option>';
+                        drainSelect.disabled = false;
+                    }
+                    window.currentFetchingValveType = null;
                 }
 
                 // Handle setting update confirmation
