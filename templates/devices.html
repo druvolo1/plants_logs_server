@@ -3425,8 +3425,12 @@
         }
 
         function handleValveListResponse(valves) {
-            // valves might be a string or array, need to parse if string
+            console.log('[Valve Config] handleValveListResponse called with:', typeof valves, valves);
+
+            // valves might be a string, array, or object - need to normalize
             let valveArray = valves;
+
+            // Parse if string
             if (typeof valves === 'string') {
                 try {
                     valveArray = JSON.parse(valves);
@@ -3437,8 +3441,13 @@
                 }
             }
 
+            // Convert object to array if needed (valve controller returns {1: {...}, 2: {...}})
+            if (valveArray && typeof valveArray === 'object' && !Array.isArray(valveArray)) {
+                valveArray = Object.values(valveArray);
+            }
+
             if (!Array.isArray(valveArray)) {
-                console.error('[Valve Config] Valves is not an array:', valveArray);
+                console.error('[Valve Config] Valves is not an array after conversion:', valveArray);
                 alert('Invalid valve list format received from controller');
                 return;
             }
@@ -4437,7 +4446,10 @@
                 // Handle valve list response
                 if (data.type === 'valve_list' && data.valves) {
                     console.log('[Valve Config] Received valve list:', typeof data.valves, data.valves);
-                    handleValveListResponse(data.valves);
+                    // Valve controller returns {status, device_id, valves: [...]}
+                    // So the actual array is nested at data.valves.valves
+                    const actualValves = data.valves.valves || data.valves;
+                    handleValveListResponse(actualValves);
                 }
 
                 // Handle valve list error
