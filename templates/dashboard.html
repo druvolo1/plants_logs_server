@@ -2660,12 +2660,14 @@
                     updateOnlineStatus(device_id, data.online);
                 }
                 // Handle full sync (on connect or refresh)
-                else if (data.type === 'full_sync' && data.data) {
+                else if (data.type === 'full_sync') {
                     updateOnlineStatus(device_id, true);
                     // Update hydro controller if applicable
-                    updateHydroControllerDisplay(device_id, data.data);
-                    // Legacy update for old devices
-                    updateDeviceStatus(device_id, data.data);
+                    updateHydroControllerDisplay(device_id, data);
+                    // Legacy update for old devices (only if data.data exists)
+                    if (data.data) {
+                        updateDeviceStatus(device_id, data.data);
+                    }
                 }
                 // Handle granular pH update
                 else if (data.type === 'ph_update') {
