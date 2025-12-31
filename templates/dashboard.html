@@ -656,6 +656,7 @@
             font-weight: 700;
             color: #10b981;
             letter-spacing: 0.5px;
+            white-space: nowrap;
         }
 
         .hydro-status-badge.offline .status-text {
@@ -2484,18 +2485,26 @@
         }
 
         function toggleDevice(device_id) {
-            // Check if device is online
+            // Check if device is online - handle both standard and hydro badges
             const statusBadge = document.getElementById(`status-badge-${device_id}`);
-            const isOnline = statusBadge && statusBadge.classList.contains('status-online');
-            
+            const hydroStatusBadge = document.getElementById(`hydro-status-badge-${device_id}`);
+
+            let isOnline = false;
+            if (statusBadge) {
+                isOnline = statusBadge.classList.contains('status-online');
+            } else if (hydroStatusBadge) {
+                // For hydro controllers, check if it's NOT offline
+                isOnline = !hydroStatusBadge.classList.contains('offline');
+            }
+
             if (!isOnline) {
                 // Don't allow expanding offline devices
                 return;
             }
-            
+
             const content = document.getElementById(`device-content-${device_id}`);
             const icon = document.getElementById(`expand-icon-${device_id}`);
-            
+
             if (content.classList.contains('expanded')) {
                 content.classList.remove('expanded');
                 icon.classList.remove('expanded');
@@ -2943,12 +2952,30 @@
         }
 
         function updateOnlineStatus(device_id, isOnline) {
+            // Update standard status badge
             const statusBadge = document.getElementById(`status-badge-${device_id}`);
             if (statusBadge) {
                 statusBadge.className = `status-badge ${isOnline ? 'status-online' : 'status-offline'}`;
                 statusBadge.textContent = isOnline ? '● Online' : '● Offline';
             }
-            
+
+            // Update hydro status badge
+            const hydroStatusBadge = document.getElementById(`hydro-status-badge-${device_id}`);
+            if (hydroStatusBadge) {
+                const statusDot = hydroStatusBadge.querySelector('.status-dot');
+                const statusText = hydroStatusBadge.querySelector('.status-text');
+
+                if (isOnline) {
+                    hydroStatusBadge.classList.remove('offline');
+                    if (statusDot) statusDot.classList.remove('offline');
+                    if (statusText) statusText.textContent = 'ONLINE';
+                } else {
+                    hydroStatusBadge.classList.add('offline');
+                    if (statusDot) statusDot.classList.add('offline');
+                    if (statusText) statusText.textContent = 'OFFLINE';
+                }
+            }
+
             // If going offline, collapse the device section
             if (!isOnline) {
                 const content = document.getElementById(`device-content-${device_id}`);
@@ -2958,7 +2985,7 @@
                     icon.classList.remove('expanded');
                 }
             }
-            
+
             // Update header clickability visual indication
             const header = document.querySelector(`[onclick="toggleDevice('${device_id}')"]`);
             if (header) {
