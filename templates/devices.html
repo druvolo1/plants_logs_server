@@ -3345,11 +3345,11 @@
             // Pre-populate valve selection if saved
             if (config.fill.valve_id > 0) {
                 const fillSelect = document.getElementById('fill-valve-id');
-                fillSelect.innerHTML = \`<option value="\${config.fill.valve_id}" selected>Valve \${config.fill.valve_id}</option>\`;
+                fillSelect.innerHTML = '<option value="' + config.fill.valve_id + '" selected>Valve ' + config.fill.valve_id + '</option>';
             }
             if (config.drain.valve_id > 0) {
                 const drainSelect = document.getElementById('drain-valve-id');
-                drainSelect.innerHTML = \`<option value="\${config.drain.valve_id}" selected>Valve \${config.drain.valve_id}</option>\`;
+                drainSelect.innerHTML = '<option value="' + config.drain.valve_id + '" selected>Valve ' + config.drain.valve_id + '</option>';
             }
         }
 
@@ -3366,7 +3366,7 @@
         }
 
         function fetchRemoteValves(valveType) {
-            const hostInput = document.getElementById(\`\${valveType}-host\`);
+            const hostInput = document.getElementById(valveType + '-host');
             const host = hostInput.value.trim();
 
             if (!host) {
@@ -3380,14 +3380,14 @@
                 return;
             }
 
-            console.log(\`[Valve Config] Fetching valves from \${host}\`);
+            console.log('[Valve Config] Fetching valves from ' + host);
             ws.send(JSON.stringify({
                 type: 'fetch_remote_valves',
                 host: host
             }));
 
             // Show loading state
-            const selectElement = document.getElementById(\`\${valveType}-valve-id\`);
+            const selectElement = document.getElementById(valveType + '-valve-id');
             selectElement.innerHTML = '<option value="0">Loading...</option>';
             selectElement.disabled = true;
 
@@ -3396,9 +3396,9 @@
         }
 
         function saveValveConfig(valveType) {
-            const enabled = document.getElementById(\`\${valveType}-enabled\`).checked;
-            const host = document.getElementById(\`\${valveType}-host\`).value.trim();
-            const valveId = parseInt(document.getElementById(\`\${valveType}-valve-id\`).value);
+            const enabled = document.getElementById(valveType + '-enabled').checked;
+            const host = document.getElementById(valveType + '-host').value.trim();
+            const valveId = parseInt(document.getElementById(valveType + '-valve-id').value);
 
             if (enabled && (!host || valveId === 0)) {
                 alert('Please enter controller host and select a valve');
@@ -3411,7 +3411,7 @@
                 return;
             }
 
-            console.log(\`[Valve Config] Saving \${valveType} valve config\`);
+            console.log('[Valve Config] Saving ' + valveType + ' valve config');
             ws.send(JSON.stringify({
                 type: 'save_valve',
                 valve: valveType,
@@ -3421,19 +3421,19 @@
             }));
 
             // Show success message
-            alert(\`\${valveType.charAt(0).toUpperCase() + valveType.slice(1)} valve configuration saved!\`);
+            alert(valveType.charAt(0).toUpperCase() + valveType.slice(1) + ' valve configuration saved!');
         }
 
         function handleValveListResponse(valves) {
             // valves is an array like: [{"id":1,"label":"Valve 1","state":"off"}, ...]
 
             const valveType = window.currentFetchingValveType || 'fill';
-            const selectElement = document.getElementById(\`\${valveType}-valve-id\`);
+            const selectElement = document.getElementById(valveType + '-valve-id');
 
             if (selectElement) {
                 let options = '<option value="0">-- Select a valve --</option>';
                 valves.forEach(valve => {
-                    options += \`<option value="\${valve.id}">\${valve.label}</option>\`;
+                    options += '<option value="' + valve.id + '">' + valve.label + '</option>';
                 });
                 selectElement.innerHTML = options;
                 selectElement.disabled = false;
@@ -4425,7 +4425,7 @@
 
                 // Handle valve list error
                 if (data.type === 'valve_list_error') {
-                    alert(\`Failed to fetch valves: \${data.error}\`);
+                    alert('Failed to fetch valves: ' + data.error);
                     // Reset dropdowns
                     const fillSelect = document.getElementById('fill-valve-id');
                     const drainSelect = document.getElementById('drain-valve-id');
