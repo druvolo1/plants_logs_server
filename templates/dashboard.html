@@ -1572,6 +1572,7 @@
                                     <div class="hydro-metric-box">
                                         <div class="hydro-metric-label">pH</div>
                                         <div class="hydro-metric-value" id="ph-value-${device.device_id}">--</div>
+                                        <div class="hydro-metric-unit" style="visibility: hidden;">-</div>
                                     </div>
                                     <div class="hydro-metric-box">
                                         <div class="hydro-metric-label">EC</div>
@@ -2664,14 +2665,20 @@
             const tempSectionHeader = document.getElementById(`temp-section-header-${device_id}`);
             const tempDividerHeader = document.getElementById(`temp-divider-header-${device_id}`);
 
-            // Get temperature unit (default to Fahrenheit if not set)
+            // Get temperature unit and enabled flags from settings
             const settings = window.hydroDeviceSettings?.[device_id] || {};
             const useFahrenheit = settings.use_fahrenheit !== false; // Default to F
             const tempUnit = useFahrenheit ? '°F' : '°C';
 
+            // Check if sensors are enabled from settings (if available)
+            const waterTempEnabled = data.settings?.water_temp_enabled !== false; // Default to true if not specified
+            const airTempEnabled = data.settings?.air_temp_enabled !== false; // Default to true if not specified
+
             let hasTempData = false;
 
-            if (waterTempHeaderEl && data.water_temp !== null && data.water_temp !== undefined) {
+            // Water temp - only show if enabled AND has valid reading (> 10 to filter out disabled sensors returning 0)
+            if (waterTempHeaderEl && waterTempEnabled &&
+                data.water_temp !== null && data.water_temp !== undefined && data.water_temp > 10) {
                 waterTempHeaderEl.textContent = `${Math.round(data.water_temp)}${tempUnit}`;
                 if (waterTempBoxHeader) waterTempBoxHeader.style.display = 'block';
                 hasTempData = true;
@@ -2679,7 +2686,9 @@
                 waterTempBoxHeader.style.display = 'none';
             }
 
-            if (airTempHeaderEl && data.air_temp !== null && data.air_temp !== undefined) {
+            // Air temp - only show if enabled AND has valid reading (> 10 to filter out disabled sensors returning 0)
+            if (airTempHeaderEl && airTempEnabled &&
+                data.air_temp !== null && data.air_temp !== undefined && data.air_temp > 10) {
                 airTempHeaderEl.textContent = `${Math.round(data.air_temp)}${tempUnit}`;
                 if (airTempBoxHeader) airTempBoxHeader.style.display = 'block';
                 hasTempData = true;
