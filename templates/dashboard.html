@@ -526,27 +526,52 @@
 
         .hydro-valve-buttons {
             display: flex;
-            gap: 3px;
+            gap: 8px;
         }
 
         .hydro-valve-buttons button {
             flex: 1;
-            padding: 3px 8px;
+            min-width: 60px;
+            min-height: 48px;
+            padding: 12px 16px;
             border: none;
-            border-radius: 3px;
+            border-radius: 6px;
             cursor: pointer;
-            font-weight: 600;
-            font-size: 0.7em;
+            font-weight: 700;
+            font-size: 0.85em;
+            transition: all 0.2s ease;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
         }
 
         .hydro-valve-buttons button.on {
             background: #4CAF50;
             color: white;
+            box-shadow: 0 2px 4px rgba(76, 175, 80, 0.3);
+        }
+
+        .hydro-valve-buttons button.on:hover {
+            background: #45a049;
+            box-shadow: 0 4px 8px rgba(76, 175, 80, 0.4);
+        }
+
+        .hydro-valve-buttons button.on:active {
+            transform: scale(0.95);
         }
 
         .hydro-valve-buttons button.off {
             background: #f44336;
             color: white;
+            box-shadow: 0 2px 4px rgba(244, 67, 54, 0.3);
+        }
+
+        .hydro-valve-buttons button.off:hover {
+            background: #da190b;
+            box-shadow: 0 4px 8px rgba(244, 67, 54, 0.4);
+        }
+
+        .hydro-valve-buttons button.off:active {
+            transform: scale(0.95);
         }
 
         .hydro-valve-buttons button:disabled {
@@ -580,42 +605,165 @@
             font-weight: 700;
         }
 
-        /* Responsive - Stack on smaller screens */
+        /* Status Badge */
+        .hydro-status-badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 14px;
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            border-radius: 20px;
+            margin-right: 20px;
+            flex-shrink: 0;
+        }
+
+        .hydro-status-badge .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #10b981;
+            box-shadow: 0 0 8px rgba(16, 185, 129, 0.6);
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        .hydro-status-badge .status-dot.offline {
+            background: #ef4444;
+            box-shadow: 0 0 8px rgba(239, 68, 68, 0.6);
+            animation: none;
+        }
+
+        .hydro-status-badge .status-text {
+            font-size: 0.75em;
+            font-weight: 700;
+            color: #10b981;
+            letter-spacing: 0.5px;
+        }
+
+        .hydro-status-badge.offline .status-text {
+            color: #ef4444;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        /* Responsive - Tablet (768px - 1400px) */
         @media (max-width: 1400px) {
             .hydro-single-row {
                 flex-wrap: wrap;
+                gap: 16px;
             }
 
             .hydro-divider {
                 display: none;
             }
 
+            .hydro-status-badge {
+                margin-right: 0;
+                margin-bottom: 0;
+            }
+
             .hydro-metrics-section,
             .hydro-temp-section,
             .hydro-valves-section,
             .hydro-water-section {
-                padding: 12px;
-                border: 1px solid rgba(255, 255, 255, 0.05);
-                border-radius: 6px;
-                background: rgba(0, 0, 0, 0.2);
+                padding: 14px;
+                border: 1px solid rgba(255, 255, 255, 0.08);
+                border-radius: 8px;
+                background: rgba(0, 0, 0, 0.25);
+            }
+
+            /* Make valves section full-width on tablet for easier tapping */
+            .hydro-valves-section {
+                flex-basis: 100%;
+                order: 10; /* Push to bottom */
+            }
+
+            .hydro-valve-items {
+                justify-content: center;
             }
         }
 
+        /* Responsive - Mobile (<768px) */
         @media (max-width: 768px) {
             .hydro-single-row {
                 flex-direction: column;
-                gap: 12px;
+                gap: 16px;
+            }
+
+            .hydro-status-badge {
+                align-self: flex-start;
+                margin-bottom: 8px;
             }
 
             .hydro-metrics-section {
-                flex-direction: column;
-                gap: 12px;
+                flex-direction: row;
+                gap: 16px;
+                justify-content: space-around;
+            }
+
+            .hydro-metric-box {
+                min-width: 80px;
             }
 
             .hydro-section-title {
                 writing-mode: horizontal-tb;
                 margin-right: 0;
                 margin-bottom: 8px;
+                text-align: center;
+                font-size: 0.9em;
+            }
+
+            /* Larger touch targets on mobile */
+            .hydro-valve-buttons button {
+                min-height: 52px;
+                font-size: 0.95em;
+                padding: 14px 20px;
+            }
+
+            .hydro-valve-items {
+                flex-direction: column;
+                width: 100%;
+                gap: 16px;
+            }
+
+            .hydro-valve-item {
+                width: 100%;
+                min-width: unset;
+            }
+
+            .hydro-valve-buttons {
+                gap: 12px;
+            }
+
+            /* Stack water level items vertically on mobile */
+            .hydro-water-items {
+                flex-direction: column;
+                gap: 8px;
+                width: 100%;
+            }
+
+            .hydro-water-item {
+                display: flex;
+                justify-content: space-between;
+                padding: 8px;
+                background: rgba(0, 0, 0, 0.3);
+                border-radius: 4px;
+            }
+
+            .hydro-water-label {
+                text-align: left;
+                margin-bottom: 0;
+            }
+
+            .hydro-water-value {
+                text-align: right;
             }
         }
 
@@ -1535,6 +1683,12 @@
                                         <div class="card-drag-handle" title="Drag to reorder">⋮⋮</div>
                                         <div class="card-content">
                                             <div class="hydro-single-row">
+                                                <!-- Status Badge -->
+                                                <div class="hydro-status-badge" id="hydro-status-badge-${device.device_id}">
+                                                    <span class="status-dot online"></span>
+                                                    <span class="status-text">ONLINE</span>
+                                                </div>
+
                                                 <!-- pH/EC/TDS Metrics -->
                                                 <div class="hydro-metrics-section">
                                                     <div class="hydro-metric-box">
@@ -2432,6 +2586,18 @@
             if (data.firmware_version) {
                 const versionEl = document.getElementById(`version-${device_id}`);
                 if (versionEl) versionEl.textContent = data.firmware_version;
+            }
+
+            // Update status badge (assume online if we're receiving data)
+            const statusBadge = document.getElementById(`hydro-status-badge-${device_id}`);
+            if (statusBadge) {
+                const statusDot = statusBadge.querySelector('.status-dot');
+                const statusText = statusBadge.querySelector('.status-text');
+
+                // Set to online since we're receiving data
+                statusBadge.classList.remove('offline');
+                if (statusDot) statusDot.classList.remove('offline');
+                if (statusText) statusText.textContent = 'ONLINE';
             }
 
             // Update sensor readings (note: field is "pH" with capital H)
