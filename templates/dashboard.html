@@ -3221,11 +3221,20 @@
         }
 
         function updateHydroControllerDisplay(device_id, data) {
-            // Store device settings for temperature unit
+            // Store device settings for temperature unit and ranges
             if (!window.hydroDeviceSettings) window.hydroDeviceSettings = {};
-            if (data.settings && data.settings.use_fahrenheit !== undefined) {
+            if (data.settings) {
+                // Store all settings including ranges
                 window.hydroDeviceSettings[device_id] = {
-                    use_fahrenheit: data.settings.use_fahrenheit
+                    use_fahrenheit: data.settings.use_fahrenheit,
+                    ph_min: data.settings.ph_min,
+                    ph_max: data.settings.ph_max,
+                    ec_min: data.settings.ec_min,
+                    ec_max: data.settings.ec_max,
+                    water_temp_min: data.settings.water_temp_min,
+                    water_temp_max: data.settings.water_temp_max,
+                    air_temp_min: data.settings.air_temp_min,
+                    air_temp_max: data.settings.air_temp_max
                 };
             }
 
@@ -3252,30 +3261,30 @@
             const ecEl = document.getElementById(`ec-value-${device_id}`);
             const tdsEl = document.getElementById(`tds-value-${device_id}`);
 
-            // Get settings for range checking (use defaults if not available)
+            // Get settings for range checking (only use device settings, no defaults!)
             const settings = window.hydroDeviceSettings?.[device_id] || {};
-            const phMin = settings.ph_min || 5.5;
-            const phMax = settings.ph_max || 6.5;
-            const ecMin = settings.ec_min || 0.5;
-            const ecMax = settings.ec_max || 3.0;
 
             if (phEl && data.pH !== null && data.pH !== undefined) {
                 phEl.textContent = data.pH.toFixed(2);
-                // Check if pH is out of range
-                if (data.pH < phMin || data.pH > phMax) {
-                    phEl.classList.add('out-of-range');
-                } else {
-                    phEl.classList.remove('out-of-range');
+                // Check if pH is out of range (only if we have device settings)
+                if (settings.ph_min !== undefined && settings.ph_max !== undefined) {
+                    if (data.pH < settings.ph_min || data.pH > settings.ph_max) {
+                        phEl.classList.add('out-of-range');
+                    } else {
+                        phEl.classList.remove('out-of-range');
+                    }
                 }
             }
 
             if (ecEl && data.ec !== null && data.ec !== undefined) {
                 ecEl.textContent = data.ec.toFixed(2);
-                // Check if EC is out of range
-                if (data.ec < ecMin || data.ec > ecMax) {
-                    ecEl.classList.add('out-of-range');
-                } else {
-                    ecEl.classList.remove('out-of-range');
+                // Check if EC is out of range (only if we have device settings)
+                if (settings.ec_min !== undefined && settings.ec_max !== undefined) {
+                    if (data.ec < settings.ec_min || data.ec > settings.ec_max) {
+                        ecEl.classList.add('out-of-range');
+                    } else {
+                        ecEl.classList.remove('out-of-range');
+                    }
                 }
 
                 // Calculate TDS from EC (TDS ≈ EC * 500)
@@ -3297,12 +3306,6 @@
             const useFahrenheit = settings.use_fahrenheit !== false; // Default to F
             const tempUnit = useFahrenheit ? '°F' : '°C';
 
-            // Temperature range thresholds (in Fahrenheit by default, convert if using Celsius)
-            const waterTempMin = settings.water_temp_min || 60;  // °F
-            const waterTempMax = settings.water_temp_max || 80;  // °F
-            const airTempMin = settings.air_temp_min || 65;      // °F
-            const airTempMax = settings.air_temp_max || 85;      // °F
-
             // Check if sensors are enabled from settings (if available)
             const waterTempEnabled = data.settings?.water_temp_enabled !== false; // Default to true if not specified
             const airTempEnabled = data.settings?.air_temp_enabled !== false; // Default to true if not specified
@@ -3313,11 +3316,13 @@
             if (waterTempHeaderEl && waterTempEnabled &&
                 data.water_temp !== null && data.water_temp !== undefined && data.water_temp > 10) {
                 waterTempHeaderEl.textContent = `${Math.round(data.water_temp)}${tempUnit}`;
-                // Check if water temp is out of range
-                if (data.water_temp < waterTempMin || data.water_temp > waterTempMax) {
-                    waterTempHeaderEl.classList.add('out-of-range');
-                } else {
-                    waterTempHeaderEl.classList.remove('out-of-range');
+                // Check if water temp is out of range (only if we have device settings)
+                if (settings.water_temp_min !== undefined && settings.water_temp_max !== undefined) {
+                    if (data.water_temp < settings.water_temp_min || data.water_temp > settings.water_temp_max) {
+                        waterTempHeaderEl.classList.add('out-of-range');
+                    } else {
+                        waterTempHeaderEl.classList.remove('out-of-range');
+                    }
                 }
                 if (waterTempBoxHeader) waterTempBoxHeader.style.display = 'block';
                 hasTempData = true;
@@ -3329,11 +3334,13 @@
             if (airTempHeaderEl && airTempEnabled &&
                 data.air_temp !== null && data.air_temp !== undefined && data.air_temp > 10) {
                 airTempHeaderEl.textContent = `${Math.round(data.air_temp)}${tempUnit}`;
-                // Check if air temp is out of range
-                if (data.air_temp < airTempMin || data.air_temp > airTempMax) {
-                    airTempHeaderEl.classList.add('out-of-range');
-                } else {
-                    airTempHeaderEl.classList.remove('out-of-range');
+                // Check if air temp is out of range (only if we have device settings)
+                if (settings.air_temp_min !== undefined && settings.air_temp_max !== undefined) {
+                    if (data.air_temp < settings.air_temp_min || data.air_temp > settings.air_temp_max) {
+                        airTempHeaderEl.classList.add('out-of-range');
+                    } else {
+                        airTempHeaderEl.classList.remove('out-of-range');
+                    }
                 }
                 if (airTempBoxHeader) airTempBoxHeader.style.display = 'block';
                 hasTempData = true;
