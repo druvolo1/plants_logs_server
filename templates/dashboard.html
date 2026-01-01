@@ -1777,11 +1777,13 @@
 
         async function fetchNotifications() {
             try {
+                console.log('[NOTIFICATIONS] Fetching notifications...');
                 // Fetch all notifications (not just active) to show recent cleared ones too
                 const response = await fetch('/notifications?limit=100');
                 if (!response.ok) throw new Error('Failed to fetch notifications');
 
                 allNotifications = await response.json();
+                console.log('[NOTIFICATIONS] Received', allNotifications.length, 'notifications:', allNotifications);
                 renderNotifications();
                 updateBadge();
             } catch (error) {
@@ -1835,6 +1837,11 @@
 
             // Sort notifications
             notifications = sortNotifications(notifications);
+
+            console.log('[NOTIFICATIONS] Rendering', notifications.length, 'notifications');
+            notifications.forEach(n => {
+                console.log(`  - device_id: ${n.device_id}, device_name: ${n.device_name}, will show: ${n.device_name || n.device_id}`);
+            });
 
             listEl.innerHTML = notifications.map(notif => `
                 <div class="notification-item severity-${notif.severity} ${notif.status !== 'ACTIVE' ? 'cleared' : ''}">
