@@ -323,7 +323,8 @@ async def clear_notification(
     await send_to_device(notification.device_id, {
         "type": "clear_notification",
         "notification_id": notification_id,
-        "alert_type": notification.alert_type
+        "alert_type": notification.alert_type,
+        "alert_type_id": notification.alert_type_id
     })
 
     # Broadcast to all users that notifications were updated
