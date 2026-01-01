@@ -220,16 +220,21 @@
             position: relative;
         }
 
-        .notification-item.severity-info {
+        .notification-item.severity-INFO {
             border-left-color: #3b82f6;
         }
 
-        .notification-item.severity-warning {
+        .notification-item.severity-WARNING {
             border-left-color: #f59e0b;
         }
 
-        .notification-item.severity-critical {
+        .notification-item.severity-CRITICAL {
             border-left-color: #ef4444;
+        }
+
+        .notification-item.cleared {
+            opacity: 0.6;
+            background: #2d3748;
         }
 
         .notification-item-header {
@@ -253,17 +258,17 @@
             font-weight: 600;
         }
 
-        .notification-severity.severity-info {
+        .notification-severity.severity-INFO {
             background: rgba(59, 130, 246, 0.2);
             color: #60a5fa;
         }
 
-        .notification-severity.severity-warning {
+        .notification-severity.severity-WARNING {
             background: rgba(245, 158, 11, 0.2);
             color: #fbbf24;
         }
 
-        .notification-severity.severity-critical {
+        .notification-severity.severity-CRITICAL {
             background: rgba(239, 68, 68, 0.2);
             color: #f87171;
         }
@@ -1755,7 +1760,8 @@
 
         async function fetchNotifications() {
             try {
-                const response = await fetch('/notifications?active_only=true&limit=100');
+                // Fetch all notifications (not just active) to show recent cleared ones too
+                const response = await fetch('/notifications?limit=100');
                 if (!response.ok) throw new Error('Failed to fetch notifications');
 
                 allNotifications = await response.json();
@@ -1778,15 +1784,15 @@
             }
 
             listEl.innerHTML = notifications.map(notif => `
-                <div class="notification-item severity-${notif.severity}">
+                <div class="notification-item severity-${notif.severity} ${notif.status !== 'ACTIVE' ? 'cleared' : ''}">
                     <div class="notification-item-header">
-                        <div class="notification-source">${notif.source}</div>
+                        <div class="notification-source">${notif.source} ${notif.status !== 'ACTIVE' ? '(Cleared)' : ''}</div>
                         <div class="notification-severity severity-${notif.severity}">${notif.severity}</div>
                     </div>
                     <div class="notification-message">${notif.message}</div>
                     <div class="notification-footer">
                         <div class="notification-time">${formatNotificationTime(notif.created_at)}</div>
-                        <button class="notification-clear-btn" onclick="clearNotification(${notif.id})">Clear</button>
+                        ${notif.status === 'ACTIVE' ? `<button class="notification-clear-btn" onclick="clearNotification(${notif.id})">Clear</button>` : ''}
                     </div>
                 </div>
             `).join('');
@@ -1794,10 +1800,11 @@
 
         function updateBadge() {
             const badgeEl = document.getElementById('notification-badge');
-            const count = notificationsMuted ? 0 : allNotifications.length;
+            // Only count ACTIVE notifications for the badge
+            const activeCount = notificationsMuted ? 0 : allNotifications.filter(n => n.status === 'ACTIVE').length;
 
-            if (count > 0) {
-                badgeEl.textContent = count > 99 ? '99+' : count;
+            if (activeCount > 0) {
+                badgeEl.textContent = activeCount > 99 ? '99+' : activeCount;
                 badgeEl.classList.remove('hidden');
             } else {
                 badgeEl.classList.add('hidden');
