@@ -47,7 +47,7 @@ class NotificationInDB(NotificationBase):
 
 class NotificationRead(NotificationInDB):
     """Notification response schema"""
-    pass
+    device_name: Optional[str] = None  # Device display name (from join with devices table)
 
 
 class NotificationSummary(BaseModel):
