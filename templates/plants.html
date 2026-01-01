@@ -934,7 +934,7 @@
                     // Check if session expired (401 Unauthorized)
                     if (response.status === 401) {
                         console.log('Session expired, redirecting to login...');
-                        window.location.href = '/auth/login';
+                        window.location.href = '/login';
                         return Promise.reject(new Error('Session expired'));
                     }
                     return response;
