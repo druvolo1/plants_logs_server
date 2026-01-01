@@ -759,6 +759,18 @@
             font-weight: 700;
         }
 
+        /* Out-of-range warning styles */
+        .hydro-metric-value.out-of-range,
+        .hydro-temp-value.out-of-range {
+            color: #ff6b6b !important;
+            animation: pulse-warning 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse-warning {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
         .hydro-valves-section {
             display: flex;
             gap: 12px;
@@ -3240,12 +3252,31 @@
             const ecEl = document.getElementById(`ec-value-${device_id}`);
             const tdsEl = document.getElementById(`tds-value-${device_id}`);
 
+            // Get settings for range checking (use defaults if not available)
+            const settings = window.hydroDeviceSettings?.[device_id] || {};
+            const phMin = settings.ph_min || 5.5;
+            const phMax = settings.ph_max || 6.5;
+            const ecMin = settings.ec_min || 0.5;
+            const ecMax = settings.ec_max || 3.0;
+
             if (phEl && data.pH !== null && data.pH !== undefined) {
                 phEl.textContent = data.pH.toFixed(2);
+                // Check if pH is out of range
+                if (data.pH < phMin || data.pH > phMax) {
+                    phEl.classList.add('out-of-range');
+                } else {
+                    phEl.classList.remove('out-of-range');
+                }
             }
 
             if (ecEl && data.ec !== null && data.ec !== undefined) {
                 ecEl.textContent = data.ec.toFixed(2);
+                // Check if EC is out of range
+                if (data.ec < ecMin || data.ec > ecMax) {
+                    ecEl.classList.add('out-of-range');
+                } else {
+                    ecEl.classList.remove('out-of-range');
+                }
 
                 // Calculate TDS from EC (TDS ≈ EC * 500)
                 if (tdsEl) {
@@ -3263,9 +3294,14 @@
             const tempDividerHeader = document.getElementById(`temp-divider-header-${device_id}`);
 
             // Get temperature unit and enabled flags from settings
-            const settings = window.hydroDeviceSettings?.[device_id] || {};
             const useFahrenheit = settings.use_fahrenheit !== false; // Default to F
             const tempUnit = useFahrenheit ? '°F' : '°C';
+
+            // Temperature range thresholds (in Fahrenheit by default, convert if using Celsius)
+            const waterTempMin = settings.water_temp_min || 60;  // °F
+            const waterTempMax = settings.water_temp_max || 80;  // °F
+            const airTempMin = settings.air_temp_min || 65;      // °F
+            const airTempMax = settings.air_temp_max || 85;      // °F
 
             // Check if sensors are enabled from settings (if available)
             const waterTempEnabled = data.settings?.water_temp_enabled !== false; // Default to true if not specified
@@ -3277,6 +3313,12 @@
             if (waterTempHeaderEl && waterTempEnabled &&
                 data.water_temp !== null && data.water_temp !== undefined && data.water_temp > 10) {
                 waterTempHeaderEl.textContent = `${Math.round(data.water_temp)}${tempUnit}`;
+                // Check if water temp is out of range
+                if (data.water_temp < waterTempMin || data.water_temp > waterTempMax) {
+                    waterTempHeaderEl.classList.add('out-of-range');
+                } else {
+                    waterTempHeaderEl.classList.remove('out-of-range');
+                }
                 if (waterTempBoxHeader) waterTempBoxHeader.style.display = 'block';
                 hasTempData = true;
             } else if (waterTempBoxHeader) {
@@ -3287,6 +3329,12 @@
             if (airTempHeaderEl && airTempEnabled &&
                 data.air_temp !== null && data.air_temp !== undefined && data.air_temp > 10) {
                 airTempHeaderEl.textContent = `${Math.round(data.air_temp)}${tempUnit}`;
+                // Check if air temp is out of range
+                if (data.air_temp < airTempMin || data.air_temp > airTempMax) {
+                    airTempHeaderEl.classList.add('out-of-range');
+                } else {
+                    airTempHeaderEl.classList.remove('out-of-range');
+                }
                 if (airTempBoxHeader) airTempBoxHeader.style.display = 'block';
                 hasTempData = true;
             } else if (airTempBoxHeader) {
