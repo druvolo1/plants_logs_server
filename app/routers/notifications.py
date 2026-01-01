@@ -168,9 +168,14 @@ async def get_notifications(
     print(f"[NOTIFICATIONS] Retrieved {len(rows)} notifications")
 
     # Add device_name to each notification
+    from datetime import timezone
     notifications = []
     for notif, device_name in rows:
         print(f"[NOTIFICATIONS] Device {notif.device_id} -> name from query: '{device_name}'")
+        # Convert datetimes to UTC to ensure consistent timezone handling
+        created_at_utc = notif.created_at.astimezone(timezone.utc) if notif.created_at.tzinfo else notif.created_at
+        updated_at_utc = notif.updated_at.astimezone(timezone.utc) if notif.updated_at.tzinfo else notif.updated_at
+
         notif_dict = {
             "id": notif.id,
             "device_id": notif.device_id,
@@ -184,8 +189,8 @@ async def get_notifications(
             "first_occurrence": notif.first_occurrence,
             "last_occurrence": notif.last_occurrence,
             "cleared_at": notif.cleared_at,
-            "created_at": notif.created_at,
-            "updated_at": notif.updated_at,
+            "created_at": created_at_utc,
+            "updated_at": updated_at_utc,
         }
         notifications.append(notif_dict)
 
