@@ -716,6 +716,36 @@ async def init_database():
                 """
             )
 
+            print("\nChecking 'notifications' table...")
+
+            # Create notifications table if it doesn't exist
+            await check_and_create_table(
+                conn,
+                'notifications',
+                """
+                CREATE TABLE notifications (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    device_id VARCHAR(100) NOT NULL COMMENT 'Device identifier (matches devices.device_id)',
+                    alert_type VARCHAR(100) NOT NULL COMMENT 'Alert type string (e.g., PH_OUT_OF_RANGE)',
+                    alert_type_id INT NOT NULL COMMENT 'Numeric alert type ID from device enum',
+                    severity ENUM('info', 'warning', 'critical') NOT NULL,
+                    status ENUM('active', 'self_cleared', 'user_cleared') NOT NULL DEFAULT 'active',
+                    source VARCHAR(200) NOT NULL COMMENT 'Source component (e.g., pH Probe, EC Probe)',
+                    message TEXT NOT NULL COMMENT 'Detailed alert message',
+                    first_occurrence BIGINT UNSIGNED NOT NULL COMMENT 'Timestamp (millis) when first occurred',
+                    last_occurrence BIGINT UNSIGNED NULL COMMENT 'Timestamp (millis) when last reported',
+                    cleared_at BIGINT UNSIGNED NULL COMMENT 'Timestamp (millis) when cleared',
+                    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    UNIQUE KEY unique_device_alert (device_id, alert_type),
+                    INDEX idx_status_cleared (status, cleared_at),
+                    INDEX idx_device_status (device_id, status),
+                    INDEX idx_severity (severity),
+                    INDEX idx_created_at (created_at)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Device notifications and alerts'
+                """
+            )
+
             print("\n" + "="*80)
             print("✓ Database initialization complete!")
             print("="*80 + "\n")

@@ -23,6 +23,8 @@ from dotenv import load_dotenv
 import os
 import secrets  # Added for API key
 import jwt  # Added for WebSocket JWT decoding
+import asyncio
+import time
 
 # Added for WS
 from fastapi import WebSocket, Query
@@ -30,7 +32,7 @@ from starlette.websockets import WebSocketDisconnect
 from starlette.responses import RedirectResponse
 from collections import defaultdict
 import json
-from sqlalchemy import update
+from sqlalchemy import update, delete, and_, or_
 
 load_dotenv()
 DATABASE_URL = os.getenv("DATABASE_URL")
@@ -66,6 +68,8 @@ from app.models import (
     DeviceAssignment,
     LogEntry,
     EnvironmentLog,
+    Notification,
+    NotificationStatus,
 )
 
 async def create_db_and_tables():
@@ -400,7 +404,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
 # Include routers
-from app.routers import templates_router, locations_router, admin_router, logs_router, plants_router, plants_api_router, devices_router, devices_api_router, auth_router, auth_api_router, websocket_router, pages_router, firmware_router
+from app.routers import templates_router, locations_router, admin_router, logs_router, plants_router, plants_api_router, devices_router, devices_api_router, auth_router, auth_api_router, websocket_router, pages_router, firmware_router, notifications_router
 app.include_router(templates_router)
 app.include_router(locations_router)
 app.include_router(admin_router)
@@ -414,6 +418,7 @@ app.include_router(auth_api_router)
 app.include_router(websocket_router)
 app.include_router(pages_router)
 app.include_router(firmware_router)
+app.include_router(notifications_router)
 
 # Global exception handler for suspended/pending users
 @app.exception_handler(HTTPException)
@@ -470,12 +475,51 @@ async def http_exception_handler(request: Request, exc: HTTPException):
         return templates.TemplateResponse("suspended.html", {"request": request}, status_code=400)
     return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
 
+async def cleanup_old_notifications_task():
+    """
+    Background task that periodically cleans up old cleared notifications.
+    Runs every hour and removes notifications that have been cleared for more than 24 hours.
+    """
+    while True:
+        try:
+            # Wait 1 hour between cleanup runs
+            await asyncio.sleep(3600)
+
+            print("[NOTIFICATION CLEANUP] Starting cleanup of old notifications...")
+
+            # Calculate cutoff time (24 hours ago in millis)
+            cutoff_millis = int((time.time() - 24 * 60 * 60) * 1000)
+
+            async with async_session_maker() as session:
+                # Delete cleared notifications older than 24 hours
+                stmt = delete(Notification).where(
+                    and_(
+                        or_(
+                            Notification.status == NotificationStatus.SELF_CLEARED,
+                            Notification.status == NotificationStatus.USER_CLEARED
+                        ),
+                        Notification.cleared_at < cutoff_millis
+                    )
+                )
+
+                result = await session.execute(stmt)
+                await session.commit()
+
+                deleted_count = result.rowcount
+                print(f"[NOTIFICATION CLEANUP] Deleted {deleted_count} old notification(s)")
+
+        except Exception as e:
+            print(f"[NOTIFICATION CLEANUP] ERROR during cleanup: {e}")
+            import traceback
+            traceback.print_exc()
+
+
 @app.on_event("startup")
 async def on_startup():
     # Initialize database schema (add missing columns if needed)
     from app.init_database import init_database
     await init_database()
-    
+
     await create_db_and_tables()
     print("Tables created or already exist.")
     async with async_session_maker() as session:
@@ -497,6 +541,10 @@ async def on_startup():
             print("Admin created.")
         else:
             print("Admin already exists.")
+
+    # Start background task for notification cleanup
+    asyncio.create_task(cleanup_old_notifications_task())
+    print("[NOTIFICATION CLEANUP] Background cleanup task started")
 
 if __name__ == "__main__":
     import uvicorn

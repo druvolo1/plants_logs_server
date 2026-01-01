@@ -88,7 +88,249 @@
             transform: translateY(-1px);
             box-shadow: 0 4px 8px rgba(239, 68, 68, 0.3);
         }
-        
+
+        /* Notification Bell Icon */
+        .notification-bell {
+            position: relative;
+            cursor: pointer;
+            padding: 0.5rem;
+            color: #94a3b8;
+            font-size: 1.25rem;
+            transition: color 0.2s;
+        }
+
+        .notification-bell:hover {
+            color: #10b981;
+        }
+
+        .notification-badge {
+            position: absolute;
+            top: 0;
+            right: 0;
+            background: #ef4444;
+            color: white;
+            border-radius: 50%;
+            width: 18px;
+            height: 18px;
+            font-size: 0.65rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+        }
+
+        .notification-badge.hidden {
+            display: none;
+        }
+
+        /* Notification Drawer */
+        .notification-drawer {
+            position: fixed;
+            top: 0;
+            right: -400px;
+            width: 400px;
+            height: 100vh;
+            background: #1e293b;
+            box-shadow: -2px 0 10px rgba(0, 0, 0, 0.5);
+            transition: right 0.3s ease;
+            z-index: 2000;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .notification-drawer.open {
+            right: 0;
+        }
+
+        .notification-drawer-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid #334155;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .notification-drawer-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #10b981;
+        }
+
+        .notification-close-btn {
+            background: none;
+            border: none;
+            color: #94a3b8;
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 0.25rem 0.5rem;
+            transition: color 0.2s;
+        }
+
+        .notification-close-btn:hover {
+            color: #10b981;
+        }
+
+        .notification-drawer-controls {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid #334155;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .master-mute-toggle {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .master-mute-toggle label {
+            color: #cbd5e1;
+            font-size: 0.9rem;
+        }
+
+        .notification-clear-all-btn {
+            background: #ef4444;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: background 0.2s;
+        }
+
+        .notification-clear-all-btn:hover {
+            background: #dc2626;
+        }
+
+        .notification-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1rem;
+        }
+
+        .notification-item {
+            background: #334155;
+            border-left: 4px solid #64748b;
+            padding: 1rem;
+            margin-bottom: 0.75rem;
+            border-radius: 4px;
+            position: relative;
+        }
+
+        .notification-item.severity-info {
+            border-left-color: #3b82f6;
+        }
+
+        .notification-item.severity-warning {
+            border-left-color: #f59e0b;
+        }
+
+        .notification-item.severity-critical {
+            border-left-color: #ef4444;
+        }
+
+        .notification-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 0.5rem;
+        }
+
+        .notification-source {
+            font-weight: 600;
+            color: #10b981;
+            font-size: 0.9rem;
+        }
+
+        .notification-severity {
+            font-size: 0.75rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: 3px;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        .notification-severity.severity-info {
+            background: rgba(59, 130, 246, 0.2);
+            color: #60a5fa;
+        }
+
+        .notification-severity.severity-warning {
+            background: rgba(245, 158, 11, 0.2);
+            color: #fbbf24;
+        }
+
+        .notification-severity.severity-critical {
+            background: rgba(239, 68, 68, 0.2);
+            color: #f87171;
+        }
+
+        .notification-message {
+            color: #cbd5e1;
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .notification-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 0.5rem;
+        }
+
+        .notification-time {
+            font-size: 0.75rem;
+            color: #64748b;
+        }
+
+        .notification-clear-btn {
+            background: #475569;
+            color: white;
+            border: none;
+            padding: 0.25rem 0.75rem;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 0.75rem;
+            transition: background 0.2s;
+        }
+
+        .notification-clear-btn:hover {
+            background: #10b981;
+        }
+
+        .notification-empty {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: #64748b;
+        }
+
+        /* Notification overlay */
+        .notification-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1999;
+            display: none;
+        }
+
+        .notification-overlay.open {
+            display: block;
+        }
+
+        /* Mobile responsiveness for drawer */
+        @media (max-width: 768px) {
+            .notification-drawer {
+                width: 100%;
+                right: -100%;
+            }
+        }
+
         /* Device section layout */
         .device-section {
             margin-bottom: 10px;
@@ -1412,11 +1654,36 @@
                 <a href="/admin/overview" class="navbar-link">Admin Overview</a>
                 <a href="/admin/users" class="navbar-link">Users</a>
                 {% endif %}
+                <div class="notification-bell" onclick="toggleNotificationDrawer()">
+                    🔔
+                    <div class="notification-badge hidden" id="notification-badge">0</div>
+                </div>
                 <span class="navbar-user">{{ user.email }}</span>
                 <a href="/auth/logout" class="navbar-logout">Logout</a>
             </div>
         </div>
     </nav>
+
+    <!-- Notification Drawer Overlay -->
+    <div class="notification-overlay" id="notification-overlay" onclick="closeNotificationDrawer()"></div>
+
+    <!-- Notification Drawer -->
+    <div class="notification-drawer" id="notification-drawer">
+        <div class="notification-drawer-header">
+            <div class="notification-drawer-title">Notifications</div>
+            <button class="notification-close-btn" onclick="closeNotificationDrawer()">×</button>
+        </div>
+        <div class="notification-drawer-controls">
+            <div class="master-mute-toggle">
+                <input type="checkbox" id="master-mute-checkbox" onchange="toggleMasterMute()">
+                <label for="master-mute-checkbox">Mute All</label>
+            </div>
+            <button class="notification-clear-all-btn" onclick="clearAllNotifications()">Clear All</button>
+        </div>
+        <div class="notification-list" id="notification-list">
+            <div class="notification-empty">No active notifications</div>
+        </div>
+    </div>
 
     <script>
         // Toggle mobile menu
@@ -1446,6 +1713,154 @@
                 menu.classList.remove('mobile-open');
             }
         });
+
+        // ====== Notification System ======
+        let notificationsMuted = localStorage.getItem('notificationsMuted') === 'true';
+        let allNotifications = [];
+
+        // Initialize mute checkbox state
+        if (notificationsMuted) {
+            document.getElementById('master-mute-checkbox').checked = true;
+        }
+
+        function toggleNotificationDrawer() {
+            const drawer = document.getElementById('notification-drawer');
+            const overlay = document.getElementById('notification-overlay');
+            const isOpen = drawer.classList.contains('open');
+
+            if (!isOpen) {
+                drawer.classList.add('open');
+                overlay.classList.add('open');
+                fetchNotifications();
+            } else {
+                closeNotificationDrawer();
+            }
+        }
+
+        function closeNotificationDrawer() {
+            const drawer = document.getElementById('notification-drawer');
+            const overlay = document.getElementById('notification-overlay');
+            drawer.classList.remove('open');
+            overlay.classList.remove('open');
+        }
+
+        function toggleMasterMute() {
+            const checkbox = document.getElementById('master-mute-checkbox');
+            notificationsMuted = checkbox.checked;
+            localStorage.setItem('notificationsMuted', notificationsMuted);
+
+            // Update UI to hide/show notifications based on mute
+            renderNotifications();
+        }
+
+        async function fetchNotifications() {
+            try {
+                const response = await fetch('/notifications?active_only=true&limit=100');
+                if (!response.ok) throw new Error('Failed to fetch notifications');
+
+                allNotifications = await response.json();
+                renderNotifications();
+                updateBadge();
+            } catch (error) {
+                console.error('Error fetching notifications:', error);
+            }
+        }
+
+        function renderNotifications() {
+            const listEl = document.getElementById('notification-list');
+
+            // Filter out notifications if muted
+            const notifications = notificationsMuted ? [] : allNotifications;
+
+            if (notifications.length === 0) {
+                listEl.innerHTML = `<div class="notification-empty">${notificationsMuted ? 'Notifications muted' : 'No active notifications'}</div>`;
+                return;
+            }
+
+            listEl.innerHTML = notifications.map(notif => `
+                <div class="notification-item severity-${notif.severity}">
+                    <div class="notification-item-header">
+                        <div class="notification-source">${notif.source}</div>
+                        <div class="notification-severity severity-${notif.severity}">${notif.severity}</div>
+                    </div>
+                    <div class="notification-message">${notif.message}</div>
+                    <div class="notification-footer">
+                        <div class="notification-time">${formatNotificationTime(notif.created_at)}</div>
+                        <button class="notification-clear-btn" onclick="clearNotification(${notif.id})">Clear</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function updateBadge() {
+            const badgeEl = document.getElementById('notification-badge');
+            const count = notificationsMuted ? 0 : allNotifications.length;
+
+            if (count > 0) {
+                badgeEl.textContent = count > 99 ? '99+' : count;
+                badgeEl.classList.remove('hidden');
+            } else {
+                badgeEl.classList.add('hidden');
+            }
+        }
+
+        function formatNotificationTime(timestamp) {
+            const date = new Date(timestamp);
+            const now = new Date();
+            const diffMs = now - date;
+            const diffMins = Math.floor(diffMs / 60000);
+            const diffHours = Math.floor(diffMs / 3600000);
+            const diffDays = Math.floor(diffMs / 86400000);
+
+            if (diffMins < 1) return 'Just now';
+            if (diffMins < 60) return `${diffMins}m ago`;
+            if (diffHours < 24) return `${diffHours}h ago`;
+            if (diffDays < 7) return `${diffDays}d ago`;
+            return date.toLocaleDateString();
+        }
+
+        async function clearNotification(notificationId) {
+            try {
+                const response = await fetch(`/notifications/${notificationId}/clear`, {
+                    method: 'POST'
+                });
+
+                if (!response.ok) throw new Error('Failed to clear notification');
+
+                // Remove from local array
+                allNotifications = allNotifications.filter(n => n.id !== notificationId);
+                renderNotifications();
+                updateBadge();
+            } catch (error) {
+                console.error('Error clearing notification:', error);
+                alert('Failed to clear notification');
+            }
+        }
+
+        async function clearAllNotifications() {
+            if (!confirm('Clear all notifications?')) return;
+
+            try {
+                const response = await fetch('/notifications/clear-all', {
+                    method: 'POST'
+                });
+
+                if (!response.ok) throw new Error('Failed to clear all notifications');
+
+                allNotifications = [];
+                renderNotifications();
+                updateBadge();
+            } catch (error) {
+                console.error('Error clearing all notifications:', error);
+                alert('Failed to clear all notifications');
+            }
+        }
+
+        // Fetch notifications on page load
+        fetchNotifications();
+
+        // Refresh notifications every 30 seconds
+        setInterval(fetchNotifications, 30000);
     </script>
 
     <div class="main-container" style="padding: 2rem 1.5rem; max-width: 1400px; margin: 0 auto;">

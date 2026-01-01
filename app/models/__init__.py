@@ -9,6 +9,7 @@ from .location import Location, LocationShare
 from .plant import Plant, PhaseTemplate, PhaseHistory, DeviceAssignment
 from .logs import LogEntry, EnvironmentLog, PlantReport
 from .firmware import Firmware, DeviceFirmwareAssignment
+from .notification import Notification, NotificationSeverity, NotificationStatus
 
 __all__ = [
     "Base",
@@ -30,4 +31,7 @@ __all__ = [
     "PlantReport",
     "Firmware",
     "DeviceFirmwareAssignment",
+    "Notification",
+    "NotificationSeverity",
+    "NotificationStatus",
 ]

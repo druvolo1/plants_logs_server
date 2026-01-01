@@ -2,18 +2,20 @@
 """
 WebSocket endpoints for device and user real-time communication.
 """
-from typing import Dict, List
+from typing import Dict, List, Optional
 from datetime import datetime
 from collections import defaultdict
 import json
+import time
 
 from fastapi import APIRouter, Depends, WebSocket, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update, or_
+from sqlalchemy import select, update, or_, func
+from sqlalchemy.dialects.mysql import insert
 from starlette.websockets import WebSocketDisconnect
 import jwt
 
-from app.models import User, Device, DeviceShare, LocationShare, DeviceFirmwareAssignment, DeviceConnection
+from app.models import User, Device, DeviceShare, LocationShare, DeviceFirmwareAssignment, DeviceConnection, Notification, NotificationSeverity, NotificationStatus
 
 router = APIRouter(tags=["websocket"])
 
@@ -38,6 +40,173 @@ def get_async_session_maker():
     """Import and return async_session_maker"""
     from app.main import async_session_maker
     return async_session_maker
+
+
+async def send_to_device(device_id: str, message: dict):
+    """
+    Send a message to a device via WebSocket if it's connected.
+    Used for sending commands from server to device (e.g., clear notification).
+    """
+    if device_id in device_connections:
+        try:
+            await device_connections[device_id].send_json(message)
+            print(f"Sent message to device {device_id}: {json.dumps(message)}")
+            return True
+        except Exception as e:
+            print(f"ERROR sending message to device {device_id}: {e}")
+            return False
+    else:
+        print(f"Device {device_id} not connected, cannot send message")
+        return False
+
+
+async def generate_device_offline_alert(device_id: str, session: AsyncSession):
+    """
+    Generate a server-side DEVICE_OFFLINE alert when device disconnects.
+    """
+    try:
+        current_millis = int(time.time() * 1000)
+
+        # Upsert DEVICE_OFFLINE notification
+        stmt = insert(Notification).values(
+            device_id=device_id,
+            alert_type='DEVICE_OFFLINE',
+            alert_type_id=1000,  # Server-generated alert ID range
+            severity=NotificationSeverity.WARNING,
+            status=NotificationStatus.ACTIVE,
+            source='Server',
+            message='Device has gone offline',
+            first_occurrence=current_millis,
+            last_occurrence=current_millis,
+            cleared_at=None
+        )
+
+        stmt = stmt.on_duplicate_key_update(
+            status=NotificationStatus.ACTIVE,
+            last_occurrence=current_millis,
+            cleared_at=None,
+            updated_at=func.now()
+        )
+
+        await session.execute(stmt)
+        await session.commit()
+        print(f"[SERVER ALERT] Generated DEVICE_OFFLINE alert for {device_id}")
+
+    except Exception as e:
+        print(f"[SERVER ALERT] ERROR generating DEVICE_OFFLINE alert for {device_id}: {e}")
+        import traceback
+        traceback.print_exc()
+
+
+async def clear_device_offline_alert(device_id: str, session: AsyncSession):
+    """
+    Clear the DEVICE_OFFLINE alert when device comes back online (self-clear).
+    """
+    try:
+        current_millis = int(time.time() * 1000)
+
+        # Update existing DEVICE_OFFLINE notification to self-cleared
+        stmt = update(Notification).where(
+            and_(
+                Notification.device_id == device_id,
+                Notification.alert_type == 'DEVICE_OFFLINE',
+                Notification.status == NotificationStatus.ACTIVE
+            )
+        ).values(
+            status=NotificationStatus.SELF_CLEARED,
+            cleared_at=current_millis
+        )
+
+        result = await session.execute(stmt)
+        await session.commit()
+
+        if result.rowcount > 0:
+            print(f"[SERVER ALERT] Cleared DEVICE_OFFLINE alert for {device_id}")
+
+    except Exception as e:
+        print(f"[SERVER ALERT] ERROR clearing DEVICE_OFFLINE alert for {device_id}: {e}")
+        import traceback
+        traceback.print_exc()
+
+
+async def process_device_notifications(device_id: str, notifications: List[dict], session: AsyncSession):
+    """
+    Process notifications from device and upsert to database.
+    Uses (device_id, alert_type) unique constraint for deduplication.
+    """
+    for notif in notifications:
+        try:
+            # Map device notification fields to database schema
+            alert_type = notif.get('alert_type', notif.get('type', 'UNKNOWN'))
+            alert_type_id = notif.get('alert_type_id', notif.get('id', 0))
+
+            # Map severity (info/warning/critical)
+            severity_str = notif.get('severity', 'info').lower()
+            if severity_str == 'info':
+                severity = NotificationSeverity.INFO
+            elif severity_str == 'warning':
+                severity = NotificationSeverity.WARNING
+            elif severity_str == 'critical':
+                severity = NotificationSeverity.CRITICAL
+            else:
+                severity = NotificationSeverity.INFO
+
+            # Map status (active/self_cleared/user_cleared)
+            status_str = notif.get('status', 'active').lower()
+            if status_str == 'active':
+                status = NotificationStatus.ACTIVE
+            elif status_str == 'self_cleared':
+                status = NotificationStatus.SELF_CLEARED
+            elif status_str == 'user_cleared':
+                status = NotificationStatus.USER_CLEARED
+            else:
+                status = NotificationStatus.ACTIVE
+
+            source = notif.get('source', 'Unknown')
+            message = notif.get('message', '')
+            first_occurrence = notif.get('first_occurrence', int(time.time() * 1000))
+            last_occurrence = notif.get('last_occurrence')
+            cleared_at = notif.get('cleared_at')
+
+            # Upsert notification using MySQL INSERT ... ON DUPLICATE KEY UPDATE
+            stmt = insert(Notification).values(
+                device_id=device_id,
+                alert_type=alert_type,
+                alert_type_id=alert_type_id,
+                severity=severity,
+                status=status,
+                source=source,
+                message=message,
+                first_occurrence=first_occurrence,
+                last_occurrence=last_occurrence,
+                cleared_at=cleared_at
+            )
+
+            # On duplicate key (device_id, alert_type), update fields
+            stmt = stmt.on_duplicate_key_update(
+                status=status,
+                message=message,
+                last_occurrence=last_occurrence if last_occurrence else stmt.inserted.last_occurrence,
+                cleared_at=cleared_at if cleared_at else stmt.inserted.cleared_at,
+                updated_at=func.now()
+            )
+
+            await session.execute(stmt)
+            print(f"Upserted notification for {device_id}: {alert_type} ({severity.value}, {status.value})")
+
+        except Exception as e:
+            print(f"ERROR processing individual notification for {device_id}: {e}")
+            import traceback
+            traceback.print_exc()
+            continue
+
+    # Commit all notifications
+    try:
+        await session.commit()
+        print(f"Successfully committed {len(notifications)} notification(s) for {device_id}")
+    except Exception as commit_error:
+        print(f"ERROR committing notifications for {device_id}: {commit_error}")
+        await session.rollback()
 
 
 # Device WS endpoint (for Pi/ESP devices)
@@ -82,6 +251,9 @@ async def device_websocket(
                 print(f"CRITICAL ERROR: Database shows {device_id} still offline after update! Closing connection.")
                 await websocket.close()
                 return
+
+            # Clear any DEVICE_OFFLINE server alert (self-clear)
+            await clear_device_offline_alert(device_id, session)
 
         except Exception as db_error:
             print(f"CRITICAL ERROR: Failed to mark {device_id} online in DB: {db_error}")
@@ -152,6 +324,9 @@ async def device_websocket(
                 await session.execute(update(Device).where(Device.device_id == device_id).values(is_online=False, last_seen=datetime.utcnow()))
                 await session.commit()
                 print(f"Marked {device_id} offline in DB after setup failure")
+
+                # Generate DEVICE_OFFLINE server alert
+                await generate_device_offline_alert(device_id, session)
             except:
                 pass
 
@@ -354,6 +529,28 @@ async def device_websocket(
                         device.system_name = system_name
                         print(f"Updated system_name for {device_id}: {system_name}")
 
+            # Process notifications from device
+            # Notifications can come in sensor_update messages or standalone alert messages
+            notifications_data = None
+            if data.get('type') == 'sensor_update' and 'data' in data:
+                # Check for alerts in sensor_update payload
+                payload = data.get('data', {})
+                if 'alerts' in payload and isinstance(payload['alerts'], list):
+                    notifications_data = payload['alerts']
+            elif data.get('type') == 'alerts' and 'data' in data:
+                # Standalone alerts message
+                alerts = data.get('data')
+                if isinstance(alerts, list):
+                    notifications_data = alerts
+
+            if notifications_data:
+                try:
+                    await process_device_notifications(device_id, notifications_data, session)
+                except Exception as notif_error:
+                    print(f"ERROR processing notifications for {device_id}: {notif_error}")
+                    import traceback
+                    traceback.print_exc()
+
             # Relay to connected users
             for user_ws in user_connections[device_id]:
                 await user_ws.send_json(data)
@@ -386,6 +583,9 @@ async def device_websocket(
             is_still_online = verify_result.scalar()
             if is_still_online:
                 print(f"WARNING: Database still shows {device_id} as online after cleanup!")
+
+            # Generate DEVICE_OFFLINE server alert
+            await generate_device_offline_alert(device_id, session)
 
         except Exception as db_error:
             print(f"ERROR setting {device_id} offline in DB: {db_error}")
