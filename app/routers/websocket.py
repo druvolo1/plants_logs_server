@@ -206,12 +206,15 @@ async def process_device_notifications(device_id: str, notifications: List[dict]
             )
 
             # On duplicate key (device_id, alert_type), update fields
+            # If notification was cleared and is now active again, reset created_at to show it as new
+            from sqlalchemy import text
             stmt = stmt.on_duplicate_key_update(
                 status=status,
                 message=message,
                 last_occurrence=last_occurrence if last_occurrence else stmt.inserted.last_occurrence,
                 cleared_at=cleared_at if cleared_at is not None else stmt.inserted.cleared_at,
-                updated_at=func.now()
+                updated_at=func.now(),
+                created_at=text("IF(status IN ('SELF_CLEARED', 'USER_CLEARED') AND VALUES(status) = 'ACTIVE', NOW(), created_at)")
             )
 
             await session.execute(stmt)
