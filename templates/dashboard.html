@@ -2256,11 +2256,16 @@
             const diffHours = Math.floor(diffMs / 3600000);
             const diffDays = Math.floor(diffMs / 86400000);
 
-            if (diffMins < 1) return 'Just now';
-            if (diffMins < 60) return `${diffMins}m ago`;
-            if (diffHours < 24) return `${diffHours}h ago`;
-            if (diffDays < 7) return `${diffDays}d ago`;
-            return date.toLocaleDateString();
+            // Format the actual timestamp
+            const timeStr = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+            const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            const actualTime = `(${dateStr} ${timeStr})`;
+
+            if (diffMins < 1) return `Just now ${actualTime}`;
+            if (diffMins < 60) return `${diffMins}m ago ${actualTime}`;
+            if (diffHours < 24) return `${diffHours}h ago ${actualTime}`;
+            if (diffDays < 7) return `${diffDays}d ago ${actualTime}`;
+            return `${dateStr} ${timeStr}`;
         }
 
         async function clearNotification(notificationId) {
