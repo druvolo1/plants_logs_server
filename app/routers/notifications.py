@@ -125,7 +125,7 @@ async def get_notifications(
     if not all_device_ids:
         return []
 
-    # Build query
+    # Build query - join with Device to get device name
     conditions = [Notification.device_id.in_(all_device_ids)]
 
     if device_id:
@@ -139,12 +139,35 @@ async def get_notifications(
     elif active_only:
         conditions.append(Notification.status == NotificationStatus.ACTIVE)
 
-    stmt = select(Notification).where(and_(*conditions)).order_by(
+    stmt = select(Notification, Device.name).join(
+        Device, Notification.device_id == Device.device_id
+    ).where(and_(*conditions)).order_by(
         Notification.created_at.desc()
     ).limit(limit).offset(offset)
 
     result = await session.execute(stmt)
-    notifications = result.scalars().all()
+    rows = result.all()
+
+    # Add device_name to each notification
+    notifications = []
+    for notif, device_name in rows:
+        notif_dict = {
+            "id": notif.id,
+            "device_id": notif.device_id,
+            "device_name": device_name or notif.device_id,  # Fallback to device_id if no name
+            "alert_type": notif.alert_type,
+            "alert_type_id": notif.alert_type_id,
+            "severity": notif.severity,
+            "status": notif.status,
+            "source": notif.source,
+            "message": notif.message,
+            "first_occurrence": notif.first_occurrence,
+            "last_occurrence": notif.last_occurrence,
+            "cleared_at": notif.cleared_at,
+            "created_at": notif.created_at,
+            "updated_at": notif.updated_at,
+        }
+        notifications.append(notif_dict)
 
     return notifications
 
