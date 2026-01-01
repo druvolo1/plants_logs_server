@@ -4142,23 +4142,43 @@
 
                 // Update last dose info
                 if (autodose.lastDoseType && autodose.lastDoseAmount > 0 && autodose.lastDoseTimeMs && autodose.serverTimeMs) {
-                    // Calculate time ago using ESP32 time domain
+                    // Create live counting timer for time since last dose
                     const lastDoseAgo = document.getElementById(`autodose-last-dose-ago-${device_id}`);
                     if (lastDoseAgo) {
-                        const agoMs = autodose.serverTimeMs - autodose.lastDoseTimeMs;
-                        const agoMinutes = Math.floor(agoMs / 60000);
-                        const agoHours = Math.floor(agoMinutes / 60);
-                        const agoDays = Math.floor(agoHours / 24);
-
-                        if (agoDays > 0) {
-                            lastDoseAgo.textContent = `${agoDays}d ago`;
-                        } else if (agoHours > 0) {
-                            lastDoseAgo.textContent = `${agoHours}h ago`;
-                        } else if (agoMinutes > 0) {
-                            lastDoseAgo.textContent = `${agoMinutes}m ago`;
-                        } else {
-                            lastDoseAgo.textContent = 'Just now';
+                        // Clear any existing interval
+                        if (lastDoseAgo._intervalId) {
+                            clearInterval(lastDoseAgo._intervalId);
                         }
+
+                        // Calculate the base time elapsed in ESP32 time domain
+                        const baseElapsedMs = autodose.serverTimeMs - autodose.lastDoseTimeMs;
+                        // Store the start time in real time (for counting up)
+                        const startTimeMs = Date.now() - baseElapsedMs;
+
+                        // Update timer every second
+                        const updateTimer = () => {
+                            const nowMs = Date.now();
+                            const elapsedMs = nowMs - startTimeMs;
+
+                            const totalSeconds = Math.floor(elapsedMs / 1000);
+                            const days = Math.floor(totalSeconds / 86400);
+                            const hours = Math.floor((totalSeconds % 86400) / 3600);
+                            const minutes = Math.floor((totalSeconds % 3600) / 60);
+                            const seconds = totalSeconds % 60;
+
+                            if (days > 0) {
+                                lastDoseAgo.textContent = `${days}d ${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                            } else if (hours > 0) {
+                                lastDoseAgo.textContent = `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                            } else if (minutes > 0) {
+                                lastDoseAgo.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+                            } else {
+                                lastDoseAgo.textContent = `${seconds}s`;
+                            }
+                        };
+
+                        updateTimer(); // Initial update
+                        lastDoseAgo._intervalId = setInterval(updateTimer, 1000);
                     }
 
                     // Update last dose type
@@ -4188,6 +4208,11 @@
                     }
                     const lastDoseAgo = document.getElementById(`autodose-last-dose-ago-${device_id}`);
                     if (lastDoseAgo) {
+                        // Clear any existing timer
+                        if (lastDoseAgo._intervalId) {
+                            clearInterval(lastDoseAgo._intervalId);
+                            lastDoseAgo._intervalId = null;
+                        }
                         lastDoseAgo.textContent = 'Never';
                     }
                 }
