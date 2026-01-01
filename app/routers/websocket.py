@@ -143,6 +143,8 @@ async def clear_device_offline_alert(device_id: str, session: AsyncSession):
 
         if result.rowcount > 0:
             print(f"[SERVER ALERT] Cleared DEVICE_OFFLINE alert for {device_id}")
+            # Broadcast to all users that notifications were updated
+            await broadcast_notification_update()
 
     except Exception as e:
         print(f"[SERVER ALERT] ERROR clearing DEVICE_OFFLINE alert for {device_id}: {e}")
