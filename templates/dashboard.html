@@ -2858,7 +2858,7 @@
                                                 <div class="dosing-active-header" id="dosing-active-header-${device.device_id}">pH Down Dispensing...</div>
                                                 <div class="dosing-active-countdown" id="dosing-active-countdown-${device.device_id}">0.0s</div>
                                                 <div class="dosing-active-amount" id="dosing-active-amount-${device.device_id}">0.00 ml</div>
-                                                <button class="dosing-stop-btn" onclick="return window.stopDosing('${device.device_id}', event)">Stop</button>
+                                                <button type="button" class="dosing-stop-btn" onclick="return window.stopDosing('${device.device_id}', event)">Stop</button>
                                             </div>
 
                                             <!-- Calculated Doses -->
@@ -2866,12 +2866,12 @@
                                                 <div class="dosing-calc-item">
                                                     <div class="dosing-calc-header">Calculated pH Up</div>
                                                     <div class="dosing-calc-amount" id="dosing-calc-up-${device.device_id}">0.00 ml</div>
-                                                    <button class="dosing-dispense-btn" id="dosing-dispense-up-${device.device_id}" onclick="return window.dispenseCalculated('${device.device_id}', 'up', event)">Dispense</button>
+                                                    <button type="button" class="dosing-dispense-btn" id="dosing-dispense-up-${device.device_id}" onclick="return window.dispenseCalculated('${device.device_id}', 'up', event)">Dispense</button>
                                                 </div>
                                                 <div class="dosing-calc-item">
                                                     <div class="dosing-calc-header">Calculated pH Down</div>
                                                     <div class="dosing-calc-amount" id="dosing-calc-down-${device.device_id}">0.00 ml</div>
-                                                    <button class="dosing-dispense-btn" id="dosing-dispense-down-${device.device_id}" onclick="return window.dispenseCalculated('${device.device_id}', 'down', event)">Dispense</button>
+                                                    <button type="button" class="dosing-dispense-btn" id="dosing-dispense-down-${device.device_id}" onclick="return window.dispenseCalculated('${device.device_id}', 'down', event)">Dispense</button>
                                                 </div>
                                             </div>
 
@@ -2881,8 +2881,8 @@
                                                 <div class="dosing-manual-controls">
                                                     <input type="number" class="dosing-manual-input" id="dosing-manual-amount-${device.device_id}" value="1.0" min="0.1" step="0.1" onclick="event.stopPropagation()">
                                                     <span style="color: #94a3b8;">ml</span>
-                                                    <button class="dosing-manual-btn" onclick="return window.manualDose('${device.device_id}', 'up', event)">pH Up</button>
-                                                    <button class="dosing-manual-btn" onclick="return window.manualDose('${device.device_id}', 'down', event)">pH Down</button>
+                                                    <button type="button" class="dosing-manual-btn" onclick="return window.manualDose('${device.device_id}', 'up', event)">pH Up</button>
+                                                    <button type="button" class="dosing-manual-btn" onclick="return window.manualDose('${device.device_id}', 'down', event)">pH Down</button>
                                                 </div>
                                             </div>
 
