@@ -927,9 +927,9 @@
 
     <script>
         // Global session timeout handler - intercept all fetch requests
-        const originalFetch = window.fetch;
+        const _originalFetch = window.fetch;
         window.fetch = function(...args) {
-            return originalFetch.apply(this, args)
+            return _originalFetch.apply(this, args)
                 .then(response => {
                     // Check if session expired (401 Unauthorized)
                     if (response.status === 401) {
