@@ -126,9 +126,13 @@ async def get_notifications(
         return []
 
     # Build query - join with Device to get device name
-    # Use COALESCE to try name, system_name, then fall back to device_id
+    # Use NULLIF to convert empty strings to NULL, then COALESCE to try name, system_name, then fall back to device_id
     from sqlalchemy import case
-    device_display_name = func.coalesce(Device.name, Device.system_name, Device.device_id)
+    device_display_name = func.coalesce(
+        func.nullif(Device.name, ''),
+        func.nullif(Device.system_name, ''),
+        Device.device_id
+    )
 
     conditions = [Notification.device_id.in_(all_device_ids)]
 
