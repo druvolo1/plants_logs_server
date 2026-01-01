@@ -192,6 +192,12 @@ async def process_device_notifications(device_id: str, notifications: List[dict]
             cleared_at = notif.get('cleared_at')
 
             # Upsert notification using MySQL INSERT ... ON DUPLICATE KEY UPDATE
+            from sqlalchemy import text
+            from datetime import datetime, timezone
+
+            # Use UTC for all timestamps
+            utc_now = datetime.now(timezone.utc)
+
             stmt = insert(Notification).values(
                 device_id=device_id,
                 alert_type=alert_type,
@@ -203,19 +209,18 @@ async def process_device_notifications(device_id: str, notifications: List[dict]
                 first_occurrence=first_occurrence,
                 last_occurrence=last_occurrence,
                 cleared_at=cleared_at,
-                created_at=func.now()  # Explicitly set to current time on INSERT
+                created_at=utc_now  # Use Python's UTC time, not database server time
             )
 
             # On duplicate key (device_id, alert_type), update fields
             # If notification was cleared and is now active again, reset created_at to show it as new
-            from sqlalchemy import text
             stmt = stmt.on_duplicate_key_update(
                 status=status,
                 message=message,
                 last_occurrence=last_occurrence if last_occurrence else stmt.inserted.last_occurrence,
                 cleared_at=cleared_at if cleared_at is not None else stmt.inserted.cleared_at,
-                updated_at=func.now(),
-                created_at=text("IF(status IN ('SELF_CLEARED', 'USER_CLEARED') AND VALUES(status) = 'ACTIVE', NOW(), created_at)")
+                updated_at=utc_now,
+                created_at=text("IF(status IN ('SELF_CLEARED', 'USER_CLEARED') AND VALUES(status) = 'ACTIVE', UTC_TIMESTAMP(), created_at)")
             )
 
             await session.execute(stmt)
