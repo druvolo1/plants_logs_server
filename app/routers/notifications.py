@@ -461,6 +461,16 @@ async def remove_cleared_notifications(
 
     deleted_count = result.rowcount
 
+    # Send command to devices to remove cleared notifications
+    from app.routers.websocket import send_message_to_device
+    if device_id:
+        # Send to specific device
+        await send_message_to_device(device_id, {"type": "remove_cleared_notifications"})
+    else:
+        # Send to all user's devices
+        for dev_id in all_device_ids:
+            await send_message_to_device(dev_id, {"type": "remove_cleared_notifications"})
+
     # Broadcast to all users that notifications were updated
     from app.routers.websocket import broadcast_notification_update
     await broadcast_notification_update()
