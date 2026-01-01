@@ -2858,7 +2858,7 @@
                                                 <div class="dosing-active-header" id="dosing-active-header-${device.device_id}">pH Down Dispensing...</div>
                                                 <div class="dosing-active-countdown" id="dosing-active-countdown-${device.device_id}">0.0s</div>
                                                 <div class="dosing-active-amount" id="dosing-active-amount-${device.device_id}">0.00 ml</div>
-                                                <button class="dosing-stop-btn" onclick="event.stopPropagation(); window.stopDosing('${device.device_id}')">Stop</button>
+                                                <button class="dosing-stop-btn" onclick="return window.stopDosing('${device.device_id}', event)">Stop</button>
                                             </div>
 
                                             <!-- Calculated Doses -->
@@ -2866,12 +2866,12 @@
                                                 <div class="dosing-calc-item">
                                                     <div class="dosing-calc-header">Calculated pH Up</div>
                                                     <div class="dosing-calc-amount" id="dosing-calc-up-${device.device_id}">0.00 ml</div>
-                                                    <button class="dosing-dispense-btn" id="dosing-dispense-up-${device.device_id}" onclick="event.stopPropagation(); window.dispenseCalculated('${device.device_id}', 'up')">Dispense</button>
+                                                    <button class="dosing-dispense-btn" id="dosing-dispense-up-${device.device_id}" onclick="return window.dispenseCalculated('${device.device_id}', 'up', event)">Dispense</button>
                                                 </div>
                                                 <div class="dosing-calc-item">
                                                     <div class="dosing-calc-header">Calculated pH Down</div>
                                                     <div class="dosing-calc-amount" id="dosing-calc-down-${device.device_id}">0.00 ml</div>
-                                                    <button class="dosing-dispense-btn" id="dosing-dispense-down-${device.device_id}" onclick="event.stopPropagation(); window.dispenseCalculated('${device.device_id}', 'down')">Dispense</button>
+                                                    <button class="dosing-dispense-btn" id="dosing-dispense-down-${device.device_id}" onclick="return window.dispenseCalculated('${device.device_id}', 'down', event)">Dispense</button>
                                                 </div>
                                             </div>
 
@@ -4320,7 +4320,14 @@
         }
 
         // Dosing control functions
-        window.stopDosing = function(device_id) {
+        window.stopDosing = function(device_id, event) {
+            // Prevent event bubbling
+            if (event) {
+                event.preventDefault();
+                event.stopPropagation();
+                event.stopImmediatePropagation();
+            }
+
             const ws = wsMap[device_id];
             if (ws && ws.readyState === WebSocket.OPEN) {
                 ws.send(JSON.stringify({
@@ -4331,9 +4338,17 @@
                 console.error(`WebSocket not connected for device ${device_id}`);
                 alert('Device not connected');
             }
+            return false;
         };
 
-        window.dispenseCalculated = function(device_id, pumpType) {
+        window.dispenseCalculated = function(device_id, pumpType, event) {
+            // Prevent event bubbling
+            if (event) {
+                event.preventDefault();
+                event.stopPropagation();
+                event.stopImmediatePropagation();
+            }
+
             const ws = wsMap[device_id];
             if (ws && ws.readyState === WebSocket.OPEN) {
                 ws.send(JSON.stringify({
@@ -4345,6 +4360,7 @@
                 console.error(`WebSocket not connected for device ${device_id}`);
                 alert('Device not connected');
             }
+            return false;
         };
 
         window.manualDose = function(device_id, pumpType, event) {
