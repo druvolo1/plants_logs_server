@@ -350,6 +350,8 @@ async def device_websocket(
                 mdns_hostname = data.get('mdns_hostname')
                 ip_address = data.get('ip_address')
 
+                print(f"[DEVICE_INFO] Received from {device_id}: device_name='{device_name}', type={device_type}")
+
                 updates = {}
 
                 # Auto-detect device type
