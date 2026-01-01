@@ -187,12 +187,13 @@ async def process_device_notifications(device_id: str, notifications: List[dict]
                 status=status,
                 message=message,
                 last_occurrence=last_occurrence if last_occurrence else stmt.inserted.last_occurrence,
-                cleared_at=cleared_at if cleared_at else stmt.inserted.cleared_at,
+                cleared_at=cleared_at if cleared_at is not None else stmt.inserted.cleared_at,
                 updated_at=func.now()
             )
 
             await session.execute(stmt)
-            print(f"Upserted notification for {device_id}: {alert_type} ({severity.value}, {status.value})")
+            cleared_status = f", cleared_at={cleared_at}" if cleared_at else ""
+            print(f"Upserted notification for {device_id}: {alert_type} ({severity.value}, {status.value}{cleared_status})")
 
         except Exception as e:
             print(f"ERROR processing individual notification for {device_id}: {e}")
