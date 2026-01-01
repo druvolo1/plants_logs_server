@@ -918,6 +918,113 @@
             }
         }
 
+        /* Auto-Dose Section */
+        .hydro-autodose-section {
+            min-width: 140px;
+            max-width: 180px;
+            border-left: 1px solid rgba(148, 163, 184, 0.2);
+            padding-left: 12px;
+            margin-left: 8px;
+        }
+
+        .autodose-info {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .dose-type-display {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 10px;
+            border-radius: 6px;
+            font-size: 0.85em;
+            font-weight: 600;
+            background: rgba(148, 163, 184, 0.15);
+            border: 1px solid rgba(148, 163, 184, 0.3);
+        }
+
+        .dose-type-display.ph-down {
+            background: rgba(239, 68, 68, 0.15);
+            border-color: rgba(239, 68, 68, 0.3);
+        }
+
+        .dose-type-display.ph-down .dose-type-name {
+            color: #fca5a5;
+        }
+
+        .dose-type-display.ph-down .dose-arrow {
+            color: #ef4444;
+        }
+
+        .dose-type-display.ph-up {
+            background: rgba(16, 185, 129, 0.15);
+            border-color: rgba(16, 185, 129, 0.3);
+        }
+
+        .dose-type-display.ph-up .dose-type-name {
+            color: #6ee7b7;
+        }
+
+        .dose-type-display.ph-up .dose-arrow {
+            color: #10b981;
+        }
+
+        .dose-type-name {
+            color: #94a3b8;
+            font-size: 0.9em;
+        }
+
+        .dose-arrow {
+            font-size: 1.1em;
+            color: #64748b;
+        }
+
+        .dose-detail-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.75em;
+        }
+
+        .dose-detail-label {
+            color: #94a3b8;
+        }
+
+        .dose-detail-value {
+            color: #e2e8f0;
+            font-weight: 500;
+        }
+
+        .dose-mode-value {
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-size: 0.9em;
+            font-weight: 500;
+        }
+
+        .dose-mode-value.auto {
+            background: rgba(59, 130, 246, 0.2);
+            color: #93c5fd;
+            border: 1px solid rgba(59, 130, 246, 0.3);
+        }
+
+        .dose-mode-value.manual {
+            background: rgba(168, 85, 247, 0.2);
+            color: #c4b5fd;
+            border: 1px solid rgba(168, 85, 247, 0.3);
+        }
+
+        .dose-timestamp {
+            text-align: center;
+            color: #64748b;
+            font-size: 0.7em;
+            margin-top: 4px;
+            padding-top: 6px;
+            border-top: 1px solid rgba(148, 163, 184, 0.2);
+        }
+
         .outlet-status-text {
             color: #aaa;
             font-weight: 500;
@@ -2432,6 +2539,26 @@
                                                             <span class="outlet-status-text" id="drain-outlet-text-${device.device_id}">Outlet Offline</span>
                                                         </div>
                                                     </div>
+
+                                                    <!-- Auto-Dose History Section -->
+                                                    <div class="hydro-autodose-section" id="autodose-section-${device.device_id}" style="display: none;">
+                                                        <div class="hydro-section-title">💉 Last Auto-Dose</div>
+                                                        <div class="autodose-info">
+                                                            <div class="dose-type-display" id="dose-type-${device.device_id}">
+                                                                <span class="dose-type-name" id="dose-type-name-${device.device_id}">No Recent Doses</span>
+                                                                <span class="dose-arrow" id="dose-arrow-${device.device_id}">—</span>
+                                                            </div>
+                                                            <div class="dose-detail-row">
+                                                                <span class="dose-detail-label">Amount:</span>
+                                                                <span class="dose-detail-value" id="dose-amount-${device.device_id}">—</span>
+                                                            </div>
+                                                            <div class="dose-detail-row">
+                                                                <span class="dose-detail-label">Mode:</span>
+                                                                <span class="dose-mode-value" id="dose-mode-${device.device_id}">—</span>
+                                                            </div>
+                                                            <div class="dose-timestamp" id="dose-timestamp-${device.device_id}">Never dosed</div>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
@@ -3510,6 +3637,75 @@
                     }
                 } else if (drainItem) {
                     drainItem.style.display = 'none';
+                }
+            }
+
+            // Update auto-dose section
+            if (data.settings) {
+                const autodoseSection = document.getElementById(`autodose-section-${device_id}`);
+                const doseTypeEl = document.getElementById(`dose-type-${device_id}`);
+                const doseTypeName = document.getElementById(`dose-type-name-${device_id}`);
+                const doseArrow = document.getElementById(`dose-arrow-${device_id}`);
+                const doseAmount = document.getElementById(`dose-amount-${device_id}`);
+                const doseMode = document.getElementById(`dose-mode-${device_id}`);
+                const doseTimestamp = document.getElementById(`dose-timestamp-${device_id}`);
+
+                const lastDoseType = data.settings.last_dose_type || '';
+                const lastDoseAmount = data.settings.last_dose_amount || 0;
+                const lastDoseWasAuto = data.settings.last_dose_was_auto || false;
+
+                // Show/hide auto-dose section based on whether valves are shown
+                const hasValveData = (data.remote_valves &&
+                    ((data.remote_valves.fill && data.remote_valves.fill.enabled) ||
+                     (data.remote_valves.drain && data.remote_valves.drain.enabled)));
+
+                if (autodoseSection) {
+                    autodoseSection.style.display = hasValveData ? 'block' : 'none';
+                }
+
+                // Update dose type display
+                if (lastDoseType === 'up' || lastDoseType === 'down') {
+                    const doseTypeText = lastDoseType === 'up' ? 'pH Up' : 'pH Down';
+                    const arrow = lastDoseType === 'up' ? '↑' : '↓';
+                    const cssClass = lastDoseType === 'up' ? 'ph-up' : 'ph-down';
+
+                    if (doseTypeName) doseTypeName.textContent = doseTypeText;
+                    if (doseArrow) doseArrow.textContent = arrow;
+                    if (doseTypeEl) {
+                        doseTypeEl.className = 'dose-type-display ' + cssClass;
+                    }
+
+                    if (doseAmount) doseAmount.textContent = lastDoseAmount.toFixed(1) + ' ml';
+
+                    if (doseMode) {
+                        doseMode.textContent = lastDoseWasAuto ? '🤖 Auto' : '👤 Manual';
+                        doseMode.className = 'dose-mode-value ' + (lastDoseWasAuto ? 'auto' : 'manual');
+                    }
+
+                    // Calculate time since dose (note: this is approximate since we don't have timestamp from device)
+                    if (doseTimestamp) {
+                        doseTimestamp.textContent = 'Recently';
+                    }
+                } else {
+                    // No recent doses
+                    if (doseTypeName) doseTypeName.textContent = 'No Recent Doses';
+                    if (doseArrow) doseArrow.textContent = '—';
+                    if (doseTypeEl) {
+                        doseTypeEl.className = 'dose-type-display';
+                    }
+                    if (doseAmount) {
+                        doseAmount.textContent = '—';
+                        doseAmount.style.color = '#64748b';
+                    }
+                    if (doseMode) {
+                        doseMode.textContent = '—';
+                        doseMode.className = 'dose-mode-value';
+                        doseMode.style.color = '#64748b';
+                        doseMode.style.background = 'none';
+                        doseMode.style.border = 'none';
+                        doseMode.style.padding = '0';
+                    }
+                    if (doseTimestamp) doseTimestamp.textContent = 'Never dosed';
                 }
             }
 

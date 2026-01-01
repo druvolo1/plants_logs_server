@@ -2458,6 +2458,17 @@
                             value="${settings.ph_cal_10 || 10.0}"
                             onchange="updateDeviceSetting('ph_cal_10', parseFloat(this.value))">
                     </div>
+                    ${settings.ph_calibration_date ? `
+                    <div style="margin-top: 1rem; padding: 0.75rem; background: rgba(148, 163, 184, 0.1); border-radius: 6px; font-size: 0.9rem; color: #94a3b8;">
+                        <div style="margin-bottom: 0.5rem;">
+                            <strong>Last Calibrated:</strong> ${new Date(settings.ph_calibration_date * 1000).toLocaleDateString()}
+                            (${settings.ph_calibration_points || 0} points)
+                        </div>
+                        <div>
+                            <strong>Recalibration Reminder:</strong> ${settings.ph_calibration_warning_days || 90} days
+                        </div>
+                    </div>
+                    ` : ''}
                 </div>
 
                 <div class="setting-group">
@@ -2480,6 +2491,17 @@
                             value="${settings.ec_cal_high || 12880}"
                             onchange="updateDeviceSetting('ec_cal_high', parseInt(this.value))">
                     </div>
+                    ${settings.ec_calibration_date ? `
+                    <div style="margin-top: 1rem; padding: 0.75rem; background: rgba(148, 163, 184, 0.1); border-radius: 6px; font-size: 0.9rem; color: #94a3b8;">
+                        <div style="margin-bottom: 0.5rem;">
+                            <strong>Last Calibrated:</strong> ${new Date(settings.ec_calibration_date * 1000).toLocaleDateString()}
+                            (${settings.ec_calibration_points || 0} points)
+                        </div>
+                        <div>
+                            <strong>Recalibration Reminder:</strong> ${settings.ec_calibration_warning_days || 90} days
+                        </div>
+                    </div>
+                    ` : ''}
                 </div>
             `;
             document.getElementById('settings-modal-body').innerHTML = html;
