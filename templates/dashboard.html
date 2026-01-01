@@ -205,6 +205,21 @@
             background: #dc2626;
         }
 
+        .notification-remove-cleared-btn {
+            background: #6b7280;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: background 0.2s;
+        }
+
+        .notification-remove-cleared-btn:hover {
+            background: #4b5563;
+        }
+
         .notification-list {
             flex: 1;
             overflow-y: auto;
@@ -1691,6 +1706,7 @@
                     <option value="time">Time</option>
                 </select>
             </div>
+            <button class="notification-remove-cleared-btn" onclick="removeCleared()">Remove Cleared</button>
             <button class="notification-clear-all-btn" onclick="clearAllNotifications()">Clear All</button>
         </div>
         <div class="notification-list" id="notification-list">
@@ -1922,6 +1938,34 @@
             } catch (error) {
                 console.error('Error clearing all notifications:', error);
                 alert('Failed to clear all notifications');
+            }
+        }
+
+        async function removeCleared() {
+            const clearedCount = allNotifications.filter(n => n.status === 'SELF_CLEARED' || n.status === 'USER_CLEARED').length;
+
+            if (clearedCount === 0) {
+                alert('No cleared notifications to remove');
+                return;
+            }
+
+            if (!confirm(`Remove ${clearedCount} cleared notification${clearedCount > 1 ? 's' : ''}?`)) return;
+
+            try {
+                const response = await fetch('/notifications/remove-cleared', {
+                    method: 'DELETE'
+                });
+
+                if (!response.ok) throw new Error('Failed to remove cleared notifications');
+
+                const result = await response.json();
+                console.log(`[NOTIFICATIONS] Removed ${result.deleted_count} cleared notifications`);
+
+                // Refresh notifications
+                await fetchNotifications();
+            } catch (error) {
+                console.error('Error removing cleared notifications:', error);
+                alert('Failed to remove cleared notifications');
             }
         }
 

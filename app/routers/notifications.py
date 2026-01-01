@@ -403,6 +403,70 @@ async def clear_all_notifications(
     return {"success": True, "cleared_count": cleared_count}
 
 
+@router.delete("/notifications/remove-cleared")
+async def remove_cleared_notifications(
+    request: Request,
+    device_id: Optional[str] = Query(None, description="Remove cleared for specific device, or all devices if not specified"),
+    user: User = Depends(get_current_user_dependency()),
+    session: AsyncSession = Depends(get_db_dependency())
+):
+    """
+    User endpoint to remove cleared notifications.
+    Removes notifications that have been cleared (SELF_CLEARED or USER_CLEARED).
+    """
+    effective_user = await get_effective_user(request, user, session)
+
+    # Get all device IDs user has access to
+    stmt = select(Device.device_id).where(Device.user_id == effective_user.id)
+    result = await session.execute(stmt)
+    owned_device_ids = [row[0] for row in result]
+
+    stmt = select(Device.device_id).join(
+        DeviceShare, DeviceShare.device_id == Device.id
+    ).where(
+        and_(
+            DeviceShare.shared_with_user_id == effective_user.id,
+            DeviceShare.is_active == True
+        )
+    )
+    result = await session.execute(stmt)
+    shared_device_ids = [row[0] for row in result]
+
+    all_device_ids = list(set(owned_device_ids + shared_device_ids))
+
+    if not all_device_ids:
+        return {"success": True, "deleted_count": 0}
+
+    # Build condition
+    conditions = [
+        Notification.device_id.in_(all_device_ids),
+        or_(
+            Notification.status == NotificationStatus.SELF_CLEARED,
+            Notification.status == NotificationStatus.USER_CLEARED
+        )
+    ]
+
+    if device_id:
+        # Verify access to specific device
+        has_access = await verify_device_access(device_id, effective_user, session)
+        if not has_access:
+            raise HTTPException(status_code=403, detail="Access denied")
+        conditions.append(Notification.device_id == device_id)
+
+    # Delete cleared notifications
+    stmt = delete(Notification).where(and_(*conditions))
+    result = await session.execute(stmt)
+    await session.commit()
+
+    deleted_count = result.rowcount
+
+    # Broadcast to all users that notifications were updated
+    from app.routers.websocket import broadcast_notification_update
+    await broadcast_notification_update()
+
+    return {"success": True, "deleted_count": deleted_count}
+
+
 @router.delete("/notifications/cleanup")
 async def cleanup_old_notifications(
     user: User = Depends(get_current_user_dependency()),
