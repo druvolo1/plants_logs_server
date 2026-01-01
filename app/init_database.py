@@ -728,8 +728,8 @@ async def init_database():
                     device_id VARCHAR(100) NOT NULL COMMENT 'Device identifier (matches devices.device_id)',
                     alert_type VARCHAR(100) NOT NULL COMMENT 'Alert type string (e.g., PH_OUT_OF_RANGE)',
                     alert_type_id INT NOT NULL COMMENT 'Numeric alert type ID from device enum',
-                    severity ENUM('info', 'warning', 'critical') NOT NULL,
-                    status ENUM('active', 'self_cleared', 'user_cleared') NOT NULL DEFAULT 'active',
+                    severity ENUM('INFO', 'WARNING', 'CRITICAL') NOT NULL,
+                    status ENUM('ACTIVE', 'SELF_CLEARED', 'USER_CLEARED') NOT NULL DEFAULT 'ACTIVE',
                     source VARCHAR(200) NOT NULL COMMENT 'Source component (e.g., pH Probe, EC Probe)',
                     message TEXT NOT NULL COMMENT 'Detailed alert message',
                     first_occurrence BIGINT UNSIGNED NOT NULL COMMENT 'Timestamp (millis) when first occurred',
@@ -745,6 +745,34 @@ async def init_database():
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Device notifications and alerts'
                 """
             )
+
+            # Migrate existing notifications table to use uppercase enum values
+            # This is needed if table was created with lowercase values
+            try:
+                print("Migrating notifications table enum values to uppercase...")
+                # Check if table exists and needs migration
+                result = await conn.execute(text("""
+                    SELECT DATA_TYPE, COLUMN_TYPE
+                    FROM INFORMATION_SCHEMA.COLUMNS
+                    WHERE TABLE_SCHEMA = DATABASE()
+                    AND TABLE_NAME = 'notifications'
+                    AND COLUMN_NAME = 'severity'
+                """))
+                severity_info = result.fetchone()
+
+                if severity_info and 'info' in severity_info[1]:
+                    print("  Migrating severity and status columns to uppercase enum values...")
+                    # Alter the columns to use uppercase enum values
+                    await conn.execute(text("""
+                        ALTER TABLE notifications
+                        MODIFY COLUMN severity ENUM('INFO', 'WARNING', 'CRITICAL') NOT NULL,
+                        MODIFY COLUMN status ENUM('ACTIVE', 'SELF_CLEARED', 'USER_CLEARED') NOT NULL DEFAULT 'ACTIVE'
+                    """))
+                    print("  ✓ Migration complete - enum values are now uppercase")
+                else:
+                    print("  ✓ Enum values already uppercase, no migration needed")
+            except Exception as e:
+                print(f"  Note: Could not check/migrate enum values: {e}")
 
             print("\n" + "="*80)
             print("✓ Database initialization complete!")

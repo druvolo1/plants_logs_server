@@ -10,7 +10,7 @@ import time
 
 from fastapi import APIRouter, Depends, WebSocket, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update, or_, func
+from sqlalchemy import select, update, or_, and_, func
 from sqlalchemy.dialects.mysql import insert
 from starlette.websockets import WebSocketDisconnect
 import jwt

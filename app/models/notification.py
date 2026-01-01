@@ -11,16 +11,16 @@ from .base import Base
 
 class NotificationSeverity(str, enum.Enum):
     """Alert severity levels"""
-    INFO = "info"
-    WARNING = "warning"
-    CRITICAL = "critical"
+    INFO = "INFO"
+    WARNING = "WARNING"
+    CRITICAL = "CRITICAL"
 
 
 class NotificationStatus(str, enum.Enum):
     """Alert status"""
-    ACTIVE = "active"
-    SELF_CLEARED = "self_cleared"
-    USER_CLEARED = "user_cleared"
+    ACTIVE = "ACTIVE"
+    SELF_CLEARED = "SELF_CLEARED"
+    USER_CLEARED = "USER_CLEARED"
 
 
 class Notification(Base):
