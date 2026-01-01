@@ -138,7 +138,7 @@ async def process_device_notifications(device_id: str, notifications: List[dict]
         try:
             # Map device notification fields to database schema
             alert_type = notif.get('alert_type', notif.get('type', 'UNKNOWN'))
-            alert_type_id = notif.get('alert_type_id', notif.get('id', 0))
+            alert_type_id = notif.get('alert_type_id', notif.get('type_id', 0))
 
             # Map severity (info/warning/critical)
             severity_str = notif.get('severity', 'info').lower()
@@ -530,18 +530,19 @@ async def device_websocket(
                         print(f"Updated system_name for {device_id}: {system_name}")
 
             # Process notifications from device
-            # Notifications can come in sensor_update messages or standalone alert messages
+            # Notifications can come in full_sync, sensor_update, or standalone alert messages
             notifications_data = None
-            if data.get('type') == 'sensor_update' and 'data' in data:
-                # Check for alerts in sensor_update payload
-                payload = data.get('data', {})
-                if 'alerts' in payload and isinstance(payload['alerts'], list):
-                    notifications_data = payload['alerts']
-            elif data.get('type') == 'alerts' and 'data' in data:
-                # Standalone alerts message
-                alerts = data.get('data')
-                if isinstance(alerts, list):
-                    notifications_data = alerts
+
+            # Check for alerts in the message payload (full_sync, sensor_update, etc.)
+            if 'alerts' in data and isinstance(data['alerts'], list):
+                notifications_data = data['alerts']
+            # Also check under 'data' key for compatibility
+            elif 'data' in data and isinstance(data['data'], dict) and 'alerts' in data['data']:
+                if isinstance(data['data']['alerts'], list):
+                    notifications_data = data['data']['alerts']
+            # Standalone alerts message
+            elif data.get('type') == 'alerts' and isinstance(data.get('data'), list):
+                notifications_data = data['data']
 
             if notifications_data:
                 try:
