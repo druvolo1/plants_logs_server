@@ -1025,6 +1025,246 @@
             border-top: 1px solid rgba(148, 163, 184, 0.2);
         }
 
+        /* Auto-Dosing Card Styles */
+        .autodose-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .autodose-status-badge {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .autodose-status-badge.active {
+            background: rgba(16, 185, 129, 0.2);
+            border: 1px solid rgba(16, 185, 129, 0.4);
+            color: #10b981;
+        }
+
+        .autodose-status-badge.inactive {
+            background: rgba(148, 163, 184, 0.2);
+            border: 1px solid rgba(148, 163, 184, 0.4);
+            color: #94a3b8;
+        }
+
+        .autodose-status-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.15);
+        }
+
+        .autodose-label {
+            color: #94a3b8;
+            font-size: 0.9rem;
+        }
+
+        .autodose-value {
+            font-weight: 600;
+            color: #ffffff;
+            font-size: 1rem;
+        }
+
+        .autodose-countdown {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #10b981;
+            font-family: monospace;
+        }
+
+        .autodose-interval-text {
+            text-align: center;
+            color: #94a3b8;
+            font-size: 0.85rem;
+            margin: 0.5rem 0 1rem 0;
+        }
+
+        .autodose-divider {
+            height: 1px;
+            background: rgba(148, 163, 184, 0.2);
+            margin: 1rem 0;
+        }
+
+        .autodose-detail-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.75rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .autodose-detail-item {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .autodose-detail-label {
+            color: #94a3b8;
+            font-size: 0.8rem;
+        }
+
+        .autodose-detail-value {
+            color: #ffffff;
+            font-weight: 500;
+            font-size: 0.95rem;
+        }
+
+        .autodose-last-dose-info {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.75rem;
+        }
+
+        /* Dosing Pumps Card Styles */
+        .dosing-active-card {
+            background: rgba(46, 213, 115, 0.15);
+            border: 2px solid rgba(46, 213, 115, 0.4);
+            border-radius: 10px;
+            padding: 1rem;
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+
+        .dosing-active-header {
+            font-size: 1.1rem;
+            margin-bottom: 0.75rem;
+            color: #ffffff;
+        }
+
+        .dosing-active-countdown {
+            font-size: 2.5rem;
+            font-weight: 700;
+            font-family: monospace;
+            color: #10b981;
+            margin-bottom: 0.5rem;
+        }
+
+        .dosing-active-amount {
+            font-size: 1.1rem;
+            color: #ffffff;
+            margin-bottom: 1rem;
+        }
+
+        .dosing-stop-btn {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: white;
+            border: none;
+            padding: 0.65rem 1.5rem;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .dosing-stop-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(239, 68, 68, 0.3);
+        }
+
+        .dosing-calculated-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+        }
+
+        .dosing-calc-item {
+            background: rgba(148, 163, 184, 0.1);
+            border-radius: 8px;
+            padding: 0.75rem;
+            text-align: center;
+        }
+
+        .dosing-calc-header {
+            color: #94a3b8;
+            font-size: 0.85rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .dosing-calc-amount {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #10b981;
+            margin-bottom: 0.5rem;
+        }
+
+        .dosing-dispense-btn {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            transition: all 0.2s;
+        }
+
+        .dosing-dispense-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(16, 185, 129, 0.3);
+        }
+
+        .dosing-dispense-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .dosing-manual-section {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .dosing-manual-controls {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        .dosing-manual-input {
+            width: 80px;
+            padding: 0.5rem;
+            border-radius: 4px;
+            border: 1px solid rgba(148, 163, 184, 0.3);
+            background: rgba(15, 23, 42, 0.5);
+            color: #ffffff;
+            font-size: 0.95rem;
+            text-align: center;
+        }
+
+        .dosing-manual-btn {
+            flex: 1;
+            padding: 0.5rem;
+            border: 1px solid rgba(148, 163, 184, 0.3);
+            background: rgba(148, 163, 184, 0.1);
+            color: #ffffff;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .dosing-manual-btn:hover {
+            background: rgba(148, 163, 184, 0.2);
+            border-color: #10b981;
+        }
+
+        .dosing-info-text {
+            display: flex;
+            justify-content: space-between;
+            color: #94a3b8;
+            font-size: 0.85rem;
+        }
+
         .outlet-status-text {
             color: #aaa;
             font-weight: 500;
@@ -2578,6 +2818,100 @@
                                             </div>
                                         </div>
                                     </div>
+
+                                    <!-- Auto-Dosing Card -->
+                                    <div class="card" id="hydro-autodose-card-${device.device_id}" data-card-type="hydro-autodose" draggable="true">
+                                        <div class="card-drag-handle" title="Drag to reorder">⋮⋮</div>
+                                        <div class="card-content">
+                                            <div class="autodose-card-header">
+                                                <h3 style="margin: 0;">Auto-Dosing</h3>
+                                                <span class="autodose-status-badge" id="autodose-status-badge-${device.device_id}">Inactive</span>
+                                            </div>
+
+                                            <div class="autodose-status-row">
+                                                <span class="autodose-label">Status</span>
+                                                <span class="autodose-value" id="autodose-status-text-${device.device_id}">—</span>
+                                            </div>
+
+                                            <div class="autodose-status-row">
+                                                <span class="autodose-label">Next Check</span>
+                                                <span class="autodose-value autodose-countdown" id="autodose-next-check-${device.device_id}">—</span>
+                                            </div>
+
+                                            <div class="autodose-interval-text" id="autodose-interval-text-${device.device_id}">—</div>
+
+                                            <div class="autodose-divider"></div>
+
+                                            <div class="autodose-detail-grid">
+                                                <div class="autodose-detail-item">
+                                                    <span class="autodose-detail-label">pH Range:</span>
+                                                    <span class="autodose-detail-value" id="autodose-ph-range-${device.device_id}">—</span>
+                                                </div>
+                                                <div class="autodose-detail-item">
+                                                    <span class="autodose-detail-label">Last Dose:</span>
+                                                    <span class="autodose-detail-value" id="autodose-last-dose-ago-${device.device_id}">—</span>
+                                                </div>
+                                            </div>
+
+                                            <div class="autodose-last-dose-info" id="autodose-last-dose-info-${device.device_id}">
+                                                <div class="autodose-detail-item">
+                                                    <span class="autodose-detail-label">Type:</span>
+                                                    <span class="autodose-detail-value" id="autodose-last-type-${device.device_id}">—</span>
+                                                </div>
+                                                <div class="autodose-detail-item">
+                                                    <span class="autodose-detail-label">Amount:</span>
+                                                    <span class="autodose-detail-value" id="autodose-last-amount-${device.device_id}">—</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Dosing Pumps Card -->
+                                    <div class="card" id="hydro-dosing-card-${device.device_id}" data-card-type="hydro-dosing" draggable="true">
+                                        <div class="card-drag-handle" title="Drag to reorder">⋮⋮</div>
+                                        <div class="card-content">
+                                            <h3 style="margin: 0 0 1rem 0;">Dosing Pumps</h3>
+
+                                            <!-- Active Dosing Countdown -->
+                                            <div class="dosing-active-card" id="dosing-active-card-${device.device_id}" style="display: none;">
+                                                <div class="dosing-active-header" id="dosing-active-header-${device.device_id}">pH Down Dispensing...</div>
+                                                <div class="dosing-active-countdown" id="dosing-active-countdown-${device.device_id}">0.0s</div>
+                                                <div class="dosing-active-amount" id="dosing-active-amount-${device.device_id}">0.00 ml</div>
+                                                <button class="dosing-stop-btn" onclick="event.stopPropagation(); window.stopDosing('${device.device_id}')">Stop</button>
+                                            </div>
+
+                                            <!-- Calculated Doses -->
+                                            <div class="dosing-calculated-section">
+                                                <div class="dosing-calc-item">
+                                                    <div class="dosing-calc-header">Calculated pH Up</div>
+                                                    <div class="dosing-calc-amount" id="dosing-calc-up-${device.device_id}">0.00 ml</div>
+                                                    <button class="dosing-dispense-btn" id="dosing-dispense-up-${device.device_id}" onclick="event.stopPropagation(); window.dispenseCalculated('${device.device_id}', 'up')">Dispense</button>
+                                                </div>
+                                                <div class="dosing-calc-item">
+                                                    <div class="dosing-calc-header">Calculated pH Down</div>
+                                                    <div class="dosing-calc-amount" id="dosing-calc-down-${device.device_id}">0.00 ml</div>
+                                                    <button class="dosing-dispense-btn" id="dosing-dispense-down-${device.device_id}" onclick="event.stopPropagation(); window.dispenseCalculated('${device.device_id}', 'down')">Dispense</button>
+                                                </div>
+                                            </div>
+
+                                            <!-- Manual Dosing -->
+                                            <div class="dosing-manual-section">
+                                                <h4 style="margin: 0 0 0.5rem 0; font-size: 0.95rem; color: #94a3b8;">Manual Dosing</h4>
+                                                <div class="dosing-manual-controls">
+                                                    <input type="number" class="dosing-manual-input" id="dosing-manual-amount-${device.device_id}" value="1.0" min="0.1" step="0.1" onclick="event.stopPropagation()">
+                                                    <span style="color: #94a3b8;">ml</span>
+                                                    <button class="dosing-manual-btn" onclick="event.stopPropagation(); window.manualDose('${device.device_id}', 'up')">pH Up</button>
+                                                    <button class="dosing-manual-btn" onclick="event.stopPropagation(); window.manualDose('${device.device_id}', 'down')">pH Down</button>
+                                                </div>
+                                            </div>
+
+                                            <!-- System Info -->
+                                            <div class="dosing-info-text">
+                                                <span id="dosing-system-volume-${device.device_id}">System Volume: —</span>
+                                                <span id="dosing-target-ph-${device.device_id}">Target pH: —</span>
+                                            </div>
+                                        </div>
+                                    </div>
                                     ` : `
                                     <!-- Placeholder for other device types -->
                                     <div style="text-align: center; color: #888; padding: 2rem;">
@@ -3786,7 +4120,309 @@
                     if (waterDividerHeader) waterDividerHeader.style.display = 'none';
                 }
             }
+
+            // Update Auto-Dosing Card
+            if (data.autodose) {
+                const autodose = data.autodose;
+
+                // Update status badge
+                const statusBadge = document.getElementById(`autodose-status-badge-${device_id}`);
+                if (statusBadge) {
+                    if (autodose.enabled && !autodose.paused) {
+                        statusBadge.textContent = 'Active';
+                        statusBadge.className = 'autodose-status-badge active';
+                    } else {
+                        statusBadge.textContent = 'Inactive';
+                        statusBadge.className = 'autodose-status-badge inactive';
+                    }
+                }
+
+                // Update status text
+                const statusText = document.getElementById(`autodose-status-text-${device_id}`);
+                if (statusText) {
+                    if (!autodose.enabled) {
+                        statusText.textContent = 'Disabled';
+                    } else if (autodose.paused) {
+                        const reason = autodose.lastSkipReason || 'Paused';
+                        statusText.textContent = reason;
+                    } else {
+                        statusText.textContent = 'Monitoring pH';
+                    }
+                }
+
+                // Update next check countdown
+                if (autodose.enabled && !autodose.paused && autodose.lastDoseTimeMs !== undefined && autodose.intervalMs && autodose.serverTimeMs) {
+                    const nextCheckEl = document.getElementById(`autodose-next-check-${device_id}`);
+                    if (nextCheckEl) {
+                        // Clear any existing interval for this element
+                        if (nextCheckEl._intervalId) {
+                            clearInterval(nextCheckEl._intervalId);
+                        }
+
+                        // Calculate next check time
+                        const nextCheckTimeMs = autodose.lastDoseTimeMs + autodose.intervalMs;
+
+                        // Update countdown every 100ms
+                        const updateCountdown = () => {
+                            const nowMs = Date.now();
+                            const remainingMs = nextCheckTimeMs - nowMs;
+
+                            if (remainingMs <= 0) {
+                                nextCheckEl.textContent = 'Checking now...';
+                                if (nextCheckEl._intervalId) {
+                                    clearInterval(nextCheckEl._intervalId);
+                                    nextCheckEl._intervalId = null;
+                                }
+                            } else {
+                                const totalSeconds = Math.floor(remainingMs / 1000);
+                                const hours = Math.floor(totalSeconds / 3600);
+                                const minutes = Math.floor((totalSeconds % 3600) / 60);
+                                const seconds = totalSeconds % 60;
+
+                                if (hours > 0) {
+                                    nextCheckEl.textContent = `${hours}h ${minutes}m`;
+                                } else if (minutes > 0) {
+                                    nextCheckEl.textContent = `${minutes}m ${seconds}s`;
+                                } else {
+                                    nextCheckEl.textContent = `${seconds}s`;
+                                }
+                            }
+                        };
+
+                        updateCountdown(); // Initial update
+                        nextCheckEl._intervalId = setInterval(updateCountdown, 100);
+                    }
+                } else {
+                    const nextCheckEl = document.getElementById(`autodose-next-check-${device_id}`);
+                    if (nextCheckEl) {
+                        if (nextCheckEl._intervalId) {
+                            clearInterval(nextCheckEl._intervalId);
+                            nextCheckEl._intervalId = null;
+                        }
+                        nextCheckEl.textContent = '—';
+                    }
+                }
+
+                // Update interval text
+                const intervalText = document.getElementById(`autodose-interval-text-${device_id}`);
+                if (intervalText && autodose.intervalMs) {
+                    const totalMinutes = Math.floor(autodose.intervalMs / 60000);
+                    const hours = Math.floor(totalMinutes / 60);
+                    const minutes = totalMinutes % 60;
+
+                    if (hours > 0) {
+                        intervalText.textContent = `Checks every ${hours}h ${minutes}m`;
+                    } else {
+                        intervalText.textContent = `Checks every ${minutes}m`;
+                    }
+                }
+
+                // Update pH range
+                const phRange = document.getElementById(`autodose-ph-range-${device_id}`);
+                if (phRange && autodose.phMin !== undefined && autodose.phMax !== undefined) {
+                    phRange.textContent = `${autodose.phMin.toFixed(1)} - ${autodose.phMax.toFixed(1)}`;
+                }
+
+                // Update last dose info
+                if (autodose.lastDoseType && autodose.lastDoseAmount > 0 && autodose.lastDoseTimeMs) {
+                    // Calculate time ago
+                    const lastDoseAgo = document.getElementById(`autodose-last-dose-ago-${device_id}`);
+                    if (lastDoseAgo) {
+                        const nowMs = Date.now();
+                        const agoMs = nowMs - autodose.lastDoseTimeMs;
+                        const agoMinutes = Math.floor(agoMs / 60000);
+                        const agoHours = Math.floor(agoMinutes / 60);
+                        const agoDays = Math.floor(agoHours / 24);
+
+                        if (agoDays > 0) {
+                            lastDoseAgo.textContent = `${agoDays}d ago`;
+                        } else if (agoHours > 0) {
+                            lastDoseAgo.textContent = `${agoHours}h ago`;
+                        } else if (agoMinutes > 0) {
+                            lastDoseAgo.textContent = `${agoMinutes}m ago`;
+                        } else {
+                            lastDoseAgo.textContent = 'Just now';
+                        }
+                    }
+
+                    // Update last dose type
+                    const lastType = document.getElementById(`autodose-last-type-${device_id}`);
+                    if (lastType) {
+                        const typeText = autodose.lastDoseType === 'up' ? 'pH Up' : autodose.lastDoseType === 'down' ? 'pH Down' : autodose.lastDoseType;
+                        const modeText = autodose.lastDoseWasAuto ? '🤖' : '👤';
+                        lastType.textContent = `${typeText} ${modeText}`;
+                    }
+
+                    // Update last dose amount
+                    const lastAmount = document.getElementById(`autodose-last-amount-${device_id}`);
+                    if (lastAmount) {
+                        lastAmount.textContent = `${autodose.lastDoseAmount.toFixed(2)} ml`;
+                    }
+
+                    // Show last dose info section
+                    const lastDoseInfo = document.getElementById(`autodose-last-dose-info-${device_id}`);
+                    if (lastDoseInfo) {
+                        lastDoseInfo.style.display = 'grid';
+                    }
+                } else {
+                    // Hide last dose info if no doses
+                    const lastDoseInfo = document.getElementById(`autodose-last-dose-info-${device_id}`);
+                    if (lastDoseInfo) {
+                        lastDoseInfo.style.display = 'none';
+                    }
+                    const lastDoseAgo = document.getElementById(`autodose-last-dose-ago-${device_id}`);
+                    if (lastDoseAgo) {
+                        lastDoseAgo.textContent = 'Never';
+                    }
+                }
+            }
+
+            // Update Dosing Pumps Card
+            if (data.dosing) {
+                const dosing = data.dosing;
+
+                // Handle active dosing countdown
+                const activeCard = document.getElementById(`dosing-active-card-${device_id}`);
+                const activeHeader = document.getElementById(`dosing-active-header-${device_id}`);
+                const activeCountdown = document.getElementById(`dosing-active-countdown-${device_id}`);
+                const activeAmount = document.getElementById(`dosing-active-amount-${device_id}`);
+
+                if (dosing.state === 'running' && dosing.dose_start_ms && dosing.dose_duration_ms && dosing.serverTimeMs) {
+                    if (activeCard) activeCard.style.display = 'block';
+
+                    // Update header with pump type
+                    if (activeHeader && dosing.active_pump) {
+                        const pumpName = dosing.active_pump === 'ph_up' ? 'pH Up' : 'pH Down';
+                        activeHeader.textContent = `${pumpName} Dispensing...`;
+                    }
+
+                    // Update amount
+                    if (activeAmount && dosing.active_amount_ml !== undefined) {
+                        activeAmount.textContent = `${dosing.active_amount_ml.toFixed(2)} ml`;
+                    }
+
+                    // Update countdown
+                    if (activeCountdown) {
+                        // Clear any existing interval
+                        if (activeCountdown._intervalId) {
+                            clearInterval(activeCountdown._intervalId);
+                        }
+
+                        const endTimeMs = dosing.dose_start_ms + dosing.dose_duration_ms;
+
+                        const updateCountdown = () => {
+                            const nowMs = Date.now();
+                            const remainingMs = endTimeMs - nowMs;
+
+                            if (remainingMs <= 0) {
+                                activeCountdown.textContent = '0.0s';
+                                if (activeCountdown._intervalId) {
+                                    clearInterval(activeCountdown._intervalId);
+                                    activeCountdown._intervalId = null;
+                                }
+                                if (activeCard) activeCard.style.display = 'none';
+                            } else {
+                                const seconds = (remainingMs / 1000).toFixed(1);
+                                activeCountdown.textContent = `${seconds}s`;
+                            }
+                        };
+
+                        updateCountdown(); // Initial update
+                        activeCountdown._intervalId = setInterval(updateCountdown, 100);
+                    }
+                } else {
+                    // Hide active dosing card when idle
+                    if (activeCard) activeCard.style.display = 'none';
+                    if (activeCountdown && activeCountdown._intervalId) {
+                        clearInterval(activeCountdown._intervalId);
+                        activeCountdown._intervalId = null;
+                    }
+                }
+
+                // Update calculated doses
+                const calcUpEl = document.getElementById(`dosing-calc-up-${device_id}`);
+                const calcDownEl = document.getElementById(`dosing-calc-down-${device_id}`);
+                const dispenseUpBtn = document.getElementById(`dosing-dispense-up-${device_id}`);
+                const dispenseDownBtn = document.getElementById(`dosing-dispense-down-${device_id}`);
+
+                if (calcUpEl && dosing.calc_ph_up_ml !== undefined) {
+                    calcUpEl.textContent = `${dosing.calc_ph_up_ml.toFixed(2)} ml`;
+                }
+                if (calcDownEl && dosing.calc_ph_down_ml !== undefined) {
+                    calcDownEl.textContent = `${dosing.calc_ph_down_ml.toFixed(2)} ml`;
+                }
+
+                // Enable/disable dispense buttons based on calculated amounts
+                if (dispenseUpBtn) {
+                    dispenseUpBtn.disabled = !dosing.calc_ph_up_ml || dosing.calc_ph_up_ml <= 0 || dosing.state === 'running';
+                }
+                if (dispenseDownBtn) {
+                    dispenseDownBtn.disabled = !dosing.calc_ph_down_ml || dosing.calc_ph_down_ml <= 0 || dosing.state === 'running';
+                }
+
+                // Update system info
+                const volumeEl = document.getElementById(`dosing-system-volume-${device_id}`);
+                const targetPhEl = document.getElementById(`dosing-target-ph-${device_id}`);
+
+                if (volumeEl && dosing.system_volume !== undefined) {
+                    volumeEl.textContent = `System Volume: ${dosing.system_volume.toFixed(1)} gal`;
+                }
+                if (targetPhEl && dosing.ph_target !== undefined) {
+                    targetPhEl.textContent = `Target pH: ${dosing.ph_target.toFixed(1)}`;
+                }
+            }
         }
+
+        // Dosing control functions
+        window.stopDosing = function(device_id) {
+            const ws = wsMap[device_id];
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                    type: 'stop_dosing'
+                }));
+                console.log(`Sent stop dosing command for ${device_id}`);
+            } else {
+                console.error(`WebSocket not connected for device ${device_id}`);
+                alert('Device not connected');
+            }
+        };
+
+        window.dispenseCalculated = function(device_id, pumpType) {
+            const ws = wsMap[device_id];
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                    type: 'dispense_calculated',
+                    pump_type: pumpType
+                }));
+                console.log(`Sent dispense calculated command: ${pumpType} for ${device_id}`);
+            } else {
+                console.error(`WebSocket not connected for device ${device_id}`);
+                alert('Device not connected');
+            }
+        };
+
+        window.manualDose = function(device_id, pumpType) {
+            const amountInput = document.getElementById(`dosing-manual-amount-${device_id}`);
+            const amount = parseFloat(amountInput?.value || 1.0);
+
+            if (amount <= 0) {
+                alert('Please enter a valid amount greater than 0');
+                return;
+            }
+
+            const ws = wsMap[device_id];
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                    type: 'manual_dose',
+                    pump_type: pumpType,
+                    amount: amount
+                }));
+                console.log(`Sent manual dose command: ${pumpType} ${amount}ml for ${device_id}`);
+            } else {
+                console.error(`WebSocket not connected for device ${device_id}`);
+                alert('Device not connected');
+            }
+        };
 
         // Remote valve control function
         window.controlRemoteValve = function(device_id, valve, action) {
@@ -3893,6 +4529,12 @@
                 // Handle sensor_update from hydro controller
                 else if (data.type === 'sensor_update') {
                     console.log('Hydro sensor_update received:', device_id, data);
+                    updateOnlineStatus(device_id, true);
+                    updateHydroControllerDisplay(device_id, data);
+                }
+                // Handle sensors message from hydro controller (includes autodose and dosing data)
+                else if (data.type === 'sensors') {
+                    console.log('Hydro sensors received:', device_id, data);
                     updateOnlineStatus(device_id, true);
                     updateHydroControllerDisplay(device_id, data);
                 }
