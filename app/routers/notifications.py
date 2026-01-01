@@ -126,6 +126,10 @@ async def get_notifications(
         return []
 
     # Build query - join with Device to get device name
+    # Use COALESCE to try name, system_name, then fall back to device_id
+    from sqlalchemy import case
+    device_display_name = func.coalesce(Device.name, Device.system_name, Device.device_id)
+
     conditions = [Notification.device_id.in_(all_device_ids)]
 
     if device_id:
@@ -139,7 +143,7 @@ async def get_notifications(
     elif active_only:
         conditions.append(Notification.status == NotificationStatus.ACTIVE)
 
-    stmt = select(Notification, Device.name).join(
+    stmt = select(Notification, device_display_name).join(
         Device, Notification.device_id == Device.device_id
     ).where(and_(*conditions)).order_by(
         Notification.created_at.desc()
@@ -154,7 +158,7 @@ async def get_notifications(
         notif_dict = {
             "id": notif.id,
             "device_id": notif.device_id,
-            "device_name": device_name or notif.device_id,  # Fallback to device_id if no name
+            "device_name": device_name,
             "alert_type": notif.alert_type,
             "alert_type_id": notif.alert_type_id,
             "severity": notif.severity,

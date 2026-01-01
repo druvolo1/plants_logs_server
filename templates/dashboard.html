@@ -1683,6 +1683,14 @@
                 <input type="checkbox" id="master-mute-checkbox" onchange="toggleMasterMute()">
                 <label for="master-mute-checkbox">Mute All</label>
             </div>
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <label for="notification-sort" style="color: #cbd5e1; font-size: 0.85rem;">Sort:</label>
+                <select id="notification-sort" onchange="handleSortChange()" style="background: #475569; color: white; border: 1px solid #64748b; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.85rem;">
+                    <option value="severity">Severity</option>
+                    <option value="device">Device Name</option>
+                    <option value="time">Time</option>
+                </select>
+            </div>
             <button class="notification-clear-all-btn" onclick="clearAllNotifications()">Clear All</button>
         </div>
         <div class="notification-list" id="notification-list">
@@ -1722,11 +1730,20 @@
         // ====== Notification System ======
         let notificationsMuted = localStorage.getItem('notificationsMuted') === 'true';
         let allNotifications = [];
+        let currentSort = localStorage.getItem('notificationSort') || 'severity';
 
         // Initialize mute checkbox state
         if (notificationsMuted) {
             document.getElementById('master-mute-checkbox').checked = true;
         }
+
+        // Initialize sort dropdown
+        document.addEventListener('DOMContentLoaded', () => {
+            const sortSelect = document.getElementById('notification-sort');
+            if (sortSelect) {
+                sortSelect.value = currentSort;
+            }
+        });
 
         function toggleNotificationDrawer() {
             const drawer = document.getElementById('notification-drawer');
@@ -1772,16 +1789,52 @@
             }
         }
 
+        function handleSortChange() {
+            const sortSelect = document.getElementById('notification-sort');
+            currentSort = sortSelect.value;
+            localStorage.setItem('notificationSort', currentSort);
+            renderNotifications();
+        }
+
+        function sortNotifications(notifications) {
+            const sorted = [...notifications];
+
+            if (currentSort === 'severity') {
+                // Sort by severity: CRITICAL > WARNING > INFO, then by time (newest first)
+                const severityOrder = { 'CRITICAL': 0, 'WARNING': 1, 'INFO': 2 };
+                sorted.sort((a, b) => {
+                    const severityDiff = severityOrder[a.severity] - severityOrder[b.severity];
+                    if (severityDiff !== 0) return severityDiff;
+                    return new Date(b.created_at) - new Date(a.created_at);
+                });
+            } else if (currentSort === 'device') {
+                // Sort by device name alphabetically, then by time
+                sorted.sort((a, b) => {
+                    const nameCompare = (a.device_name || '').localeCompare(b.device_name || '');
+                    if (nameCompare !== 0) return nameCompare;
+                    return new Date(b.created_at) - new Date(a.created_at);
+                });
+            } else if (currentSort === 'time') {
+                // Sort by time (newest first)
+                sorted.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+            }
+
+            return sorted;
+        }
+
         function renderNotifications() {
             const listEl = document.getElementById('notification-list');
 
             // Filter out notifications if muted
-            const notifications = notificationsMuted ? [] : allNotifications;
+            let notifications = notificationsMuted ? [] : allNotifications;
 
             if (notifications.length === 0) {
-                listEl.innerHTML = `<div class="notification-empty">${notificationsMuted ? 'Notifications muted' : 'No active notifications'}</div>`;
+                listEl.innerHTML = `<div class="notification-empty">${notificationsMuted ? 'Notifications muted' : 'No notifications'}</div>`;
                 return;
             }
+
+            // Sort notifications
+            notifications = sortNotifications(notifications);
 
             listEl.innerHTML = notifications.map(notif => `
                 <div class="notification-item severity-${notif.severity} ${notif.status !== 'ACTIVE' ? 'cleared' : ''}">
