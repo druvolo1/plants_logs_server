@@ -60,6 +60,27 @@ async def send_to_device(device_id: str, message: dict):
         return False
 
 
+async def broadcast_notification_update():
+    """
+    Broadcast notification update to all connected users.
+    Tells frontend to refresh notifications.
+    """
+    message = {"type": "notifications_updated"}
+    user_count = 0
+
+    # Broadcast to all users across all device connections
+    for device_id, websockets in user_connections.items():
+        for user_ws in websockets:
+            try:
+                await user_ws.send_json(message)
+                user_count += 1
+            except Exception as e:
+                print(f"ERROR broadcasting notification update to user: {e}")
+
+    if user_count > 0:
+        print(f"[NOTIFICATIONS] Broadcasted update to {user_count} connected user(s)")
+
+
 async def generate_device_offline_alert(device_id: str, session: AsyncSession):
     """
     Generate a server-side DEVICE_OFFLINE alert when device disconnects.
@@ -205,6 +226,10 @@ async def process_device_notifications(device_id: str, notifications: List[dict]
     try:
         await session.commit()
         print(f"Successfully committed {len(notifications)} notification(s) for {device_id}")
+
+        # Broadcast notification update to all connected users
+        await broadcast_notification_update()
+
     except Exception as commit_error:
         print(f"ERROR committing notifications for {device_id}: {commit_error}")
         await session.rollback()

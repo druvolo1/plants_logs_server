@@ -3591,6 +3591,12 @@
                     updateOnlineStatus(device_id, true);
                     updateDeviceStatus(device_id, data.data);
                 }
+                // Handle notification updates
+                else if (data.type === 'notifications_updated') {
+                    console.log('[NOTIFICATIONS] Received update broadcast, refreshing...');
+                    fetchNotifications();
+                    updateBadge();
+                }
             };
             ws.onclose = () => {
                 console.log(`Disconnected from ${device_id}`);

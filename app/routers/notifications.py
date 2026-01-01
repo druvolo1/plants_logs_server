@@ -319,12 +319,15 @@ async def clear_notification(
 
     # Send clear command to device via WebSocket
     # This will be handled by the websocket module
-    from app.routers.websocket import send_to_device
+    from app.routers.websocket import send_to_device, broadcast_notification_update
     await send_to_device(notification.device_id, {
         "type": "clear_notification",
         "notification_id": notification_id,
         "alert_type": notification.alert_type
     })
+
+    # Broadcast to all users that notifications were updated
+    await broadcast_notification_update()
 
     return {"success": True, "message": "Notification cleared"}
 
@@ -387,12 +390,15 @@ async def clear_all_notifications(
     cleared_count = result.rowcount
 
     # Send clear_all command to device(s) via WebSocket
-    from app.routers.websocket import send_to_device
+    from app.routers.websocket import send_to_device, broadcast_notification_update
     target_devices = [device_id] if device_id else all_device_ids
     for dev_id in target_devices:
         await send_to_device(dev_id, {
             "type": "clear_all_notifications"
         })
+
+    # Broadcast to all users that notifications were updated
+    await broadcast_notification_update()
 
     return {"success": True, "cleared_count": cleared_count}
 
