@@ -2320,8 +2320,13 @@
                 const result = await response.json();
                 console.log(`[NOTIFICATIONS] Removed ${result.deleted_count} cleared notifications`);
 
-                // Refresh notifications
-                await fetchNotifications();
+                // Immediately remove cleared notifications from local array for instant UI update
+                allNotifications = allNotifications.filter(n => n.status !== 'SELF_CLEARED' && n.status !== 'USER_CLEARED');
+                renderNotifications();
+                updateBadge();
+
+                // Fetch from server to ensure sync (after a small delay to let server finish)
+                setTimeout(() => fetchNotifications(), 100);
             } catch (error) {
                 console.error('Error removing cleared notifications:', error);
                 alert('Failed to remove cleared notifications');
