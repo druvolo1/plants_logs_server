@@ -169,12 +169,27 @@ async def get_notifications(
 
     # Add device_name to each notification
     from datetime import timezone
+    import pytz
     notifications = []
     for notif, device_name in rows:
         print(f"[NOTIFICATIONS] Device {notif.device_id} -> name from query: '{device_name}'")
-        # Convert datetimes to UTC to ensure consistent timezone handling
-        created_at_utc = notif.created_at.astimezone(timezone.utc) if notif.created_at.tzinfo else notif.created_at
-        updated_at_utc = notif.updated_at.astimezone(timezone.utc) if notif.updated_at.tzinfo else notif.updated_at
+        print(f"[NOTIFICATIONS] Raw created_at: {notif.created_at}, tzinfo: {notif.created_at.tzinfo}")
+
+        # Convert datetimes to UTC
+        # If no timezone info, assume EST (UTC-5)
+        if notif.created_at.tzinfo is None:
+            est = pytz.timezone('America/New_York')
+            created_at_utc = est.localize(notif.created_at).astimezone(timezone.utc)
+        else:
+            created_at_utc = notif.created_at.astimezone(timezone.utc)
+
+        if notif.updated_at.tzinfo is None:
+            est = pytz.timezone('America/New_York')
+            updated_at_utc = est.localize(notif.updated_at).astimezone(timezone.utc)
+        else:
+            updated_at_utc = notif.updated_at.astimezone(timezone.utc)
+
+        print(f"[NOTIFICATIONS] Converted to UTC: {created_at_utc}")
 
         notif_dict = {
             "id": notif.id,
