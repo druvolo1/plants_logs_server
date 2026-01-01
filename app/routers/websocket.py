@@ -202,7 +202,8 @@ async def process_device_notifications(device_id: str, notifications: List[dict]
                 message=message,
                 first_occurrence=first_occurrence,
                 last_occurrence=last_occurrence,
-                cleared_at=cleared_at
+                cleared_at=cleared_at,
+                created_at=func.now()  # Explicitly set to current time on INSERT
             )
 
             # On duplicate key (device_id, alert_type), update fields
