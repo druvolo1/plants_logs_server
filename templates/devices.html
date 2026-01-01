@@ -944,6 +944,21 @@
     {% endif %}
 
     <script>
+        // Global session timeout handler - intercept all fetch requests
+        const originalFetch = window.fetch;
+        window.fetch = function(...args) {
+            return originalFetch.apply(this, args)
+                .then(response => {
+                    // Check if session expired (401 Unauthorized)
+                    if (response.status === 401) {
+                        console.log('Session expired, redirecting to login...');
+                        window.location.href = '/auth/login';
+                        return Promise.reject(new Error('Session expired'));
+                    }
+                    return response;
+                });
+        };
+
         // Admin status
         const isAdmin = {{ 'true' if user.is_superuser else 'false' }};
         // Store WebSocket connections per device

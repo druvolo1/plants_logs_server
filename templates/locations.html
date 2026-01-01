@@ -1116,6 +1116,21 @@
     </div>
 
     <script>
+        // Global session timeout handler - intercept all fetch requests
+        const originalFetch = window.fetch;
+        window.fetch = function(...args) {
+            return originalFetch.apply(this, args)
+                .then(response => {
+                    // Check if session expired (401 Unauthorized)
+                    if (response.status === 401) {
+                        console.log('Session expired, redirecting to login...');
+                        window.location.href = '/auth/login';
+                        return Promise.reject(new Error('Session expired'));
+                    }
+                    return response;
+                });
+        };
+
         let locations = [];
         let devices = [];
         let selectedLocationId = null;
