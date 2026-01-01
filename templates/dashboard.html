@@ -2881,8 +2881,8 @@
                                                 <div class="dosing-manual-controls">
                                                     <input type="number" class="dosing-manual-input" id="dosing-manual-amount-${device.device_id}" value="1.0" min="0.1" step="0.1" onclick="event.stopPropagation()">
                                                     <span style="color: #94a3b8;">ml</span>
-                                                    <button class="dosing-manual-btn" onclick="event.stopPropagation(); window.manualDose('${device.device_id}', 'up')">pH Up</button>
-                                                    <button class="dosing-manual-btn" onclick="event.stopPropagation(); window.manualDose('${device.device_id}', 'down')">pH Down</button>
+                                                    <button class="dosing-manual-btn" onclick="return window.manualDose('${device.device_id}', 'up', event)">pH Up</button>
+                                                    <button class="dosing-manual-btn" onclick="return window.manualDose('${device.device_id}', 'down', event)">pH Down</button>
                                                 </div>
                                             </div>
 
@@ -3678,12 +3678,6 @@
         }
 
         function updateHydroControllerDisplay(device_id, data) {
-            // Debug: Log received data
-            console.log('[updateHydroControllerDisplay] device_id:', device_id);
-            console.log('[updateHydroControllerDisplay] data keys:', Object.keys(data));
-            console.log('[updateHydroControllerDisplay] autodose:', data.autodose);
-            console.log('[updateHydroControllerDisplay] dosing:', data.dosing);
-
             // Store device settings for temperature unit and ranges
             if (!window.hydroDeviceSettings) window.hydroDeviceSettings = {};
             if (data.settings) {
@@ -4077,13 +4071,18 @@
                             clearInterval(nextCheckEl._intervalId);
                         }
 
-                        // Calculate next check time
-                        const nextCheckTimeMs = autodose.lastDoseTimeMs + autodose.intervalMs;
+                        // Calculate time elapsed since last dose (in ESP32 time)
+                        const timeSinceLastDose = autodose.serverTimeMs - autodose.lastDoseTimeMs;
+                        // Calculate time remaining until next check
+                        const timeUntilNextCheck = autodose.intervalMs - timeSinceLastDose;
+
+                        // Store the target time in real time (now + remaining)
+                        const targetTimeMs = Date.now() + timeUntilNextCheck;
 
                         // Update countdown every 100ms
                         const updateCountdown = () => {
                             const nowMs = Date.now();
-                            const remainingMs = nextCheckTimeMs - nowMs;
+                            const remainingMs = targetTimeMs - nowMs;
 
                             if (remainingMs <= 0) {
                                 nextCheckEl.textContent = 'Checking now...';
@@ -4142,12 +4141,11 @@
                 }
 
                 // Update last dose info
-                if (autodose.lastDoseType && autodose.lastDoseAmount > 0 && autodose.lastDoseTimeMs) {
-                    // Calculate time ago
+                if (autodose.lastDoseType && autodose.lastDoseAmount > 0 && autodose.lastDoseTimeMs && autodose.serverTimeMs) {
+                    // Calculate time ago using ESP32 time domain
                     const lastDoseAgo = document.getElementById(`autodose-last-dose-ago-${device_id}`);
                     if (lastDoseAgo) {
-                        const nowMs = Date.now();
-                        const agoMs = nowMs - autodose.lastDoseTimeMs;
+                        const agoMs = autodose.serverTimeMs - autodose.lastDoseTimeMs;
                         const agoMinutes = Math.floor(agoMs / 60000);
                         const agoHours = Math.floor(agoMinutes / 60);
                         const agoDays = Math.floor(agoHours / 24);
@@ -4226,13 +4224,18 @@
                             clearInterval(activeCountdown._intervalId);
                         }
 
-                        const endTimeMs = dosing.dose_start_ms + dosing.dose_duration_ms;
+                        // Calculate time elapsed and remaining in ESP32 time domain
+                        const elapsedMs = dosing.serverTimeMs - dosing.dose_start_ms;
+                        const remainingMs = dosing.dose_duration_ms - elapsedMs;
+
+                        // Store the target end time in real time (now + remaining)
+                        const targetEndTimeMs = Date.now() + remainingMs;
 
                         const updateCountdown = () => {
                             const nowMs = Date.now();
-                            const remainingMs = endTimeMs - nowMs;
+                            const currentRemainingMs = targetEndTimeMs - nowMs;
 
-                            if (remainingMs <= 0) {
+                            if (currentRemainingMs <= 0) {
                                 activeCountdown.textContent = '0.0s';
                                 if (activeCountdown._intervalId) {
                                     clearInterval(activeCountdown._intervalId);
@@ -4240,7 +4243,7 @@
                                 }
                                 if (activeCard) activeCard.style.display = 'none';
                             } else {
-                                const seconds = (remainingMs / 1000).toFixed(1);
+                                const seconds = (currentRemainingMs / 1000).toFixed(1);
                                 activeCountdown.textContent = `${seconds}s`;
                             }
                         };
@@ -4319,13 +4322,20 @@
             }
         };
 
-        window.manualDose = function(device_id, pumpType) {
+        window.manualDose = function(device_id, pumpType, event) {
+            // Prevent event bubbling
+            if (event) {
+                event.preventDefault();
+                event.stopPropagation();
+                event.stopImmediatePropagation();
+            }
+
             const amountInput = document.getElementById(`dosing-manual-amount-${device_id}`);
             const amount = parseFloat(amountInput?.value || 1.0);
 
-            if (amount <= 0) {
+            if (amount <= 0 || isNaN(amount)) {
                 alert('Please enter a valid amount greater than 0');
-                return;
+                return false;
             }
 
             const ws = wsMap[device_id];
@@ -4340,6 +4350,7 @@
                 console.error(`WebSocket not connected for device ${device_id}`);
                 alert('Device not connected');
             }
+            return false;
         };
 
         // Remote valve control function
