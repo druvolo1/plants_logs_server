@@ -386,15 +386,17 @@ async def environment_heartbeat(
         'last_seen': now
     }
 
-    # Update mDNS hostname if provided
+    # Update mDNS hostname if provided and changed
     if data.mdns_hostname:
+        if device.mdns_hostname != data.mdns_hostname:
+            print(f"[Heartbeat] Updated mDNS hostname for {device_id}: {device.mdns_hostname} -> {data.mdns_hostname}")
         update_values['mdns_hostname'] = data.mdns_hostname
-        print(f"[Heartbeat] Updated mDNS hostname for {device_id}: {data.mdns_hostname}")
 
-    # Update IP address if provided
+    # Update IP address if provided and changed
     if data.ip_address:
+        if device.ip_address != data.ip_address:
+            print(f"[Heartbeat] Updated IP address for {device_id}: {device.ip_address} -> {data.ip_address}")
         update_values['ip_address'] = data.ip_address
-        print(f"[Heartbeat] Updated IP address for {device_id}: {data.ip_address}")
 
     await session.execute(
         update(Device)
