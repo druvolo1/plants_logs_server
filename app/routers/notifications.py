@@ -176,16 +176,14 @@ async def get_notifications(
         print(f"[NOTIFICATIONS] Raw created_at: {notif.created_at}, tzinfo: {notif.created_at.tzinfo}")
 
         # Convert datetimes to UTC
-        # If no timezone info, assume America/New_York timezone
+        # Session is forced to UTC via init_command, so naive datetimes are in UTC
         if notif.created_at.tzinfo is None:
-            created_at_with_tz = notif.created_at.replace(tzinfo=ZoneInfo('America/New_York'))
-            created_at_utc = created_at_with_tz.astimezone(timezone.utc)
+            created_at_utc = notif.created_at.replace(tzinfo=timezone.utc)
         else:
             created_at_utc = notif.created_at.astimezone(timezone.utc)
 
         if notif.updated_at.tzinfo is None:
-            updated_at_with_tz = notif.updated_at.replace(tzinfo=ZoneInfo('America/New_York'))
-            updated_at_utc = updated_at_with_tz.astimezone(timezone.utc)
+            updated_at_utc = notif.updated_at.replace(tzinfo=timezone.utc)
         else:
             updated_at_utc = notif.updated_at.astimezone(timezone.utc)
 

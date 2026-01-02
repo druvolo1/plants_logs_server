@@ -45,7 +45,12 @@ GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
 GOOGLE_REDIRECT_URI = os.getenv("GOOGLE_REDIRECT_URI")
 
-engine = create_async_engine(DATABASE_URL)
+engine = create_async_engine(
+    DATABASE_URL,
+    connect_args={
+        "init_command": "SET time_zone='+00:00'"  # Force UTC for all sessions
+    }
+)
 
 class AsyncSessionGreenlet(AsyncSession):
     def __init__(self, *args, **kwargs):
