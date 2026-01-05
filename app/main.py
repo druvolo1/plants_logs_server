@@ -114,10 +114,10 @@ from app.schemas import (
     PhaseTemplateRead,
     DeviceAssignmentCreate,
     AssignedDeviceInfo,
-    LogEntryCreate,
-    LogEntryRead,
-    EnvironmentDataCreate,
-    EnvironmentLogRead,
+    HydroReadingCreate,
+    EnvironmentReadingCreate,
+    EnvironmentDataCreate,  # Backward compatibility alias
+    PlantDailyLogRead,
 )
 
 class CustomSQLAlchemyUserDatabase(SQLAlchemyUserDatabase[User, int]):
