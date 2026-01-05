@@ -47,10 +47,10 @@ from .plant import (
     PhaseHistoryRead,
 )
 from .logs import (
-    LogEntryCreate,
-    LogEntryRead,
+    HydroReadingCreate,
+    EnvironmentReadingCreate,
     EnvironmentDataCreate,
-    EnvironmentLogRead,
+    PlantDailyLogRead,
 )
 from .firmware import (
     FirmwareCreate,
@@ -109,10 +109,10 @@ __all__ = [
     "PlantAssignmentRead",
     "PhaseHistoryRead",
     # Log schemas
-    "LogEntryCreate",
-    "LogEntryRead",
+    "HydroReadingCreate",
+    "EnvironmentReadingCreate",
     "EnvironmentDataCreate",
-    "EnvironmentLogRead",
+    "PlantDailyLogRead",
     # Firmware schemas
     "FirmwareCreate",
     "FirmwareRead",

@@ -1,64 +1,108 @@
 # app/models/logs.py
 """
-Log entry and environment log models.
+Plant-centric daily log models.
 """
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Float, Text
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Float, Text, Date, UniqueConstraint
 from sqlalchemy.orm import relationship
-from datetime import datetime
+from datetime import datetime, date
 from .base import Base
 
 
-class LogEntry(Base):
+class PlantDailyLog(Base):
     """
-    Device-centric log entries. Data is stored once per device reading,
-    then associated to plants via DeviceAssignment history when generating reports.
+    Plant-centric daily aggregated logs.
+    One row per plant per day with min/max/avg for all sensor readings.
+    Data is written directly to plants when devices post readings.
     """
-    __tablename__ = "log_entries"
+    __tablename__ = "plant_daily_logs"
+
     id = Column(Integer, primary_key=True, index=True)
-    device_id = Column(Integer, ForeignKey("devices.id", ondelete="CASCADE"), nullable=True, index=True)  # Nullable for legacy data
-    # Legacy field - kept for backward compatibility with old data
-    plant_id = Column(Integer, ForeignKey("plants.id"), nullable=True, index=True)
-    event_type = Column(String(20), nullable=False)  # 'sensor' or 'dosing'
-    sensor_name = Column(String(50), nullable=True)  # e.g., 'ph', 'ec', 'humidity', 'temperature'
-    value = Column(Float, nullable=True)  # pH reading, humidity %, temp, etc.
-    dose_type = Column(String(10), nullable=True)  # 'up' or 'down'
-    dose_amount_ml = Column(Float, nullable=True)  # Dose amount
-    timestamp = Column(DateTime, nullable=False, index=True)
+    plant_id = Column(Integer, ForeignKey("plants.id", ondelete="CASCADE"), nullable=False, index=True)
+    log_date = Column(Date, nullable=False, index=True)
+
+    # Hydroponic data (min/max/avg for daily aggregation)
+    ph_min = Column(Float, nullable=True)
+    ph_max = Column(Float, nullable=True)
+    ph_avg = Column(Float, nullable=True)
+
+    ec_min = Column(Float, nullable=True)
+    ec_max = Column(Float, nullable=True)
+    ec_avg = Column(Float, nullable=True)
+
+    tds_min = Column(Float, nullable=True)
+    tds_max = Column(Float, nullable=True)
+    tds_avg = Column(Float, nullable=True)
+
+    water_temp_min = Column(Float, nullable=True)
+    water_temp_max = Column(Float, nullable=True)
+    water_temp_avg = Column(Float, nullable=True)
+
+    # Dosing totals for the day
+    total_ph_up_ml = Column(Float, nullable=True, default=0.0)
+    total_ph_down_ml = Column(Float, nullable=True, default=0.0)
+    dosing_events_count = Column(Integer, nullable=True, default=0)
+
+    # Environmental data (min/max/avg for daily aggregation)
+    co2_min = Column(Integer, nullable=True)
+    co2_max = Column(Integer, nullable=True)
+    co2_avg = Column(Float, nullable=True)
+
+    air_temp_min = Column(Float, nullable=True)
+    air_temp_max = Column(Float, nullable=True)
+    air_temp_avg = Column(Float, nullable=True)
+
+    humidity_min = Column(Float, nullable=True)
+    humidity_max = Column(Float, nullable=True)
+    humidity_avg = Column(Float, nullable=True)
+
+    vpd_min = Column(Float, nullable=True)
+    vpd_max = Column(Float, nullable=True)
+    vpd_avg = Column(Float, nullable=True)
+
+    lux_min = Column(Float, nullable=True)
+    lux_max = Column(Float, nullable=True)
+    lux_avg = Column(Float, nullable=True)
+
+    ppfd_min = Column(Float, nullable=True)
+    ppfd_max = Column(Float, nullable=True)
+    ppfd_avg = Column(Float, nullable=True)
+
+    # Additional environmental data
+    pressure_min = Column(Float, nullable=True)
+    pressure_max = Column(Float, nullable=True)
+    pressure_avg = Column(Float, nullable=True)
+
+    altitude_min = Column(Float, nullable=True)
+    altitude_max = Column(Float, nullable=True)
+    altitude_avg = Column(Float, nullable=True)
+
+    gas_resistance_min = Column(Float, nullable=True)
+    gas_resistance_max = Column(Float, nullable=True)
+    gas_resistance_avg = Column(Float, nullable=True)
+
+    air_quality_score_min = Column(Integer, nullable=True)
+    air_quality_score_max = Column(Integer, nullable=True)
+    air_quality_score_avg = Column(Float, nullable=True)
+
+    # Metadata
+    hydro_device_id = Column(Integer, ForeignKey("devices.id"), nullable=True)
+    env_device_id = Column(Integer, ForeignKey("devices.id"), nullable=True)
+    last_hydro_reading = Column(DateTime, nullable=True)
+    last_env_reading = Column(DateTime, nullable=True)
+    readings_count = Column(Integer, nullable=True, default=0)
+
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Ensure one row per plant per day
+    __table_args__ = (
+        UniqueConstraint('plant_id', 'log_date', name='uq_plant_date'),
+    )
 
     # Relationships
-    device = relationship("Device")
-    plant = relationship("Plant")  # Legacy relationship for querying old data
-
-
-class EnvironmentLog(Base):
-    __tablename__ = "environment_logs"
-    id = Column(Integer, primary_key=True, index=True)
-    device_id = Column(Integer, ForeignKey("devices.id", ondelete="CASCADE"), nullable=False)
-    location_id = Column(Integer, ForeignKey("locations.id"), nullable=True)
-
-    # Air Quality readings
-    co2 = Column(Integer, nullable=True)
-    temperature = Column(Float, nullable=True)
-    humidity = Column(Float, nullable=True)
-    vpd = Column(Float, nullable=True)
-
-    # Atmospheric readings
-    pressure = Column(Float, nullable=True)
-    altitude = Column(Float, nullable=True)
-    gas_resistance = Column(Float, nullable=True)
-    air_quality_score = Column(Integer, nullable=True)
-
-    # Light readings
-    lux = Column(Float, nullable=True)
-    ppfd = Column(Float, nullable=True)
-
-    timestamp = Column(DateTime, nullable=False, index=True)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-
-    # Relationships
-    device = relationship("Device")
-    location = relationship("Location")
+    plant = relationship("Plant")
+    hydro_device = relationship("Device", foreign_keys=[hydro_device_id])
+    env_device = relationship("Device", foreign_keys=[env_device_id])
 
 
 class PlantReport(Base):

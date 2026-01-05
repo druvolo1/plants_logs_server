@@ -1,9 +1,8 @@
 # app/services/reports.py
 """
-Plant report generation service.
+Plant report generation service for plant-centric daily logs.
 
-Handles both live reports (real-time aggregation from device data) and
-frozen reports (generated when a plant is finished).
+Simple and efficient - all data is already stored per-plant.
 """
 import json
 from datetime import datetime
@@ -12,8 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import (
-    Plant, Device, DeviceAssignment, DeviceLink,
-    LogEntry, EnvironmentLog, PhaseHistory, PlantReport
+    Plant, Device, PlantDailyLog, PhaseHistory, PlantReport
 )
 
 
@@ -23,7 +21,8 @@ async def get_plant_data(
     include_raw: bool = True
 ) -> Dict[str, Any]:
     """
-    Gather all data associated with a plant via DeviceAssignment history.
+    Gather all data for a plant from plant-centric daily logs.
+    Much simpler than old device-centric approach!
 
     Args:
         session: Database session
@@ -33,105 +32,60 @@ async def get_plant_data(
     Returns:
         Dictionary containing raw_data and aggregated_stats
     """
-    # Get all device assignments for this plant
-    assignments_result = await session.execute(
-        select(DeviceAssignment, Device)
-        .join(Device, DeviceAssignment.device_id == Device.id)
-        .where(DeviceAssignment.plant_id == plant.id)
-        .order_by(DeviceAssignment.assigned_at)
+    # Simple query - get all daily logs for this plant
+    logs_result = await session.execute(
+        select(PlantDailyLog)
+        .where(PlantDailyLog.plant_id == plant.id)
+        .order_by(PlantDailyLog.log_date)
     )
-    assignments = assignments_result.all()
+    logs = logs_result.scalars().all()
 
-    # Collect all feeding logs from assigned devices during assignment periods
-    feeding_logs = []
-    environment_logs = []
-    device_assignments_data = []
-    linked_devices_data = []
-
-    for assignment, device in assignments:
-        assign_start = assignment.assigned_at
-        assign_end = assignment.removed_at or datetime.utcnow()
-
-        # Record assignment info
-        device_assignments_data.append({
-            "device_id": device.device_id,
-            "device_name": device.name,
-            "assigned_at": assign_start.isoformat(),
-            "removed_at": assignment.removed_at.isoformat() if assignment.removed_at else None
-        })
-
-        # Get feeding logs (sensor + dosing) from this device during assignment period
-        logs_result = await session.execute(
-            select(LogEntry).where(
-                LogEntry.device_id == device.id,
-                LogEntry.timestamp >= assign_start,
-                LogEntry.timestamp <= assign_end
-            ).order_by(LogEntry.timestamp)
-        )
-
-        for log in logs_result.scalars().all():
-            feeding_logs.append({
-                "id": log.id,
-                "device_id": device.device_id,
-                "event_type": log.event_type,
-                "sensor_name": log.sensor_name,
-                "value": log.value,
-                "dose_type": log.dose_type,
-                "dose_amount_ml": log.dose_amount_ml,
-                "timestamp": log.timestamp.isoformat()
+    # Convert logs to dictionaries
+    daily_logs = []
+    if include_raw:
+        for log in logs:
+            daily_logs.append({
+                "log_date": log.log_date.isoformat(),
+                # Hydro data
+                "ph_min": log.ph_min,
+                "ph_max": log.ph_max,
+                "ph_avg": log.ph_avg,
+                "ec_min": log.ec_min,
+                "ec_max": log.ec_max,
+                "ec_avg": log.ec_avg,
+                "tds_min": log.tds_min,
+                "tds_max": log.tds_max,
+                "tds_avg": log.tds_avg,
+                "water_temp_min": log.water_temp_min,
+                "water_temp_max": log.water_temp_max,
+                "water_temp_avg": log.water_temp_avg,
+                "total_ph_up_ml": log.total_ph_up_ml,
+                "total_ph_down_ml": log.total_ph_down_ml,
+                "dosing_events_count": log.dosing_events_count,
+                # Environment data
+                "co2_min": log.co2_min,
+                "co2_max": log.co2_max,
+                "co2_avg": log.co2_avg,
+                "air_temp_min": log.air_temp_min,
+                "air_temp_max": log.air_temp_max,
+                "air_temp_avg": log.air_temp_avg,
+                "humidity_min": log.humidity_min,
+                "humidity_max": log.humidity_max,
+                "humidity_avg": log.humidity_avg,
+                "vpd_min": log.vpd_min,
+                "vpd_max": log.vpd_max,
+                "vpd_avg": log.vpd_avg,
+                "lux_min": log.lux_min,
+                "lux_max": log.lux_max,
+                "lux_avg": log.lux_avg,
+                "ppfd_min": log.ppfd_min,
+                "ppfd_max": log.ppfd_max,
+                "ppfd_avg": log.ppfd_avg,
+                # Metadata
+                "hydro_device_id": log.hydro_device_id,
+                "env_device_id": log.env_device_id,
+                "readings_count": log.readings_count
             })
-
-        # Get linked environmental devices for this feeding system during assignment period
-        links_result = await session.execute(
-            select(DeviceLink, Device)
-            .join(Device, DeviceLink.child_device_id == Device.id)
-            .where(
-                DeviceLink.parent_device_id == device.id,
-                DeviceLink.created_at <= assign_end,
-                # Include links that were active during assignment
-                # (removed_at is NULL or removed_at > assign_start)
-                ((DeviceLink.removed_at == None) | (DeviceLink.removed_at > assign_start))
-            )
-        )
-
-        for link, linked_device in links_result.all():
-            link_start = max(link.created_at, assign_start)
-            link_end = min(link.removed_at or assign_end, assign_end)
-
-            linked_devices_data.append({
-                "parent_device_id": device.device_id,
-                "child_device_id": linked_device.device_id,
-                "child_device_name": linked_device.name,
-                "link_type": link.link_type,
-                "linked_at": link_start.isoformat(),
-                "unlinked_at": link_end.isoformat() if link.removed_at and link.removed_at <= assign_end else None
-            })
-
-            # Get environment logs from linked device during overlap period
-            env_result = await session.execute(
-                select(EnvironmentLog).where(
-                    EnvironmentLog.device_id == linked_device.id,
-                    EnvironmentLog.timestamp >= link_start,
-                    EnvironmentLog.timestamp <= link_end
-                ).order_by(EnvironmentLog.timestamp)
-            )
-
-            for env_log in env_result.scalars().all():
-                environment_logs.append({
-                    "id": env_log.id,
-                    "device_id": linked_device.device_id,
-                    "co2": env_log.co2,
-                    "temperature": env_log.temperature,
-                    "humidity": env_log.humidity,
-                    "vpd": env_log.vpd,
-                    "pressure": env_log.pressure,
-                    "altitude": env_log.altitude,
-                    "gas_resistance": env_log.gas_resistance,
-                    "air_quality_score": env_log.air_quality_score,
-                    "lux": env_log.lux,
-                    "ppfd": env_log.ppfd,
-                    "timestamp": env_log.timestamp.isoformat()
-                })
 
     # Get phase history
     phase_result = await session.execute(
@@ -149,15 +103,12 @@ async def get_plant_data(
 
     # Build raw data structure
     raw_data = {
-        "feeding_logs": feeding_logs if include_raw else [],
-        "environment_logs": environment_logs if include_raw else [],
-        "phase_history": phase_history,
-        "device_assignments": device_assignments_data,
-        "linked_devices": linked_devices_data
+        "daily_logs": daily_logs if include_raw else [],
+        "phase_history": phase_history
     }
 
     # Calculate aggregated statistics
-    aggregated_stats = calculate_aggregated_stats(feeding_logs, environment_logs, phase_history)
+    aggregated_stats = calculate_aggregated_stats(logs, phase_history)
 
     return {
         "raw_data": raw_data,
@@ -166,61 +117,118 @@ async def get_plant_data(
 
 
 def calculate_aggregated_stats(
-    feeding_logs: List[Dict],
-    environment_logs: List[Dict],
+    daily_logs: List[PlantDailyLog],
     phase_history: List[Dict]
 ) -> Dict[str, Any]:
     """
-    Calculate aggregated statistics from raw data.
+    Calculate aggregated statistics from daily logs.
+    Data is already aggregated per day, so we just aggregate across days.
     """
     stats = {}
 
-    # Sensor statistics (pH, EC, etc.)
-    sensor_values = {}
-    for log in feeding_logs:
-        if log["event_type"] == "sensor" and log["sensor_name"] and log["value"] is not None:
-            sensor_name = log["sensor_name"]
-            if sensor_name not in sensor_values:
-                sensor_values[sensor_name] = []
-            sensor_values[sensor_name].append(log["value"])
+    if not daily_logs:
+        return stats
 
-    for sensor_name, values in sensor_values.items():
-        if values:
-            stats[sensor_name] = {
-                "min": round(min(values), 2),
-                "max": round(max(values), 2),
-                "avg": round(sum(values) / len(values), 2),
-                "readings_count": len(values)
-            }
+    # Hydro sensor statistics (aggregate the daily averages)
+    ph_values = [log.ph_avg for log in daily_logs if log.ph_avg is not None]
+    if ph_values:
+        stats["ph"] = {
+            "min": round(min(ph_values), 2),
+            "max": round(max(ph_values), 2),
+            "avg": round(sum(ph_values) / len(ph_values), 2),
+            "readings_count": len(ph_values)
+        }
 
-    # Dosing statistics
-    total_ph_up_ml = 0.0
-    total_ph_down_ml = 0.0
-    dosing_events_count = 0
+    ec_values = [log.ec_avg for log in daily_logs if log.ec_avg is not None]
+    if ec_values:
+        stats["ec"] = {
+            "min": round(min(ec_values), 0),
+            "max": round(max(ec_values), 0),
+            "avg": round(sum(ec_values) / len(ec_values), 0),
+            "readings_count": len(ec_values)
+        }
 
-    for log in feeding_logs:
-        if log["event_type"] == "dosing" and log["dose_amount_ml"]:
-            dosing_events_count += 1
-            if log["dose_type"] == "up":
-                total_ph_up_ml += log["dose_amount_ml"]
-            elif log["dose_type"] == "down":
-                total_ph_down_ml += log["dose_amount_ml"]
+    tds_values = [log.tds_avg for log in daily_logs if log.tds_avg is not None]
+    if tds_values:
+        stats["tds"] = {
+            "min": round(min(tds_values), 0),
+            "max": round(max(tds_values), 0),
+            "avg": round(sum(tds_values) / len(tds_values), 0),
+            "readings_count": len(tds_values)
+        }
+
+    water_temp_values = [log.water_temp_avg for log in daily_logs if log.water_temp_avg is not None]
+    if water_temp_values:
+        stats["water_temp"] = {
+            "min": round(min(water_temp_values), 1),
+            "max": round(max(water_temp_values), 1),
+            "avg": round(sum(water_temp_values) / len(water_temp_values), 1),
+            "readings_count": len(water_temp_values)
+        }
+
+    # Dosing statistics (sum across all days)
+    total_ph_up_ml = sum(log.total_ph_up_ml or 0 for log in daily_logs)
+    total_ph_down_ml = sum(log.total_ph_down_ml or 0 for log in daily_logs)
+    dosing_events_count = sum(log.dosing_events_count or 0 for log in daily_logs)
 
     stats["total_ph_up_ml"] = round(total_ph_up_ml, 2)
     stats["total_ph_down_ml"] = round(total_ph_down_ml, 2)
     stats["dosing_events_count"] = dosing_events_count
 
-    # Environment statistics
-    env_fields = ["temperature", "humidity", "co2", "vpd", "lux", "ppfd"]
-    for field in env_fields:
-        values = [log[field] for log in environment_logs if log.get(field) is not None]
-        if values:
-            stats[f"env_{field}"] = {
-                "min": round(min(values), 2),
-                "max": round(max(values), 2),
-                "avg": round(sum(values) / len(values), 2),
-                "readings_count": len(values)
-            }
+    # Environment statistics (aggregate the daily averages)
+    co2_values = [log.co2_avg for log in daily_logs if log.co2_avg is not None]
+    if co2_values:
+        stats["co2"] = {
+            "min": round(min(co2_values), 0),
+            "max": round(max(co2_values), 0),
+            "avg": round(sum(co2_values) / len(co2_values), 0),
+            "readings_count": len(co2_values)
+        }
+
+    air_temp_values = [log.air_temp_avg for log in daily_logs if log.air_temp_avg is not None]
+    if air_temp_values:
+        stats["air_temp"] = {
+            "min": round(min(air_temp_values), 1),
+            "max": round(max(air_temp_values), 1),
+            "avg": round(sum(air_temp_values) / len(air_temp_values), 1),
+            "readings_count": len(air_temp_values)
+        }
+
+    humidity_values = [log.humidity_avg for log in daily_logs if log.humidity_avg is not None]
+    if humidity_values:
+        stats["humidity"] = {
+            "min": round(min(humidity_values), 1),
+            "max": round(max(humidity_values), 1),
+            "avg": round(sum(humidity_values) / len(humidity_values), 1),
+            "readings_count": len(humidity_values)
+        }
+
+    vpd_values = [log.vpd_avg for log in daily_logs if log.vpd_avg is not None]
+    if vpd_values:
+        stats["vpd"] = {
+            "min": round(min(vpd_values), 2),
+            "max": round(max(vpd_values), 2),
+            "avg": round(sum(vpd_values) / len(vpd_values), 2),
+            "readings_count": len(vpd_values)
+        }
+
+    lux_values = [log.lux_avg for log in daily_logs if log.lux_avg is not None]
+    if lux_values:
+        stats["lux"] = {
+            "min": round(min(lux_values), 0),
+            "max": round(max(lux_values), 0),
+            "avg": round(sum(lux_values) / len(lux_values), 0),
+            "readings_count": len(lux_values)
+        }
+
+    ppfd_values = [log.ppfd_avg for log in daily_logs if log.ppfd_avg is not None]
+    if ppfd_values:
+        stats["ppfd"] = {
+            "min": round(min(ppfd_values), 0),
+            "max": round(max(ppfd_values), 0),
+            "avg": round(sum(ppfd_values) / len(ppfd_values), 0),
+            "readings_count": len(ppfd_values)
+        }
 
     # Days in each phase
     days_in_phase = {}
@@ -232,6 +240,9 @@ def calculate_aggregated_stats(
         days_in_phase[phase_name] = days_in_phase.get(phase_name, 0) + days
 
     stats["days_in_each_phase"] = days_in_phase
+
+    # Total days with data
+    stats["total_days_logged"] = len(daily_logs)
 
     return stats
 
@@ -278,6 +289,14 @@ async def generate_plant_report(session: AsyncSession, plant: Plant) -> PlantRep
     session.add(report)
     await session.commit()
     await session.refresh(report)
+
+    # After report is generated, purge the daily logs to save space
+    await session.execute(
+        select(PlantDailyLog).where(PlantDailyLog.plant_id == plant.id)
+    )
+    # Note: Actually deleting would be:
+    # await session.execute(delete(PlantDailyLog).where(PlantDailyLog.plant_id == plant.id))
+    # But keeping them for now until we verify reports work correctly
 
     return report
 

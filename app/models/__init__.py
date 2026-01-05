@@ -7,7 +7,7 @@ from .user import User, OAuthAccount
 from .device import Device, DeviceShare, DeviceLink, DeviceConnection, DeviceDebugLog
 from .location import Location, LocationShare
 from .plant import Plant, PhaseTemplate, PhaseHistory, DeviceAssignment
-from .logs import LogEntry, EnvironmentLog, PlantReport
+from .logs import PlantDailyLog, PlantReport
 from .firmware import Firmware, DeviceFirmwareAssignment
 from .notification import Notification, NotificationSeverity, NotificationStatus
 
@@ -26,8 +26,7 @@ __all__ = [
     "PhaseTemplate",
     "PhaseHistory",
     "DeviceAssignment",
-    "LogEntry",
-    "EnvironmentLog",
+    "PlantDailyLog",
     "PlantReport",
     "Firmware",
     "DeviceFirmwareAssignment",

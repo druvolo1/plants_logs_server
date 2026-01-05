@@ -519,134 +519,25 @@ async def init_database():
             except Exception as e:
                 print(f"  Note: Foreign key constraint may already exist or error occurred: {e}")
 
-            print("\nChecking 'log_entries' table schema...")
+            print("\nCleaning up old device-centric logging tables...")
 
-            # Add device_id column to log_entries table if it doesn't exist
-            # This is for the new device-centric logging architecture
-            await check_and_add_column(
-                conn,
-                'log_entries',
-                'device_id',
-                "device_id INT NULL AFTER id"
-            )
-
-            # Add index on device_id for log_entries if column was just added
+            # Drop old log_entries table if it exists
             try:
                 result = await conn.execute(text("""
                     SELECT COUNT(*) as count
-                    FROM information_schema.STATISTICS
+                    FROM information_schema.TABLES
                     WHERE TABLE_SCHEMA = DATABASE()
                     AND TABLE_NAME = 'log_entries'
-                    AND INDEX_NAME = 'idx_log_entries_device_id'
                 """))
                 row = result.fetchone()
-                if row[0] == 0:
-                    print("  Adding index on log_entries.device_id...")
-                    await conn.execute(text("CREATE INDEX idx_log_entries_device_id ON log_entries(device_id)"))
-                    print("  ✓ Index added")
+                if row[0] > 0:
+                    print("  Dropping old 'log_entries' table...")
+                    await conn.execute(text("DROP TABLE log_entries"))
+                    print("  ✓ Table 'log_entries' dropped")
                 else:
-                    print("  ✓ Index on device_id already exists")
+                    print("  ✓ Table 'log_entries' doesn't exist (already cleaned up)")
             except Exception as e:
-                print(f"  Note: Index may already exist: {e}")
-
-            # Add foreign key for log_entries.device_id if it doesn't exist
-            try:
-                result = await conn.execute(text("""
-                    SELECT COUNT(*) as count
-                    FROM information_schema.KEY_COLUMN_USAGE
-                    WHERE TABLE_SCHEMA = DATABASE()
-                    AND TABLE_NAME = 'log_entries'
-                    AND COLUMN_NAME = 'device_id'
-                    AND REFERENCED_TABLE_NAME = 'devices'
-                """))
-                row = result.fetchone()
-                if row[0] == 0:
-                    print("  Adding foreign key constraint for log_entries.device_id...")
-                    await conn.execute(text("""
-                        ALTER TABLE log_entries
-                        ADD CONSTRAINT fk_log_entries_device
-                        FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE CASCADE
-                    """))
-                    print("  ✓ Foreign key constraint added")
-                else:
-                    print("  ✓ Foreign key constraint already exists")
-            except Exception as e:
-                print(f"  Note: Foreign key may already exist or error: {e}")
-
-            # Add created_at column to log_entries if it doesn't exist
-            await check_and_add_column(
-                conn,
-                'log_entries',
-                'created_at',
-                "created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP AFTER timestamp"
-            )
-
-            # Make plant_id nullable (for new device-centric logging where plant_id is not required)
-            try:
-                result = await conn.execute(text("""
-                    SELECT IS_NULLABLE
-                    FROM information_schema.COLUMNS
-                    WHERE TABLE_SCHEMA = DATABASE()
-                    AND TABLE_NAME = 'log_entries'
-                    AND COLUMN_NAME = 'plant_id'
-                """))
-                row = result.fetchone()
-                if row and row[0] == 'NO':
-                    print("  Making log_entries.plant_id nullable for device-centric logging...")
-                    await conn.execute(text("""
-                        ALTER TABLE log_entries
-                        MODIFY COLUMN plant_id INT NULL
-                    """))
-                    print("  ✓ log_entries.plant_id is now nullable")
-                elif row:
-                    print("  ✓ log_entries.plant_id is already nullable")
-                else:
-                    print("  Note: plant_id column not found in log_entries")
-            except Exception as e:
-                print(f"  Note: Error modifying plant_id: {e}")
-
-            # Fix foreign key on log_entries.plant_id to allow cascade delete
-            # First drop the old constraint, then add new one with ON DELETE SET NULL
-            try:
-                # Find existing foreign key constraint name
-                result = await conn.execute(text("""
-                    SELECT CONSTRAINT_NAME
-                    FROM information_schema.KEY_COLUMN_USAGE
-                    WHERE TABLE_SCHEMA = DATABASE()
-                    AND TABLE_NAME = 'log_entries'
-                    AND COLUMN_NAME = 'plant_id'
-                    AND REFERENCED_TABLE_NAME = 'plants'
-                """))
-                row = result.fetchone()
-
-                if row:
-                    constraint_name = row[0]
-                    # Check if it already has ON DELETE SET NULL by checking DELETE_RULE
-                    rule_result = await conn.execute(text(f"""
-                        SELECT DELETE_RULE
-                        FROM information_schema.REFERENTIAL_CONSTRAINTS
-                        WHERE CONSTRAINT_SCHEMA = DATABASE()
-                        AND CONSTRAINT_NAME = '{constraint_name}'
-                    """))
-                    rule_row = rule_result.fetchone()
-
-                    if rule_row and rule_row[0] != 'SET NULL':
-                        print(f"  Updating foreign key constraint '{constraint_name}' to use ON DELETE SET NULL...")
-                        # Drop old constraint
-                        await conn.execute(text(f"ALTER TABLE log_entries DROP FOREIGN KEY {constraint_name}"))
-                        # Add new constraint with ON DELETE SET NULL
-                        await conn.execute(text("""
-                            ALTER TABLE log_entries
-                            ADD CONSTRAINT fk_log_entries_plant
-                            FOREIGN KEY (plant_id) REFERENCES plants(id) ON DELETE SET NULL
-                        """))
-                        print("  ✓ Foreign key constraint updated")
-                    else:
-                        print("  ✓ Foreign key constraint already has ON DELETE SET NULL")
-                else:
-                    print("  Note: No foreign key found on log_entries.plant_id")
-            except Exception as e:
-                print(f"  Note: Error updating foreign key constraint: {e}")
+                print(f"  Note: Error dropping log_entries table: {e}")
 
             print("\nChecking 'device_links' table...")
 
@@ -683,36 +574,111 @@ async def init_database():
                 """
             )
 
-            print("\nChecking 'environment_logs' table...")
+            # Drop old environment_logs table if it exists
+            try:
+                result = await conn.execute(text("""
+                    SELECT COUNT(*) as count
+                    FROM information_schema.TABLES
+                    WHERE TABLE_SCHEMA = DATABASE()
+                    AND TABLE_NAME = 'environment_logs'
+                """))
+                row = result.fetchone()
+                if row[0] > 0:
+                    print("  Dropping old 'environment_logs' table...")
+                    await conn.execute(text("DROP TABLE environment_logs"))
+                    print("  ✓ Table 'environment_logs' dropped")
+                else:
+                    print("  ✓ Table 'environment_logs' doesn't exist (already cleaned up)")
+            except Exception as e:
+                print(f"  Note: Error dropping environment_logs table: {e}")
 
-            # Create environment_logs table if it doesn't exist
+            print("\nChecking 'plant_daily_logs' table...")
+
+            # Create plant_daily_logs table if it doesn't exist
             await check_and_create_table(
                 conn,
-                'environment_logs',
+                'plant_daily_logs',
                 """
-                CREATE TABLE environment_logs (
+                CREATE TABLE plant_daily_logs (
                     id INT AUTO_INCREMENT PRIMARY KEY,
-                    device_id INT NOT NULL,
-                    location_id INT NULL,
-                    co2 INT NULL COMMENT 'CO2 level in ppm',
-                    temperature DECIMAL(5,2) NULL COMMENT 'Temperature in Celsius',
-                    humidity DECIMAL(5,2) NULL COMMENT 'Relative humidity in %',
-                    vpd DECIMAL(5,3) NULL COMMENT 'Vapor Pressure Deficit in kPa',
-                    pressure DECIMAL(6,2) NULL COMMENT 'Atmospheric pressure in hPa',
-                    altitude DECIMAL(6,1) NULL COMMENT 'Calculated altitude in meters',
-                    gas_resistance DECIMAL(7,2) NULL COMMENT 'Gas resistance in kOhms',
-                    air_quality_score INT NULL COMMENT 'Air quality score 0-100',
-                    lux DECIMAL(8,1) NULL COMMENT 'Light intensity in lux',
-                    ppfd DECIMAL(6,1) NULL COMMENT 'Photosynthetic Photon Flux Density in μmol/m²/s',
-                    timestamp DATETIME NOT NULL,
+                    plant_id INT NOT NULL,
+                    log_date DATE NOT NULL,
+
+                    -- Hydroponic data (min/max/avg for daily aggregation)
+                    ph_min FLOAT NULL,
+                    ph_max FLOAT NULL,
+                    ph_avg FLOAT NULL,
+                    ec_min FLOAT NULL,
+                    ec_max FLOAT NULL,
+                    ec_avg FLOAT NULL,
+                    tds_min FLOAT NULL,
+                    tds_max FLOAT NULL,
+                    tds_avg FLOAT NULL,
+                    water_temp_min FLOAT NULL,
+                    water_temp_max FLOAT NULL,
+                    water_temp_avg FLOAT NULL,
+
+                    -- Dosing totals for the day
+                    total_ph_up_ml FLOAT NULL DEFAULT 0.0,
+                    total_ph_down_ml FLOAT NULL DEFAULT 0.0,
+                    dosing_events_count INT NULL DEFAULT 0,
+
+                    -- Environmental data (min/max/avg for daily aggregation)
+                    co2_min INT NULL,
+                    co2_max INT NULL,
+                    co2_avg FLOAT NULL,
+                    air_temp_min FLOAT NULL,
+                    air_temp_max FLOAT NULL,
+                    air_temp_avg FLOAT NULL,
+                    humidity_min FLOAT NULL,
+                    humidity_max FLOAT NULL,
+                    humidity_avg FLOAT NULL,
+                    vpd_min FLOAT NULL,
+                    vpd_max FLOAT NULL,
+                    vpd_avg FLOAT NULL,
+                    lux_min FLOAT NULL,
+                    lux_max FLOAT NULL,
+                    lux_avg FLOAT NULL,
+                    ppfd_min FLOAT NULL,
+                    ppfd_max FLOAT NULL,
+                    ppfd_avg FLOAT NULL,
+
+                    -- Additional environmental data
+                    pressure_min FLOAT NULL,
+                    pressure_max FLOAT NULL,
+                    pressure_avg FLOAT NULL,
+                    altitude_min FLOAT NULL,
+                    altitude_max FLOAT NULL,
+                    altitude_avg FLOAT NULL,
+                    gas_resistance_min FLOAT NULL,
+                    gas_resistance_max FLOAT NULL,
+                    gas_resistance_avg FLOAT NULL,
+                    air_quality_score_min INT NULL,
+                    air_quality_score_max INT NULL,
+                    air_quality_score_avg FLOAT NULL,
+
+                    -- Metadata
+                    hydro_device_id INT NULL,
+                    env_device_id INT NULL,
+                    last_hydro_reading DATETIME NULL,
+                    last_env_reading DATETIME NULL,
+                    readings_count INT NULL DEFAULT 0,
                     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                    INDEX idx_device_id (device_id),
-                    INDEX idx_location_id (location_id),
-                    INDEX idx_timestamp (timestamp),
-                    INDEX idx_device_timestamp (device_id, timestamp),
-                    FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE CASCADE,
-                    FOREIGN KEY (location_id) REFERENCES locations(id) ON DELETE SET NULL
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+                    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+                    -- Indexes
+                    INDEX idx_plant_id (plant_id),
+                    INDEX idx_log_date (log_date),
+                    INDEX idx_plant_date (plant_id, log_date),
+
+                    -- Unique constraint: one row per plant per day
+                    UNIQUE KEY uq_plant_date (plant_id, log_date),
+
+                    -- Foreign keys
+                    FOREIGN KEY (plant_id) REFERENCES plants(id) ON DELETE CASCADE,
+                    FOREIGN KEY (hydro_device_id) REFERENCES devices(id) ON DELETE SET NULL,
+                    FOREIGN KEY (env_device_id) REFERENCES devices(id) ON DELETE SET NULL
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Plant-centric daily aggregated sensor logs'
                 """
             )
 
