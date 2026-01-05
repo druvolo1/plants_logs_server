@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 
-from app.models import User, Device, Plant, LogEntry, EnvironmentLog, Location
+from app.models import User, Device, Plant, PlantDailyLog, Location
 
 router = APIRouter()
 
@@ -44,8 +44,7 @@ async def get_dashboard_stats(
     total_locations = await session.execute(select(func.count(Location.id)))
 
     # Logs
-    total_log_entries = await session.execute(select(func.count(LogEntry.id)))
-    total_env_logs = await session.execute(select(func.count(EnvironmentLog.id)))
+    total_plant_daily_logs = await session.execute(select(func.count(PlantDailyLog.id)))
 
     return {
         "users": {
@@ -62,8 +61,9 @@ async def get_dashboard_stats(
         },
         "locations": total_locations.scalar() or 0,
         "logs": {
-            "log_entries": total_log_entries.scalar() or 0,
-            "environment_logs": total_env_logs.scalar() or 0
+            "plant_daily_logs": total_plant_daily_logs.scalar() or 0,
+            "log_entries": 0,  # Legacy, removed
+            "environment_logs": 0  # Legacy, removed
         }
     }
 

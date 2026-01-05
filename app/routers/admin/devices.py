@@ -12,7 +12,7 @@ from fastapi.responses import HTMLResponse, FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, update
 
-from app.models import User, Device, Plant, DeviceAssignment, LogEntry, EnvironmentLog, DeviceDebugLog
+from app.models import User, Device, Plant, DeviceAssignment, PlantDailyLog, DeviceDebugLog
 
 # Log storage directory
 LOGS_DIR = Path("logs/device_debug")
@@ -150,57 +150,55 @@ async def get_device_data(
         end_dt = datetime.utcnow()
         start_dt = end_dt - timedelta(days=7)
 
-    # Get log entries for this device
-    log_query = select(LogEntry).where(LogEntry.device_id == device.id)
+    # Get plant daily logs for this device (plant-centric logging)
+    # Query depends on device type
+    plant_logs = []
+    if device.device_type == 'hydro':
+        # Hydro devices: find logs where this device is the hydro_device
+        log_query = select(PlantDailyLog, Plant).join(Plant, PlantDailyLog.plant_id == Plant.id).where(
+            PlantDailyLog.hydro_device_id == device.id
+        )
+    elif device.device_type == 'environmental':
+        # Environmental devices: find logs where this device is the env_device
+        log_query = select(PlantDailyLog, Plant).join(Plant, PlantDailyLog.plant_id == Plant.id).where(
+            PlantDailyLog.env_device_id == device.id
+        )
+    else:
+        # Other device types: no logs
+        log_query = None
 
-    if start_dt:
-        log_query = log_query.where(LogEntry.timestamp >= start_dt)
-    if end_dt:
-        log_query = log_query.where(LogEntry.timestamp <= end_dt)
-
-    log_query = log_query.order_by(LogEntry.timestamp.desc()).limit(limit)
-    log_result = await session.execute(log_query)
-
-    log_entries = []
-    for log in log_result.scalars().all():
-        log_entries.append({
-            "id": log.id,
-            "event_type": log.event_type,
-            "sensor_name": log.sensor_name,
-            "value": log.value,
-            "dose_type": log.dose_type,
-            "dose_amount_ml": log.dose_amount_ml,
-            "timestamp": log.timestamp.isoformat(),
-            "created_at": log.created_at.isoformat() if log.created_at else None
-        })
-
-    # Get environment logs for this device (if environmental sensor)
-    env_entries = []
-    if device.device_type == 'environmental':
-        env_query = select(EnvironmentLog).where(EnvironmentLog.device_id == device.id)
-
+    if log_query:
         if start_dt:
-            env_query = env_query.where(EnvironmentLog.timestamp >= start_dt)
+            log_query = log_query.where(PlantDailyLog.log_date >= start_dt.date())
         if end_dt:
-            env_query = env_query.where(EnvironmentLog.timestamp <= end_dt)
+            log_query = log_query.where(PlantDailyLog.log_date <= end_dt.date())
 
-        env_query = env_query.order_by(EnvironmentLog.timestamp.desc()).limit(limit)
-        env_result = await session.execute(env_query)
+        log_query = log_query.order_by(PlantDailyLog.log_date.desc()).limit(limit)
+        log_result = await session.execute(log_query)
 
-        for env in env_result.scalars().all():
-            env_entries.append({
-                "id": env.id,
-                "co2": env.co2,
-                "temperature": env.temperature,
-                "humidity": env.humidity,
-                "vpd": env.vpd,
-                "pressure": env.pressure,
-                "altitude": env.altitude,
-                "lux": env.lux,
-                "ppfd": env.ppfd,
-                "timestamp": env.timestamp.isoformat(),
-                "created_at": env.created_at.isoformat() if env.created_at else None
+        for daily_log, plant in log_result.all():
+            plant_logs.append({
+                "id": daily_log.id,
+                "plant_id": plant.plant_id,
+                "plant_name": plant.name,
+                "log_date": daily_log.log_date.isoformat(),
+                "ph_avg": daily_log.ph_avg,
+                "ec_avg": daily_log.ec_avg,
+                "tds_avg": daily_log.tds_avg,
+                "water_temp_avg": daily_log.water_temp_avg,
+                "co2_avg": daily_log.co2_avg,
+                "air_temp_avg": daily_log.air_temp_avg,
+                "humidity_avg": daily_log.humidity_avg,
+                "vpd_avg": daily_log.vpd_avg,
+                "lux_avg": daily_log.lux_avg,
+                "ppfd_avg": daily_log.ppfd_avg,
+                "readings_count": daily_log.readings_count,
+                "created_at": daily_log.created_at.isoformat()
             })
+
+    # Legacy fields for backwards compatibility
+    log_entries = []
+    env_entries = []
 
     # Get device assignment history
     assignment_result = await session.execute(
@@ -233,10 +231,12 @@ async def get_device_data(
             "start": start_dt.isoformat() if start_dt else None,
             "end": end_dt.isoformat() if end_dt else None
         },
-        "log_entries": log_entries,
-        "environment_logs": env_entries,
+        "plant_daily_logs": plant_logs,
+        "log_entries": log_entries,  # Legacy, always empty
+        "environment_logs": env_entries,  # Legacy, always empty
         "plant_assignments": assignments,
         "counts": {
+            "plant_daily_logs": len(plant_logs),
             "log_entries": len(log_entries),
             "environment_logs": len(env_entries),
             "plant_assignments": len(assignments)
@@ -260,62 +260,66 @@ async def get_device_data_summary(
     if not device:
         raise HTTPException(404, "Device not found")
 
-    # Count log entries
-    log_count_result = await session.execute(
-        select(func.count(LogEntry.id)).where(LogEntry.device_id == device.id)
-    )
-    log_count = log_count_result.scalar()
+    # Count plant daily logs for this device
+    if device.device_type == 'hydro':
+        log_count_result = await session.execute(
+            select(func.count(PlantDailyLog.id)).where(PlantDailyLog.hydro_device_id == device.id)
+        )
+        log_range_result = await session.execute(
+            select(func.min(PlantDailyLog.log_date), func.max(PlantDailyLog.log_date))
+            .where(PlantDailyLog.hydro_device_id == device.id)
+        )
+    elif device.device_type == 'environmental':
+        log_count_result = await session.execute(
+            select(func.count(PlantDailyLog.id)).where(PlantDailyLog.env_device_id == device.id)
+        )
+        log_range_result = await session.execute(
+            select(func.min(PlantDailyLog.log_date), func.max(PlantDailyLog.log_date))
+            .where(PlantDailyLog.env_device_id == device.id)
+        )
+    else:
+        log_count_result = None
+        log_range_result = None
 
-    # Get log entry date range
-    log_range_result = await session.execute(
-        select(func.min(LogEntry.timestamp), func.max(LogEntry.timestamp))
-        .where(LogEntry.device_id == device.id)
-    )
-    log_range = log_range_result.first()
+    log_count = log_count_result.scalar() if log_count_result else 0
+    log_range = log_range_result.first() if log_range_result else (None, None)
     log_min_date = log_range[0].isoformat() if log_range[0] else None
     log_max_date = log_range[1].isoformat() if log_range[1] else None
 
-    # Count environment logs
-    env_count_result = await session.execute(
-        select(func.count(EnvironmentLog.id)).where(EnvironmentLog.device_id == device.id)
-    )
-    env_count = env_count_result.scalar()
+    # Count unique plants that have data from this device
+    if device.device_type == 'hydro':
+        plant_count_result = await session.execute(
+            select(func.count(func.distinct(PlantDailyLog.plant_id)))
+            .where(PlantDailyLog.hydro_device_id == device.id)
+        )
+    elif device.device_type == 'environmental':
+        plant_count_result = await session.execute(
+            select(func.count(func.distinct(PlantDailyLog.plant_id)))
+            .where(PlantDailyLog.env_device_id == device.id)
+        )
+    else:
+        plant_count_result = None
 
-    # Get environment log date range
-    env_range_result = await session.execute(
-        select(func.min(EnvironmentLog.timestamp), func.max(EnvironmentLog.timestamp))
-        .where(EnvironmentLog.device_id == device.id)
-    )
-    env_range = env_range_result.first()
-    env_min_date = env_range[0].isoformat() if env_range[0] else None
-    env_max_date = env_range[1].isoformat() if env_range[1] else None
+    plants_with_data = plant_count_result.scalar() if plant_count_result else 0
 
-    # Count by event type for log entries
-    event_type_result = await session.execute(
-        select(LogEntry.event_type, func.count(LogEntry.id))
-        .where(LogEntry.device_id == device.id)
-        .group_by(LogEntry.event_type)
-    )
-    event_type_counts = {row[0]: row[1] for row in event_type_result.all()}
-
-    # Count by sensor name for sensor events
-    sensor_result = await session.execute(
-        select(LogEntry.sensor_name, func.count(LogEntry.id))
-        .where(LogEntry.device_id == device.id, LogEntry.event_type == 'sensor')
-        .group_by(LogEntry.sensor_name)
-    )
-    sensor_counts = {row[0] or 'unknown': row[1] for row in sensor_result.all()}
-
-    # Also count legacy logs (logs with no device_id) for troubleshooting
-    legacy_count_result = await session.execute(
-        select(func.count(LogEntry.id)).where(LogEntry.device_id.is_(None))
-    )
-    legacy_count = legacy_count_result.scalar() or 0
+    # Legacy counts (always 0)
+    env_count = 0
+    env_min_date = None
+    env_max_date = None
+    event_type_counts = {}
+    sensor_counts = {}
+    legacy_count = 0
 
     return {
         "device_id": device_id,
         "device_name": device.name,
         "device_type": device.device_type,
+        "plant_daily_logs": {
+            "total_count": log_count,
+            "oldest": log_min_date,
+            "newest": log_max_date,
+            "plants_with_data": plants_with_data
+        },
         "log_entries": {
             "total_count": log_count,
             "oldest": log_min_date,

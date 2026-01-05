@@ -435,7 +435,7 @@ async def delete_device(
     session: AsyncSession = Depends(get_db_dependency())
 ):
     """Delete a device and all related records"""
-    from app.models import DeviceShare, DeviceLink, DeviceDebugLog, DeviceFirmwareAssignment, LogEntry, EnvironmentLog
+    from app.models import DeviceShare, DeviceLink, DeviceDebugLog, DeviceFirmwareAssignment
     from sqlalchemy import delete as sql_delete
 
     # Load device
@@ -454,8 +454,7 @@ async def delete_device(
     ))
     await session.execute(sql_delete(DeviceDebugLog).where(DeviceDebugLog.device_id == device.id))
     await session.execute(sql_delete(DeviceFirmwareAssignment).where(DeviceFirmwareAssignment.device_id == device.id))
-    await session.execute(sql_delete(LogEntry).where(LogEntry.device_id == device.id))
-    await session.execute(sql_delete(EnvironmentLog).where(EnvironmentLog.device_id == device.id))
+    # Note: PlantDailyLog entries will have their device_id fields set to NULL by ON DELETE SET NULL foreign key
 
     # Delete the device itself
     await session.delete(device)

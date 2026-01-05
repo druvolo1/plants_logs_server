@@ -71,8 +71,8 @@ from app.models import (
     PhaseTemplate,
     PhaseHistory,
     DeviceAssignment,
-    LogEntry,
-    EnvironmentLog,
+    PlantDailyLog,
+    PlantReport,
     Notification,
     NotificationStatus,
 )
