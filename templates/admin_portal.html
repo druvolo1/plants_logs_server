@@ -462,7 +462,7 @@
 <!-- Database Tab -->
 <div id="tab-database" class="admin-tab-content">
     <h2 style="margin-bottom: 1.5rem; color: #10b981;">Database Management</h2>
-    <p style="color: #64748b; margin-bottom: 1.5rem;">Manage data retention and legacy logs</p>
+    <p style="color: #64748b; margin-bottom: 1.5rem;">Manage data retention policies</p>
 
     <!-- Data Retention Section -->
     <div style="margin-bottom: 3rem;">
@@ -513,42 +513,6 @@
 
             <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 6px; padding: 1rem; margin-top: 1rem; color: #fca5a5;">
                 <strong>⚠️ Warning:</strong> Data purge is irreversible. Only data from finished plants with frozen reports and past the retention buffer will be purged. Always preview before executing.
-            </div>
-        </div>
-    </div>
-
-    <!-- Legacy Log Management Section -->
-    <div>
-        <h3 style="margin-bottom: 1rem; color: #10b981;">Legacy Log Management</h3>
-        <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 8px; padding: 1.5rem;">
-            <p style="color: #94a3b8; margin-bottom: 1rem;">
-                Manage log entries from the old schema that have plant_id but no device_id.
-                You can associate them with a device or purge them.
-            </p>
-
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
-                <div style="background: #0f172a; padding: 1rem; border-radius: 6px; text-align: center;">
-                    <div style="font-size: 1.5rem; font-weight: 700; color: #10b981;" id="legacy-total-logs">-</div>
-                    <div style="font-size: 0.8rem; color: #94a3b8;">Total Legacy Logs</div>
-                </div>
-                <div style="background: #0f172a; padding: 1rem; border-radius: 6px; text-align: center;">
-                    <div style="font-size: 1.5rem; font-weight: 700; color: #10b981;" id="legacy-plants-affected">-</div>
-                    <div style="font-size: 0.8rem; color: #94a3b8;">Plants Affected</div>
-                </div>
-            </div>
-
-            <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
-                <button class="admin-header-btn admin-header-btn-primary" onclick="loadLegacyLogsSummary()">Load Summary</button>
-                <button class="admin-header-btn" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white;" onclick="purgeAllLegacyLogs()">Purge All Legacy Logs</button>
-            </div>
-
-            <div id="legacy-logs-results" style="display: none; margin-top: 1rem;">
-                <h4 style="color: #10b981; margin-bottom: 0.5rem;">Legacy Logs by Plant</h4>
-                <div id="legacy-logs-list" style="background: #0f172a; border-radius: 6px; padding: 1rem; max-height: 300px; overflow-y: auto;"></div>
-            </div>
-
-            <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 6px; padding: 1rem; margin-top: 1rem; color: #fca5a5;">
-                <strong>⚠️ Note:</strong> Legacy logs are from the old plant-centric schema. Associating them to a device will set their device_id field. Purging will permanently delete the log entries.
             </div>
         </div>
     </div>
@@ -1037,19 +1001,18 @@ function formatUserAgent(ua) {
 
 function formatDateTime(isoString) {
     if (!isoString) return 'Unknown';
+    // Parse UTC timestamp and convert to user's local timezone
     const date = new Date(isoString);
-    const now = new Date();
-    const diffMs = now - date;
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMins / 60);
-    const diffDays = Math.floor(diffHours / 24);
 
-    if (diffMins < 1) return 'Just now';
-    if (diffMins < 60) return `${diffMins} min ago`;
-    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
-    if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
-
-    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
+    // Format as: "Jan 6, 2026, 3:45 PM"
+    return date.toLocaleString(undefined, {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+    });
 }
 
 // Active Sessions
@@ -1456,10 +1419,6 @@ function displayDeviceSummary(data) {
             <div style="font-size: 1.5rem; font-weight: 700; color: #10b981;">${data.environment_logs.total_count.toLocaleString()}</div>
             <div style="font-size: 0.8rem; color: #94a3b8;">Env Logs (this device)</div>
         </div>
-        <div style="background: #0f172a; padding: 1rem; border-radius: 6px; text-align: center;">
-            <div style="font-size: 1.5rem; font-weight: 700; color: ${data.legacy_logs_total > 0 ? '#f59e0b' : '#10b981'};">${(data.legacy_logs_total || 0).toLocaleString()}</div>
-            <div style="font-size: 0.8rem; color: #94a3b8;">Legacy Logs (no device)</div>
-        </div>
     `;
     document.getElementById('device-data-summary').innerHTML = summaryHtml;
 
@@ -1606,71 +1565,6 @@ async function executePurge() {
     } catch (error) {
         console.error('Error:', error);
         alert('Error executing purge');
-    }
-}
-
-async function loadLegacyLogsSummary() {
-    try {
-        const response = await fetch('/admin/legacy-logs/summary');
-        if (response.ok) {
-            const data = await response.json();
-            displayLegacyLogsSummary(data);
-        } else {
-            const error = await response.json();
-            alert('Error: ' + (error.detail || 'Unknown error'));
-        }
-    } catch (error) {
-        console.error('Error:', error);
-        alert('Error loading legacy logs summary');
-    }
-}
-
-function displayLegacyLogsSummary(data) {
-    document.getElementById('legacy-total-logs').textContent = data.total_legacy_logs.toLocaleString();
-    document.getElementById('legacy-plants-affected').textContent = data.plants_affected;
-
-    document.getElementById('legacy-logs-results').style.display = 'block';
-
-    if (data.plants_affected === 0) {
-        document.getElementById('legacy-logs-list').innerHTML = '<div style="text-align: center; color: #64748b; padding: 2rem;">No legacy logs found. All logs have been migrated to device-centric format.</div>';
-        return;
-    }
-
-    // Display plant list
-    const listHtml = data.by_plant.map(plant => `
-        <div style="padding: 0.5rem; border-bottom: 1px solid rgba(148, 163, 184, 0.1);">
-            <strong>${plant.plant_name}</strong> (${plant.plant_id})<br>
-            <span style="color: #94a3b8;">Log entries: ${plant.log_count.toLocaleString()}</span>
-            ${plant.oldest_log ? `<br><span style="color: #64748b; font-size: 0.8rem;">Oldest: ${new Date(plant.oldest_log).toLocaleDateString()} | Newest: ${new Date(plant.newest_log).toLocaleDateString()}</span>` : ''}
-        </div>
-    `).join('');
-    document.getElementById('legacy-logs-list').innerHTML = listHtml;
-}
-
-async function purgeAllLegacyLogs() {
-    if (!confirm('Are you sure you want to PERMANENTLY DELETE ALL legacy logs? This cannot be undone.')) {
-        return;
-    }
-
-    if (!confirm('This is your FINAL warning. ALL legacy logs will be permanently deleted. Continue?')) {
-        return;
-    }
-
-    try {
-        const response = await fetch('/admin/legacy-logs/purge?confirm=true', {
-            method: 'DELETE'
-        });
-        if (response.ok) {
-            const data = await response.json();
-            alert(`Purge complete!\n\nDeleted ${data.deleted_count} log entries.`);
-            loadLegacyLogsSummary();
-        } else {
-            const error = await response.json();
-            alert('Error: ' + (error.detail || 'Unknown error'));
-        }
-    } catch (error) {
-        console.error('Error:', error);
-        alert('Error purging legacy logs');
     }
 }
 
