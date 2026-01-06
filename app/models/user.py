@@ -2,8 +2,9 @@
 """
 User and OAuth account models.
 """
-from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, Text
+from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, Text, DateTime
 from sqlalchemy.orm import relationship
+from datetime import datetime
 from .base import Base
 
 
@@ -20,6 +21,16 @@ class OAuthAccount(Base):
     user = relationship("User", back_populates="oauth_accounts")
 
 
+class LoginHistory(Base):
+    __tablename__ = "login_history"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    login_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    ip_address = Column(String(45), nullable=True)  # IPv6 max length is 45
+    user_agent = Column(String(500), nullable=True)
+    user = relationship("User", back_populates="login_history")
+
+
 class User(Base):
     __tablename__ = "users"
     id = Column(Integer, primary_key=True, index=True)
@@ -32,5 +43,9 @@ class User(Base):
     is_verified = Column(Boolean, default=False)
     is_suspended = Column(Boolean, default=False)  # Added for suspended users
     dashboard_preferences = Column(Text, nullable=True)  # JSON string for dashboard settings (device order, etc.)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)  # User creation timestamp
+    last_login = Column(DateTime, nullable=True)  # Last login timestamp
+    login_count = Column(Integer, nullable=False, default=0)  # Total login count
     oauth_accounts = relationship("OAuthAccount", back_populates="user", cascade="all, delete-orphan")
     devices = relationship("Device", back_populates="user", cascade="all, delete-orphan")
+    login_history = relationship("LoginHistory", back_populates="user", cascade="all, delete-orphan", order_by="LoginHistory.login_at.desc()")

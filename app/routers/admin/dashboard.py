@@ -143,13 +143,27 @@ async def get_dashboard_activity(
     """Get recent activity feed"""
     activities = []
 
-    # Recent device connections
+    # Recent user registrations (last 5)
+    recent_users = await session.execute(
+        select(User)
+        .where(User.created_at.isnot(None))
+        .order_by(User.created_at.desc())
+        .limit(5)
+    )
+    for user in recent_users.scalars().all():
+        activities.append({
+            "type": "user",
+            "message": f"User registered: {user.email}",
+            "timestamp": user.created_at.isoformat() if user.created_at else None
+        })
+
+    # Recent device connections (last 10)
     recent_devices = await session.execute(
         select(Device, User.email)
         .join(User, Device.user_id == User.id)
         .where(Device.last_seen.isnot(None))
         .order_by(Device.last_seen.desc())
-        .limit(15)
+        .limit(10)
     )
     for device, email in recent_devices.all():
         activities.append({
@@ -158,7 +172,9 @@ async def get_dashboard_activity(
             "timestamp": device.last_seen.isoformat() if device.last_seen else None
         })
 
-    return activities
+    # Sort by timestamp and return top 15
+    activities.sort(key=lambda x: x["timestamp"] or "", reverse=True)
+    return activities[:15]
 
 
 @router.get("/api/dashboard/device-status")

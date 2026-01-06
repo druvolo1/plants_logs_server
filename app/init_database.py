@@ -165,6 +165,30 @@ async def init_database():
                 "dashboard_preferences TEXT NULL AFTER is_suspended"
             )
 
+            # Add created_at column if it doesn't exist
+            await check_and_add_column(
+                conn,
+                'users',
+                'created_at',
+                "created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP AFTER dashboard_preferences"
+            )
+
+            # Add last_login column if it doesn't exist
+            await check_and_add_column(
+                conn,
+                'users',
+                'last_login',
+                "last_login DATETIME NULL AFTER created_at"
+            )
+
+            # Add login_count column if it doesn't exist
+            await check_and_add_column(
+                conn,
+                'users',
+                'login_count',
+                "login_count INT NOT NULL DEFAULT 0 AFTER last_login"
+            )
+
             # Update is_active default to FALSE for new users (pending approval)
             # Note: This won't affect existing users, only new ones
             await check_and_modify_column_default(
@@ -739,6 +763,27 @@ async def init_database():
                     print("  ✓ Enum values already uppercase, no migration needed")
             except Exception as e:
                 print(f"  Note: Could not check/migrate enum values: {e}")
+
+            print("\nChecking 'login_history' table...")
+
+            # Create login_history table if it doesn't exist
+            await check_and_create_table(
+                conn,
+                'login_history',
+                """
+                CREATE TABLE login_history (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    user_id INT NOT NULL,
+                    login_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    ip_address VARCHAR(45) NULL COMMENT 'Client IP address (IPv6 max length is 45)',
+                    user_agent VARCHAR(500) NULL COMMENT 'Client user agent string',
+                    INDEX idx_user_id (user_id),
+                    INDEX idx_login_at (login_at),
+                    INDEX idx_user_login (user_id, login_at),
+                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='User login history (max 10 records per user)'
+                """
+            )
 
             print("\n" + "="*80)
             print("✓ Database initialization complete!")
