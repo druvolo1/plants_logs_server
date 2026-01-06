@@ -69,8 +69,10 @@ from app.routers.admin.dashboard import router as dashboard_router
 from app.routers.admin.users import router as users_router
 from app.routers.admin.devices import router as devices_router
 from app.routers.admin.database import router as database_router
+from app.routers.admin.config import router as config_router
 
 router.include_router(dashboard_router)
 router.include_router(users_router)
 router.include_router(devices_router)
 router.include_router(database_router)
+router.include_router(config_router)

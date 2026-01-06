@@ -1,0 +1,558 @@
+<!-- templates/admin_portal.html - Admin Portal -->
+{% extends "admin_base.html" %}
+
+{% block title %}Admin Portal{% endblock %}
+{% block page_title %}Admin Portal{% endblock %}
+
+{% block header_actions %}
+<button class="admin-header-btn admin-header-btn-primary" onclick="openAddUserModal()">
+    + Add User
+</button>
+{% endblock %}
+
+{% block extra_styles %}
+<style>
+    .user-status-cell {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 0.35rem;
+        flex-wrap: wrap;
+    }
+
+    /* User details row expansion */
+    .user-details-row {
+        background: rgba(0, 0, 0, 0.2);
+    }
+
+    .user-details-row td {
+        padding: 1.5rem !important;
+    }
+
+    .user-details-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1.5rem;
+    }
+
+    .user-detail-item {
+        background: #0f172a;
+        padding: 1rem;
+        border-radius: 8px;
+    }
+
+    .user-detail-label {
+        color: #64748b;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        margin-bottom: 0.35rem;
+    }
+
+    .user-detail-value {
+        color: #e2e8f0;
+        font-size: 1.1rem;
+        font-weight: 600;
+    }
+
+    /* View As button special style */
+    .action-btn-view-as {
+        background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+        color: white;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Stats Cards -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-card-value" id="total-users">{{ users|length }}</div>
+        <div class="stat-card-label">Total Users</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-card-value" id="active-users">{{ users|selectattr('is_active')|list|length }}</div>
+        <div class="stat-card-label">Active Users</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-card-value" id="pending-users">{{ users|rejectattr('is_active')|list|length }}</div>
+        <div class="stat-card-label">Pending Approval</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-card-value" id="admin-users">{{ users|selectattr('is_superuser')|list|length }}</div>
+        <div class="stat-card-label">Administrators</div>
+    </div>
+</div>
+
+<!-- Users Table -->
+<div class="data-table-container">
+    <div class="data-table-header">
+        <div class="data-table-title">All Users</div>
+        <div class="data-table-filters">
+            <input type="text" class="data-table-search" id="user-search" placeholder="Search users...">
+            <select class="data-table-select" id="status-filter">
+                <option value="">All Status</option>
+                <option value="active">Active</option>
+                <option value="pending">Pending</option>
+                <option value="suspended">Suspended</option>
+            </select>
+            <select class="data-table-select" id="role-filter">
+                <option value="">All Roles</option>
+                <option value="admin">Admins</option>
+                <option value="user">Regular Users</option>
+            </select>
+        </div>
+    </div>
+
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>User</th>
+                <th>Status</th>
+                <th>Role</th>
+                <th>Devices</th>
+                <th>Plants</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="users-table-body">
+            {% for u in users %}
+            <tr data-user-id="{{ u.id }}"
+                data-email="{{ u.email|lower }}"
+                data-name="{{ (u.first_name or '')|lower }} {{ (u.last_name or '')|lower }}"
+                data-status="{% if u.is_suspended|default(false) %}suspended{% elif u.is_active %}active{% else %}pending{% endif %}"
+                data-role="{% if u.is_superuser %}admin{% else %}user{% endif %}">
+                <td>
+                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                        <div style="width: 36px; height: 36px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 600;">
+                            {{ u.email[0]|upper }}
+                        </div>
+                        <div>
+                            <div style="font-weight: 500;">{{ u.first_name or '' }} {{ u.last_name or '' }}</div>
+                            <div style="color: #64748b; font-size: 0.85rem;">{{ u.email }}</div>
+                        </div>
+                    </div>
+                </td>
+                <td>
+                    <div class="user-status-cell">
+                        {% if u.is_suspended|default(false) %}
+                            <span class="badge badge-danger">Suspended</span>
+                        {% elif u.is_active %}
+                            <span class="badge badge-success">Active</span>
+                        {% else %}
+                            <span class="badge badge-warning">Pending</span>
+                        {% endif %}
+                        {% if u.oauth_accounts %}
+                            <span class="badge badge-info">OAuth</span>
+                        {% endif %}
+                    </div>
+                </td>
+                <td>
+                    {% if u.is_superuser %}
+                        <span class="badge badge-warning">Admin</span>
+                    {% else %}
+                        <span class="badge badge-neutral">User</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <span class="device-count" data-user-id="{{ u.id }}">-</span>
+                </td>
+                <td>
+                    <span class="plant-count" data-user-id="{{ u.id }}">-</span>
+                </td>
+                <td>
+                    <div class="action-buttons">
+                        <button class="action-btn action-btn-view-as" onclick="impersonateUser({{ u.id }}, '{{ u.email }}')" title="View as this user">
+                            👁️
+                        </button>
+                        <button class="action-btn action-btn-primary" onclick="editUser({{ u.id }})" title="Edit user">
+                            ✏️
+                        </button>
+                        {% if not u.oauth_accounts %}
+                        <button class="action-btn action-btn-warning" onclick="resetPassword({{ u.id }})" title="Reset password">
+                            🔑
+                        </button>
+                        {% endif %}
+                        {% if u.is_suspended|default(false) %}
+                        <button class="action-btn action-btn-success" onclick="unsuspendUser({{ u.id }})" title="Unsuspend">
+                            ✓
+                        </button>
+                        {% elif u.is_active %}
+                        <button class="action-btn action-btn-warning" onclick="suspendUser({{ u.id }})" title="Suspend">
+                            ⏸️
+                        </button>
+                        {% else %}
+                        <button class="action-btn action-btn-success" onclick="approveUser({{ u.id }})" title="Approve">
+                            ✓
+                        </button>
+                        {% endif %}
+                        <button class="action-btn action-btn-danger" onclick="deleteUser({{ u.id }}, '{{ u.email }}')" title="Delete">
+                            🗑️
+                        </button>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="data-table-footer">
+        <span id="table-info">Showing {{ users|length }} users</span>
+    </div>
+</div>
+{% endblock %}
+
+{% block modals %}
+<!-- Add User Modal -->
+<div class="modal" id="add-user-modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title">Add New User</h2>
+            <button class="modal-close" onclick="closeModal('add-user-modal')">&times;</button>
+        </div>
+        <form id="add-user-form">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">First Name</label>
+                    <input type="text" class="form-input" id="add-first-name" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Last Name</label>
+                    <input type="text" class="form-input" id="add-last-name" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Email</label>
+                    <input type="email" class="form-input" id="add-email" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Password</label>
+                    <input type="password" class="form-input" id="add-password" required minlength="8" autocomplete="new-password">
+                </div>
+                <div class="form-group">
+                    <div class="form-checkbox-group">
+                        <input type="checkbox" class="form-checkbox" id="add-is-admin">
+                        <label for="add-is-admin">Administrator</label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <div class="form-checkbox-group">
+                        <input type="checkbox" class="form-checkbox" id="add-is-active" checked>
+                        <label for="add-is-active">Active (skip approval)</label>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('add-user-modal')">Cancel</button>
+                <button type="submit" class="btn btn-primary">Add User</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Edit User Modal -->
+<div class="modal" id="edit-user-modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title">Edit User</h2>
+            <button class="modal-close" onclick="closeModal('edit-user-modal')">&times;</button>
+        </div>
+        <form id="edit-user-form">
+            <input type="hidden" id="edit-user-id">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">First Name</label>
+                    <input type="text" class="form-input" id="edit-first-name" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Last Name</label>
+                    <input type="text" class="form-input" id="edit-last-name" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Email</label>
+                    <input type="email" class="form-input" id="edit-email" required>
+                </div>
+                <div class="form-group">
+                    <div class="form-checkbox-group">
+                        <input type="checkbox" class="form-checkbox" id="edit-is-admin">
+                        <label for="edit-is-admin">Administrator</label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <div class="form-checkbox-group">
+                        <input type="checkbox" class="form-checkbox" id="edit-is-active">
+                        <label for="edit-is-active">Active</label>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('edit-user-modal')">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Impersonation Confirmation Modal -->
+<div class="modal" id="impersonate-modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title">View As User</h2>
+            <button class="modal-close" onclick="closeModal('impersonate-modal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p>You are about to view the application as:</p>
+            <p style="font-size: 1.25rem; font-weight: 600; color: #10b981;" id="impersonate-email"></p>
+            <p style="color: #94a3b8; margin-top: 1rem;">This will allow you to see their dashboard, devices, and plants exactly as they see it. A banner will indicate you are in "View As" mode.</p>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeModal('impersonate-modal')">Cancel</button>
+            <button type="button" class="btn btn-primary" id="confirm-impersonate-btn" style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);">
+                Start Viewing
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+// User data cache
+const usersData = {};
+
+// Load additional user data
+async function loadUserCounts() {
+    try {
+        const response = await fetch('/admin/api/users/counts');
+        if (response.ok) {
+            const data = await response.json();
+            data.forEach(u => {
+                const deviceCell = document.querySelector(`.device-count[data-user-id="${u.id}"]`);
+                const plantCell = document.querySelector(`.plant-count[data-user-id="${u.id}"]`);
+                if (deviceCell) deviceCell.textContent = u.device_count;
+                if (plantCell) plantCell.textContent = u.plant_count;
+                usersData[u.id] = u;
+            });
+        }
+    } catch (error) {
+        console.error('Error loading user counts:', error);
+    }
+}
+
+// Filter functionality
+const searchInput = document.getElementById('user-search');
+const statusFilter = document.getElementById('status-filter');
+const roleFilter = document.getElementById('role-filter');
+
+function filterUsers() {
+    const searchTerm = searchInput.value.toLowerCase();
+    const statusValue = statusFilter.value;
+    const roleValue = roleFilter.value;
+
+    const rows = document.querySelectorAll('#users-table-body tr');
+    let visibleCount = 0;
+
+    rows.forEach(row => {
+        const email = row.dataset.email;
+        const name = row.dataset.name;
+        const status = row.dataset.status;
+        const role = row.dataset.role;
+
+        const matchesSearch = !searchTerm || email.includes(searchTerm) || name.includes(searchTerm);
+        const matchesStatus = !statusValue || status === statusValue;
+        const matchesRole = !roleValue || role === roleValue;
+
+        if (matchesSearch && matchesStatus && matchesRole) {
+            row.style.display = '';
+            visibleCount++;
+        } else {
+            row.style.display = 'none';
+        }
+    });
+
+    document.getElementById('table-info').textContent = `Showing ${visibleCount} users`;
+}
+
+searchInput.addEventListener('input', debounce(filterUsers, 300));
+statusFilter.addEventListener('change', filterUsers);
+roleFilter.addEventListener('change', filterUsers);
+
+// Modal functions
+function openModal(modalId) {
+    document.getElementById(modalId).style.display = 'block';
+}
+
+function closeModal(modalId) {
+    document.getElementById(modalId).style.display = 'none';
+}
+
+function openAddUserModal() {
+    document.getElementById('add-user-form').reset();
+    document.getElementById('add-is-active').checked = true;
+    openModal('add-user-modal');
+}
+
+// Add user
+document.getElementById('add-user-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const response = await fetch('/admin/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            email: document.getElementById('add-email').value,
+            password: document.getElementById('add-password').value,
+            first_name: document.getElementById('add-first-name').value,
+            last_name: document.getElementById('add-last-name').value,
+            is_superuser: document.getElementById('add-is-admin').checked,
+            is_active: document.getElementById('add-is-active').checked
+        })
+    });
+
+    if (response.ok) {
+        closeModal('add-user-modal');
+        location.reload();
+    } else {
+        const error = await response.json();
+        alert('Failed to add user: ' + (error.detail || 'Unknown error'));
+    }
+});
+
+// Edit user
+async function editUser(userId) {
+    try {
+        const response = await fetch(`/admin/api/users/${userId}`);
+        if (response.ok) {
+            const user = await response.json();
+            document.getElementById('edit-user-id').value = userId;
+            document.getElementById('edit-first-name').value = user.first_name || '';
+            document.getElementById('edit-last-name').value = user.last_name || '';
+            document.getElementById('edit-email').value = user.email;
+            document.getElementById('edit-is-admin').checked = user.is_superuser;
+            document.getElementById('edit-is-active').checked = user.is_active;
+            openModal('edit-user-modal');
+        }
+    } catch (error) {
+        console.error('Error loading user:', error);
+    }
+}
+
+document.getElementById('edit-user-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const userId = document.getElementById('edit-user-id').value;
+
+    const response = await fetch(`/admin/users/${userId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            email: document.getElementById('edit-email').value,
+            first_name: document.getElementById('edit-first-name').value,
+            last_name: document.getElementById('edit-last-name').value,
+            is_superuser: document.getElementById('edit-is-admin').checked,
+            is_active: document.getElementById('edit-is-active').checked
+        })
+    });
+
+    if (response.ok) {
+        closeModal('edit-user-modal');
+        location.reload();
+    } else {
+        const error = await response.json();
+        alert('Failed to update user: ' + (error.detail || 'Unknown error'));
+    }
+});
+
+// Impersonation
+let impersonateUserId = null;
+
+function impersonateUser(userId, email) {
+    impersonateUserId = userId;
+    document.getElementById('impersonate-email').textContent = email;
+    openModal('impersonate-modal');
+}
+
+document.getElementById('confirm-impersonate-btn').addEventListener('click', async () => {
+    if (!impersonateUserId) return;
+
+    try {
+        const response = await fetch(`/admin/impersonate/${impersonateUserId}`, {
+            method: 'POST'
+        });
+
+        if (response.ok) {
+            // Redirect to dashboard - they'll see the impersonation banner
+            window.location.href = '/dashboard';
+        } else {
+            const error = await response.json();
+            alert('Failed to start impersonation: ' + (error.detail || 'Unknown error'));
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Failed to start impersonation');
+    }
+});
+
+// Other user actions
+async function resetPassword(userId) {
+    const newPassword = prompt('Enter new password (minimum 8 characters):');
+    if (newPassword && newPassword.length >= 8) {
+        const response = await fetch(`/admin/users/${userId}/reset-password`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ password: newPassword })
+        });
+        if (response.ok) {
+            alert('Password reset successfully');
+        } else {
+            alert('Failed to reset password');
+        }
+    } else if (newPassword !== null) {
+        alert('Password must be at least 8 characters long');
+    }
+}
+
+async function suspendUser(userId) {
+    if (confirm('Are you sure you want to suspend this user?')) {
+        const response = await fetch(`/admin/users/${userId}/suspend`, { method: 'POST' });
+        if (response.ok) location.reload();
+        else alert('Failed to suspend user');
+    }
+}
+
+async function unsuspendUser(userId) {
+    if (confirm('Unsuspend this user?')) {
+        const response = await fetch(`/admin/users/${userId}/unsuspend`, { method: 'POST' });
+        if (response.ok) location.reload();
+        else alert('Failed to unsuspend user');
+    }
+}
+
+async function approveUser(userId) {
+    if (confirm('Approve this user?')) {
+        const response = await fetch(`/admin/users/${userId}/approve`, { method: 'POST' });
+        if (response.ok) location.reload();
+        else alert('Failed to approve user');
+    }
+}
+
+async function deleteUser(userId, email) {
+    if (confirm(`Are you sure you want to delete ${email}? This cannot be undone.`)) {
+        const response = await fetch(`/admin/users/${userId}`, { method: 'DELETE' });
+        if (response.ok) location.reload();
+        else alert('Failed to delete user');
+    }
+}
+
+// Close modals on backdrop click
+document.querySelectorAll('.modal').forEach(modal => {
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            modal.style.display = 'none';
+        }
+    });
+});
+
+// Load user counts on page load
+loadUserCounts();
+{% endblock %}

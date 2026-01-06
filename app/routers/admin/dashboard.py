@@ -315,3 +315,166 @@ async def get_dashboard_recent_devices(
         })
 
     return devices
+
+
+@router.get("/api/dashboard/device-posting-activity")
+async def get_device_posting_activity(
+    admin: User = Depends(_get_current_admin()),
+    session: AsyncSession = Depends(_get_db())
+):
+    """Get device posting activity for the dashboard"""
+    from app.models import DeviceAssignment
+
+    # Get all devices with their posting stats
+    devices_result = await session.execute(
+        select(Device, User.email)
+        .join(User, Device.user_id == User.id)
+        .order_by(Device.device_type, Device.name)
+    )
+
+    device_activity = []
+    today = datetime.utcnow().date()
+
+    for device, owner_email in devices_result.all():
+        # Count assigned plants
+        assigned_plants_result = await session.execute(
+            select(func.count(DeviceAssignment.id))
+            .where(
+                DeviceAssignment.device_id == device.id,
+                DeviceAssignment.removed_at.is_(None)
+            )
+        )
+        assigned_plants = assigned_plants_result.scalar() or 0
+
+        # Count logs from this device today
+        if device.device_type == 'hydro':
+            logs_today_result = await session.execute(
+                select(func.count(PlantDailyLog.id))
+                .where(
+                    PlantDailyLog.hydro_device_id == device.id,
+                    PlantDailyLog.log_date == today
+                )
+            )
+        elif device.device_type == 'environmental':
+            logs_today_result = await session.execute(
+                select(func.count(PlantDailyLog.id))
+                .where(
+                    PlantDailyLog.env_device_id == device.id,
+                    PlantDailyLog.log_date == today
+                )
+            )
+        else:
+            logs_today_result = None
+
+        logs_today = logs_today_result.scalar() if logs_today_result else 0
+
+        # Get most recent log
+        if device.device_type == 'hydro':
+            last_log_result = await session.execute(
+                select(PlantDailyLog.updated_at)
+                .where(PlantDailyLog.hydro_device_id == device.id)
+                .order_by(PlantDailyLog.updated_at.desc())
+                .limit(1)
+            )
+        elif device.device_type == 'environmental':
+            last_log_result = await session.execute(
+                select(PlantDailyLog.updated_at)
+                .where(PlantDailyLog.env_device_id == device.id)
+                .order_by(PlantDailyLog.updated_at.desc())
+                .limit(1)
+            )
+        else:
+            last_log_result = None
+
+        last_log = last_log_result.scalar() if last_log_result else None
+
+        device_activity.append({
+            "device_id": device.device_id,
+            "name": device.name or device.device_id[:8],
+            "device_type": device.device_type,
+            "owner_email": owner_email,
+            "is_online": device.is_online,
+            "assigned_plants": assigned_plants,
+            "logs_posted_today": logs_today,
+            "last_post": last_log.isoformat() if last_log else None,
+            "expected_posts": assigned_plants if device.device_type in ['hydro', 'environmental'] else 0
+        })
+
+    return device_activity
+
+
+@router.get("/api/dashboard/plant-data-summary")
+async def get_plant_data_summary(
+    admin: User = Depends(_get_current_admin()),
+    session: AsyncSession = Depends(_get_db())
+):
+    """Get plant data summary for the dashboard"""
+    today = datetime.utcnow().date()
+    yesterday = today - timedelta(days=1)
+
+    # Active plants
+    active_plants_result = await session.execute(
+        select(func.count(Plant.id)).where(Plant.end_date.is_(None))
+    )
+    active_plants = active_plants_result.scalar() or 0
+
+    # Plants with data today
+    plants_with_data_today_result = await session.execute(
+        select(func.count(func.distinct(PlantDailyLog.plant_id)))
+        .where(PlantDailyLog.log_date == today)
+    )
+    plants_with_data_today = plants_with_data_today_result.scalar() or 0
+
+    # Plants with data yesterday
+    plants_with_data_yesterday_result = await session.execute(
+        select(func.count(func.distinct(PlantDailyLog.plant_id)))
+        .where(PlantDailyLog.log_date == yesterday)
+    )
+    plants_with_data_yesterday = plants_with_data_yesterday_result.scalar() or 0
+
+    # Total daily logs
+    total_logs_result = await session.execute(
+        select(func.count(PlantDailyLog.id))
+    )
+    total_logs = total_logs_result.scalar() or 0
+
+    # Logs from last 7 days
+    week_ago = today - timedelta(days=7)
+    logs_last_week_result = await session.execute(
+        select(func.count(PlantDailyLog.id))
+        .where(PlantDailyLog.log_date >= week_ago)
+    )
+    logs_last_week = logs_last_week_result.scalar() or 0
+
+    # Plants missing data (active but no data yesterday)
+    plants_missing_data_result = await session.execute(
+        select(Plant.plant_id, Plant.name, User.email)
+        .join(User, Plant.user_id == User.id)
+        .outerjoin(
+            PlantDailyLog,
+            (PlantDailyLog.plant_id == Plant.id) & (PlantDailyLog.log_date == yesterday)
+        )
+        .where(
+            Plant.end_date.is_(None),
+            PlantDailyLog.id.is_(None)
+        )
+        .limit(10)
+    )
+
+    plants_missing = []
+    for plant_id, name, owner_email in plants_missing_data_result.all():
+        plants_missing.append({
+            "plant_id": plant_id,
+            "name": name,
+            "owner": owner_email
+        })
+
+    return {
+        "active_plants": active_plants,
+        "plants_with_data_today": plants_with_data_today,
+        "plants_with_data_yesterday": plants_with_data_yesterday,
+        "data_coverage_yesterday": round((plants_with_data_yesterday / active_plants * 100) if active_plants > 0 else 0, 1),
+        "total_daily_logs": total_logs,
+        "logs_last_week": logs_last_week,
+        "plants_missing_data": plants_missing
+    }

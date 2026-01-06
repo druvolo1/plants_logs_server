@@ -51,13 +51,13 @@ async def admin_overview_page(
     return _get_templates().TemplateResponse("admin_overview.html", {"request": request, "user": admin})
 
 
-@router.get("/users", response_class=HTMLResponse)
-async def users_page(
+@router.get("/portal", response_class=HTMLResponse)
+async def admin_portal_page(
     request: Request,
     admin: User = Depends(_get_current_admin()),
     session: AsyncSession = Depends(_get_db())
 ):
-    """Users management page"""
+    """Admin Portal - User management and system control"""
     result = await session.execute(
         select(User).options(selectinload(User.oauth_accounts))
     )
@@ -69,11 +69,11 @@ async def users_page(
     )
     pending_count = pending_result.scalar() or 0
 
-    return _get_templates().TemplateResponse("admin_users.html", {
+    return _get_templates().TemplateResponse("admin_portal.html", {
         "request": request,
         "user": admin,
         "users": users,
-        "active_page": "users",
+        "active_page": "portal",
         "pending_users_count": pending_count
     })
 

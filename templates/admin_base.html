@@ -799,11 +799,24 @@
             </div>
 
             <div class="sidebar-section">
-                <div class="sidebar-section-title">Overview</div>
+                <div class="sidebar-section-title">Monitoring</div>
                 <nav class="sidebar-nav">
                     <a href="/admin" class="sidebar-link {% if active_page == 'dashboard' %}active{% endif %}">
                         <span class="sidebar-link-icon">📊</span>
-                        <span class="sidebar-link-text">Dashboard</span>
+                        <span class="sidebar-link-text">Admin Dashboard</span>
+                    </a>
+                </nav>
+            </div>
+
+            <div class="sidebar-section">
+                <div class="sidebar-section-title">Control Center</div>
+                <nav class="sidebar-nav">
+                    <a href="/admin/portal" class="sidebar-link {% if active_page == 'portal' %}active{% endif %}">
+                        <span class="sidebar-link-icon">⚙️</span>
+                        <span class="sidebar-link-text">Admin Portal</span>
+                        {% if pending_users_count and pending_users_count > 0 %}
+                        <span class="sidebar-link-badge">{{ pending_users_count }}</span>
+                        {% endif %}
                     </a>
                 </nav>
             </div>
@@ -811,13 +824,6 @@
             <div class="sidebar-section">
                 <div class="sidebar-section-title">Management</div>
                 <nav class="sidebar-nav">
-                    <a href="/admin/users" class="sidebar-link {% if active_page == 'users' %}active{% endif %}">
-                        <span class="sidebar-link-icon">👥</span>
-                        <span class="sidebar-link-text">Users</span>
-                        {% if pending_users_count and pending_users_count > 0 %}
-                        <span class="sidebar-link-badge">{{ pending_users_count }}</span>
-                        {% endif %}
-                    </a>
                     <a href="/admin/devices" class="sidebar-link {% if active_page == 'devices' %}active{% endif %}">
                         <span class="sidebar-link-icon">📱</span>
                         <span class="sidebar-link-text">Devices</span>
@@ -826,11 +832,15 @@
                         <span class="sidebar-link-icon">⬆️</span>
                         <span class="sidebar-link-text">Firmware</span>
                     </a>
+                    <a href="/admin/config" class="sidebar-link {% if active_page == 'config' %}active{% endif %}">
+                        <span class="sidebar-link-icon">🔧</span>
+                        <span class="sidebar-link-text">System Configuration</span>
+                    </a>
                 </nav>
             </div>
 
             <div class="sidebar-section">
-                <div class="sidebar-section-title">Data</div>
+                <div class="sidebar-section-title">Data & Storage</div>
                 <nav class="sidebar-nav">
                     <a href="/admin/database" class="sidebar-link {% if active_page == 'database' %}active{% endif %}">
                         <span class="sidebar-link-icon">🗄️</span>

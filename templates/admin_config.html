@@ -1,0 +1,230 @@
+<!-- templates/admin_config.html - System Configuration -->
+{% extends "admin_base.html" %}
+
+{% block title %}System Configuration{% endblock %}
+{% block page_title %}System Configuration{% endblock %}
+
+{% block extra_styles %}
+<style>
+    .config-section {
+        background: rgba(255, 255, 255, 0.03);
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        border: 1px solid rgba(148, 163, 184, 0.1);
+    }
+
+    .config-section-title {
+        font-size: 1.2rem;
+        font-weight: 600;
+        color: #10b981;
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .config-section-description {
+        color: #94a3b8;
+        font-size: 0.9rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+
+    .form-label {
+        display: block;
+        color: #e2e8f0;
+        font-weight: 500;
+        margin-bottom: 0.5rem;
+        font-size: 0.9rem;
+    }
+
+    .form-input {
+        width: 100%;
+        max-width: 400px;
+        padding: 0.75rem;
+        background: rgba(0, 0, 0, 0.3);
+        border: 1px solid rgba(148, 163, 184, 0.2);
+        border-radius: 8px;
+        color: #e2e8f0;
+        font-size: 0.95rem;
+    }
+
+    .form-input:focus {
+        outline: none;
+        border-color: #10b981;
+    }
+
+    .form-hint {
+        font-size: 0.85rem;
+        color: #64748b;
+        margin-top: 0.5rem;
+    }
+
+    .time-inputs {
+        display: flex;
+        gap: 1rem;
+        align-items: center;
+    }
+
+    .time-input-group {
+        flex: 1;
+        max-width: 150px;
+    }
+
+    .save-button {
+        padding: 0.75rem 2rem;
+        background: linear-gradient(135deg, #10b981, #059669);
+        border: none;
+        border-radius: 8px;
+        color: white;
+        font-weight: 600;
+        cursor: pointer;
+        font-size: 0.95rem;
+        transition: all 0.2s;
+    }
+
+    .save-button:hover {
+        background: linear-gradient(135deg, #059669, #047857);
+        transform: translateY(-1px);
+    }
+
+    .save-button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .alert {
+        padding: 1rem;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+        display: none;
+    }
+
+    .alert-success {
+        background: rgba(16, 185, 129, 0.1);
+        border: 1px solid rgba(16, 185, 129, 0.3);
+        color: #10b981;
+    }
+
+    .alert-error {
+        background: rgba(239, 68, 68, 0.1);
+        border: 1px solid rgba(239, 68, 68, 0.3);
+        color: #ef4444;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="alert alert-success" id="successAlert">
+    ✓ Configuration saved successfully
+</div>
+
+<div class="alert alert-error" id="errorAlert">
+    ✗ <span id="errorMessage"></span>
+</div>
+
+<div class="config-section">
+    <div class="config-section-title">
+        📅 Device Logging Schedule
+    </div>
+    <div class="config-section-description">
+        Configure when devices should post their daily aggregated sensor data.
+        Devices will automatically stagger their posts within this time window to distribute server load.
+    </div>
+
+    <form id="loggingConfigForm" onsubmit="saveLoggingConfig(event)">
+        <div class="form-group">
+            <label class="form-label">Posting Time Window</label>
+            <div class="time-inputs">
+                <div class="time-input-group">
+                    <input type="number"
+                           id="startHour"
+                           name="startHour"
+                           class="form-input"
+                           min="0"
+                           max="23"
+                           value="{{ logging_config.posting_window_start_hour }}"
+                           required>
+                    <div class="form-hint">Start hour (0-23)</div>
+                </div>
+                <span style="color: #64748b;">to</span>
+                <div class="time-input-group">
+                    <input type="number"
+                           id="endHour"
+                           name="endHour"
+                           class="form-input"
+                           min="0"
+                           max="23"
+                           value="{{ logging_config.posting_window_end_hour }}"
+                           required>
+                    <div class="form-hint">End hour (0-23)</div>
+                </div>
+            </div>
+            <div class="form-hint" style="margin-top: 1rem;">
+                Current window: {{ logging_config.posting_window_start_hour }}:00 - {{ logging_config.posting_window_end_hour }}:00<br>
+                Devices will be automatically distributed across this {{ logging_config.posting_window_end_hour - logging_config.posting_window_start_hour }} hour window.
+            </div>
+        </div>
+
+        <button type="submit" class="save-button" id="saveButton">
+            Save Configuration
+        </button>
+    </form>
+</div>
+
+<script>
+async function saveLoggingConfig(event) {
+    event.preventDefault();
+
+    const saveButton = document.getElementById('saveButton');
+    const successAlert = document.getElementById('successAlert');
+    const errorAlert = document.getElementById('errorAlert');
+
+    // Hide alerts
+    successAlert.style.display = 'none';
+    errorAlert.style.display = 'none';
+
+    // Disable button
+    saveButton.disabled = true;
+    saveButton.textContent = 'Saving...';
+
+    try {
+        const startHour = parseInt(document.getElementById('startHour').value);
+        const endHour = parseInt(document.getElementById('endHour').value);
+
+        const response = await fetch('/admin/config/logging', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                posting_window_start_hour: startHour,
+                posting_window_end_hour: endHour
+            })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            successAlert.style.display = 'block';
+            setTimeout(() => {
+                successAlert.style.display = 'none';
+            }, 3000);
+        } else {
+            errorAlert.style.display = 'block';
+            document.getElementById('errorMessage').textContent = data.detail || 'Failed to save configuration';
+        }
+    } catch (error) {
+        errorAlert.style.display = 'block';
+        document.getElementById('errorMessage').textContent = 'Network error: ' + error.message;
+    } finally {
+        saveButton.disabled = false;
+        saveButton.textContent = 'Save Configuration';
+    }
+}
+</script>
+{% endblock %}

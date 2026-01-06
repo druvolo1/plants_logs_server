@@ -1,7 +1,7 @@
 {% extends "admin_base.html" %}
 
-{% block title %}Dashboard{% endblock %}
-{% block page_title %}Dashboard{% endblock %}
+{% block title %}Admin Dashboard{% endblock %}
+{% block page_title %}Admin Dashboard{% endblock %}
 
 {% set active_page = 'dashboard' %}
 
@@ -178,9 +178,19 @@
 <!-- Stats Grid -->
 <div class="stats-grid">
     <div class="stat-card">
-        <div class="stat-card-value" id="stat-users">-</div>
-        <div class="stat-card-label">Total Users</div>
-        <div class="stat-card-change positive" id="stat-users-pending">- pending approval</div>
+        <div class="stat-card-value" id="stat-active-plants">-</div>
+        <div class="stat-card-label">Active Plants</div>
+        <div class="stat-card-change positive" id="stat-plants-with-data">- with data today</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-card-value" id="stat-data-coverage">-%</div>
+        <div class="stat-card-label">Yesterday's Data Coverage</div>
+        <div class="stat-card-change" id="stat-coverage-status">-</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-card-value" id="stat-total-logs">-</div>
+        <div class="stat-card-label">Total Daily Logs</div>
+        <div class="stat-card-change positive" id="stat-logs-last-week">- last 7 days</div>
     </div>
     <div class="stat-card">
         <div class="stat-card-value" id="stat-devices">-</div>
@@ -188,21 +198,14 @@
         <div class="stat-card-change" id="stat-devices-online">- online now</div>
     </div>
     <div class="stat-card">
-        <div class="stat-card-value" id="stat-plants">-</div>
-        <div class="stat-card-label">Total Plants</div>
-        <div class="stat-card-change positive" id="stat-plants-active">- active</div>
+        <div class="stat-card-value" id="stat-users">-</div>
+        <div class="stat-card-label">Total Users</div>
+        <div class="stat-card-change positive" id="stat-users-pending">- pending approval</div>
     </div>
     <div class="stat-card">
         <div class="stat-card-value" id="stat-locations">-</div>
         <div class="stat-card-label">Locations</div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-card-value" id="stat-logs">-</div>
-        <div class="stat-card-label">Log Entries</div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-card-value" id="stat-env-logs">-</div>
-        <div class="stat-card-label">Environment Logs</div>
+        <div class="stat-card-change" id="stat-plants-total">- total plants</div>
     </div>
 </div>
 
@@ -264,48 +267,50 @@
     </div>
 </div>
 
-<!-- Recent Users Table -->
+<!-- Device Posting Activity Table -->
 <div class="data-table-container" style="margin-bottom: 2rem;">
     <div class="data-table-header">
-        <span class="data-table-title">Recent Users</span>
-        <a href="/admin/users" class="action-btn action-btn-primary">View All →</a>
-    </div>
-    <table class="data-table">
-        <thead>
-            <tr>
-                <th>Email</th>
-                <th>Status</th>
-                <th>Devices</th>
-                <th>Registered</th>
-            </tr>
-        </thead>
-        <tbody id="recent-users-tbody">
-            <tr>
-                <td colspan="4" class="loading">Loading...</td>
-            </tr>
-        </tbody>
-    </table>
-</div>
-
-<!-- Recent Devices Table -->
-<div class="data-table-container">
-    <div class="data-table-header">
-        <span class="data-table-title">Recent Devices</span>
-        <a href="/admin/devices" class="action-btn action-btn-primary">View All →</a>
+        <span class="data-table-title">📡 Device Posting Activity</span>
+        <a href="/admin/devices" class="action-btn action-btn-primary">Manage Devices →</a>
     </div>
     <table class="data-table">
         <thead>
             <tr>
                 <th>Device</th>
-                <th>Owner</th>
                 <th>Type</th>
+                <th>Owner</th>
                 <th>Status</th>
-                <th>Last Seen</th>
+                <th>Assigned Plants</th>
+                <th>Posts Today</th>
+                <th>Expected Posts</th>
+                <th>Last Post</th>
             </tr>
         </thead>
-        <tbody id="recent-devices-tbody">
+        <tbody id="device-activity-tbody">
             <tr>
-                <td colspan="5" class="loading">Loading...</td>
+                <td colspan="8" class="loading">Loading...</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<!-- Plants Missing Data Table -->
+<div class="data-table-container">
+    <div class="data-table-header">
+        <span class="data-table-title">⚠️ Plants Missing Data (Yesterday)</span>
+        <span class="data-table-subtitle" style="color: #64748b; font-size: 0.85rem; margin-left: 1rem;">Showing top 10</span>
+    </div>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Plant ID</th>
+                <th>Name</th>
+                <th>Owner</th>
+            </tr>
+        </thead>
+        <tbody id="plants-missing-tbody">
+            <tr>
+                <td colspan="3" class="loading">Loading...</td>
             </tr>
         </tbody>
     </table>
@@ -318,12 +323,13 @@
     async function loadDashboard() {
         await Promise.all([
             loadStats(),
+            loadPlantDataSummary(),
             loadAlerts(),
             loadRecentActivity(),
             loadDeviceStatus(),
             loadFirmwareStatus(),
-            loadRecentUsers(),
-            loadRecentDevices()
+            loadDeviceActivity(),
+            loadPlantsMissing()
         ]);
         document.getElementById('last-updated').textContent = new Date().toLocaleTimeString();
     }
@@ -342,14 +348,42 @@
                 document.getElementById('stat-users-pending').textContent = `${data.users.pending} pending approval`;
                 document.getElementById('stat-devices').textContent = formatNumber(data.devices.total);
                 document.getElementById('stat-devices-online').textContent = `${data.devices.online} online now`;
-                document.getElementById('stat-plants').textContent = formatNumber(data.plants.total);
-                document.getElementById('stat-plants-active').textContent = `${data.plants.active} active`;
                 document.getElementById('stat-locations').textContent = formatNumber(data.locations || 0);
-                document.getElementById('stat-logs').textContent = formatNumber(data.logs.log_entries || 0);
-                document.getElementById('stat-env-logs').textContent = formatNumber(data.logs.environment_logs || 0);
+                document.getElementById('stat-plants-total').textContent = `${data.plants.total} total plants`;
             }
         } catch (error) {
             console.error('Error loading stats:', error);
+        }
+    }
+
+    async function loadPlantDataSummary() {
+        try {
+            const response = await fetch('/admin/api/dashboard/plant-data-summary');
+            if (response.ok) {
+                const data = await response.json();
+                document.getElementById('stat-active-plants').textContent = formatNumber(data.active_plants);
+                document.getElementById('stat-plants-with-data').textContent = `${data.plants_with_data_today} with data today`;
+                document.getElementById('stat-data-coverage').textContent = `${data.data_coverage_yesterday}%`;
+
+                // Color code coverage status
+                const coverageEl = document.getElementById('stat-coverage-status');
+                const coverage = data.data_coverage_yesterday;
+                if (coverage >= 90) {
+                    coverageEl.textContent = `${data.plants_with_data_yesterday}/${data.active_plants} plants`;
+                    coverageEl.className = 'stat-card-change positive';
+                } else if (coverage >= 70) {
+                    coverageEl.textContent = `${data.plants_with_data_yesterday}/${data.active_plants} plants`;
+                    coverageEl.className = 'stat-card-change';
+                } else {
+                    coverageEl.textContent = `${data.plants_with_data_yesterday}/${data.active_plants} plants - Low!`;
+                    coverageEl.className = 'stat-card-change negative';
+                }
+
+                document.getElementById('stat-total-logs').textContent = formatNumber(data.total_daily_logs);
+                document.getElementById('stat-logs-last-week').textContent = `${formatNumber(data.logs_last_week)} last 7 days`;
+            }
+        } catch (error) {
+            console.error('Error loading plant data summary:', error);
         }
     }
 
@@ -472,72 +506,77 @@
         }
     }
 
-    async function loadRecentUsers() {
+    async function loadDeviceActivity() {
         try {
-            const response = await fetch('/admin/api/dashboard/recent-users');
-            const tbody = document.getElementById('recent-users-tbody');
-
-            if (response.ok) {
-                const users = await response.json();
-
-                if (users.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="4" class="empty-state">No users found</td></tr>';
-                    return;
-                }
-
-                tbody.innerHTML = users.map(user => `
-                    <tr>
-                        <td>${user.email}</td>
-                        <td>
-                            ${user.is_active ?
-                                '<span class="badge badge-success">Active</span>' :
-                                '<span class="badge badge-warning">Pending</span>'}
-                            ${user.is_suspended ? '<span class="badge badge-danger">Suspended</span>' : ''}
-                            ${user.is_superuser ? '<span class="badge badge-info">Admin</span>' : ''}
-                        </td>
-                        <td>${user.device_count || 0}</td>
-                        <td>${formatDate(user.created_at)}</td>
-                    </tr>
-                `).join('');
-            }
-        } catch (error) {
-            console.error('Error loading recent users:', error);
-            document.getElementById('recent-users-tbody').innerHTML = '<tr><td colspan="4">Error loading users</td></tr>';
-        }
-    }
-
-    async function loadRecentDevices() {
-        try {
-            const response = await fetch('/admin/api/dashboard/recent-devices');
-            const tbody = document.getElementById('recent-devices-tbody');
+            const response = await fetch('/admin/api/dashboard/device-posting-activity');
+            const tbody = document.getElementById('device-activity-tbody');
 
             if (response.ok) {
                 const devices = await response.json();
 
                 if (devices.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No devices found</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="8" class="empty-state">No devices found</td></tr>';
                     return;
                 }
 
-                tbody.innerHTML = devices.map(device => `
+                tbody.innerHTML = devices.map(device => {
+                    const isPosting = device.logs_posted_today >= device.expected_posts;
+                    const statusClass = isPosting ? 'badge-success' : 'badge-warning';
+                    const statusText = isPosting ? '✓ On Track' : '⚠ Behind';
+
+                    return `
+                        <tr>
+                            <td><strong>${device.name}</strong></td>
+                            <td>${device.device_type || '-'}</td>
+                            <td style="color: #60a5fa;">${device.owner_email}</td>
+                            <td>
+                                ${device.is_online ?
+                                    '<span class="badge badge-success">🟢 Online</span>' :
+                                    '<span class="badge badge-danger">🔴 Offline</span>'}
+                            </td>
+                            <td>${device.assigned_plants}</td>
+                            <td>${device.logs_posted_today}</td>
+                            <td>
+                                ${device.expected_posts > 0 ?
+                                    `<span class="badge ${statusClass}">${statusText}</span> ${device.expected_posts}` :
+                                    '-'}
+                            </td>
+                            <td>${device.last_post ? formatDateTime(device.last_post) : 'Never'}</td>
+                        </tr>
+                    `;
+                }).join('');
+            }
+        } catch (error) {
+            console.error('Error loading device activity:', error);
+            document.getElementById('device-activity-tbody').innerHTML = '<tr><td colspan="8">Error loading device activity</td></tr>';
+        }
+    }
+
+    async function loadPlantsMissing() {
+        try {
+            const response = await fetch('/admin/api/dashboard/plant-data-summary');
+            const tbody = document.getElementById('plants-missing-tbody');
+
+            if (response.ok) {
+                const data = await response.json();
+                const plants = data.plants_missing_data || [];
+
+                if (plants.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="3" class="empty-state" style="color: #10b981;">✓ All active plants have recent data!</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = plants.map(plant => `
                     <tr>
-                        <td>
-                            <strong>${device.name || device.device_id.substring(0, 8) + '...'}</strong>
-                        </td>
-                        <td style="color: #60a5fa;">${device.owner_email}</td>
-                        <td>${device.device_type || 'feeding_system'}</td>
-                        <td>
-                            ${device.is_online ?
-                                '<span class="badge badge-success">🟢 Online</span>' :
-                                '<span class="badge badge-danger">🔴 Offline</span>'}
-                        </td>
-                        <td>${formatDateTime(device.last_seen)}</td>
+                        <td><code>${plant.plant_id}</code></td>
+                        <td>${plant.name || '-'}</td>
+                        <td style="color: #60a5fa;">${plant.owner}</td>
                     </tr>
                 `).join('');
             }
         } catch (error) {
-            console.error('Error loading recent devices:', error);
-            document.getElementById('recent-devices-tbody').innerHTML = '<tr><td colspan="5">Error loading devices</td></tr>';
+            console.error('Error loading plants missing data:', error);
+            document.getElementById('plants-missing-tbody').innerHTML = '<tr><td colspan="3">Error loading plants</td></tr>';
         }
     }
 
