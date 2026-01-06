@@ -43,7 +43,7 @@ class User(Base):
     is_verified = Column(Boolean, default=False)
     is_suspended = Column(Boolean, default=False)  # Added for suspended users
     dashboard_preferences = Column(Text, nullable=True)  # JSON string for dashboard settings (device order, etc.)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)  # User creation timestamp
+    created_at = Column(DateTime, nullable=True, default=datetime.utcnow)  # User creation timestamp (NULL for users created before tracking)
     last_login = Column(DateTime, nullable=True)  # Last login timestamp
     login_count = Column(Integer, nullable=False, default=0)  # Total login count
     oauth_accounts = relationship("OAuthAccount", back_populates="user", cascade="all, delete-orphan")

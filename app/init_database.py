@@ -166,12 +166,32 @@ async def init_database():
             )
 
             # Add created_at column if it doesn't exist
-            await check_and_add_column(
-                conn,
-                'users',
-                'created_at',
-                "created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP AFTER dashboard_preferences"
-            )
+            # First check if column exists
+            cursor = await conn.cursor()
+            await cursor.execute("""
+                SELECT COUNT(*)
+                FROM information_schema.COLUMNS
+                WHERE TABLE_SCHEMA = DATABASE()
+                AND TABLE_NAME = 'users'
+                AND COLUMN_NAME = 'created_at'
+            """)
+            column_exists = (await cursor.fetchone())[0] > 0
+
+            if not column_exists:
+                # Add the column
+                await check_and_add_column(
+                    conn,
+                    'users',
+                    'created_at',
+                    "created_at DATETIME NULL AFTER dashboard_preferences"
+                )
+
+                # Set created_at to NULL for all existing users (migration ran after their registration)
+                await cursor.execute("UPDATE users SET created_at = NULL WHERE created_at IS NOT NULL")
+                await conn.commit()
+                print("Set created_at to NULL for existing users (unknown registration date)")
+
+            await cursor.close()
 
             # Add last_login column if it doesn't exist
             await check_and_add_column(

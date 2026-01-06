@@ -1,0 +1,535 @@
+<!-- templates/admin_portal.html - Unified Admin Portal with Tabs -->
+{% extends "admin_base.html" %}
+
+{% block title %}Admin Portal{% endblock %}
+{% block page_title %}Admin Portal{% endblock %}
+
+{% block header_actions %}
+<button class="admin-header-btn admin-header-btn-primary" onclick="openAddUserModal()">
+    + Add User
+</button>
+{% endblock %}
+
+{% block extra_styles %}
+<style>
+    /* Tabs Navigation */
+    .admin-tabs {
+        display: flex;
+        gap: 0.5rem;
+        border-bottom: 2px solid rgba(148, 163, 184, 0.2);
+        margin-bottom: 2rem;
+        position: sticky;
+        top: 0;
+        background: #0f172a;
+        z-index: 100;
+        padding-top: 0.5rem;
+    }
+
+    .admin-tab {
+        padding: 0.875rem 1.5rem;
+        background: transparent;
+        border: none;
+        color: #94a3b8;
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 0.95rem;
+        border-bottom: 3px solid transparent;
+        margin-bottom: -2px;
+        transition: all 0.2s;
+        white-space: nowrap;
+    }
+
+    .admin-tab:hover {
+        color: #e2e8f0;
+        background: rgba(16, 185, 129, 0.05);
+    }
+
+    .admin-tab.active {
+        color: #10b981;
+        border-bottom-color: #10b981;
+        background: rgba(16, 185, 129, 0.1);
+    }
+
+    .admin-tab-content {
+        display: none;
+    }
+
+    .admin-tab-content.active {
+        display: block;
+    }
+
+    /* Stats Grid */
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+
+    .stat-card {
+        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+        border: 1px solid rgba(16, 185, 129, 0.3);
+        border-radius: 8px;
+        padding: 1.5rem;
+        text-align: center;
+    }
+
+    .stat-card-value {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #10b981;
+    }
+
+    .stat-card-label {
+        font-size: 0.9rem;
+        color: #94a3b8;
+        margin-top: 0.5rem;
+    }
+
+    /* User Status Badges */
+    .user-status-cell {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 0.35rem;
+        flex-wrap: wrap;
+    }
+
+    .user-details-row {
+        background: rgba(0, 0, 0, 0.2);
+    }
+
+    .user-details-row td {
+        padding: 1.5rem !important;
+    }
+
+    .user-details-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1.5rem;
+    }
+
+    .user-detail-item {
+        background: #0f172a;
+        padding: 1rem;
+        border-radius: 8px;
+    }
+
+    .user-detail-label {
+        color: #64748b;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        margin-bottom: 0.35rem;
+    }
+
+    .user-detail-value {
+        color: #e2e8f0;
+        font-size: 1.1rem;
+        font-weight: 600;
+    }
+
+    .action-btn-view-as {
+        background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+        color: white;
+    }
+
+    /* Section styling for tabs */
+    .tab-section {
+        margin-bottom: 2.5rem;
+    }
+
+    .tab-section-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+
+    .tab-section-title {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: #10b981;
+    }
+
+    .tab-section-subtitle {
+        color: #64748b;
+        font-size: 0.85rem;
+        margin-top: 0.25rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Tabs Navigation -->
+<div class="admin-tabs">
+    <button class="admin-tab active" onclick="showAdminTab('overview')">📊 Overview</button>
+    <button class="admin-tab" onclick="showAdminTab('users')">👥 Users</button>
+    <button class="admin-tab" onclick="showAdminTab('devices')">🖥️ Devices</button>
+    <button class="admin-tab" onclick="showAdminTab('plants')">🌱 Plants</button>
+    <button class="admin-tab" onclick="showAdminTab('data-viewer')">📈 Data Viewer</button>
+    <button class="admin-tab" onclick="showAdminTab('database')">🗄️ Database</button>
+</div>
+
+<!-- Overview Tab -->
+<div id="tab-overview" class="admin-tab-content active">
+    <div class="tab-section">
+        <h2 class="tab-section-title">System Overview</h2>
+
+        <!-- Stats Cards -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-card-value" id="overview-total-users">-</div>
+                <div class="stat-card-label">Total Users</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-card-value" id="overview-total-devices">-</div>
+                <div class="stat-card-label">Total Devices</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-card-value" id="overview-online-devices">-</div>
+                <div class="stat-card-label">Online Devices</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-card-value" id="overview-total-plants">-</div>
+                <div class="stat-card-label">Total Plants</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-card-value" id="overview-active-plants">-</div>
+                <div class="stat-card-label">Active Plants</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- System Alerts -->
+    <div class="tab-section">
+        <h3 class="tab-section-title">System Alerts</h3>
+        <div id="overview-alerts" class="data-table-container">
+            <p style="color: #64748b;">Loading...</p>
+        </div>
+    </div>
+
+    <!-- Recent Activity -->
+    <div class="tab-section">
+        <h3 class="tab-section-title">Recent Activity</h3>
+        <div id="overview-activity" class="data-table-container">
+            <p style="color: #64748b;">Loading...</p>
+        </div>
+    </div>
+</div>
+
+<!-- Users Tab (existing content will go here) -->
+<div id="tab-users" class="admin-tab-content">
+    <div class="tab-section">
+        <h2 class="tab-section-title">User Management</h2>
+        <p class="tab-section-subtitle">Manage user accounts, permissions, and activity</p>
+
+        <!-- User management content will be inserted here -->
+        <p style="color: #94a3b8;">Loading users...</p>
+    </div>
+</div>
+
+<!-- Devices Tab -->
+<div id="tab-devices" class="admin-tab-content">
+    <div class="tab-section">
+        <h2 class="tab-section-title">All Devices</h2>
+        <div class="data-table-container">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Device ID</th>
+                        <th>Name</th>
+                        <th>Owner</th>
+                        <th>Type</th>
+                        <th>Status</th>
+                        <th>Active Plant</th>
+                    </tr>
+                </thead>
+                <tbody id="all-devices-tbody">
+                    <tr><td colspan="6" style="text-align: center; color: #64748b;">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Plants Tab -->
+<div id="tab-plants" class="admin-tab-content">
+    <div class="tab-section">
+        <h2 class="tab-section-title">All Plants</h2>
+        <div class="data-table-container">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Plant ID</th>
+                        <th>Name</th>
+                        <th>Owner</th>
+                        <th>Device</th>
+                        <th>Status</th>
+                        <th>Phase</th>
+                        <th>Start Date</th>
+                        <th>Age</th>
+                    </tr>
+                </thead>
+                <tbody id="all-plants-tbody">
+                    <tr><td colspan="8" style="text-align: center; color: #64748b;">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Data Viewer Tab -->
+<div id="tab-data-viewer" class="admin-tab-content">
+    <div class="tab-section">
+        <h2 class="tab-section-title">Device Data Viewer</h2>
+        <p class="tab-section-subtitle">View and analyze device logs and sensor data</p>
+
+        <!-- Data viewer will be implemented here -->
+        <p style="color: #94a3b8;">Device data viewer coming soon...</p>
+    </div>
+</div>
+
+<!-- Database Tab -->
+<div id="tab-database" class="admin-tab-content">
+    <div class="tab-section">
+        <h2 class="tab-section-title">Database Management</h2>
+        <p class="tab-section-subtitle">Data retention, purging, and legacy log management</p>
+
+        <!-- Database management will be implemented here -->
+        <p style="color: #94a3b8;">Database management coming soon...</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+// Tab switching function
+function showAdminTab(tabName) {
+    // Hide all tab content
+    document.querySelectorAll('.admin-tab-content').forEach(content => {
+        content.classList.remove('active');
+    });
+
+    // Deactivate all tabs
+    document.querySelectorAll('.admin-tab').forEach(tab => {
+        tab.classList.remove('active');
+    });
+
+    // Show selected tab content
+    document.getElementById(`tab-${tabName}`).classList.add('active');
+
+    // Activate selected tab button
+    event.target.classList.add('active');
+
+    // Load data for the tab if needed
+    loadTabData(tabName);
+}
+
+function loadTabData(tabName) {
+    switch(tabName) {
+        case 'overview':
+            loadOverviewData();
+            break;
+        case 'users':
+            loadUsersData();
+            break;
+        case 'devices':
+            loadDevicesData();
+            break;
+        case 'plants':
+            loadPlantsData();
+            break;
+        case 'data-viewer':
+            // Data viewer load
+            break;
+        case 'database':
+            // Database management load
+            break;
+    }
+}
+
+// Overview Tab Functions
+async function loadOverviewData() {
+    try {
+        // Load dashboard stats
+        const statsResponse = await fetch('/api/dashboard/stats');
+        if (statsResponse.ok) {
+            const stats = await statsResponse.json();
+            document.getElementById('overview-total-users').textContent = stats.users.total;
+            document.getElementById('overview-total-devices').textContent = stats.devices.total;
+            document.getElementById('overview-online-devices').textContent = stats.devices.online;
+            document.getElementById('overview-total-plants').textContent = stats.plants.total;
+            document.getElementById('overview-active-plants').textContent = stats.plants.active;
+        }
+
+        // Load alerts
+        const alertsResponse = await fetch('/api/dashboard/alerts');
+        if (alertsResponse.ok) {
+            const alerts = await alertsResponse.json();
+            displayAlerts(alerts);
+        }
+
+        // Load activity
+        const activityResponse = await fetch('/api/dashboard/activity');
+        if (activityResponse.ok) {
+            const activity = await activityResponse.json();
+            displayActivity(activity);
+        }
+    } catch (error) {
+        console.error('Error loading overview data:', error);
+    }
+}
+
+function displayAlerts(alerts) {
+    const container = document.getElementById('overview-alerts');
+    if (alerts.length === 0) {
+        container.innerHTML = '<p style="color: #64748b;">No alerts</p>';
+        return;
+    }
+
+    container.innerHTML = alerts.map(alert => `
+        <div style="padding: 1rem; border-left: 3px solid ${alert.level === 'error' ? '#ef4444' : '#f59e0b'}; background: rgba(${alert.level === 'error' ? '239, 68, 68' : '245, 158, 11'}, 0.1); margin-bottom: 0.75rem; border-radius: 4px;">
+            <strong style="color: ${alert.level === 'error' ? '#f87171' : '#fbbf24'};">${alert.title}</strong><br>
+            <span style="color: #94a3b8; font-size: 0.9rem;">${alert.description}</span>
+        </div>
+    `).join('');
+}
+
+function displayActivity(activity) {
+    const container = document.getElementById('overview-activity');
+    if (activity.length === 0) {
+        container.innerHTML = '<p style="color: #64748b;">No recent activity</p>';
+        return;
+    }
+
+    container.innerHTML = '<div style="display: flex; flex-direction: column; gap: 0.5rem;">' +
+        activity.map(item => `
+            <div style="padding: 0.75rem; background: rgba(30, 41, 59, 0.5); border-radius: 4px; display: flex; justify-content: space-between;">
+                <span style="color: #e2e8f0;">${item.message}</span>
+                <span style="color: #64748b; font-size: 0.85rem;">${formatRelativeTime(item.timestamp)}</span>
+            </div>
+        `).join('') +
+        '</div>';
+}
+
+function formatRelativeTime(isoString) {
+    if (!isoString) return 'Unknown';
+    const date = new Date(isoString);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    return `${diffDays}d ago`;
+}
+
+// Users Tab Functions
+async function loadUsersData() {
+    // TODO: Load users table
+    console.log('Loading users data...');
+}
+
+// Devices Tab Functions
+async function loadDevicesData() {
+    try {
+        const response = await fetch('/admin/all-devices');
+        if (response.ok) {
+            const devices = await response.json();
+            displayAllDevices(devices);
+        }
+    } catch (error) {
+        console.error('Error loading devices:', error);
+    }
+}
+
+function displayAllDevices(devices) {
+    const tbody = document.getElementById('all-devices-tbody');
+
+    if (devices.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #64748b;">No devices found</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = devices.map(device => `
+        <tr>
+            <td><code style="font-size: 0.85rem;">${device.device_id}</code></td>
+            <td>${device.name || '-'}</td>
+            <td style="color: #60a5fa;">${device.owner_email}</td>
+            <td>${device.device_type || 'feeding_system'}</td>
+            <td>
+                <span class="status-badge ${device.is_online ? 'status-badge-success' : 'status-badge-error'}">
+                    ${device.is_online ? '🟢 Online' : '🔴 Offline'}
+                </span>
+            </td>
+            <td>${device.active_plant_name || '-'}</td>
+        </tr>
+    `).join('');
+}
+
+// Plants Tab Functions
+async function loadPlantsData() {
+    try {
+        const response = await fetch('/admin/all-plants');
+        if (response.ok) {
+            const plants = await response.json();
+            displayAllPlants(plants);
+        }
+    } catch (error) {
+        console.error('Error loading plants:', error);
+    }
+}
+
+function displayAllPlants(plants) {
+    const tbody = document.getElementById('all-plants-tbody');
+
+    if (plants.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: #64748b;">No plants found</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = plants.map(plant => `
+        <tr>
+            <td><code style="font-size: 0.85rem;">${plant.plant_id}</code></td>
+            <td>${plant.name}</td>
+            <td style="color: #60a5fa;">${plant.owner_email}</td>
+            <td>${plant.device_id ? `<code style="font-size: 0.75rem;">${plant.device_id.substring(0, 8)}...</code>` : '-'}</td>
+            <td>
+                <span class="status-badge ${plant.is_active ? 'status-badge-info' : 'status-badge-secondary'}">
+                    ${plant.status || (plant.is_active ? 'Active' : 'Finished')}
+                </span>
+            </td>
+            <td>${plant.current_phase || '-'}</td>
+            <td>${formatDate(plant.start_date)}</td>
+            <td>${calculateAge(plant.start_date, plant.end_date)}</td>
+        </tr>
+    `).join('');
+}
+
+function formatDate(dateString) {
+    if (!dateString) return '-';
+    const date = new Date(dateString);
+    return date.toLocaleDateString();
+}
+
+function calculateAge(startDate, endDate) {
+    if (!startDate) return '-';
+    const start = new Date(startDate);
+    const end = endDate ? new Date(endDate) : new Date();
+    const days = Math.floor((end - start) / (1000 * 60 * 60 * 24));
+    return `${days} days`;
+}
+
+// Load overview data on page load
+document.addEventListener('DOMContentLoaded', function() {
+    loadOverviewData();
+});
+</script>
+{% endblock %}
