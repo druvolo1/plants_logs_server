@@ -276,7 +276,7 @@ async def get_active_sessions(
             "email": user.email,
             "first_name": user.first_name,
             "last_name": user.last_name,
-            "last_login": user.last_login.isoformat() if user.last_login else None,
+            "last_login": user.last_login.isoformat() + 'Z' if user.last_login else None,
             "login_count": user.login_count or 0,
             "ip_address": latest_login.ip_address if latest_login else None,
             "user_agent": latest_login.user_agent if latest_login else None
@@ -345,11 +345,11 @@ async def get_user_login_history(
 
     return {
         "login_count": user.login_count or 0,
-        "last_login": user.last_login.isoformat() if user.last_login else None,
-        "created_at": user.created_at.isoformat() if user.created_at else None,
+        "last_login": user.last_login.isoformat() + 'Z' if user.last_login else None,
+        "created_at": user.created_at.isoformat() + 'Z' if user.created_at else None,
         "login_history": [
             {
-                "login_at": record.login_at.isoformat() if record.login_at else None,
+                "login_at": record.login_at.isoformat() + 'Z' if record.login_at else None,
                 "ip_address": record.ip_address,
                 "user_agent": record.user_agent
             }
@@ -402,8 +402,8 @@ async def get_all_plants(
             "device_id": device_uuid,
             "status": plant.status,
             "current_phase": plant.current_phase,
-            "start_date": plant.start_date.isoformat() if plant.start_date else None,
-            "end_date": plant.end_date.isoformat() if plant.end_date else None,
+            "start_date": plant.start_date.isoformat() + 'Z' if plant.start_date else None,
+            "end_date": plant.end_date.isoformat() + 'Z' if plant.end_date else None,
             "is_active": plant.end_date is None
         })
 

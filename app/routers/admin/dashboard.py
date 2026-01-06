@@ -154,7 +154,7 @@ async def get_dashboard_activity(
         activities.append({
             "type": "user",
             "message": f"User registered: {user.email}",
-            "timestamp": user.created_at.isoformat() if user.created_at else None
+            "timestamp": user.created_at.isoformat() + 'Z' if user.created_at else None
         })
 
     # Recent device connections (last 10)
@@ -169,7 +169,7 @@ async def get_dashboard_activity(
         activities.append({
             "type": "device",
             "message": f"{device.name or device.device_id[:8]} connected ({email})",
-            "timestamp": device.last_seen.isoformat() if device.last_seen else None
+            "timestamp": device.last_seen.isoformat() + 'Z' if device.last_seen else None
         })
 
     # Sort by timestamp and return top 15
@@ -312,7 +312,7 @@ async def get_dashboard_recent_devices(
             "owner_email": email,
             "device_type": device.device_type,
             "is_online": device.is_online,
-            "last_seen": device.last_seen.isoformat() if device.last_seen else None
+            "last_seen": device.last_seen.isoformat() + 'Z' if device.last_seen else None
         })
 
     return devices
@@ -397,7 +397,7 @@ async def get_device_posting_activity(
             "is_online": device.is_online,
             "assigned_plants": assigned_plants,
             "logs_posted_today": logs_today,
-            "last_post": last_log.isoformat() if last_log else None,
+            "last_post": last_log.isoformat() + 'Z' if last_log else None,
             "expected_posts": assigned_plants if device.device_type in ['hydro', 'environmental'] else 0
         })
 
