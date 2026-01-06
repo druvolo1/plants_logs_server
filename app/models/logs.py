@@ -84,6 +84,9 @@ class PlantDailyLog(Base):
     air_quality_score_max = Column(Integer, nullable=True)
     air_quality_score_avg = Column(Float, nullable=True)
 
+    # Light detection (boolean: true if lux exceeded threshold at any point during the day)
+    light_detected = Column(Integer, nullable=True)  # SQLite uses INTEGER for booleans (0/1)
+
     # Metadata
     hydro_device_id = Column(Integer, ForeignKey("devices.id"), nullable=True)
     env_device_id = Column(Integer, ForeignKey("devices.id"), nullable=True)
@@ -151,3 +154,28 @@ class PlantReport(Base):
 
     # Relationships
     plant = relationship("Plant", back_populates="report")
+
+
+class DosingEvent(Base):
+    """
+    Individual dosing events from hydro controllers.
+    Tracks each time the controller adjusted pH or added nutrients.
+    """
+    __tablename__ = "dosing_events"
+    id = Column(Integer, primary_key=True, index=True)
+    plant_id = Column(Integer, ForeignKey("plants.id", ondelete="CASCADE"), nullable=False, index=True)
+    device_id = Column(Integer, ForeignKey("devices.id", ondelete="CASCADE"), nullable=False)
+    event_date = Column(Date, nullable=False, index=True)  # Date for quick daily queries
+    timestamp = Column(DateTime, nullable=False)  # Exact time of dosing event
+    dosing_type = Column(String(50), nullable=False)  # 'ph_up', 'ph_down', 'nutrient_a', 'nutrient_b', etc.
+    amount_ml = Column(Float, nullable=False)  # Amount dosed in milliliters
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    # Indexes for efficient queries
+    __table_args__ = (
+        UniqueConstraint('plant_id', 'timestamp', 'dosing_type', name='uq_plant_timestamp_type'),
+    )
+
+    # Relationships
+    plant = relationship("Plant")
+    device = relationship("Device")

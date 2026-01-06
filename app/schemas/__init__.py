@@ -51,6 +51,9 @@ from .logs import (
     EnvironmentReadingCreate,
     EnvironmentDataCreate,
     PlantDailyLogRead,
+    DosingEventSchema,
+    EnvironmentDailyReport,
+    HydroDailyReport,
 )
 from .firmware import (
     FirmwareCreate,
@@ -113,6 +116,9 @@ __all__ = [
     "EnvironmentReadingCreate",
     "EnvironmentDataCreate",
     "PlantDailyLogRead",
+    "DosingEventSchema",
+    "EnvironmentDailyReport",
+    "HydroDailyReport",
     # Firmware schemas
     "FirmwareCreate",
     "FirmwareRead",

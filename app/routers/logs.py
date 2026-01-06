@@ -12,7 +12,7 @@ import json
 
 from app.models import (
     User, Device, Plant, PlantDailyLog, DeviceAssignment, DeviceShare,
-    Firmware, DeviceFirmwareAssignment, DeviceDebugLog, Location
+    Firmware, DeviceFirmwareAssignment, DeviceDebugLog, Location, DosingEvent
 )
 from app.schemas import (
     HydroReadingCreate,
@@ -23,6 +23,13 @@ from app.schemas import (
     DeviceSettingsResponse,
     FirmwareInfo,
     RemoteLogRequest,
+    EnvironmentDailyReport,
+    HydroDailyReport,
+    DosingEventSchema,
+)
+from app.services import (
+    get_device_posting_slot,
+    assign_posting_slot
 )
 
 router = APIRouter(tags=["logs"])
@@ -327,13 +334,25 @@ async def log_hydro_readings(
         await session.commit()
         print(f"[HYDRO LOG] Device {device_id} will reboot")
 
+    # Get or assign posting slot for daily reporting
+    posting_slot = await get_device_posting_slot(device.id, session)
+    if posting_slot is None:
+        try:
+            posting_slot = await assign_posting_slot(device.id, session)
+            print(f"[HYDRO LOG] Assigned posting slot {posting_slot} to device {device_id}")
+        except ValueError as e:
+            # Device type doesn't need a posting slot
+            print(f"[HYDRO LOG] Could not assign posting slot: {e}")
+            posting_slot = None
+
     # Return settings to device
     return DeviceSettingsResponse(
         use_fahrenheit=settings.get("use_fahrenheit", False),
         update_interval=settings.get("update_interval", 14400),  # 4 hours default
         log_interval=settings.get("log_interval", 14400),  # 4 hours default
         firmware=firmware_info,
-        pending_reboot=pending_reboot
+        pending_reboot=pending_reboot,
+        posting_slot=posting_slot
     )
 
 
@@ -449,6 +468,20 @@ async def environment_heartbeat(
         await session.commit()
         print(f"[ENV HEARTBEAT] Sending remote log request to {device_id}")
 
+    # Get or assign posting slot for daily reporting
+    posting_slot = await get_device_posting_slot(device.id, session)
+    if posting_slot is None:
+        try:
+            posting_slot = await assign_posting_slot(device.id, session)
+            print(f"[ENV HEARTBEAT] Assigned posting slot {posting_slot} to device {device_id}")
+        except ValueError as e:
+            # Device type doesn't need a posting slot (shouldn't happen for environmental)
+            print(f"[ENV HEARTBEAT] Could not assign posting slot: {e}")
+            posting_slot = None
+
+    # Get light threshold from settings (default 10.0 lux)
+    light_threshold = settings.get("light_threshold", 10.0)
+
     # Return settings to device
     return DeviceSettingsResponse(
         use_fahrenheit=settings.get("use_fahrenheit", False),
@@ -456,7 +489,9 @@ async def environment_heartbeat(
         log_interval=settings.get("log_interval", 14400),  # 4 hours logging
         firmware=firmware_info,
         pending_reboot=pending_reboot,
-        remote_log=remote_log_info
+        remote_log=remote_log_info,
+        posting_slot=posting_slot,
+        light_threshold=light_threshold
     )
 
 
@@ -814,3 +849,247 @@ async def update_device_settings(
         update_interval=settings.get("update_interval", 30),
         log_interval=settings.get("log_interval", 14400)
     )
+
+
+# Daily Report Endpoint (Once-Daily Aggregated Data)
+
+@router.post("/api/devices/{device_id}/daily-report")
+async def receive_daily_report(
+    device_id: str,
+    report: EnvironmentDailyReport | HydroDailyReport,
+    api_key: str = Query(...),
+    session: AsyncSession = Depends(get_db_dependency())
+):
+    """
+    Receive daily aggregated report from device.
+
+    Devices calculate min/max/avg for all sensor readings throughout the day,
+    then post once daily during their assigned time slot.
+
+    Data is written to PlantDailyLog for all plants associated with the device:
+    - Hydro controller: Plants assigned to that specific device
+    - Environment sensor: All plants in the same location as the sensor
+    """
+    print(f"[DAILY REPORT] Received report from device {device_id} for date {report.report_date}")
+
+    # 1. Validate device exists and API key matches
+    result = await session.execute(
+        select(Device).where(Device.device_id == device_id, Device.api_key == api_key)
+    )
+    device = result.scalars().first()
+
+    if not device:
+        raise HTTPException(404, "Device not found - please re-pair")
+
+    # Parse report date
+    try:
+        report_date_obj = datetime.strptime(report.report_date, "%Y-%m-%d").date()
+    except Exception as e:
+        raise HTTPException(400, f"Invalid report_date format (expected YYYY-MM-DD): {str(e)}")
+
+    # 2. Get associated plants based on device type
+    plants = []
+
+    if device.device_type in ['hydro_controller', 'feeding_system', 'hydroponic_controller']:
+        # Hydro controller: Get plants assigned to this device
+        assignments_result = await session.execute(
+            select(Plant)
+            .join(DeviceAssignment, DeviceAssignment.plant_id == Plant.id)
+            .where(
+                DeviceAssignment.device_id == device.id,
+                DeviceAssignment.removed_at.is_(None)  # Only active assignments
+            )
+        )
+        plants = assignments_result.scalars().all()
+        print(f"[DAILY REPORT] Hydro controller - found {len(plants)} assigned plants")
+
+    elif device.device_type == 'environmental':
+        # Environment sensor: Get all plants in the same location
+        if device.location_id is None:
+            print(f"[DAILY REPORT] Environment sensor has no location assigned - no plants to update")
+            return {
+                "status": "success",
+                "message": "Device has no location assigned",
+                "plants_updated": 0
+            }
+
+        plants_result = await session.execute(
+            select(Plant).where(
+                Plant.location_id == device.location_id,
+                Plant.end_date.is_(None)  # Only active plants
+            )
+        )
+        plants = plants_result.scalars().all()
+        print(f"[DAILY REPORT] Environment sensor - found {len(plants)} plants in location {device.location_id}")
+
+    else:
+        raise HTTPException(400, f"Device type '{device.device_type}' does not support daily reports")
+
+    if not plants:
+        print(f"[DAILY REPORT] No plants to update for device {device_id}")
+        return {
+            "status": "success",
+            "message": "No active plants associated with device",
+            "plants_updated": 0
+        }
+
+    # 3. For each plant, write/update PlantDailyLog
+    for plant in plants:
+        # Get or create today's log entry for this plant
+        log_result = await session.execute(
+            select(PlantDailyLog).where(
+                PlantDailyLog.plant_id == plant.id,
+                PlantDailyLog.log_date == report_date_obj
+            )
+        )
+        log = log_result.scalars().first()
+
+        if not log:
+            # Create new daily log entry
+            log = PlantDailyLog(
+                plant_id=plant.id,
+                log_date=report_date_obj,
+                readings_count=0
+            )
+            session.add(log)
+            await session.flush()  # Get the log ID
+
+        # Update with report data based on report type
+        if isinstance(report, EnvironmentDailyReport):
+            # Environment sensor data
+            log.env_device_id = device.id
+            log.last_env_reading = datetime.utcnow()
+
+            # CO2
+            log.co2_min = report.co2_min
+            log.co2_max = report.co2_max
+            log.co2_avg = report.co2_avg
+
+            # Temperature (stored as air_temp in PlantDailyLog)
+            log.air_temp_min = report.temperature_min
+            log.air_temp_max = report.temperature_max
+            log.air_temp_avg = report.temperature_avg
+
+            # Humidity
+            log.humidity_min = report.humidity_min
+            log.humidity_max = report.humidity_max
+            log.humidity_avg = report.humidity_avg
+
+            # VPD
+            log.vpd_min = report.vpd_min
+            log.vpd_max = report.vpd_max
+            log.vpd_avg = report.vpd_avg
+
+            # Pressure
+            log.pressure_min = report.pressure_min
+            log.pressure_max = report.pressure_max
+            log.pressure_avg = report.pressure_avg
+
+            # Altitude
+            log.altitude_min = report.altitude_min
+            log.altitude_max = report.altitude_max
+            log.altitude_avg = report.altitude_avg
+
+            # Gas Resistance
+            log.gas_resistance_min = report.gas_resistance_min
+            log.gas_resistance_max = report.gas_resistance_max
+            log.gas_resistance_avg = report.gas_resistance_avg
+
+            # Air Quality Score
+            log.air_quality_score_min = report.air_quality_score_min
+            log.air_quality_score_max = report.air_quality_score_max
+            log.air_quality_score_avg = report.air_quality_score_avg
+
+            # Light - Lux
+            log.lux_min = report.lux_min
+            log.lux_max = report.lux_max
+            log.lux_avg = report.lux_avg
+
+            # Light - PPFD
+            log.ppfd_min = report.ppfd_min
+            log.ppfd_max = report.ppfd_max
+            log.ppfd_avg = report.ppfd_avg
+
+            # Light detection
+            if report.light_detected is not None:
+                log.light_detected = 1 if report.light_detected else 0
+
+            # Update readings count
+            log.readings_count = report.readings_count
+
+            print(f"[DAILY REPORT] Updated environment data for plant {plant.plant_id}")
+
+        elif isinstance(report, HydroDailyReport):
+            # Hydro controller data
+            log.hydro_device_id = device.id
+            log.last_hydro_reading = datetime.utcnow()
+
+            # pH
+            log.ph_min = report.ph_min
+            log.ph_max = report.ph_max
+            log.ph_avg = report.ph_avg
+
+            # EC
+            log.ec_min = report.ec_min
+            log.ec_max = report.ec_max
+            log.ec_avg = report.ec_avg
+
+            # Water Temperature
+            log.water_temp_min = report.water_temp_min
+            log.water_temp_max = report.water_temp_max
+            log.water_temp_avg = report.water_temp_avg
+
+            # Air Temperature (if hydro controller has air temp sensor)
+            if report.air_temp_min is not None:
+                log.air_temp_min = report.air_temp_min
+                log.air_temp_max = report.air_temp_max
+                log.air_temp_avg = report.air_temp_avg
+
+            # Update readings count
+            log.readings_count = report.readings_count
+
+            print(f"[DAILY REPORT] Updated hydro data for plant {plant.plant_id}")
+
+            # 4. Log dosing events
+            for event in report.dosing_events:
+                try:
+                    event_timestamp = date_parser.isoparse(event.timestamp)
+                    event_date = event_timestamp.date()
+
+                    # Create dosing event record
+                    dosing = DosingEvent(
+                        plant_id=plant.id,
+                        device_id=device.id,
+                        event_date=event_date,
+                        timestamp=event_timestamp,
+                        dosing_type=event.type,
+                        amount_ml=event.amount_ml
+                    )
+                    session.add(dosing)
+
+                    # Update totals in PlantDailyLog
+                    if event.type == 'ph_up':
+                        log.total_ph_up_ml = (log.total_ph_up_ml or 0) + event.amount_ml
+                    elif event.type == 'ph_down':
+                        log.total_ph_down_ml = (log.total_ph_down_ml or 0) + event.amount_ml
+
+                    log.dosing_events_count = (log.dosing_events_count or 0) + 1
+
+                except Exception as e:
+                    print(f"[DAILY REPORT] Error parsing dosing event: {e}")
+                    # Continue with other events
+
+            if len(report.dosing_events) > 0:
+                print(f"[DAILY REPORT] Logged {len(report.dosing_events)} dosing events for plant {plant.plant_id}")
+
+        log.updated_at = datetime.utcnow()
+
+    await session.commit()
+
+    print(f"[DAILY REPORT] Successfully updated {len(plants)} plants for device {device_id}")
+
+    return {
+        "status": "success",
+        "plants_updated": len(plants),
+        "report_date": report.report_date
+    }

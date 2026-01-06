@@ -181,6 +181,10 @@ class DeviceSettingsResponse(BaseModel):
     pending_reboot: bool = False
     # Remote debug log request (set via admin portal)
     remote_log: Optional[RemoteLogRequest] = None
+    # Daily posting slot (minute offset from window start, e.g., 0-299 for 5-hour window)
+    posting_slot: Optional[int] = None
+    # Light detection threshold in lux (for environment sensors only)
+    light_threshold: Optional[float] = None
 
 
 # Device Linking Pydantic models

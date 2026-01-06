@@ -140,3 +140,19 @@ class DeviceDebugLog(Base):
     # Relationships
     device = relationship("Device", foreign_keys=[device_id])
     requested_by = relationship("User", foreign_keys=[requested_by_user_id])
+
+
+class DevicePostingSlot(Base):
+    """
+    Stores assigned daily posting time slots for devices to balance server load.
+    Each device gets a unique time slot within the configured posting window (e.g., 1-6 AM).
+    """
+    __tablename__ = "device_posting_slots"
+    id = Column(Integer, primary_key=True, index=True)
+    device_id = Column(Integer, ForeignKey("devices.id", ondelete="CASCADE"), unique=True, nullable=False, index=True)
+    assigned_minute = Column(Integer, nullable=False)  # 0-299 (minutes from window start)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    # Relationships
+    device = relationship("Device", foreign_keys=[device_id])

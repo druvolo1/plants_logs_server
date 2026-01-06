@@ -726,6 +726,61 @@ async def init_database():
                 """
             )
 
+            # Add light_detected column to plant_daily_logs if it doesn't exist
+            await check_and_add_column(
+                conn,
+                'plant_daily_logs',
+                'light_detected',
+                "light_detected TINYINT(1) NULL AFTER air_quality_score_avg"
+            )
+
+            print("\nChecking 'device_posting_slots' table...")
+
+            # Create device_posting_slots table if it doesn't exist
+            await check_and_create_table(
+                conn,
+                'device_posting_slots',
+                """
+                CREATE TABLE device_posting_slots (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    device_id INT NOT NULL UNIQUE,
+                    assigned_minute INT NOT NULL COMMENT 'Minutes from posting window start (0-299 for 5-hour window)',
+                    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    INDEX idx_device_id (device_id),
+                    FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Device daily posting time slots for load balancing'
+                """
+            )
+
+            print("\nChecking 'dosing_events' table...")
+
+            # Create dosing_events table if it doesn't exist
+            await check_and_create_table(
+                conn,
+                'dosing_events',
+                """
+                CREATE TABLE dosing_events (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    plant_id INT NOT NULL,
+                    device_id INT NOT NULL,
+                    event_date DATE NOT NULL COMMENT 'Date for quick daily queries',
+                    timestamp DATETIME NOT NULL COMMENT 'Exact time of dosing event',
+                    dosing_type VARCHAR(50) NOT NULL COMMENT 'ph_up, ph_down, nutrient_a, nutrient_b, etc.',
+                    amount_ml FLOAT NOT NULL COMMENT 'Amount dosed in milliliters',
+                    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    INDEX idx_plant_id (plant_id),
+                    INDEX idx_device_id (device_id),
+                    INDEX idx_event_date (event_date),
+                    INDEX idx_plant_date (plant_id, event_date),
+                    INDEX idx_device_date (device_id, event_date),
+                    UNIQUE KEY uq_plant_timestamp_type (plant_id, timestamp, dosing_type),
+                    FOREIGN KEY (plant_id) REFERENCES plants(id) ON DELETE CASCADE,
+                    FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Individual dosing events from hydro controllers'
+                """
+            )
+
             print("\nChecking 'notifications' table...")
 
             # Create notifications table if it doesn't exist
