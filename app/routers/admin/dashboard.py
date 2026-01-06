@@ -85,7 +85,8 @@ async def get_dashboard_alerts(
         alerts.append({
             "level": "warning",
             "title": f"{pending_count} user(s) pending approval",
-            "description": "New users are waiting for account activation"
+            "description": "New users are waiting for account activation",
+            "action": "users"
         })
 
     # Check for offline devices that were recently online
@@ -101,7 +102,8 @@ async def get_dashboard_alerts(
         alerts.append({
             "level": "error",
             "title": f"{recently_offline} device(s) went offline recently",
-            "description": "These devices were online in the past hour but are now offline"
+            "description": "These devices were online in the past hour but are now offline",
+            "action": "devices"
         })
 
     # Check for devices needing firmware updates
@@ -127,7 +129,8 @@ async def get_dashboard_alerts(
             alerts.append({
                 "level": "warning",
                 "title": f"{outdated_count} device(s) have outdated firmware",
-                "description": "Consider updating these devices to the latest firmware"
+                "description": "Consider updating these devices to the latest firmware",
+                "action": "devices"
             })
     except Exception:
         pass

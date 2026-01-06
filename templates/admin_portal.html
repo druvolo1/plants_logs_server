@@ -159,25 +159,30 @@
 
     <!-- Stats Cards -->
     <div class="stats-grid" style="margin-bottom: 2rem;">
-        <div class="stat-card">
+        <div class="stat-card" onclick="showAdminTab('users')" style="cursor: pointer; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 8px 16px rgba(16, 185, 129, 0.3)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow=''">
             <div class="stat-card-value" id="overview-total-users">-</div>
             <div class="stat-card-label">Total Users</div>
+            <div style="font-size: 0.7rem; color: #64748b; margin-top: 0.25rem;">Click to view</div>
         </div>
-        <div class="stat-card">
+        <div class="stat-card" onclick="showAdminTab('devices')" style="cursor: pointer; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 8px 16px rgba(16, 185, 129, 0.3)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow=''">
             <div class="stat-card-value" id="overview-total-devices">-</div>
             <div class="stat-card-label">Total Devices</div>
+            <div style="font-size: 0.7rem; color: #64748b; margin-top: 0.25rem;">Click to view</div>
         </div>
-        <div class="stat-card">
+        <div class="stat-card" onclick="showAdminTab('devices')" style="cursor: pointer; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 8px 16px rgba(16, 185, 129, 0.3)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow=''">
             <div class="stat-card-value" id="overview-online-devices">-</div>
             <div class="stat-card-label">Online Devices</div>
+            <div style="font-size: 0.7rem; color: #64748b; margin-top: 0.25rem;">Click to view</div>
         </div>
-        <div class="stat-card">
+        <div class="stat-card" onclick="showAdminTab('plants')" style="cursor: pointer; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 8px 16px rgba(16, 185, 129, 0.3)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow=''">
             <div class="stat-card-value" id="overview-total-plants">-</div>
             <div class="stat-card-label">Total Plants</div>
+            <div style="font-size: 0.7rem; color: #64748b; margin-top: 0.25rem;">Click to view</div>
         </div>
-        <div class="stat-card">
+        <div class="stat-card" onclick="showAdminTab('plants')" style="cursor: pointer; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 8px 16px rgba(16, 185, 129, 0.3)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow=''">
             <div class="stat-card-value" id="overview-active-plants">-</div>
             <div class="stat-card-label">Active Plants</div>
+            <div style="font-size: 0.7rem; color: #64748b; margin-top: 0.25rem;">Click to view</div>
         </div>
     </div>
 
@@ -1148,9 +1153,10 @@ function displayAlerts(alerts) {
     }
 
     container.innerHTML = alerts.map(alert => `
-        <div style="padding: 1rem; border-left: 3px solid ${alert.level === 'error' ? '#ef4444' : '#f59e0b'}; background: rgba(${alert.level === 'error' ? '239, 68, 68' : '245, 158, 11'}, 0.1); margin-bottom: 0.75rem; border-radius: 4px;">
+        <div onclick="showAdminTab('${alert.action || 'overview'}')" style="padding: 1rem; border-left: 3px solid ${alert.level === 'error' ? '#ef4444' : '#f59e0b'}; background: rgba(${alert.level === 'error' ? '239, 68, 68' : '245, 158, 11'}, 0.1); margin-bottom: 0.75rem; border-radius: 4px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.transform='translateX(4px)'" onmouseout="this.style.transform='translateX(0)'">
             <strong style="color: ${alert.level === 'error' ? '#f87171' : '#fbbf24'};">${alert.title}</strong><br>
             <span style="color: #94a3b8; font-size: 0.9rem;">${alert.description}</span>
+            <div style="font-size: 0.75rem; color: #64748b; margin-top: 0.5rem;">Click to view details</div>
         </div>
     `).join('');
 }
@@ -1162,20 +1168,20 @@ function displayActivity(activity) {
         return;
     }
 
-    // Activity type icons and colors
+    // Activity type icons and navigation targets
     const activityStyles = {
-        'login': { icon: '🔓', color: '#60a5fa' },
-        'registration': { icon: '👤', color: '#10b981' },
-        'plant_start': { icon: '🌱', color: '#22c55e' },
-        'plant_finish': { icon: '✅', color: '#8b5cf6' },
-        'device': { icon: '🖥️', color: '#f59e0b' }
+        'login': { icon: '🔓', color: '#60a5fa', tab: 'users' },
+        'registration': { icon: '👤', color: '#10b981', tab: 'users' },
+        'plant_start': { icon: '🌱', color: '#22c55e', tab: 'plants' },
+        'plant_finish': { icon: '✅', color: '#8b5cf6', tab: 'plants' },
+        'device': { icon: '🖥️', color: '#f59e0b', tab: 'devices' }
     };
 
     container.innerHTML = '<div style="display: flex; flex-direction: column; gap: 0.5rem;">' +
         activity.map(item => {
-            const style = activityStyles[item.type] || { icon: '•', color: '#94a3b8' };
+            const style = activityStyles[item.type] || { icon: '•', color: '#94a3b8', tab: 'overview' };
             return `
-                <div style="padding: 0.75rem; background: rgba(30, 41, 59, 0.5); border-radius: 4px; display: flex; align-items: center; gap: 0.75rem;">
+                <div onclick="showAdminTab('${style.tab}')" style="padding: 0.75rem; background: rgba(30, 41, 59, 0.5); border-radius: 4px; display: flex; align-items: center; gap: 0.75rem; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='rgba(16, 185, 129, 0.1)'" onmouseout="this.style.background='rgba(30, 41, 59, 0.5)'">
                     <span style="font-size: 1.2rem;">${style.icon}</span>
                     <span style="color: #e2e8f0; flex: 1;">${item.message}</span>
                     <span style="color: #64748b; font-size: 0.85rem; white-space: nowrap;">${formatRelativeTime(item.timestamp)}</span>
