@@ -469,25 +469,30 @@
         <h3 style="margin-bottom: 1rem; color: #10b981;">Data Retention</h3>
         <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 8px; padding: 1.5rem;">
             <div id="retention-stats" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
-                <div style="background: #0f172a; padding: 1rem; border-radius: 6px; text-align: center;">
+                <div onclick="showDatabaseDetails('log-entries')" style="background: #0f172a; padding: 1rem; border-radius: 6px; text-align: center; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='rgba(16, 185, 129, 0.1)'; this.style.transform='translateY(-2px)'" onmouseout="this.style.background='#0f172a'; this.style.transform='translateY(0)'">
                     <div style="font-size: 1.5rem; font-weight: 700; color: #10b981;" id="total-log-entries">-</div>
                     <div style="font-size: 0.8rem; color: #94a3b8;">Total Log Entries</div>
+                    <div style="font-size: 0.7rem; color: #64748b; margin-top: 0.25rem;">Click to view</div>
                 </div>
-                <div style="background: #0f172a; padding: 1rem; border-radius: 6px; text-align: center;">
+                <div onclick="showDatabaseDetails('env-logs')" style="background: #0f172a; padding: 1rem; border-radius: 6px; text-align: center; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='rgba(16, 185, 129, 0.1)'; this.style.transform='translateY(-2px)'" onmouseout="this.style.background='#0f172a'; this.style.transform='translateY(0)'">
                     <div style="font-size: 1.5rem; font-weight: 700; color: #10b981;" id="total-env-logs">-</div>
                     <div style="font-size: 0.8rem; color: #94a3b8;">Total Environment Logs</div>
+                    <div style="font-size: 0.7rem; color: #64748b; margin-top: 0.25rem;">Click to view</div>
                 </div>
-                <div style="background: #0f172a; padding: 1rem; border-radius: 6px; text-align: center;">
+                <div onclick="showDatabaseDetails('active-plants')" style="background: #0f172a; padding: 1rem; border-radius: 6px; text-align: center; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='rgba(16, 185, 129, 0.1)'; this.style.transform='translateY(-2px)'" onmouseout="this.style.background='#0f172a'; this.style.transform='translateY(0)'">
                     <div style="font-size: 1.5rem; font-weight: 700; color: #10b981;" id="active-plants-count">-</div>
                     <div style="font-size: 0.8rem; color: #94a3b8;">Active Plants</div>
+                    <div style="font-size: 0.7rem; color: #64748b; margin-top: 0.25rem;">Click to view</div>
                 </div>
-                <div style="background: #0f172a; padding: 1rem; border-radius: 6px; text-align: center;">
+                <div onclick="showDatabaseDetails('finished-plants')" style="background: #0f172a; padding: 1rem; border-radius: 6px; text-align: center; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='rgba(16, 185, 129, 0.1)'; this.style.transform='translateY(-2px)'" onmouseout="this.style.background='#0f172a'; this.style.transform='translateY(0)'">
                     <div style="font-size: 1.5rem; font-weight: 700; color: #10b981;" id="finished-plants-count">-</div>
                     <div style="font-size: 0.8rem; color: #94a3b8;">Finished Plants</div>
+                    <div style="font-size: 0.7rem; color: #64748b; margin-top: 0.25rem;">Click to view</div>
                 </div>
-                <div style="background: #0f172a; padding: 1rem; border-radius: 6px; text-align: center;">
+                <div onclick="showDatabaseDetails('frozen-reports')" style="background: #0f172a; padding: 1rem; border-radius: 6px; text-align: center; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='rgba(16, 185, 129, 0.1)'; this.style.transform='translateY(-2px)'" onmouseout="this.style.background='#0f172a'; this.style.transform='translateY(0)'">
                     <div style="font-size: 1.5rem; font-weight: 700; color: #10b981;" id="frozen-reports-count">-</div>
                     <div style="font-size: 0.8rem; color: #94a3b8;">Frozen Reports</div>
+                    <div style="font-size: 0.7rem; color: #64748b; margin-top: 0.25rem;">Click to view</div>
                 </div>
             </div>
 
@@ -705,6 +710,24 @@
             <button type="button" class="btn btn-primary" id="confirm-impersonate-btn" style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);">
                 Start Viewing
             </button>
+        </div>
+    </div>
+</div>
+
+<!-- Database Details Modal -->
+<div class="modal" id="database-details-modal">
+    <div class="modal-content" style="max-width: 900px;">
+        <div class="modal-header">
+            <h2 class="modal-title" id="database-details-title">Database Details</h2>
+            <button class="modal-close" onclick="closeModal('database-details-modal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div id="database-details-content" style="max-height: 500px; overflow-y: auto;">
+                <p style="color: #64748b;">Loading...</p>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeModal('database-details-modal')">Close</button>
         </div>
     </div>
 </div>
@@ -1648,6 +1671,93 @@ async function purgeAllLegacyLogs() {
     } catch (error) {
         console.error('Error:', error);
         alert('Error purging legacy logs');
+    }
+}
+
+// Database Details Modal
+async function showDatabaseDetails(type) {
+    const titles = {
+        'log-entries': 'Total Log Entries',
+        'env-logs': 'Total Environment Logs',
+        'active-plants': 'Active Plants',
+        'finished-plants': 'Finished Plants',
+        'frozen-reports': 'Plants with Frozen Reports'
+    };
+
+    document.getElementById('database-details-title').textContent = titles[type] || 'Database Details';
+    document.getElementById('database-details-content').innerHTML = '<p style="color: #64748b;">Loading...</p>';
+    openModal('database-details-modal');
+
+    try {
+        let content = '';
+
+        if (type === 'active-plants' || type === 'finished-plants' || type === 'frozen-reports') {
+            // Fetch plants data
+            const response = await fetch('/admin/all-plants');
+            if (response.ok) {
+                const plants = await response.json();
+                let filteredPlants = plants;
+
+                if (type === 'active-plants') {
+                    filteredPlants = plants.filter(p => p.is_active);
+                } else if (type === 'finished-plants') {
+                    filteredPlants = plants.filter(p => !p.is_active);
+                } else if (type === 'frozen-reports') {
+                    // For frozen reports, we'd need an API endpoint - for now show finished plants
+                    filteredPlants = plants.filter(p => !p.is_active);
+                }
+
+                if (filteredPlants.length === 0) {
+                    content = '<p style="text-align: center; color: #64748b; padding: 2rem;">No plants found in this category</p>';
+                } else {
+                    content = `
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Plant ID</th>
+                                    <th>Name</th>
+                                    <th>Owner</th>
+                                    <th>Status</th>
+                                    <th>Phase</th>
+                                    <th>Start Date</th>
+                                    <th>Age</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${filteredPlants.map(plant => `
+                                    <tr>
+                                        <td><code style="font-size: 0.85rem;">${plant.plant_id}</code></td>
+                                        <td>${plant.name}</td>
+                                        <td style="color: #60a5fa;">${plant.owner_email}</td>
+                                        <td>
+                                            <span class="status-badge ${plant.is_active ? 'status-badge-info' : 'status-badge-secondary'}">
+                                                ${plant.status || (plant.is_active ? 'Active' : 'Finished')}
+                                            </span>
+                                        </td>
+                                        <td>${plant.current_phase || '-'}</td>
+                                        <td>${formatPlantDate(plant.start_date)}</td>
+                                        <td>${calculatePlantAge(plant.start_date, plant.end_date)}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    `;
+                }
+            }
+        } else if (type === 'log-entries' || type === 'env-logs') {
+            // For log entries, show a breakdown by device
+            content = `
+                <div style="padding: 2rem; text-align: center; color: #94a3b8;">
+                    <p style="margin-bottom: 1rem;">Log entries are distributed across devices.</p>
+                    <p>To view specific device logs, go to the <strong>Data Viewer</strong> tab and select a device.</p>
+                </div>
+            `;
+        }
+
+        document.getElementById('database-details-content').innerHTML = content;
+    } catch (error) {
+        console.error('Error loading database details:', error);
+        document.getElementById('database-details-content').innerHTML = '<p style="text-align: center; color: #f87171; padding: 2rem;">Error loading data</p>';
     }
 }
 
