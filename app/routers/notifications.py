@@ -125,14 +125,6 @@ async def get_notifications(
     if not all_device_ids:
         return []
 
-    # Debug: Check what's actually in the devices table
-    debug_stmt = select(Device.device_id, Device.name, Device.system_name).where(Device.device_id.in_(all_device_ids))
-    debug_result = await session.execute(debug_stmt)
-    debug_devices = debug_result.all()
-    print(f"[NOTIFICATIONS DEBUG] Devices in database:")
-    for dev_id, name, sys_name in debug_devices:
-        print(f"  device_id='{dev_id}', name='{name}', system_name='{sys_name}'")
-
     # Build query - join with Device to get device name
     # Use NULLIF to convert empty strings to NULL, then COALESCE to try name, system_name, then fall back to device_id
     from sqlalchemy import case
@@ -164,17 +156,11 @@ async def get_notifications(
     result = await session.execute(stmt)
     rows = result.all()
 
-    # Debug: Log what we got from the query
-    print(f"[NOTIFICATIONS] Retrieved {len(rows)} notifications")
-
     # Add device_name to each notification
     from datetime import timezone
     from zoneinfo import ZoneInfo
     notifications = []
     for notif, device_name in rows:
-        print(f"[NOTIFICATIONS] Device {notif.device_id} -> name from query: '{device_name}'")
-        print(f"[NOTIFICATIONS] Raw created_at: {notif.created_at}, tzinfo: {notif.created_at.tzinfo}")
-
         # Convert datetimes to UTC
         # Session is forced to UTC via init_command, so naive datetimes are in UTC
         if notif.created_at.tzinfo is None:
@@ -186,8 +172,6 @@ async def get_notifications(
             updated_at_utc = notif.updated_at.replace(tzinfo=timezone.utc)
         else:
             updated_at_utc = notif.updated_at.astimezone(timezone.utc)
-
-        print(f"[NOTIFICATIONS] Converted to UTC: {created_at_utc}")
 
         notif_dict = {
             "id": notif.id,

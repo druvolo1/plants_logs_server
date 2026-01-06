@@ -3598,7 +3598,7 @@
         let envPollingIntervals = {};
 
         function connectToEnvironmentalSensor(device_id) {
-            // Fetch immediately, then poll every 10 seconds
+            // Fetch immediately, then poll every 60 seconds
             fetchEnvironmentData(device_id);
 
             if (envPollingIntervals[device_id]) {
@@ -3607,7 +3607,7 @@
 
             envPollingIntervals[device_id] = setInterval(() => {
                 fetchEnvironmentData(device_id);
-            }, 10000); // Poll every 10 seconds
+            }, 60000); // Poll every 60 seconds (1 minute)
         }
 
         async function fetchEnvironmentData(device_id) {
