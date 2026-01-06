@@ -241,80 +241,7 @@ async def get_users_counts(
     return counts
 
 
-# User details API for admin
-@router.get("/api/users/{user_id}")
-async def get_user_details(
-    user_id: int,
-    admin: User = Depends(_get_current_admin()),
-    session: AsyncSession = Depends(_get_db())
-):
-    """Get detailed user information"""
-    user = await session.get(User, user_id)
-    if not user:
-        raise HTTPException(404, "User not found")
-
-    # Get device count
-    device_result = await session.execute(
-        select(func.count(Device.id)).where(Device.user_id == user_id)
-    )
-    device_count = device_result.scalar() or 0
-
-    # Get plant count
-    plant_result = await session.execute(
-        select(func.count(Plant.id)).where(Plant.user_id == user_id)
-    )
-    plant_count = plant_result.scalar() or 0
-
-    return {
-        "id": user.id,
-        "email": user.email,
-        "first_name": user.first_name,
-        "last_name": user.last_name,
-        "is_active": user.is_active,
-        "is_suspended": getattr(user, "is_suspended", False),
-        "is_superuser": user.is_superuser,
-        "device_count": device_count,
-        "plant_count": plant_count
-    }
-
-
-# Login History API
-@router.get("/api/users/{user_id}/login-history")
-async def get_user_login_history(
-    user_id: int,
-    admin: User = Depends(_get_current_admin()),
-    session: AsyncSession = Depends(_get_db())
-):
-    """Get user's login history and statistics"""
-    user = await session.get(User, user_id)
-    if not user:
-        raise HTTPException(404, "User not found")
-
-    # Get login history records (last 10)
-    login_history_result = await session.execute(
-        select(LoginHistory)
-        .where(LoginHistory.user_id == user_id)
-        .order_by(LoginHistory.login_at.desc())
-        .limit(10)
-    )
-    login_history = login_history_result.scalars().all()
-
-    return {
-        "login_count": user.login_count or 0,
-        "last_login": user.last_login.isoformat() if user.last_login else None,
-        "created_at": user.created_at.isoformat() if user.created_at else None,
-        "login_history": [
-            {
-                "login_at": record.login_at.isoformat() if record.login_at else None,
-                "ip_address": record.ip_address,
-                "user_agent": record.user_agent
-            }
-            for record in login_history
-        ]
-    }
-
-
-# Active Sessions API
+# Active Sessions API (must be before {user_id} route)
 @router.get("/api/users/active-sessions")
 async def get_active_sessions(
     admin: User = Depends(_get_current_admin()),
@@ -356,6 +283,79 @@ async def get_active_sessions(
         })
 
     return sessions
+
+
+# User details API for admin
+@router.get("/api/users/{user_id}")
+async def get_user_details(
+    user_id: int,
+    admin: User = Depends(_get_current_admin()),
+    session: AsyncSession = Depends(_get_db())
+):
+    """Get detailed user information"""
+    user = await session.get(User, user_id)
+    if not user:
+        raise HTTPException(404, "User not found")
+
+    # Get device count
+    device_result = await session.execute(
+        select(func.count(Device.id)).where(Device.user_id == user_id)
+    )
+    device_count = device_result.scalar() or 0
+
+    # Get plant count
+    plant_result = await session.execute(
+        select(func.count(Plant.id)).where(Plant.user_id == user_id)
+    )
+    plant_count = plant_result.scalar() or 0
+
+    return {
+        "id": user.id,
+        "email": user.email,
+        "first_name": user.first_name,
+        "last_name": user.last_name,
+        "is_active": user.is_active,
+        "is_suspended": getattr(user, "is_suspended", False),
+        "is_superuser": user.is_superuser,
+        "device_count": device_count,
+        "plant_count": plant_count
+    }
+
+
+# Login History API (must come after /api/users/{user_id} since it's more specific)
+@router.get("/api/users/{user_id}/login-history")
+async def get_user_login_history(
+    user_id: int,
+    admin: User = Depends(_get_current_admin()),
+    session: AsyncSession = Depends(_get_db())
+):
+    """Get user's login history and statistics"""
+    user = await session.get(User, user_id)
+    if not user:
+        raise HTTPException(404, "User not found")
+
+    # Get login history records (last 10)
+    login_history_result = await session.execute(
+        select(LoginHistory)
+        .where(LoginHistory.user_id == user_id)
+        .order_by(LoginHistory.login_at.desc())
+        .limit(10)
+    )
+    login_history = login_history_result.scalars().all()
+
+    return {
+        "login_count": user.login_count or 0,
+        "last_login": user.last_login.isoformat() if user.last_login else None,
+        "created_at": user.created_at.isoformat() if user.created_at else None,
+        "login_history": [
+            {
+                "login_at": record.login_at.isoformat() if record.login_at else None,
+                "ip_address": record.ip_address,
+                "user_agent": record.user_agent
+            }
+            for record in login_history
+        ]
+    }
 
 
 # Plant Management

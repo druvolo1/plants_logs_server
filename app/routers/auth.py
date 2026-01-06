@@ -50,16 +50,33 @@ def get_google_oauth_client():
 
 
 def get_client_ip(request: Request) -> str:
-    """Extract client IP address from request."""
+    """Extract client IP address from request, prioritizing public IPs."""
+    import ipaddress
+
+    def is_private_ip(ip_str: str) -> bool:
+        """Check if an IP address is private/local."""
+        try:
+            ip = ipaddress.ip_address(ip_str)
+            return ip.is_private or ip.is_loopback or ip.is_link_local
+        except ValueError:
+            return True  # Invalid IP, treat as private
+
     # Check for X-Forwarded-For header (proxy/load balancer)
+    # Format: "client, proxy1, proxy2" - we want the first public IP
     forwarded_for = request.headers.get("X-Forwarded-For")
     if forwarded_for:
-        # X-Forwarded-For can contain multiple IPs, use the first one
-        return forwarded_for.split(",")[0].strip()
+        # Split by comma and check each IP
+        ips = [ip.strip() for ip in forwarded_for.split(",")]
+        for ip in ips:
+            if ip and not is_private_ip(ip):
+                return ip
+        # If all IPs are private, return the first one
+        if ips:
+            return ips[0]
 
     # Check for X-Real-IP header
     real_ip = request.headers.get("X-Real-IP")
-    if real_ip:
+    if real_ip and not is_private_ip(real_ip):
         return real_ip
 
     # Fall back to direct client IP
