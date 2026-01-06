@@ -968,7 +968,7 @@
             try {
                 const response = await fetch('/admin/impersonate/exit', { method: 'POST' });
                 if (response.ok) {
-                    window.location.href = '/admin/users';
+                    window.location.href = '/admin/portal';
                 }
             } catch (error) {
                 console.error('Error exiting impersonation:', error);
@@ -989,7 +989,7 @@
                 <a href="/templates" class="navbar-link">Templates</a>
                 {% if user.is_superuser and not impersonating_user %}
                 <a href="/admin/overview" class="navbar-link">Admin Overview</a>
-                <a href="/admin/users" class="navbar-link">Users</a>
+                <a href="/admin/portal" class="navbar-link">Admin Portal</a>
                 {% endif %}
                 <span class="navbar-user">{{ user.email }}</span>
                 <a href="/auth/logout" class="navbar-logout">Logout</a>

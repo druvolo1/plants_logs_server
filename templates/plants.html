@@ -517,7 +517,7 @@
             try {
                 const response = await fetch('/admin/impersonate/exit', { method: 'POST' });
                 if (response.ok) {
-                    window.location.href = '/admin/users';
+                    window.location.href = '/admin/portal';
                 }
             } catch (error) {
                 console.error('Error exiting impersonation:', error);
