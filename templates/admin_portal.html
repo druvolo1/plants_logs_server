@@ -109,6 +109,36 @@
     .admin-tab-content.active {
         display: block;
     }
+
+    /* Data Viewer Tab Styles */
+    .data-tab {
+        padding: 0.75rem 1.5rem;
+        background: transparent;
+        border: none;
+        color: #94a3b8;
+        cursor: pointer;
+        font-weight: 500;
+        border-bottom: 2px solid transparent;
+        margin-bottom: -1px;
+        transition: all 0.2s;
+    }
+
+    .data-tab:hover {
+        color: #e2e8f0;
+    }
+
+    .data-tab.active {
+        color: #10b981;
+        border-bottom-color: #10b981;
+    }
+
+    .data-viewer-tab-content {
+        display: none;
+    }
+
+    .data-viewer-tab-content.active {
+        display: block;
+    }
 </style>
 {% endblock %}
 
@@ -385,13 +415,138 @@
 <!-- Data Viewer Tab -->
 <div id="tab-data-viewer" class="admin-tab-content">
     <h2 style="margin-bottom: 1.5rem; color: #10b981;">Device Data Viewer</h2>
-    <p style="color: #94a3b8;">Device data viewer - coming soon</p>
+    <p style="color: #64748b; margin-bottom: 1.5rem;">View and analyze device logs and sensor data</p>
+
+    <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 8px; padding: 1.5rem;">
+        <div style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: flex-end; margin-bottom: 1rem;">
+            <div style="display: flex; flex-direction: column; gap: 0.25rem; flex: 1; min-width: 250px;">
+                <label style="font-size: 0.85rem; color: #94a3b8;">Select Device</label>
+                <select id="data-viewer-device-select" style="padding: 0.5rem 0.75rem; background: #0f172a; border: 1px solid rgba(148, 163, 184, 0.3); border-radius: 6px; color: #e2e8f0; font-size: 0.9rem;">
+                    <option value="">-- Select a device --</option>
+                </select>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 0.25rem;">
+                <label style="font-size: 0.85rem; color: #94a3b8;">Start Date</label>
+                <input type="date" id="data-viewer-start-date" style="padding: 0.5rem 0.75rem; background: #0f172a; border: 1px solid rgba(148, 163, 184, 0.3); border-radius: 6px; color: #e2e8f0; font-size: 0.9rem;">
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 0.25rem;">
+                <label style="font-size: 0.85rem; color: #94a3b8;">End Date</label>
+                <input type="date" id="data-viewer-end-date" style="padding: 0.5rem 0.75rem; background: #0f172a; border: 1px solid rgba(148, 163, 184, 0.3); border-radius: 6px; color: #e2e8f0; font-size: 0.9rem;">
+            </div>
+            <button class="admin-header-btn admin-header-btn-primary" onclick="loadDeviceData()">Load Data</button>
+            <button class="admin-header-btn admin-header-btn-secondary" onclick="loadDeviceSummary()">Summary Only</button>
+        </div>
+
+        <div id="device-data-results" style="display: none;">
+            <div id="device-data-summary" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-bottom: 1rem;"></div>
+
+            <div style="display: flex; gap: 0.5rem; border-bottom: 1px solid rgba(148, 163, 184, 0.2); margin-bottom: 1rem;">
+                <button class="data-tab active" onclick="showDataViewerTab('logs')">Log Entries</button>
+                <button class="data-tab" onclick="showDataViewerTab('env')">Environment Logs</button>
+                <button class="data-tab" onclick="showDataViewerTab('assignments')">Plant Assignments</button>
+            </div>
+
+            <div id="data-viewer-tab-logs" class="data-viewer-tab-content active">
+                <div id="log-entries-list" style="background: #0f172a; border-radius: 6px; padding: 1rem; max-height: 400px; overflow-y: auto;"></div>
+            </div>
+            <div id="data-viewer-tab-env" class="data-viewer-tab-content">
+                <div id="env-logs-list" style="background: #0f172a; border-radius: 6px; padding: 1rem; max-height: 400px; overflow-y: auto;"></div>
+            </div>
+            <div id="data-viewer-tab-assignments" class="data-viewer-tab-content">
+                <div id="assignments-list" style="background: #0f172a; border-radius: 6px; padding: 1rem; max-height: 400px; overflow-y: auto;"></div>
+            </div>
+        </div>
+    </div>
 </div><!-- End Data Viewer Tab -->
 
 <!-- Database Tab -->
 <div id="tab-database" class="admin-tab-content">
     <h2 style="margin-bottom: 1.5rem; color: #10b981;">Database Management</h2>
-    <p style="color: #94a3b8;">Data retention and legacy log management - coming soon</p>
+    <p style="color: #64748b; margin-bottom: 1.5rem;">Manage data retention and legacy logs</p>
+
+    <!-- Data Retention Section -->
+    <div style="margin-bottom: 3rem;">
+        <h3 style="margin-bottom: 1rem; color: #10b981;">Data Retention</h3>
+        <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 8px; padding: 1.5rem;">
+            <div id="retention-stats" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
+                <div style="background: #0f172a; padding: 1rem; border-radius: 6px; text-align: center;">
+                    <div style="font-size: 1.5rem; font-weight: 700; color: #10b981;" id="total-log-entries">-</div>
+                    <div style="font-size: 0.8rem; color: #94a3b8;">Total Log Entries</div>
+                </div>
+                <div style="background: #0f172a; padding: 1rem; border-radius: 6px; text-align: center;">
+                    <div style="font-size: 1.5rem; font-weight: 700; color: #10b981;" id="total-env-logs">-</div>
+                    <div style="font-size: 0.8rem; color: #94a3b8;">Total Environment Logs</div>
+                </div>
+                <div style="background: #0f172a; padding: 1rem; border-radius: 6px; text-align: center;">
+                    <div style="font-size: 1.5rem; font-weight: 700; color: #10b981;" id="active-plants-count">-</div>
+                    <div style="font-size: 0.8rem; color: #94a3b8;">Active Plants</div>
+                </div>
+                <div style="background: #0f172a; padding: 1rem; border-radius: 6px; text-align: center;">
+                    <div style="font-size: 1.5rem; font-weight: 700; color: #10b981;" id="finished-plants-count">-</div>
+                    <div style="font-size: 0.8rem; color: #94a3b8;">Finished Plants</div>
+                </div>
+                <div style="background: #0f172a; padding: 1rem; border-radius: 6px; text-align: center;">
+                    <div style="font-size: 1.5rem; font-weight: 700; color: #10b981;" id="frozen-reports-count">-</div>
+                    <div style="font-size: 0.8rem; color: #94a3b8;">Frozen Reports</div>
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: flex-end; margin-bottom: 1rem;">
+                <div style="display: flex; flex-direction: column; gap: 0.25rem;">
+                    <label style="font-size: 0.85rem; color: #94a3b8;">Retention Buffer (days)</label>
+                    <input type="number" id="retention-days" value="30" min="1" max="365" style="padding: 0.5rem 0.75rem; background: #0f172a; border: 1px solid rgba(148, 163, 184, 0.3); border-radius: 6px; color: #e2e8f0; font-size: 0.9rem; width: 120px;">
+                </div>
+                <button class="admin-header-btn admin-header-btn-secondary" onclick="previewPurge()">Preview Purge</button>
+                <button class="admin-header-btn" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white;" onclick="executePurge()">Execute Purge</button>
+            </div>
+
+            <div id="purge-preview" style="display: none; margin-top: 1rem;">
+                <h4 style="color: #f59e0b; margin: 0 0 0.5rem;">Purge Preview</h4>
+                <div id="purge-summary" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-bottom: 1rem;"></div>
+                <div id="purge-details" style="background: #0f172a; border-radius: 6px; padding: 1rem; max-height: 300px; overflow-y: auto;"></div>
+            </div>
+
+            <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 6px; padding: 1rem; margin-top: 1rem; color: #fca5a5;">
+                <strong>⚠️ Warning:</strong> Data purge is irreversible. Only data from finished plants with frozen reports and past the retention buffer will be purged. Always preview before executing.
+            </div>
+        </div>
+    </div>
+
+    <!-- Legacy Log Management Section -->
+    <div>
+        <h3 style="margin-bottom: 1rem; color: #10b981;">Legacy Log Management</h3>
+        <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 8px; padding: 1.5rem;">
+            <p style="color: #94a3b8; margin-bottom: 1rem;">
+                Manage log entries from the old schema that have plant_id but no device_id.
+                You can associate them with a device or purge them.
+            </p>
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
+                <div style="background: #0f172a; padding: 1rem; border-radius: 6px; text-align: center;">
+                    <div style="font-size: 1.5rem; font-weight: 700; color: #10b981;" id="legacy-total-logs">-</div>
+                    <div style="font-size: 0.8rem; color: #94a3b8;">Total Legacy Logs</div>
+                </div>
+                <div style="background: #0f172a; padding: 1rem; border-radius: 6px; text-align: center;">
+                    <div style="font-size: 1.5rem; font-weight: 700; color: #10b981;" id="legacy-plants-affected">-</div>
+                    <div style="font-size: 0.8rem; color: #94a3b8;">Plants Affected</div>
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
+                <button class="admin-header-btn admin-header-btn-primary" onclick="loadLegacyLogsSummary()">Load Summary</button>
+                <button class="admin-header-btn" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white;" onclick="purgeAllLegacyLogs()">Purge All Legacy Logs</button>
+            </div>
+
+            <div id="legacy-logs-results" style="display: none; margin-top: 1rem;">
+                <h4 style="color: #10b981; margin-bottom: 0.5rem;">Legacy Logs by Plant</h4>
+                <div id="legacy-logs-list" style="background: #0f172a; border-radius: 6px; padding: 1rem; max-height: 300px; overflow-y: auto;"></div>
+            </div>
+
+            <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 6px; padding: 1rem; margin-top: 1rem; color: #fca5a5;">
+                <strong>⚠️ Note:</strong> Legacy logs are from the old plant-centric schema. Associating them to a device will set their device_id field. Purging will permanently delete the log entries.
+            </div>
+        </div>
+    </div>
 </div><!-- End Database Tab -->
 {% endblock %}
 
@@ -946,6 +1101,12 @@ function loadTabData(tabName) {
         case 'plants':
             loadAllPlants();
             break;
+        case 'data-viewer':
+            loadDeviceSelectForDataViewer();
+            break;
+        case 'database':
+            loadRetentionStats();
+            break;
     }
 }
 
@@ -1116,6 +1277,378 @@ function calculatePlantAge(startDate, endDate) {
     const end = endDate ? new Date(endDate) : new Date();
     const days = Math.floor((end - start) / (1000 * 60 * 60 * 24));
     return `${days} days`;
+}
+
+// Data Viewer Functions
+async function loadDeviceSelectForDataViewer() {
+    try {
+        const response = await fetch('/admin/all-devices');
+        if (response.ok) {
+            const devices = await response.json();
+            populateDeviceSelectForDataViewer(devices);
+        }
+    } catch (error) {
+        console.error('Error loading devices for data viewer:', error);
+    }
+}
+
+function populateDeviceSelectForDataViewer(devices) {
+    const select = document.getElementById('data-viewer-device-select');
+    select.innerHTML = '<option value="">-- Select a device --</option>';
+    devices.forEach(device => {
+        const option = document.createElement('option');
+        option.value = device.device_id;
+        const shortUuid = device.device_id.substring(0, 8);
+        const displayName = device.name ? device.name : `${device.device_type || 'Device'} [${shortUuid}]`;
+        const ownerInfo = device.owner_email ? ` - ${device.owner_email}` : '';
+        option.textContent = `${displayName}${ownerInfo}`;
+        select.appendChild(option);
+    });
+}
+
+async function loadDeviceData() {
+    const deviceId = document.getElementById('data-viewer-device-select').value;
+    if (!deviceId) {
+        alert('Please select a device');
+        return;
+    }
+
+    const startDate = document.getElementById('data-viewer-start-date').value;
+    const endDate = document.getElementById('data-viewer-end-date').value;
+
+    let url = `/admin/devices/${deviceId}/data?`;
+    if (startDate) url += `start_date=${startDate}&`;
+    if (endDate) url += `end_date=${endDate}&`;
+
+    try {
+        const response = await fetch(url);
+        if (response.ok) {
+            const data = await response.json();
+            displayDeviceData(data);
+        } else {
+            alert('Error loading device data');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Error loading device data');
+    }
+}
+
+async function loadDeviceSummary() {
+    const deviceId = document.getElementById('data-viewer-device-select').value;
+    if (!deviceId) {
+        alert('Please select a device');
+        return;
+    }
+
+    try {
+        const response = await fetch(`/admin/devices/${deviceId}/data/summary`);
+        if (response.ok) {
+            const data = await response.json();
+            displayDeviceSummary(data);
+        } else {
+            alert('Error loading device summary');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Error loading device summary');
+    }
+}
+
+function displayDeviceData(data) {
+    document.getElementById('device-data-results').style.display = 'block';
+
+    // Summary
+    const summaryHtml = `
+        <div style="background: #0f172a; padding: 1rem; border-radius: 6px; text-align: center;">
+            <div style="font-size: 1.5rem; font-weight: 700; color: #10b981;">${data.counts.log_entries}</div>
+            <div style="font-size: 0.8rem; color: #94a3b8;">Log Entries</div>
+        </div>
+        <div style="background: #0f172a; padding: 1rem; border-radius: 6px; text-align: center;">
+            <div style="font-size: 1.5rem; font-weight: 700; color: #10b981;">${data.counts.environment_logs}</div>
+            <div style="font-size: 0.8rem; color: #94a3b8;">Environment Logs</div>
+        </div>
+        <div style="background: #0f172a; padding: 1rem; border-radius: 6px; text-align: center;">
+            <div style="font-size: 1.5rem; font-weight: 700; color: #10b981;">${data.counts.plant_assignments}</div>
+            <div style="font-size: 0.8rem; color: #94a3b8;">Plant Assignments</div>
+        </div>
+    `;
+    document.getElementById('device-data-summary').innerHTML = summaryHtml;
+
+    // Log entries
+    if (data.log_entries && data.log_entries.length > 0) {
+        const logsHtml = data.log_entries.map(log => `
+            <div style="padding: 0.5rem; border-bottom: 1px solid rgba(148, 163, 184, 0.1); font-size: 0.85rem;">
+                <span style="color: #94a3b8; font-family: monospace;">${new Date(log.timestamp).toLocaleString()}</span>
+                <span style="display: inline-block; padding: 0.1rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; margin: 0 0.5rem; background: rgba(59, 130, 246, 0.2); color: #60a5fa;">${log.event_type}</span>
+                ${log.sensor_name ? `<strong>${log.sensor_name}:</strong> ${log.value}` : ''}
+                ${log.dose_type ? `<strong>${log.dose_type}:</strong> ${log.dose_amount_ml} ml` : ''}
+            </div>
+        `).join('');
+        document.getElementById('log-entries-list').innerHTML = logsHtml;
+    } else {
+        document.getElementById('log-entries-list').innerHTML = '<div style="text-align: center; color: #64748b; padding: 2rem;">No log entries found</div>';
+    }
+
+    // Environment logs
+    if (data.environment_logs && data.environment_logs.length > 0) {
+        const envHtml = data.environment_logs.map(log => `
+            <div style="padding: 0.5rem; border-bottom: 1px solid rgba(148, 163, 184, 0.1); font-size: 0.85rem;">
+                <span style="color: #94a3b8; font-family: monospace;">${new Date(log.timestamp).toLocaleString()}</span>
+                ${log.temperature !== null ? `<strong>Temp:</strong> ${log.temperature}° ` : ''}
+                ${log.humidity !== null ? `<strong>RH:</strong> ${log.humidity}% ` : ''}
+                ${log.co2 !== null ? `<strong>CO2:</strong> ${log.co2} ppm ` : ''}
+                ${log.vpd !== null ? `<strong>VPD:</strong> ${log.vpd} ` : ''}
+            </div>
+        `).join('');
+        document.getElementById('env-logs-list').innerHTML = envHtml;
+    } else {
+        document.getElementById('env-logs-list').innerHTML = '<div style="text-align: center; color: #64748b; padding: 2rem;">No environment logs found</div>';
+    }
+
+    // Plant assignments
+    if (data.plant_assignments && data.plant_assignments.length > 0) {
+        const assignHtml = data.plant_assignments.map(a => `
+            <div style="padding: 0.5rem; border-bottom: 1px solid rgba(148, 163, 184, 0.1); font-size: 0.85rem;">
+                <strong>${a.plant_name}</strong> (${a.plant_id})<br>
+                Assigned: ${new Date(a.assigned_at).toLocaleString()}
+                ${a.removed_at ? `<br>Removed: ${new Date(a.removed_at).toLocaleString()}` : ' <span style="display: inline-block; padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 0.85rem; font-weight: 600; background: rgba(59, 130, 246, 0.2); color: #3b82f6;">Active</span>'}
+            </div>
+        `).join('');
+        document.getElementById('assignments-list').innerHTML = assignHtml;
+    } else {
+        document.getElementById('assignments-list').innerHTML = '<div style="text-align: center; color: #64748b; padding: 2rem;">No plant assignments found</div>';
+    }
+}
+
+function displayDeviceSummary(data) {
+    document.getElementById('device-data-results').style.display = 'block';
+
+    const summaryHtml = `
+        <div style="background: #0f172a; padding: 1rem; border-radius: 6px; text-align: center;">
+            <div style="font-size: 1.5rem; font-weight: 700; color: #10b981;">${data.log_entries.total_count.toLocaleString()}</div>
+            <div style="font-size: 0.8rem; color: #94a3b8;">Log Entries (this device)</div>
+        </div>
+        <div style="background: #0f172a; padding: 1rem; border-radius: 6px; text-align: center;">
+            <div style="font-size: 1.5rem; font-weight: 700; color: #10b981;">${data.environment_logs.total_count.toLocaleString()}</div>
+            <div style="font-size: 0.8rem; color: #94a3b8;">Env Logs (this device)</div>
+        </div>
+        <div style="background: #0f172a; padding: 1rem; border-radius: 6px; text-align: center;">
+            <div style="font-size: 1.5rem; font-weight: 700; color: ${data.legacy_logs_total > 0 ? '#f59e0b' : '#10b981'};">${(data.legacy_logs_total || 0).toLocaleString()}</div>
+            <div style="font-size: 0.8rem; color: #94a3b8;">Legacy Logs (no device)</div>
+        </div>
+    `;
+    document.getElementById('device-data-summary').innerHTML = summaryHtml;
+
+    // Pre-fill date inputs
+    const formatDateForInput = (isoStr) => isoStr ? isoStr.split('T')[0] : '';
+    if (data.log_entries.oldest && data.log_entries.oldest !== 'null') {
+        document.getElementById('data-viewer-start-date').value = formatDateForInput(data.log_entries.oldest);
+    }
+    if (data.log_entries.newest && data.log_entries.newest !== 'null') {
+        document.getElementById('data-viewer-end-date').value = formatDateForInput(data.log_entries.newest);
+    }
+
+    // Display details
+    let detailsHtml = '';
+    const formatDate = (isoStr) => isoStr ? new Date(isoStr).toLocaleDateString() : 'None';
+
+    if (data.log_entries.total_count > 0) {
+        detailsHtml = `
+            <h4 style="color: #10b981; margin-bottom: 0.5rem;">Log Entries</h4>
+            <p><strong>Date Range:</strong> ${formatDate(data.log_entries.oldest)} to ${formatDate(data.log_entries.newest)}</p>
+            <p><strong>By Event Type:</strong></p>
+            <ul style="margin: 0.25rem 0 0.5rem 1.5rem; color: #e2e8f0;">
+                ${Object.entries(data.log_entries.by_event_type || {}).map(([type, count]) =>
+                    `<li>${type}: ${count.toLocaleString()}</li>`
+                ).join('') || '<li>None</li>'}
+            </ul>
+            <p style="color: #94a3b8; font-size: 0.85rem; margin-top: 1rem;">
+                💡 Date fields have been pre-filled with the data range. Click "Load Data" to view entries.
+            </p>
+        `;
+    } else {
+        detailsHtml = '<div style="text-align: center; color: #64748b; padding: 2rem;">No log entries found for this device.</div>';
+    }
+
+    document.getElementById('log-entries-list').innerHTML = detailsHtml;
+    document.getElementById('env-logs-list').innerHTML = '';
+    document.getElementById('assignments-list').innerHTML = '';
+}
+
+function showDataViewerTab(tabName) {
+    // Update tab buttons
+    document.querySelectorAll('.data-tab').forEach(tab => tab.classList.remove('active'));
+    event.target.classList.add('active');
+
+    // Update tab content
+    document.querySelectorAll('.data-viewer-tab-content').forEach(content => content.classList.remove('active'));
+    document.getElementById(`data-viewer-tab-${tabName}`).classList.add('active');
+}
+
+// Database Management Functions
+async function loadRetentionStats() {
+    try {
+        const response = await fetch('/admin/data-retention/stats');
+        if (response.ok) {
+            const data = await response.json();
+            document.getElementById('total-log-entries').textContent = data.total_log_entries.toLocaleString();
+            document.getElementById('total-env-logs').textContent = data.total_environment_logs.toLocaleString();
+            document.getElementById('active-plants-count').textContent = data.plants.active;
+            document.getElementById('finished-plants-count').textContent = data.plants.finished;
+            document.getElementById('frozen-reports-count').textContent = data.plants.with_frozen_reports;
+        }
+    } catch (error) {
+        console.error('Error loading retention stats:', error);
+    }
+}
+
+async function previewPurge() {
+    const retentionDays = document.getElementById('retention-days').value;
+
+    try {
+        const response = await fetch(`/admin/data-retention/preview?retention_days=${retentionDays}`);
+        if (response.ok) {
+            const data = await response.json();
+            displayPurgePreview(data);
+        } else {
+            alert('Error loading purge preview');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Error loading purge preview');
+    }
+}
+
+function displayPurgePreview(data) {
+    document.getElementById('purge-preview').style.display = 'block';
+
+    const summaryHtml = `
+        <div style="background: #0f172a; padding: 1rem; border-radius: 6px; text-align: center;">
+            <div style="font-size: 1.5rem; font-weight: 700; color: #10b981;">${data.summary.total_log_entries_purgeable.toLocaleString()}</div>
+            <div style="font-size: 0.8rem; color: #94a3b8;">Log Entries to Purge</div>
+        </div>
+        <div style="background: #0f172a; padding: 1rem; border-radius: 6px; text-align: center;">
+            <div style="font-size: 1.5rem; font-weight: 700; color: #10b981;">${data.summary.total_environment_logs_purgeable.toLocaleString()}</div>
+            <div style="font-size: 0.8rem; color: #94a3b8;">Env Logs to Purge</div>
+        </div>
+        <div style="background: #0f172a; padding: 1rem; border-radius: 6px; text-align: center;">
+            <div style="font-size: 1.5rem; font-weight: 700; color: #10b981;">${data.summary.devices_analyzed}</div>
+            <div style="font-size: 0.8rem; color: #94a3b8;">Devices Analyzed</div>
+        </div>
+    `;
+    document.getElementById('purge-summary').innerHTML = summaryHtml;
+
+    let detailsHtml = '';
+    if (data.log_entries && data.log_entries.length > 0) {
+        detailsHtml += '<h4>Log Entries to Purge:</h4>';
+        data.log_entries.forEach(entry => {
+            detailsHtml += `<div style="padding: 0.5rem; border-bottom: 1px solid rgba(148, 163, 184, 0.1);">
+                <strong>${entry.device_name || entry.device_id}</strong>: ${entry.purgeable_count} entries
+                (${entry.reason})
+                ${entry.plant_name ? ` - Plant: ${entry.plant_name}` : ''}
+            </div>`;
+        });
+    }
+    if (!detailsHtml) {
+        detailsHtml = '<div style="text-align: center; color: #64748b; padding: 2rem;">No data eligible for purging</div>';
+    }
+    document.getElementById('purge-details').innerHTML = detailsHtml;
+}
+
+async function executePurge() {
+    const retentionDays = document.getElementById('retention-days').value;
+
+    if (!confirm(`Are you sure you want to purge data older than ${retentionDays} days (for finished plants with reports)? This action is IRREVERSIBLE.`)) {
+        return;
+    }
+
+    if (!confirm('This is your FINAL warning. Data will be permanently deleted. Continue?')) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`/admin/data-retention/purge?retention_days=${retentionDays}&confirm=true`, {
+            method: 'POST'
+        });
+        if (response.ok) {
+            const data = await response.json();
+            alert(`Purge complete!\n\nDeleted:\n- ${data.deleted.log_entries} log entries\n- ${data.deleted.environment_logs} environment logs`);
+            loadRetentionStats();
+            document.getElementById('purge-preview').style.display = 'none';
+        } else {
+            const error = await response.json();
+            alert('Error: ' + (error.detail || error.message || 'Unknown error'));
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Error executing purge');
+    }
+}
+
+async function loadLegacyLogsSummary() {
+    try {
+        const response = await fetch('/admin/legacy-logs/summary');
+        if (response.ok) {
+            const data = await response.json();
+            displayLegacyLogsSummary(data);
+        } else {
+            const error = await response.json();
+            alert('Error: ' + (error.detail || 'Unknown error'));
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Error loading legacy logs summary');
+    }
+}
+
+function displayLegacyLogsSummary(data) {
+    document.getElementById('legacy-total-logs').textContent = data.total_legacy_logs.toLocaleString();
+    document.getElementById('legacy-plants-affected').textContent = data.plants_affected;
+
+    document.getElementById('legacy-logs-results').style.display = 'block';
+
+    if (data.plants_affected === 0) {
+        document.getElementById('legacy-logs-list').innerHTML = '<div style="text-align: center; color: #64748b; padding: 2rem;">No legacy logs found. All logs have been migrated to device-centric format.</div>';
+        return;
+    }
+
+    // Display plant list
+    const listHtml = data.by_plant.map(plant => `
+        <div style="padding: 0.5rem; border-bottom: 1px solid rgba(148, 163, 184, 0.1);">
+            <strong>${plant.plant_name}</strong> (${plant.plant_id})<br>
+            <span style="color: #94a3b8;">Log entries: ${plant.log_count.toLocaleString()}</span>
+            ${plant.oldest_log ? `<br><span style="color: #64748b; font-size: 0.8rem;">Oldest: ${new Date(plant.oldest_log).toLocaleDateString()} | Newest: ${new Date(plant.newest_log).toLocaleDateString()}</span>` : ''}
+        </div>
+    `).join('');
+    document.getElementById('legacy-logs-list').innerHTML = listHtml;
+}
+
+async function purgeAllLegacyLogs() {
+    if (!confirm('Are you sure you want to PERMANENTLY DELETE ALL legacy logs? This cannot be undone.')) {
+        return;
+    }
+
+    if (!confirm('This is your FINAL warning. ALL legacy logs will be permanently deleted. Continue?')) {
+        return;
+    }
+
+    try {
+        const response = await fetch('/admin/legacy-logs/purge?confirm=true', {
+            method: 'DELETE'
+        });
+        if (response.ok) {
+            const data = await response.json();
+            alert(`Purge complete!\n\nDeleted ${data.deleted_count} log entries.`);
+            loadLegacyLogsSummary();
+        } else {
+            const error = await response.json();
+            alert('Error: ' + (error.detail || 'Unknown error'));
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Error purging legacy logs');
+    }
 }
 
 // Load user counts and active sessions on page load
