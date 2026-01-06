@@ -369,6 +369,18 @@
 <!-- Devices Tab -->
 <div id="tab-devices" class="admin-tab-content">
     <h2 style="margin-bottom: 1.5rem; color: #10b981;">All Devices</h2>
+
+    <!-- Device Search -->
+    <div style="margin-bottom: 1rem;">
+        <input
+            type="text"
+            id="device-search"
+            placeholder="Search devices by ID, name, owner, type, status, or plant..."
+            style="width: 100%; padding: 0.75rem 1rem; background: #0f172a; border: 1px solid rgba(148, 163, 184, 0.3); border-radius: 6px; color: #e2e8f0; font-size: 0.95rem;"
+            onkeyup="filterDevices()"
+        />
+    </div>
+
     <div class="data-table-container">
         <table class="data-table">
             <thead>
@@ -1100,7 +1112,7 @@ function loadTabData(tabName) {
 async function loadOverviewData() {
     try {
         //Load dashboard stats
-        const statsResponse = await fetch('/api/dashboard/stats');
+        const statsResponse = await fetch('/admin/api/dashboard/stats');
         if (statsResponse.ok) {
             const stats = await statsResponse.json();
             document.getElementById('overview-total-users').textContent = stats.users.total;
@@ -1111,14 +1123,14 @@ async function loadOverviewData() {
         }
 
         // Load alerts
-        const alertsResponse = await fetch('/api/dashboard/alerts');
+        const alertsResponse = await fetch('/admin/api/dashboard/alerts');
         if (alertsResponse.ok) {
             const alerts = await alertsResponse.json();
             displayAlerts(alerts);
         }
 
         // Load activity
-        const activityResponse = await fetch('/api/dashboard/activity');
+        const activityResponse = await fetch('/admin/api/dashboard/activity');
         if (activityResponse.ok) {
             const activity = await activityResponse.json();
             displayActivity(activity);
@@ -1197,7 +1209,7 @@ function displayAllDevices(devices) {
     }
 
     tbody.innerHTML = devices.map(device => `
-        <tr>
+        <tr class="device-row">
             <td><code style="font-size: 0.85rem;">${device.device_id}</code></td>
             <td>${device.name || '-'}</td>
             <td style="color: #60a5fa;">${device.owner_email}</td>
@@ -1210,6 +1222,28 @@ function displayAllDevices(devices) {
             <td>${device.active_plant_name || '-'}</td>
         </tr>
     `).join('');
+}
+
+function filterDevices() {
+    const searchTerm = document.getElementById('device-search').value.toLowerCase();
+    const rows = document.querySelectorAll('#all-devices-tbody .device-row');
+
+    rows.forEach(row => {
+        const cells = row.getElementsByTagName('td');
+        let rowText = '';
+
+        // Concatenate all cell text for searching
+        for (let cell of cells) {
+            rowText += cell.textContent.toLowerCase() + ' ';
+        }
+
+        // Show/hide row based on search match
+        if (rowText.includes(searchTerm)) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
 }
 
 // All Plants Loading
