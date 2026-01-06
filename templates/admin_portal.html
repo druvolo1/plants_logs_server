@@ -168,6 +168,9 @@
                         <button class="action-btn action-btn-view-as" onclick="impersonateUser({{ u.id }}, '{{ u.email }}')" title="View as this user">
                             👁️
                         </button>
+                        <button class="action-btn action-btn-info" onclick="viewLoginHistory({{ u.id }}, '{{ u.email }}')" title="View login history">
+                            🕒
+                        </button>
                         <button class="action-btn action-btn-primary" onclick="editUser({{ u.id }})" title="Edit user">
                             ✏️
                         </button>
@@ -202,6 +205,31 @@
     <div class="data-table-footer">
         <span id="table-info">Showing {{ users|length }} users</span>
     </div>
+</div>
+
+<!-- Active Sessions Table -->
+<div class="data-table-container" style="margin-top: 2rem;">
+    <div class="data-table-header">
+        <div class="data-table-title">🟢 Active Sessions</div>
+        <span style="color: #64748b; font-size: 0.85rem;">Users logged in within the last hour</span>
+    </div>
+
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>User</th>
+                <th>Session Started</th>
+                <th>Total Logins</th>
+                <th>IP Address</th>
+                <th>Device</th>
+            </tr>
+        </thead>
+        <tbody id="active-sessions-tbody">
+            <tr>
+                <td colspan="5" class="loading">Loading...</td>
+            </tr>
+        </tbody>
+    </table>
 </div>
 {% endblock %}
 
@@ -292,6 +320,54 @@
                 <button type="submit" class="btn btn-primary">Save Changes</button>
             </div>
         </form>
+    </div>
+</div>
+
+<!-- Login History Modal -->
+<div class="modal" id="login-history-modal">
+    <div class="modal-content" style="max-width: 900px;">
+        <div class="modal-header">
+            <h2 class="modal-title">Login History - <span id="login-history-user-email"></span></h2>
+            <button class="modal-close" onclick="closeModal('login-history-modal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="user-detail-item" style="margin-bottom: 1.5rem;">
+                <div class="user-detail-label">Account Statistics</div>
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-top: 0.75rem;">
+                    <div>
+                        <div style="color: #64748b; font-size: 0.75rem;">Total Logins</div>
+                        <div style="color: #e2e8f0; font-size: 1.25rem; font-weight: 600;" id="login-history-total">-</div>
+                    </div>
+                    <div>
+                        <div style="color: #64748b; font-size: 0.75rem;">Last Login</div>
+                        <div style="color: #e2e8f0; font-size: 1.25rem; font-weight: 600;" id="login-history-last">-</div>
+                    </div>
+                    <div>
+                        <div style="color: #64748b; font-size: 0.75rem;">Account Created</div>
+                        <div style="color: #e2e8f0; font-size: 1.25rem; font-weight: 600;" id="login-history-created">-</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="user-detail-label" style="margin-bottom: 0.75rem;">Recent Logins (Last 10)</div>
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Login Time</th>
+                        <th>IP Address</th>
+                        <th>Device / Browser</th>
+                    </tr>
+                </thead>
+                <tbody id="login-history-tbody">
+                    <tr>
+                        <td colspan="3" class="loading">Loading...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeModal('login-history-modal')">Close</button>
+        </div>
     </div>
 </div>
 
@@ -553,6 +629,125 @@ document.querySelectorAll('.modal').forEach(modal => {
     });
 });
 
-// Load user counts on page load
+// Login History
+async function viewLoginHistory(userId, email) {
+    document.getElementById('login-history-user-email').textContent = email;
+    openModal('login-history-modal');
+
+    // Show loading state
+    document.getElementById('login-history-tbody').innerHTML = '<tr><td colspan="3" class="loading">Loading...</td></tr>';
+    document.getElementById('login-history-total').textContent = '-';
+    document.getElementById('login-history-last').textContent = '-';
+    document.getElementById('login-history-created').textContent = '-';
+
+    try {
+        const response = await fetch(`/admin/api/users/${userId}/login-history`);
+        if (response.ok) {
+            const data = await response.json();
+
+            // Update stats
+            document.getElementById('login-history-total').textContent = data.login_count || 0;
+            document.getElementById('login-history-last').textContent = data.last_login ? formatDateTime(data.last_login) : 'Never';
+            document.getElementById('login-history-created').textContent = data.created_at ? formatDateTime(data.created_at) : 'Unknown';
+
+            // Update table
+            const tbody = document.getElementById('login-history-tbody');
+            if (data.login_history && data.login_history.length > 0) {
+                tbody.innerHTML = data.login_history.map(login => `
+                    <tr>
+                        <td>${formatDateTime(login.login_at)}</td>
+                        <td>${login.ip_address || 'Unknown'}</td>
+                        <td>${formatUserAgent(login.user_agent)}</td>
+                    </tr>
+                `).join('');
+            } else {
+                tbody.innerHTML = '<tr><td colspan="3" style="text-align: center; color: #64748b;">No login history available</td></tr>';
+            }
+        } else {
+            document.getElementById('login-history-tbody').innerHTML = '<tr><td colspan="3" style="text-align: center; color: #f87171;">Failed to load login history</td></tr>';
+        }
+    } catch (error) {
+        console.error('Error loading login history:', error);
+        document.getElementById('login-history-tbody').innerHTML = '<tr><td colspan="3" style="text-align: center; color: #f87171;">Error loading login history</td></tr>';
+    }
+}
+
+function formatUserAgent(ua) {
+    if (!ua) return 'Unknown';
+
+    // Extract browser and OS info
+    let browser = 'Unknown Browser';
+    let os = 'Unknown OS';
+
+    // Browser detection
+    if (ua.includes('Firefox/')) browser = 'Firefox ' + ua.split('Firefox/')[1].split(' ')[0];
+    else if (ua.includes('Edg/')) browser = 'Edge ' + ua.split('Edg/')[1].split(' ')[0];
+    else if (ua.includes('Chrome/')) browser = 'Chrome ' + ua.split('Chrome/')[1].split(' ')[0];
+    else if (ua.includes('Safari/') && !ua.includes('Chrome')) browser = 'Safari';
+
+    // OS detection
+    if (ua.includes('Windows NT')) os = 'Windows';
+    else if (ua.includes('Mac OS X')) os = 'macOS';
+    else if (ua.includes('Linux')) os = 'Linux';
+    else if (ua.includes('Android')) os = 'Android';
+    else if (ua.includes('iPhone') || ua.includes('iPad')) os = 'iOS';
+
+    return `${browser} on ${os}`;
+}
+
+function formatDateTime(isoString) {
+    if (!isoString) return 'Unknown';
+    const date = new Date(isoString);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins} min ago`;
+    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+    if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+
+    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
+}
+
+// Active Sessions
+async function loadActiveSessions() {
+    const tbody = document.getElementById('active-sessions-tbody');
+    tbody.innerHTML = '<tr><td colspan="5" class="loading">Loading...</td></tr>';
+
+    try {
+        const response = await fetch('/admin/api/users/active-sessions');
+        if (response.ok) {
+            const sessions = await response.json();
+
+            if (sessions.length > 0) {
+                tbody.innerHTML = sessions.map(session => `
+                    <tr>
+                        <td>
+                            <strong>${session.email}</strong>
+                            ${session.first_name || session.last_name ? `<br><span style="color: #64748b; font-size: 0.85rem;">${session.first_name || ''} ${session.last_name || ''}</span>` : ''}
+                        </td>
+                        <td>${formatDateTime(session.last_login)}</td>
+                        <td>${session.login_count || 0}</td>
+                        <td>${session.ip_address || 'Unknown'}</td>
+                        <td>${formatUserAgent(session.user_agent)}</td>
+                    </tr>
+                `).join('');
+            } else {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #64748b;">No active sessions</td></tr>';
+            }
+        } else {
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #f87171;">Failed to load active sessions</td></tr>';
+        }
+    } catch (error) {
+        console.error('Error loading active sessions:', error);
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #f87171;">Error loading active sessions</td></tr>';
+    }
+}
+
+// Load user counts and active sessions on page load
 loadUserCounts();
+loadActiveSessions();
 {% endblock %}

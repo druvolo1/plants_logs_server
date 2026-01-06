@@ -3,6 +3,7 @@
 User management endpoints for admin portal.
 """
 from typing import Dict, List
+from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,7 +11,7 @@ from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
 from fastapi_users import exceptions
 
-from app.models import User, Device, Plant
+from app.models import User, Device, Plant, LoginHistory
 from app.schemas import UserCreate, UserUpdate, PasswordReset
 
 router = APIRouter()
@@ -275,6 +276,86 @@ async def get_user_details(
         "device_count": device_count,
         "plant_count": plant_count
     }
+
+
+# Login History API
+@router.get("/api/users/{user_id}/login-history")
+async def get_user_login_history(
+    user_id: int,
+    admin: User = Depends(_get_current_admin()),
+    session: AsyncSession = Depends(_get_db())
+):
+    """Get user's login history and statistics"""
+    user = await session.get(User, user_id)
+    if not user:
+        raise HTTPException(404, "User not found")
+
+    # Get login history records (last 10)
+    login_history_result = await session.execute(
+        select(LoginHistory)
+        .where(LoginHistory.user_id == user_id)
+        .order_by(LoginHistory.login_at.desc())
+        .limit(10)
+    )
+    login_history = login_history_result.scalars().all()
+
+    return {
+        "login_count": user.login_count or 0,
+        "last_login": user.last_login.isoformat() if user.last_login else None,
+        "created_at": user.created_at.isoformat() if user.created_at else None,
+        "login_history": [
+            {
+                "login_at": record.login_at.isoformat() if record.login_at else None,
+                "ip_address": record.ip_address,
+                "user_agent": record.user_agent
+            }
+            for record in login_history
+        ]
+    }
+
+
+# Active Sessions API
+@router.get("/api/users/active-sessions")
+async def get_active_sessions(
+    admin: User = Depends(_get_current_admin()),
+    session: AsyncSession = Depends(_get_db())
+):
+    """Get users who have logged in within the last hour"""
+    one_hour_ago = datetime.utcnow() - timedelta(hours=1)
+
+    # Get users with last_login within the last hour
+    users_result = await session.execute(
+        select(User)
+        .where(
+            User.last_login.isnot(None),
+            User.last_login >= one_hour_ago
+        )
+        .order_by(User.last_login.desc())
+    )
+    active_users = users_result.scalars().all()
+
+    sessions = []
+    for user in active_users:
+        # Get most recent login history record for IP and user agent
+        login_history_result = await session.execute(
+            select(LoginHistory)
+            .where(LoginHistory.user_id == user.id)
+            .order_by(LoginHistory.login_at.desc())
+            .limit(1)
+        )
+        latest_login = login_history_result.scalars().first()
+
+        sessions.append({
+            "email": user.email,
+            "first_name": user.first_name,
+            "last_name": user.last_name,
+            "last_login": user.last_login.isoformat() if user.last_login else None,
+            "login_count": user.login_count or 0,
+            "ip_address": latest_login.ip_address if latest_login else None,
+            "user_agent": latest_login.user_agent if latest_login else None
+        })
+
+    return sessions
 
 
 # Plant Management
