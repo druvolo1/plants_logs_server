@@ -11,6 +11,7 @@ from sqlalchemy import select
 
 from app.models import User
 from app.schemas import UserCreate
+from app.utils.login_tracker import record_login
 
 router = APIRouter(tags=["auth"])
 api_router = APIRouter(prefix="/api/user", tags=["user-api"])
@@ -48,6 +49,31 @@ def get_google_oauth_client():
     return google_oauth_client
 
 
+def get_client_ip(request: Request) -> str:
+    """Extract client IP address from request."""
+    # Check for X-Forwarded-For header (proxy/load balancer)
+    forwarded_for = request.headers.get("X-Forwarded-For")
+    if forwarded_for:
+        # X-Forwarded-For can contain multiple IPs, use the first one
+        return forwarded_for.split(",")[0].strip()
+
+    # Check for X-Real-IP header
+    real_ip = request.headers.get("X-Real-IP")
+    if real_ip:
+        return real_ip
+
+    # Fall back to direct client IP
+    if request.client:
+        return request.client.host
+
+    return None
+
+
+def get_user_agent(request: Request) -> str:
+    """Extract user agent from request."""
+    return request.headers.get("User-Agent", None)
+
+
 # Google OAuth authorize
 @router.get("/auth/google/authorize", response_model=dict)
 async def google_authorize_custom(request: Request):
@@ -69,6 +95,7 @@ async def google_callback_custom(
     state: str = None,
     manager = Depends(get_user_manager_dependency()),
     strategy = Depends(get_jwt_strategy_dependency()),
+    session: AsyncSession = Depends(get_db_dependency())
 ):
     google_oauth_client = get_google_oauth_client()
     try:
@@ -110,6 +137,14 @@ async def google_callback_custom(
 
         # User is active - log them in
         token_str = await strategy.write_token(user)
+
+        # Record login activity
+        await record_login(
+            session=session,
+            user=user,
+            ip_address=get_client_ip(request),
+            user_agent=get_user_agent(request)
+        )
 
         html_content = f"""
         <!DOCTYPE html>
@@ -199,7 +234,8 @@ async def login(
     next: str = Form(None),
     device_id: str = Form(None),
     manager = Depends(get_user_manager_dependency()),
-    strategy = Depends(get_jwt_strategy_dependency())
+    strategy = Depends(get_jwt_strategy_dependency()),
+    session: AsyncSession = Depends(get_db_dependency())
 ):
     from fastapi.security import OAuth2PasswordRequestForm
 
@@ -214,6 +250,14 @@ async def login(
 
         # Create token
         token = await strategy.write_token(user)
+
+        # Record login activity
+        await record_login(
+            session=session,
+            user=user,
+            ip_address=get_client_ip(request),
+            user_agent=get_user_agent(request)
+        )
 
         # Redirect based on next parameter if present, otherwise dashboard
         redirect_url = "/dashboard"
@@ -258,7 +302,8 @@ async def api_login(
     username: str = Form(...),
     password: str = Form(...),
     manager = Depends(get_user_manager_dependency()),
-    strategy = Depends(get_jwt_strategy_dependency())
+    strategy = Depends(get_jwt_strategy_dependency()),
+    session: AsyncSession = Depends(get_db_dependency())
 ):
     from fastapi.responses import JSONResponse
     from fastapi.security import OAuth2PasswordRequestForm
@@ -276,6 +321,14 @@ async def api_login(
 
         # Create token
         token = await strategy.write_token(user)
+
+        # Record login activity
+        await record_login(
+            session=session,
+            user=user,
+            ip_address=get_client_ip(request),
+            user_agent=get_user_agent(request)
+        )
 
         # Return JSON response with cookie
         # Note: samesite="none" and secure=True required for cross-origin iframe usage
