@@ -1158,17 +1158,30 @@ function displayAlerts(alerts) {
 function displayActivity(activity) {
     const container = document.getElementById('overview-activity');
     if (activity.length === 0) {
-        container.innerHTML = '<p style="color: #64748b;">No recent activity</p>';
+        container.innerHTML = '<p style="color: #64748b;">No recent activity in the last 7 days</p>';
         return;
     }
 
+    // Activity type icons and colors
+    const activityStyles = {
+        'login': { icon: '🔓', color: '#60a5fa' },
+        'registration': { icon: '👤', color: '#10b981' },
+        'plant_start': { icon: '🌱', color: '#22c55e' },
+        'plant_finish': { icon: '✅', color: '#8b5cf6' },
+        'device': { icon: '🖥️', color: '#f59e0b' }
+    };
+
     container.innerHTML = '<div style="display: flex; flex-direction: column; gap: 0.5rem;">' +
-        activity.map(item => `
-            <div style="padding: 0.75rem; background: rgba(30, 41, 59, 0.5); border-radius: 4px; display: flex; justify-space-between;">
-                <span style="color: #e2e8f0;">${item.message}</span>
-                <span style="color: #64748b; font-size: 0.85rem; margin-left: auto;">${formatRelativeTime(item.timestamp)}</span>
-            </div>
-        `).join('') +
+        activity.map(item => {
+            const style = activityStyles[item.type] || { icon: '•', color: '#94a3b8' };
+            return `
+                <div style="padding: 0.75rem; background: rgba(30, 41, 59, 0.5); border-radius: 4px; display: flex; align-items: center; gap: 0.75rem;">
+                    <span style="font-size: 1.2rem;">${style.icon}</span>
+                    <span style="color: #e2e8f0; flex: 1;">${item.message}</span>
+                    <span style="color: #64748b; font-size: 0.85rem; white-space: nowrap;">${formatRelativeTime(item.timestamp)}</span>
+                </div>
+            `;
+        }).join('') +
         '</div>';
 }
 

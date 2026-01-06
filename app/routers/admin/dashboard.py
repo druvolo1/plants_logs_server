@@ -140,41 +140,83 @@ async def get_dashboard_activity(
     admin: User = Depends(_get_current_admin()),
     session: AsyncSession = Depends(_get_db())
 ):
-    """Get recent activity feed"""
+    """Get recent activity feed - shows meaningful events only"""
+    from app.models import Plant, LoginHistory
+    from datetime import datetime, timedelta
+
     activities = []
 
-    # Recent user registrations (last 5)
+    # Show only activity from the last 7 days
+    seven_days_ago = datetime.utcnow() - timedelta(days=7)
+
+    # Recent user logins (last 15, within 7 days)
+    recent_logins = await session.execute(
+        select(LoginHistory, User.email)
+        .join(User, LoginHistory.user_id == User.id)
+        .where(LoginHistory.login_at >= seven_days_ago)
+        .order_by(LoginHistory.login_at.desc())
+        .limit(15)
+    )
+    for login, email in recent_logins.all():
+        activities.append({
+            "type": "login",
+            "message": f"User login: {email}",
+            "timestamp": login.login_at.isoformat() + 'Z'
+        })
+
+    # New plants started (last 10, within 7 days)
+    new_plants = await session.execute(
+        select(Plant, User.email)
+        .join(User, Plant.user_id == User.id)
+        .where(Plant.start_date >= seven_days_ago)
+        .order_by(Plant.start_date.desc())
+        .limit(10)
+    )
+    for plant, email in new_plants.all():
+        activities.append({
+            "type": "plant_start",
+            "message": f"New plant started: {plant.name} ({email})",
+            "timestamp": plant.start_date.isoformat() + 'Z'
+        })
+
+    # Plants finished (last 10, within 7 days)
+    finished_plants = await session.execute(
+        select(Plant, User.email)
+        .join(User, Plant.user_id == User.id)
+        .where(
+            Plant.end_date.isnot(None),
+            Plant.end_date >= seven_days_ago
+        )
+        .order_by(Plant.end_date.desc())
+        .limit(10)
+    )
+    for plant, email in finished_plants.all():
+        activities.append({
+            "type": "plant_finish",
+            "message": f"Plant finished: {plant.name} ({email})",
+            "timestamp": plant.end_date.isoformat() + 'Z'
+        })
+
+    # New user registrations (only show if actually within 7 days)
     recent_users = await session.execute(
         select(User)
-        .where(User.created_at.isnot(None))
+        .where(
+            User.created_at.isnot(None),
+            User.created_at >= seven_days_ago
+        )
         .order_by(User.created_at.desc())
         .limit(5)
     )
     for user in recent_users.scalars().all():
         activities.append({
-            "type": "user",
-            "message": f"User registered: {user.email}",
-            "timestamp": user.created_at.isoformat() + 'Z' if user.created_at else None
+            "type": "registration",
+            "message": f"New user registered: {user.email}",
+            "timestamp": user.created_at.isoformat() + 'Z'
         })
 
-    # Recent device connections (last 10)
-    recent_devices = await session.execute(
-        select(Device, User.email)
-        .join(User, Device.user_id == User.id)
-        .where(Device.last_seen.isnot(None))
-        .order_by(Device.last_seen.desc())
-        .limit(10)
-    )
-    for device, email in recent_devices.all():
-        activities.append({
-            "type": "device",
-            "message": f"{device.name or device.device_id[:8]} connected ({email})",
-            "timestamp": device.last_seen.isoformat() + 'Z' if device.last_seen else None
-        })
-
-    # Sort by timestamp and return top 15
+    # Sort by timestamp and return top 20
     activities.sort(key=lambda x: x["timestamp"] or "", reverse=True)
-    return activities[:15]
+    return activities[:20]
 
 
 @router.get("/api/dashboard/device-status")
