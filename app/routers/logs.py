@@ -904,7 +904,7 @@ async def receive_daily_report(
         print(f"[DAILY REPORT] Hydro controller - found {len(plants)} assigned plants")
 
     elif device.device_type == 'environmental':
-        # Environment sensor: Get all plants in the same location
+        # Environment sensor: Get all plants assigned to devices in the same location
         if device.location_id is None:
             print(f"[DAILY REPORT] Environment sensor has no location assigned - no plants to update")
             return {
@@ -913,9 +913,14 @@ async def receive_daily_report(
                 "plants_updated": 0
             }
 
+        # Get all plants assigned to devices in the same location as the environment sensor
         plants_result = await session.execute(
-            select(Plant).where(
-                Plant.location_id == device.location_id,
+            select(Plant)
+            .join(DeviceAssignment, DeviceAssignment.plant_id == Plant.id)
+            .join(Device, DeviceAssignment.device_id == Device.id)
+            .where(
+                Device.location_id == device.location_id,
+                DeviceAssignment.removed_at.is_(None),  # Only active assignments
                 Plant.end_date.is_(None)  # Only active plants
             )
         )
