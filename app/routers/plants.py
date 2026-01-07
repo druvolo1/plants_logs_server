@@ -73,14 +73,14 @@ async def create_plant(
     if not device:
         raise HTTPException(404, "Device not found")
 
-    # Only feeding_system devices can have plants assigned
-    if device.device_type != 'feeding_system':
+    # Only feeding_system and hydro_controller devices can have plants assigned
+    if device.device_type not in ['feeding_system', 'hydro_controller']:
         device_type_name = {
             'environmental': 'environmental sensor',
             'valve_controller': 'valve controller',
             'other': 'this device type'
         }.get(device.device_type, device.device_type)
-        raise HTTPException(400, f"Cannot assign plants to {device_type_name}. Only feeding systems can have plants assigned.")
+        raise HTTPException(400, f"Cannot assign plants to {device_type_name}. Only feeding systems and hydro controllers can have plants assigned.")
 
     # Check if user owns device
     is_owner = device.user_id == user.id
@@ -442,14 +442,14 @@ async def assign_device_to_plant(
     if not device:
         raise HTTPException(404, "Device not found")
 
-    # Only feeding_system devices can have plants assigned
-    if device.device_type != 'feeding_system':
+    # Only feeding_system and hydro_controller devices can have plants assigned
+    if device.device_type not in ['feeding_system', 'hydro_controller']:
         device_type_name = {
             'environmental': 'environmental sensor',
             'valve_controller': 'valve controller',
             'other': 'this device type'
         }.get(device.device_type, device.device_type)
-        raise HTTPException(400, f"Cannot assign plants to {device_type_name}. Only feeding systems can have plants assigned.")
+        raise HTTPException(400, f"Cannot assign plants to {device_type_name}. Only feeding systems and hydro controllers can have plants assigned.")
 
     # Check if user owns device or has controller permission
     is_owner = device.user_id == effective_user.id

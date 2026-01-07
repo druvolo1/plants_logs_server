@@ -120,6 +120,7 @@ class PlantDailyLogRead(BaseModel):
     ppfd_min: Optional[float]
     ppfd_max: Optional[float]
     ppfd_avg: Optional[float]
+    light_detected: Optional[bool]
 
     # Metadata
     hydro_device_id: Optional[int]
