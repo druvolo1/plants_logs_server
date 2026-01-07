@@ -944,10 +944,30 @@
         let plants = [];
         let currentPlant = null;
         let currentLogs = [];
+        let currentPhaseHistory = [];
         let sensorCharts = []; // Array to hold dynamically created sensor charts
         let dosingChart = null;
         let isAdmin = false;
         let currentUserId = null;
+
+        // Phase colors for chart backgrounds (semi-transparent)
+        const phaseColors = {
+            'seed': 'rgba(205, 173, 127, 0.15)',      // Light tan
+            'clone': 'rgba(144, 238, 144, 0.15)',     // Light green
+            'veg': 'rgba(34, 139, 34, 0.15)',         // Medium green
+            'flower': 'rgba(186, 85, 211, 0.15)',     // Purple/pink
+            'drying': 'rgba(255, 165, 0, 0.15)',      // Orange
+            'curing': 'rgba(139, 90, 43, 0.15)'       // Dark amber/brown
+        };
+
+        const phaseLabels = {
+            'seed': 'Seed',
+            'clone': 'Clone',
+            'veg': 'Vegetative',
+            'flower': 'Flower',
+            'drying': 'Drying',
+            'curing': 'Curing'
+        };
 
         // Helper function to format device names
         // Priority: 1) Custom name, 2) System name, 3) Formatted UUID
@@ -1614,16 +1634,19 @@
                 const response = await fetch(url);
                 if (!response.ok) throw new Error('Failed to load logs');
 
-                const logs = await response.json();
+                const data = await response.json();
+                const logs = data.logs || data;  // Support both old and new format
+                const phaseHistory = data.phase_history || [];
 
                 // Reverse to show oldest first for charts
                 logs.reverse();
 
-                // Store logs globally for export
+                // Store logs and phase history globally
                 currentLogs = logs;
+                currentPhaseHistory = phaseHistory;
 
                 renderStats(logs);
-                await renderCharts(logs);
+                await renderCharts(logs, phaseHistory);
             } catch (error) {
                 console.error('Error loading logs:', error);
             }
@@ -1671,58 +1694,51 @@
             `;
         }
 
-        async function getPhaseAnnotations() {
-            if (!currentPlant) return [];
+        function getPhaseAnnotations(phaseHistory, logs) {
+            if (!phaseHistory || phaseHistory.length === 0) return [];
 
             try {
-                // Get phase history
-                const response = await fetch(`/user/plants/${currentPlant.plant_id}/phase-history`);
-                if (!response.ok) return [];
-
-                const phaseHistory = await response.json();
-
-                const phaseColors = {
-                    'seed': 'rgba(168, 85, 247, 0.1)',      // Purple
-                    'clone': 'rgba(139, 92, 246, 0.1)',     // Violet
-                    'veg': 'rgba(16, 185, 129, 0.1)',       // Green
-                    'flower': 'rgba(245, 158, 11, 0.1)',    // Orange
-                    'drying': 'rgba(99, 102, 241, 0.1)',    // Indigo
-                    'curing': 'rgba(236, 72, 153, 0.1)'     // Pink
-                };
-
                 // Create annotations for each phase
                 const annotations = {};
                 phaseHistory.forEach((entry, index) => {
                     const startDate = new Date(entry.started_at);
                     const endDate = entry.ended_at ? new Date(entry.ended_at) : new Date();
 
+                    // Calculate phase duration in days
+                    const durationDays = (endDate - startDate) / (1000 * 60 * 60 * 24);
+
+                    // Show label only if phase lasts more than 5 days
+                    const showLabel = durationDays > 5;
+
                     annotations[`phase_${index}`] = {
                         type: 'box',
-                        xMin: formatDateTime(startDate),
-                        xMax: formatDateTime(endDate),
-                        backgroundColor: phaseColors[entry.phase] || 'rgba(100, 116, 139, 0.1)',
+                        xMin: startDate.toLocaleDateString(),
+                        xMax: endDate.toLocaleDateString(),
+                        backgroundColor: phaseColors[entry.phase] || 'rgba(100, 116, 139, 0.15)',
                         borderWidth: 0,
-                        label: {
+                        label: showLabel ? {
                             display: true,
-                            content: entry.phase.toUpperCase(),
+                            content: phaseLabels[entry.phase] || entry.phase.toUpperCase(),
                             position: 'start',
                             color: '#e2e8f0',
                             font: {
                                 size: 10,
                                 weight: 'bold'
                             }
+                        } : {
+                            display: false
                         }
                     };
                 });
 
                 return annotations;
             } catch (error) {
-                console.error('Error getting phase annotations:', error);
+                console.error('Error creating phase annotations:', error);
                 return [];
             }
         }
 
-        async function renderDailyAggregateCharts(logs) {
+        async function renderDailyAggregateCharts(logs, phaseHistory) {
             // Destroy old charts
             sensorCharts.forEach(chart => {
                 if (chart) chart.destroy();
@@ -1733,8 +1749,35 @@
             const chartsContainer = document.getElementById('chartsContainer');
             chartsContainer.innerHTML = ''; // Clear existing charts
 
+            // Create phase legend if we have phase history
+            if (phaseHistory && phaseHistory.length > 0) {
+                const legend = document.createElement('div');
+                legend.style.cssText = 'display: flex; gap: 15px; margin-bottom: 20px; padding: 10px; background: rgba(30, 41, 59, 0.5); border-radius: 8px; flex-wrap: wrap;';
+
+                // Get unique phases from history
+                const uniquePhases = [...new Set(phaseHistory.map(p => p.phase))];
+
+                uniquePhases.forEach(phase => {
+                    const item = document.createElement('div');
+                    item.style.cssText = 'display: flex; align-items: center; gap: 8px;';
+
+                    const colorBox = document.createElement('div');
+                    colorBox.style.cssText = `width: 20px; height: 20px; background: ${phaseColors[phase] || 'rgba(100, 116, 139, 0.15)'}; border: 1px solid #475569; border-radius: 3px;`;
+
+                    const label = document.createElement('span');
+                    label.textContent = phaseLabels[phase] || phase;
+                    label.style.cssText = 'color: #e2e8f0; font-size: 13px;';
+
+                    item.appendChild(colorBox);
+                    item.appendChild(label);
+                    legend.appendChild(item);
+                });
+
+                chartsContainer.appendChild(legend);
+            }
+
             // Get phase history for background color-coding
-            const phaseAnnotations = await getPhaseAnnotations();
+            const phaseAnnotations = getPhaseAnnotations(phaseHistory, logs);
 
             // Define metrics to chart (only if data exists)
             const metrics = [
@@ -1913,12 +1956,12 @@
             }
         }
 
-        async function renderCharts(logs) {
+        async function renderCharts(logs, phaseHistory) {
             // Check if logs are daily aggregates (new system) or event-based (old system)
             const isDailyAggregates = logs.length > 0 && logs[0].co2_min !== undefined;
 
             if (isDailyAggregates) {
-                await renderDailyAggregateCharts(logs);
+                await renderDailyAggregateCharts(logs, phaseHistory);
                 return;
             }
 

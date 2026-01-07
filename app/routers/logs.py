@@ -12,7 +12,8 @@ import json
 
 from app.models import (
     User, Device, Plant, PlantDailyLog, DeviceAssignment, DeviceShare,
-    Firmware, DeviceFirmwareAssignment, DeviceDebugLog, Location, DosingEvent, LightEvent
+    Firmware, DeviceFirmwareAssignment, DeviceDebugLog, Location, DosingEvent, LightEvent,
+    PhaseHistory
 )
 from app.schemas import (
     HydroReadingCreate,
@@ -513,7 +514,7 @@ async def environment_heartbeat(
 
 # Plant Log Retrieval Endpoints
 
-@router.get("/user/plants/{plant_id}/logs", response_model=List[PlantDailyLogRead])
+@router.get("/user/plants/{plant_id}/logs")
 async def get_plant_logs(
     request: Request,
     plant_id: str,
@@ -524,8 +525,8 @@ async def get_plant_logs(
     limit: int = 365
 ):
     """
-    Get daily logs for a specific plant.
-    Simple query - all logs are already plant-centric.
+    Get daily logs and phase history for a specific plant.
+    Returns both logs data and phase timeline for chart backgrounds.
     """
     # Get effective user (handles impersonation)
     effective_user = await get_effective_user(request, user, session)
@@ -565,7 +566,32 @@ async def get_plant_logs(
     result = await session.execute(query)
     logs = result.scalars().all()
 
-    return logs
+    # Get phase history for this plant
+    phase_query = select(PhaseHistory).where(
+        PhaseHistory.plant_id == plant.id
+    ).order_by(PhaseHistory.started_at.asc())
+
+    phase_result = await session.execute(phase_query)
+    phases = phase_result.scalars().all()
+
+    # Convert to serializable format
+    phase_history = [
+        {
+            "phase": phase.phase,
+            "started_at": phase.started_at.isoformat(),
+            "ended_at": phase.ended_at.isoformat() if phase.ended_at else None
+        }
+        for phase in phases
+    ]
+
+    # Convert logs to dict format (Pydantic models auto-serialize)
+    from app.schemas import PlantDailyLogRead
+    logs_data = [PlantDailyLogRead.model_validate(log) for log in logs]
+
+    return {
+        "logs": logs_data,
+        "phase_history": phase_history
+    }
 
 
 # Environment Sensor Latest Data (for dashboard)
