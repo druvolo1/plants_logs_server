@@ -1722,7 +1722,140 @@
             }
         }
 
+        async function renderDailyAggregateCharts(logs) {
+            // Destroy old charts
+            sensorCharts.forEach(chart => {
+                if (chart) chart.destroy();
+            });
+            sensorCharts = [];
+
+            // Get the chart container
+            const chartsContainer = document.getElementById('chartsContainer');
+            chartsContainer.innerHTML = ''; // Clear existing charts
+
+            // Get phase history for background color-coding
+            const phaseAnnotations = await getPhaseAnnotations();
+
+            // Define metrics to chart (only if data exists)
+            const metrics = [
+                { name: 'CO2 (ppm)', minKey: 'co2_min', maxKey: 'co2_max', avgKey: 'co2_avg', color: '#10b981' },
+                { name: 'Temperature (°F)', minKey: 'air_temp_min', maxKey: 'air_temp_max', avgKey: 'air_temp_avg', color: '#f59e0b' },
+                { name: 'Humidity (%)', minKey: 'humidity_min', maxKey: 'humidity_max', avgKey: 'humidity_avg', color: '#3b82f6' },
+                { name: 'VPD (kPa)', minKey: 'vpd_min', maxKey: 'vpd_max', avgKey: 'vpd_avg', color: '#8b5cf6' },
+                { name: 'Pressure (hPa)', minKey: 'pressure_min', maxKey: 'pressure_max', avgKey: 'pressure_avg', color: '#ec4899' },
+                { name: 'Light (lux)', minKey: 'lux_min', maxKey: 'lux_max', avgKey: 'lux_avg', color: '#eab308' },
+                { name: 'PPFD (µmol/m²/s)', minKey: 'ppfd_min', maxKey: 'ppfd_max', avgKey: 'ppfd_avg', color: '#f97316' },
+                { name: 'Air Quality', minKey: 'air_quality_score_min', maxKey: 'air_quality_score_max', avgKey: 'air_quality_score_avg', color: '#06b6d4' }
+            ];
+
+            metrics.forEach((metric, index) => {
+                // Check if this metric has any data
+                const hasData = logs.some(log => log[metric.avgKey] !== null && log[metric.avgKey] !== undefined);
+                if (!hasData) return;
+
+                // Create canvas element for this metric
+                const canvas = document.createElement('canvas');
+                canvas.id = `metricChart_${index}`;
+                canvas.style.marginBottom = '2rem';
+                chartsContainer.appendChild(canvas);
+
+                const ctx = canvas.getContext('2d');
+
+                const chart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: logs.map(l => new Date(l.log_date).toLocaleDateString()),
+                        datasets: [
+                            {
+                                label: 'Min',
+                                data: logs.map(l => l[metric.minKey]),
+                                borderColor: metric.color + '44',
+                                backgroundColor: 'transparent',
+                                borderDash: [5, 5],
+                                tension: 0.4,
+                                pointRadius: 1,
+                                pointHoverRadius: 4
+                            },
+                            {
+                                label: 'Average',
+                                data: logs.map(l => l[metric.avgKey]),
+                                borderColor: metric.color,
+                                backgroundColor: `${metric.color}33`,
+                                fill: true,
+                                tension: 0.4,
+                                pointRadius: 2,
+                                pointHoverRadius: 6
+                            },
+                            {
+                                label: 'Max',
+                                data: logs.map(l => l[metric.maxKey]),
+                                borderColor: metric.color + '44',
+                                backgroundColor: 'transparent',
+                                borderDash: [5, 5],
+                                tension: 0.4,
+                                pointRadius: 1,
+                                pointHoverRadius: 4
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        plugins: {
+                            legend: {
+                                labels: { color: '#e2e8f0' }
+                            },
+                            title: {
+                                display: true,
+                                text: metric.name,
+                                color: '#e2e8f0',
+                                font: { size: 16 }
+                            },
+                            annotation: {
+                                annotations: phaseAnnotations
+                            }
+                        },
+                        scales: {
+                            y: {
+                                ticks: { color: '#e2e8f0' },
+                                grid: { color: '#334155' },
+                                title: {
+                                    display: true,
+                                    text: metric.name,
+                                    color: '#e2e8f0'
+                                }
+                            },
+                            x: {
+                                ticks: {
+                                    color: '#e2e8f0',
+                                    maxRotation: 45,
+                                    minRotation: 45
+                                },
+                                grid: { color: '#334155' }
+                            }
+                        }
+                    }
+                });
+
+                sensorCharts.push(chart);
+            });
+
+            // Show message if no charts were created
+            if (sensorCharts.length === 0) {
+                chartsContainer.innerHTML = '<div style="text-align: center; color: #94a3b8; padding: 2rem;">No environmental data available for this plant yet.</div>';
+            }
+        }
+
         async function renderCharts(logs) {
+            // Check if logs are daily aggregates (new system) or event-based (old system)
+            const isDailyAggregates = logs.length > 0 && logs[0].co2_min !== undefined;
+
+            if (isDailyAggregates) {
+                await renderDailyAggregateCharts(logs);
+                return;
+            }
+
+            // Old event-based system
             const sensorLogs = logs.filter(l => l.event_type === 'sensor');
             const dosingLogs = logs.filter(l => l.event_type === 'dosing');
 

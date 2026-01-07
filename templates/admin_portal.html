@@ -1337,6 +1337,7 @@ function populateDeviceSelectForDataViewer(devices) {
     devices.forEach(device => {
         const option = document.createElement('option');
         option.value = device.device_id;
+        option.setAttribute('data-device-type', device.device_type || '');
         const shortUuid = device.device_id.substring(0, 8);
         const displayName = device.name ? device.name : `${device.device_type || 'Device'} [${shortUuid}]`;
         const ownerInfo = device.owner_email ? ` - ${device.owner_email}` : '';
@@ -1374,10 +1375,30 @@ async function loadDeviceData() {
 }
 
 async function loadDeviceSummary() {
-    const deviceId = document.getElementById('data-viewer-device-select').value;
+    const select = document.getElementById('data-viewer-device-select');
+    const deviceId = select.value;
     if (!deviceId) {
         alert('Please select a device');
         return;
+    }
+
+    // Get device type from selected option
+    const selectedOption = select.options[select.selectedIndex];
+    const deviceType = selectedOption.getAttribute('data-device-type');
+
+    // Hide Environment Logs tab for environmental sensors (they use daily reporting now)
+    const envTab = document.querySelector('button.data-tab[onclick*="env"]');
+    const envTabContent = document.getElementById('data-viewer-tab-env');
+    if (deviceType === 'environmental') {
+        if (envTab) envTab.style.display = 'none';
+        if (envTabContent) envTabContent.style.display = 'none';
+        // Switch to Log Entries tab if Environment tab was active
+        if (envTabContent && envTabContent.classList.contains('active')) {
+            showDataViewerTab('logs');
+        }
+    } else {
+        if (envTab) envTab.style.display = 'block';
+        if (envTabContent) envTabContent.style.display = 'none'; // Will be shown when tab is clicked
     }
 
     try {
