@@ -584,12 +584,57 @@ async def get_plant_logs(
         for phase in phases
     ]
 
-    # Convert logs to dict format (Pydantic models auto-serialize)
+    # Convert logs to serializable format
     from app.schemas import PlantDailyLogRead
-    logs_data = [PlantDailyLogRead.model_validate(log) for log in logs]
+    from pydantic import BaseModel
+
+    logs_serialized = [
+        {
+            "id": log.id,
+            "plant_id": log.plant_id,
+            "log_date": log.log_date.isoformat(),
+            "ph_min": log.ph_min,
+            "ph_max": log.ph_max,
+            "ph_avg": log.ph_avg,
+            "ec_min": log.ec_min,
+            "ec_max": log.ec_max,
+            "ec_avg": log.ec_avg,
+            "tds_min": log.tds_min,
+            "tds_max": log.tds_max,
+            "tds_avg": log.tds_avg,
+            "water_temp_min": log.water_temp_min,
+            "water_temp_max": log.water_temp_max,
+            "water_temp_avg": log.water_temp_avg,
+            "total_ph_up_ml": log.total_ph_up_ml,
+            "total_ph_down_ml": log.total_ph_down_ml,
+            "dosing_events_count": log.dosing_events_count,
+            "co2_min": log.co2_min,
+            "co2_max": log.co2_max,
+            "co2_avg": log.co2_avg,
+            "air_temp_min": log.air_temp_min,
+            "air_temp_max": log.air_temp_max,
+            "air_temp_avg": log.air_temp_avg,
+            "humidity_min": log.humidity_min,
+            "humidity_max": log.humidity_max,
+            "humidity_avg": log.humidity_avg,
+            "vpd_min": log.vpd_min,
+            "vpd_max": log.vpd_max,
+            "vpd_avg": log.vpd_avg,
+            "total_light_seconds": log.total_light_seconds,
+            "light_cycles_count": log.light_cycles_count,
+            "longest_light_period_seconds": log.longest_light_period_seconds,
+            "shortest_light_period_seconds": log.shortest_light_period_seconds,
+            "hydro_device_id": log.hydro_device_id,
+            "env_device_id": log.env_device_id,
+            "readings_count": log.readings_count,
+            "created_at": log.created_at.isoformat(),
+            "updated_at": log.updated_at.isoformat()
+        }
+        for log in logs
+    ]
 
     return {
-        "logs": logs_data,
+        "logs": logs_serialized,
         "phase_history": phase_history
     }
 
