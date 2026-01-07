@@ -1741,9 +1741,7 @@
                 { name: 'CO2 (ppm)', minKey: 'co2_min', maxKey: 'co2_max', avgKey: 'co2_avg', color: '#10b981' },
                 { name: 'Temperature (°F)', minKey: 'air_temp_min', maxKey: 'air_temp_max', avgKey: 'air_temp_avg', color: '#f59e0b' },
                 { name: 'Humidity (%)', minKey: 'humidity_min', maxKey: 'humidity_max', avgKey: 'humidity_avg', color: '#3b82f6' },
-                { name: 'VPD (kPa)', minKey: 'vpd_min', maxKey: 'vpd_max', avgKey: 'vpd_avg', color: '#8b5cf6' },
-                { name: 'Light (lux)', minKey: 'lux_min', maxKey: 'lux_max', avgKey: 'lux_avg', color: '#eab308' },
-                { name: 'PPFD (µmol/m²/s)', minKey: 'ppfd_min', maxKey: 'ppfd_max', avgKey: 'ppfd_avg', color: '#f97316' }
+                { name: 'VPD (kPa)', minKey: 'vpd_min', maxKey: 'vpd_max', avgKey: 'vpd_avg', color: '#8b5cf6' }
             ];
 
             metrics.forEach((metric, index) => {
@@ -1837,6 +1835,77 @@
 
                 sensorCharts.push(chart);
             });
+
+            // Add light events chart (event-based tracking)
+            const hasLightData = logs.some(log => log.total_light_seconds !== null && log.total_light_seconds !== undefined && log.total_light_seconds > 0);
+            if (hasLightData) {
+                const canvas = document.createElement('canvas');
+                canvas.id = 'lightEventsChart';
+                canvas.style.marginBottom = '2rem';
+                chartsContainer.appendChild(canvas);
+
+                const ctx = canvas.getContext('2d');
+
+                const chart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: logs.map(l => new Date(l.log_date).toLocaleDateString()),
+                        datasets: [
+                            {
+                                label: 'Daily Light Hours',
+                                data: logs.map(l => l.total_light_seconds ? (l.total_light_seconds / 3600).toFixed(1) : 0),
+                                backgroundColor: '#eab30866',
+                                borderColor: '#eab308',
+                                borderWidth: 1
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: true,
+                                labels: { color: '#e2e8f0' }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    afterLabel: function(context) {
+                                        const log = logs[context.dataIndex];
+                                        if (log.light_cycles_count) {
+                                            return `Cycles: ${log.light_cycles_count}`;
+                                        }
+                                        return '';
+                                    }
+                                }
+                            },
+                            annotation: { annotations: phaseAnnotations }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: { color: '#e2e8f0' },
+                                grid: { color: '#334155' },
+                                title: {
+                                    display: true,
+                                    text: 'Light Hours per Day',
+                                    color: '#e2e8f0'
+                                }
+                            },
+                            x: {
+                                ticks: {
+                                    color: '#e2e8f0',
+                                    maxRotation: 45,
+                                    minRotation: 45
+                                },
+                                grid: { color: '#334155' }
+                            }
+                        }
+                    }
+                });
+
+                sensorCharts.push(chart);
+            }
 
             // Show message if no charts were created
             if (sensorCharts.length === 0) {
