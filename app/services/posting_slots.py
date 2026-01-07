@@ -73,7 +73,7 @@ async def count_devices_needing_slots(session: AsyncSession) -> int:
     return result.scalar() or 0
 
 
-async def find_best_slot(
+def find_best_slot(
     assigned_slots: List[int],
     window_duration: int,
     target_device_count: int
