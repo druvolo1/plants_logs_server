@@ -115,8 +115,7 @@ from app.schemas import (
     DeviceAssignmentCreate,
     AssignedDeviceInfo,
     HydroReadingCreate,
-    EnvironmentReadingCreate,
-    EnvironmentDataCreate,  # Backward compatibility alias
+    EnvironmentDataCreate,
     PlantDailyLogRead,
 )
 

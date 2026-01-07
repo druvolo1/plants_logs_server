@@ -660,26 +660,12 @@ async def init_database():
                     vpd_min FLOAT NULL,
                     vpd_max FLOAT NULL,
                     vpd_avg FLOAT NULL,
-                    lux_min FLOAT NULL,
-                    lux_max FLOAT NULL,
-                    lux_avg FLOAT NULL,
-                    ppfd_min FLOAT NULL,
-                    ppfd_max FLOAT NULL,
-                    ppfd_avg FLOAT NULL,
 
-                    -- Additional environmental data
-                    pressure_min FLOAT NULL,
-                    pressure_max FLOAT NULL,
-                    pressure_avg FLOAT NULL,
-                    altitude_min FLOAT NULL,
-                    altitude_max FLOAT NULL,
-                    altitude_avg FLOAT NULL,
-                    gas_resistance_min FLOAT NULL,
-                    gas_resistance_max FLOAT NULL,
-                    gas_resistance_avg FLOAT NULL,
-                    air_quality_score_min INT NULL,
-                    air_quality_score_max INT NULL,
-                    air_quality_score_avg FLOAT NULL,
+                    -- Light tracking (based on threshold crossings)
+                    total_light_seconds INT NULL,
+                    light_cycles_count INT NULL,
+                    longest_light_period_seconds INT NULL,
+                    shortest_light_period_seconds INT NULL,
 
                     -- Metadata
                     hydro_device_id INT NULL,
@@ -706,12 +692,30 @@ async def init_database():
                 """
             )
 
-            # Add light_detected column to plant_daily_logs if it doesn't exist
+            # Add light tracking columns to plant_daily_logs if they don't exist
             await check_and_add_column(
                 conn,
                 'plant_daily_logs',
-                'light_detected',
-                "light_detected TINYINT(1) NULL AFTER air_quality_score_avg"
+                'total_light_seconds',
+                "total_light_seconds INT NULL AFTER vpd_avg"
+            )
+            await check_and_add_column(
+                conn,
+                'plant_daily_logs',
+                'light_cycles_count',
+                "light_cycles_count INT NULL AFTER total_light_seconds"
+            )
+            await check_and_add_column(
+                conn,
+                'plant_daily_logs',
+                'longest_light_period_seconds',
+                "longest_light_period_seconds INT NULL AFTER light_cycles_count"
+            )
+            await check_and_add_column(
+                conn,
+                'plant_daily_logs',
+                'shortest_light_period_seconds',
+                "shortest_light_period_seconds INT NULL AFTER longest_light_period_seconds"
             )
 
             print("\nChecking 'device_posting_slots' table...")
@@ -758,6 +762,34 @@ async def init_database():
                     FOREIGN KEY (plant_id) REFERENCES plants(id) ON DELETE CASCADE,
                     FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE CASCADE
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Individual dosing events from hydro controllers'
+                """
+            )
+
+            print("\nChecking 'light_events' table...")
+
+            # Create light_events table if it doesn't exist
+            await check_and_create_table(
+                conn,
+                'light_events',
+                """
+                CREATE TABLE light_events (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    plant_id INT NOT NULL,
+                    device_id INT NOT NULL,
+                    event_date DATE NOT NULL COMMENT 'Date for quick daily queries',
+                    start_time DATETIME NOT NULL COMMENT 'When lights came ON',
+                    end_time DATETIME NOT NULL COMMENT 'When lights went OFF',
+                    duration_seconds INT NOT NULL COMMENT 'How long lights were ON',
+                    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    INDEX idx_plant_id (plant_id),
+                    INDEX idx_device_id (device_id),
+                    INDEX idx_event_date (event_date),
+                    INDEX idx_plant_date (plant_id, event_date),
+                    INDEX idx_device_date (device_id, event_date),
+                    UNIQUE KEY uq_plant_start_time (plant_id, start_time),
+                    FOREIGN KEY (plant_id) REFERENCES plants(id) ON DELETE CASCADE,
+                    FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Individual light ON/OFF events from environment sensors'
                 """
             )
 

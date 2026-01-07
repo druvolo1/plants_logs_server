@@ -12,11 +12,10 @@ import json
 
 from app.models import (
     User, Device, Plant, PlantDailyLog, DeviceAssignment, DeviceShare,
-    Firmware, DeviceFirmwareAssignment, DeviceDebugLog, Location, DosingEvent
+    Firmware, DeviceFirmwareAssignment, DeviceDebugLog, Location, DosingEvent, LightEvent
 )
 from app.schemas import (
     HydroReadingCreate,
-    EnvironmentReadingCreate,
     EnvironmentDataCreate,
     PlantDailyLogRead,
     DeviceSettingsUpdate,
@@ -486,184 +485,12 @@ async def environment_heartbeat(
     return DeviceSettingsResponse(
         use_fahrenheit=settings.get("use_fahrenheit", False),
         update_interval=settings.get("update_interval", 30),  # 30s heartbeat
-        log_interval=settings.get("log_interval", 14400),  # 4 hours logging
+        log_interval=0,  # Disabled - using daily reporting instead
         firmware=firmware_info,
         pending_reboot=pending_reboot,
         remote_log=remote_log_info,
         posting_slot=posting_slot,
         light_threshold=light_threshold
-    )
-
-
-@router.post("/api/devices/{device_id}/environment/readings", response_model=DeviceSettingsResponse)
-async def log_environment_readings(
-    device_id: str,
-    reading: EnvironmentReadingCreate,
-    api_key: str = Query(...),
-    session: AsyncSession = Depends(get_db_dependency())
-):
-    """
-    Environment sensor posts readings (4x per day).
-    Writes data to all plants in the same location as this sensor.
-    """
-    print(f"[ENV LOG] Received reading from device {device_id}")
-
-    # Verify device and API key
-    result = await session.execute(
-        select(Device).where(Device.device_id == device_id, Device.api_key == api_key)
-    )
-    device = result.scalars().first()
-
-    if not device:
-        raise HTTPException(404, "Device not found - please re-pair")
-
-    # Verify device is an environmental sensor
-    if device.device_type != 'environmental':
-        raise HTTPException(400, "This endpoint is only for environmental sensors")
-
-    # Update device last_seen and is_online status
-    now = datetime.utcnow()
-    await session.execute(
-        update(Device)
-        .where(Device.device_id == device_id)
-        .values(is_online=True, last_seen=now)
-    )
-
-    # Parse timestamp
-    try:
-        timestamp = date_parser.isoparse(reading.timestamp)
-        log_date = timestamp.date()
-    except Exception as e:
-        raise HTTPException(400, f"Invalid timestamp format: {str(e)}")
-
-    # Find all active plants in the same location as this sensor
-    if device.location_id:
-        # Get all plants in this location with active device assignments
-        plants_result = await session.execute(
-            select(Plant, DeviceAssignment, Device)
-            .join(DeviceAssignment, Plant.id == DeviceAssignment.plant_id)
-            .join(Device, DeviceAssignment.device_id == Device.id)
-            .where(
-                Device.location_id == device.location_id,
-                DeviceAssignment.removed_at.is_(None)  # Only active assignments
-            )
-        )
-        plants = plants_result.all()
-
-        if not plants:
-            print(f"[ENV LOG] No active plants in location {device.location_id}")
-        else:
-            print(f"[ENV LOG] Updating {len(plants)} plant logs in location")
-
-        # Update each plant's daily log
-        for plant, assignment, hydro_device in plants:
-            # Get or create today's log entry
-            log_result = await session.execute(
-                select(PlantDailyLog).where(
-                    PlantDailyLog.plant_id == plant.id,
-                    PlantDailyLog.log_date == log_date
-                )
-            )
-            log = log_result.scalars().first()
-
-            if not log:
-                # Create new daily log entry
-                log = PlantDailyLog(
-                    plant_id=plant.id,
-                    log_date=log_date,
-                    env_device_id=device.id,
-                    last_env_reading=timestamp,
-                    readings_count=0
-                )
-                session.add(log)
-                await session.flush()
-
-            # Update environmental aggregates
-            if reading.co2 is not None:
-                log.co2_min, log.co2_max, log.co2_avg, _ = update_aggregate(
-                    log.co2_min, log.co2_max, log.co2_avg, log.readings_count or 0, float(reading.co2)
-                )
-
-            if reading.temperature is not None:
-                log.air_temp_min, log.air_temp_max, log.air_temp_avg, _ = update_aggregate(
-                    log.air_temp_min, log.air_temp_max, log.air_temp_avg, log.readings_count or 0, reading.temperature
-                )
-
-            if reading.humidity is not None:
-                log.humidity_min, log.humidity_max, log.humidity_avg, _ = update_aggregate(
-                    log.humidity_min, log.humidity_max, log.humidity_avg, log.readings_count or 0, reading.humidity
-                )
-
-            if reading.vpd is not None:
-                log.vpd_min, log.vpd_max, log.vpd_avg, _ = update_aggregate(
-                    log.vpd_min, log.vpd_max, log.vpd_avg, log.readings_count or 0, reading.vpd
-                )
-
-            if reading.lux is not None:
-                log.lux_min, log.lux_max, log.lux_avg, _ = update_aggregate(
-                    log.lux_min, log.lux_max, log.lux_avg, log.readings_count or 0, reading.lux
-                )
-
-            if reading.ppfd is not None:
-                log.ppfd_min, log.ppfd_max, log.ppfd_avg, _ = update_aggregate(
-                    log.ppfd_min, log.ppfd_max, log.ppfd_avg, log.readings_count or 0, reading.ppfd
-                )
-
-            if reading.pressure is not None:
-                log.pressure_min, log.pressure_max, log.pressure_avg, _ = update_aggregate(
-                    log.pressure_min, log.pressure_max, log.pressure_avg, log.readings_count or 0, reading.pressure
-                )
-
-            if reading.altitude is not None:
-                log.altitude_min, log.altitude_max, log.altitude_avg, _ = update_aggregate(
-                    log.altitude_min, log.altitude_max, log.altitude_avg, log.readings_count or 0, reading.altitude
-                )
-
-            if reading.gas_resistance is not None:
-                log.gas_resistance_min, log.gas_resistance_max, log.gas_resistance_avg, _ = update_aggregate(
-                    log.gas_resistance_min, log.gas_resistance_max, log.gas_resistance_avg, log.readings_count or 0, reading.gas_resistance
-                )
-
-            if reading.air_quality_score is not None:
-                log.air_quality_score_min, log.air_quality_score_max, log.air_quality_score_avg, _ = update_aggregate(
-                    log.air_quality_score_min, log.air_quality_score_max, log.air_quality_score_avg, log.readings_count or 0, float(reading.air_quality_score)
-                )
-
-            # Update metadata
-            log.env_device_id = device.id
-            log.last_env_reading = timestamp
-            log.updated_at = now
-
-    await session.commit()
-
-    # Load device settings
-    settings = {}
-    if device.settings:
-        try:
-            settings = json.loads(device.settings)
-        except:
-            settings = {}
-
-    # Check for firmware updates
-    firmware_info = await get_firmware_info_for_device(
-        session, device, reading.firmware_version
-    )
-
-    # Check for pending reboot command
-    pending_reboot = settings.get("pending_reboot", False)
-    if pending_reboot:
-        settings["pending_reboot"] = False
-        device.settings = json.dumps(settings)
-        await session.commit()
-        print(f"[ENV LOG] Device {device_id} will reboot")
-
-    # Return settings to device
-    return DeviceSettingsResponse(
-        use_fahrenheit=settings.get("use_fahrenheit", False),
-        update_interval=settings.get("update_interval", 30),
-        log_interval=settings.get("log_interval", 14400),
-        firmware=firmware_info,
-        pending_reboot=pending_reboot
     )
 
 
@@ -985,39 +812,33 @@ async def receive_daily_report(
             log.vpd_max = report.vpd_max
             log.vpd_avg = report.vpd_avg
 
-            # Pressure
-            log.pressure_min = report.pressure_min
-            log.pressure_max = report.pressure_max
-            log.pressure_avg = report.pressure_avg
+            # Light events (calculate aggregates and store events)
+            if report.light_events:
+                total_seconds = sum(event.duration_seconds for event in report.light_events)
+                durations = [event.duration_seconds for event in report.light_events]
 
-            # Altitude
-            log.altitude_min = report.altitude_min
-            log.altitude_max = report.altitude_max
-            log.altitude_avg = report.altitude_avg
+                log.total_light_seconds = total_seconds
+                log.light_cycles_count = len(report.light_events)
+                log.longest_light_period_seconds = max(durations) if durations else None
+                log.shortest_light_period_seconds = min(durations) if durations else None
 
-            # Gas Resistance
-            log.gas_resistance_min = report.gas_resistance_min
-            log.gas_resistance_max = report.gas_resistance_max
-            log.gas_resistance_avg = report.gas_resistance_avg
+                # Store individual light events
+                for event in report.light_events:
+                    try:
+                        start_time = datetime.fromisoformat(event.start.replace('Z', '+00:00'))
+                        end_time = datetime.fromisoformat(event.end.replace('Z', '+00:00'))
 
-            # Air Quality Score
-            log.air_quality_score_min = report.air_quality_score_min
-            log.air_quality_score_max = report.air_quality_score_max
-            log.air_quality_score_avg = report.air_quality_score_avg
-
-            # Light - Lux
-            log.lux_min = report.lux_min
-            log.lux_max = report.lux_max
-            log.lux_avg = report.lux_avg
-
-            # Light - PPFD
-            log.ppfd_min = report.ppfd_min
-            log.ppfd_max = report.ppfd_max
-            log.ppfd_avg = report.ppfd_avg
-
-            # Light detection
-            if report.light_detected is not None:
-                log.light_detected = 1 if report.light_detected else 0
+                        light_event = LightEvent(
+                            plant_id=plant.id,
+                            device_id=device.id,
+                            event_date=report_date_obj,
+                            start_time=start_time,
+                            end_time=end_time,
+                            duration_seconds=event.duration_seconds
+                        )
+                        session.add(light_event)
+                    except Exception as e:
+                        print(f"[DAILY REPORT] Error storing light event for plant {plant.plant_id}: {str(e)}")
 
             # Update readings count
             log.readings_count = report.readings_count

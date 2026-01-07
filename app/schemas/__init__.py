@@ -48,10 +48,10 @@ from .plant import (
 )
 from .logs import (
     HydroReadingCreate,
-    EnvironmentReadingCreate,
     EnvironmentDataCreate,
     PlantDailyLogRead,
     DosingEventSchema,
+    LightEventSchema,
     EnvironmentDailyReport,
     HydroDailyReport,
 )
@@ -113,10 +113,10 @@ __all__ = [
     "PhaseHistoryRead",
     # Log schemas
     "HydroReadingCreate",
-    "EnvironmentReadingCreate",
     "EnvironmentDataCreate",
     "PlantDailyLogRead",
     "DosingEventSchema",
+    "LightEventSchema",
     "EnvironmentDailyReport",
     "HydroDailyReport",
     # Firmware schemas

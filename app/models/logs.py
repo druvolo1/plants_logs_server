@@ -59,33 +59,11 @@ class PlantDailyLog(Base):
     vpd_max = Column(Float, nullable=True)
     vpd_avg = Column(Float, nullable=True)
 
-    lux_min = Column(Float, nullable=True)
-    lux_max = Column(Float, nullable=True)
-    lux_avg = Column(Float, nullable=True)
-
-    ppfd_min = Column(Float, nullable=True)
-    ppfd_max = Column(Float, nullable=True)
-    ppfd_avg = Column(Float, nullable=True)
-
-    # Additional environmental data
-    pressure_min = Column(Float, nullable=True)
-    pressure_max = Column(Float, nullable=True)
-    pressure_avg = Column(Float, nullable=True)
-
-    altitude_min = Column(Float, nullable=True)
-    altitude_max = Column(Float, nullable=True)
-    altitude_avg = Column(Float, nullable=True)
-
-    gas_resistance_min = Column(Float, nullable=True)
-    gas_resistance_max = Column(Float, nullable=True)
-    gas_resistance_avg = Column(Float, nullable=True)
-
-    air_quality_score_min = Column(Integer, nullable=True)
-    air_quality_score_max = Column(Integer, nullable=True)
-    air_quality_score_avg = Column(Float, nullable=True)
-
-    # Light detection (boolean: true if lux exceeded threshold at any point during the day)
-    light_detected = Column(Integer, nullable=True)  # SQLite uses INTEGER for booleans (0/1)
+    # Light tracking (based on threshold crossings)
+    total_light_seconds = Column(Integer, nullable=True)  # Total seconds lights were ON
+    light_cycles_count = Column(Integer, nullable=True)  # Number of ON/OFF cycles
+    longest_light_period_seconds = Column(Integer, nullable=True)  # Longest continuous ON period
+    shortest_light_period_seconds = Column(Integer, nullable=True)  # Shortest continuous ON period
 
     # Metadata
     hydro_device_id = Column(Integer, ForeignKey("devices.id"), nullable=True)
@@ -174,6 +152,31 @@ class DosingEvent(Base):
     # Indexes for efficient queries
     __table_args__ = (
         UniqueConstraint('plant_id', 'timestamp', 'dosing_type', name='uq_plant_timestamp_type'),
+    )
+
+    # Relationships
+    plant = relationship("Plant")
+    device = relationship("Device")
+
+
+class LightEvent(Base):
+    """
+    Individual light ON/OFF events from environment sensors.
+    Tracks each time lights crossed the threshold (ON or OFF).
+    """
+    __tablename__ = "light_events"
+    id = Column(Integer, primary_key=True, index=True)
+    plant_id = Column(Integer, ForeignKey("plants.id", ondelete="CASCADE"), nullable=False, index=True)
+    device_id = Column(Integer, ForeignKey("devices.id", ondelete="CASCADE"), nullable=False)
+    event_date = Column(Date, nullable=False, index=True)  # Date for quick daily queries
+    start_time = Column(DateTime, nullable=False)  # When lights came ON
+    end_time = Column(DateTime, nullable=False)  # When lights went OFF
+    duration_seconds = Column(Integer, nullable=False)  # How long lights were ON
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    # Indexes for efficient queries
+    __table_args__ = (
+        UniqueConstraint('plant_id', 'start_time', name='uq_plant_start_time'),
     )
 
     # Relationships

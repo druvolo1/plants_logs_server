@@ -44,8 +44,8 @@ class HydroReadingCreate(BaseModel):
         return None
 
 
-class EnvironmentReadingCreate(BaseModel):
-    """Schema for environment sensor posting readings (4x/day)"""
+class EnvironmentDataCreate(BaseModel):
+    """Schema for environment sensor heartbeat (real-time display only, not logged)"""
     # Device info
     firmware_version: Optional[str] = None
     mdns_hostname: Optional[str] = None
@@ -68,12 +68,6 @@ class EnvironmentReadingCreate(BaseModel):
     ppfd: Optional[float] = None
 
     timestamp: str  # ISO format datetime string
-
-
-# Keep this for backward compatibility with heartbeat endpoint
-class EnvironmentDataCreate(EnvironmentReadingCreate):
-    """Alias for backward compatibility"""
-    pass
 
 
 class PlantDailyLogRead(BaseModel):
@@ -139,6 +133,13 @@ class DosingEventSchema(BaseModel):
     amount_ml: float  # Amount dosed in milliliters
 
 
+class LightEventSchema(BaseModel):
+    """Individual light ON/OFF event within a daily report"""
+    start: str  # ISO format datetime string when lights came ON (e.g., "2026-01-06T06:00:15Z")
+    end: str  # ISO format datetime string when lights went OFF (e.g., "2026-01-06T18:30:45Z")
+    duration_seconds: int  # How long lights were ON
+
+
 class EnvironmentDailyReport(BaseModel):
     """
     Daily aggregated report from environment sensor.
@@ -167,38 +168,8 @@ class EnvironmentDailyReport(BaseModel):
     vpd_max: Optional[float] = None
     vpd_avg: Optional[float] = None
 
-    # Pressure (hPa)
-    pressure_min: Optional[float] = None
-    pressure_max: Optional[float] = None
-    pressure_avg: Optional[float] = None
-
-    # Altitude (m)
-    altitude_min: Optional[float] = None
-    altitude_max: Optional[float] = None
-    altitude_avg: Optional[float] = None
-
-    # Gas Resistance (Ohms)
-    gas_resistance_min: Optional[float] = None
-    gas_resistance_max: Optional[float] = None
-    gas_resistance_avg: Optional[float] = None
-
-    # Air Quality Score (0-100)
-    air_quality_score_min: Optional[int] = None
-    air_quality_score_max: Optional[int] = None
-    air_quality_score_avg: Optional[float] = None
-
-    # Light - Lux
-    lux_min: Optional[float] = None
-    lux_max: Optional[float] = None
-    lux_avg: Optional[float] = None
-
-    # Light - PPFD (µmol/m²/s)
-    ppfd_min: Optional[float] = None
-    ppfd_max: Optional[float] = None
-    ppfd_avg: Optional[float] = None
-
-    # Light detection (true if lux exceeded threshold at any point)
-    light_detected: Optional[bool] = None
+    # Light events (threshold-based ON/OFF tracking)
+    light_events: List[LightEventSchema] = []
 
 
 class HydroDailyReport(BaseModel):
