@@ -3912,7 +3912,10 @@
                     body: JSON.stringify({ device_id: deviceId })
                 });
 
-                if (!response.ok) throw new Error('Failed to assign device');
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.detail || 'Failed to assign device');
+                }
 
                 statusDiv.textContent = 'Device assigned successfully!';
                 statusDiv.style.background = 'rgba(16, 185, 129, 0.1)';
