@@ -829,15 +829,29 @@ async def receive_daily_report(
             log.vpd_max = report.vpd_max
             log.vpd_avg = report.vpd_avg
 
-            # Light events (calculate aggregates and store events)
+            # Light events (accumulate aggregates and store events - supports chunked reports)
             if report.light_events:
                 total_seconds = sum(event.duration_seconds for event in report.light_events)
                 durations = [event.duration_seconds for event in report.light_events]
 
-                log.total_light_seconds = total_seconds
-                log.light_cycles_count = len(report.light_events)
-                log.longest_light_period_seconds = max(durations) if durations else None
-                log.shortest_light_period_seconds = min(durations) if durations else None
+                # Accumulate totals (handle chunked reports by adding to existing values)
+                log.total_light_seconds = (log.total_light_seconds or 0) + total_seconds
+                log.light_cycles_count = (log.light_cycles_count or 0) + len(report.light_events)
+
+                # Update min/max durations (keep best values across all chunks)
+                if durations:
+                    chunk_max = max(durations)
+                    chunk_min = min(durations)
+
+                    if log.longest_light_period_seconds is None:
+                        log.longest_light_period_seconds = chunk_max
+                    else:
+                        log.longest_light_period_seconds = max(log.longest_light_period_seconds, chunk_max)
+
+                    if log.shortest_light_period_seconds is None:
+                        log.shortest_light_period_seconds = chunk_min
+                    else:
+                        log.shortest_light_period_seconds = min(log.shortest_light_period_seconds, chunk_min)
 
                 # Store individual light events
                 for event in report.light_events:
