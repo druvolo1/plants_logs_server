@@ -3645,10 +3645,14 @@
             }
 
             // Update all sensor values with proper formatting and units
-            // Temperature is stored as-is (already converted by device if Fahrenheit)
+            // Temperature is always stored as Celsius, convert to Fahrenheit if needed
             if (data.temperature !== null && data.temperature !== undefined) {
+                let temp = data.temperature;
+                if (data.use_fahrenheit) {
+                    temp = (temp * 9/5) + 32;  // Convert C to F
+                }
                 let unit = data.use_fahrenheit ? '°F' : '°C';
-                document.getElementById(`env-temp-${device_id}`).textContent = `${data.temperature.toFixed(1)}${unit}`;
+                document.getElementById(`env-temp-${device_id}`).textContent = `${temp.toFixed(1)}${unit}`;
             }
             if (data.humidity !== null && data.humidity !== undefined) {
                 document.getElementById(`env-humidity-${device_id}`).textContent = `${data.humidity.toFixed(1)}%`;
@@ -3782,7 +3786,11 @@
             // Water temp - only show if enabled AND has valid reading (> 10 to filter out disabled sensors returning 0)
             if (waterTempHeaderEl && waterTempEnabled &&
                 data.water_temp !== null && data.water_temp !== undefined && data.water_temp > 10) {
-                waterTempHeaderEl.textContent = `${Math.round(data.water_temp)}${tempUnit}`;
+                let waterTemp = data.water_temp;
+                if (useFahrenheit) {
+                    waterTemp = (waterTemp * 9/5) + 32;  // Convert C to F
+                }
+                waterTempHeaderEl.textContent = `${Math.round(waterTemp)}${tempUnit}`;
                 // Check if water temp is out of range (only if we have device settings)
                 if (settings.water_temp_min !== undefined && settings.water_temp_max !== undefined) {
                     if (data.water_temp < settings.water_temp_min || data.water_temp > settings.water_temp_max) {
@@ -3800,7 +3808,11 @@
             // Air temp - only show if enabled AND has valid reading (> 10 to filter out disabled sensors returning 0)
             if (airTempHeaderEl && airTempEnabled &&
                 data.air_temp !== null && data.air_temp !== undefined && data.air_temp > 10) {
-                airTempHeaderEl.textContent = `${Math.round(data.air_temp)}${tempUnit}`;
+                let airTemp = data.air_temp;
+                if (useFahrenheit) {
+                    airTemp = (airTemp * 9/5) + 32;  // Convert C to F
+                }
+                airTempHeaderEl.textContent = `${Math.round(airTemp)}${tempUnit}`;
                 // Check if air temp is out of range (only if we have device settings)
                 if (settings.air_temp_min !== undefined && settings.air_temp_max !== undefined) {
                     if (data.air_temp < settings.air_temp_min || data.air_temp > settings.air_temp_max) {

@@ -416,11 +416,28 @@ async def environment_heartbeat(
         except:
             settings = {}
 
+    # Sync device-local settings to database (device is source of truth)
+    settings_updated = False
+    if data.use_fahrenheit is not None and settings.get("use_fahrenheit") != data.use_fahrenheit:
+        settings["use_fahrenheit"] = data.use_fahrenheit
+        settings_updated = True
+        print(f"[ENV HEARTBEAT] Updated use_fahrenheit to {data.use_fahrenheit} for {device_id}")
+
+    if data.light_threshold is not None and settings.get("light_threshold") != data.light_threshold:
+        settings["light_threshold"] = data.light_threshold
+        settings_updated = True
+        print(f"[ENV HEARTBEAT] Updated light_threshold to {data.light_threshold} for {device_id}")
+
+    if settings_updated:
+        device.settings = json.dumps(settings)
+        await session.commit()
+
     # Cache the real-time sensor data for dashboard display
+    # Note: temperature is in Celsius, use_fahrenheit determines display conversion
     environment_cache[device_id] = {
         "firmware_version": data.firmware_version,
         "co2": data.co2,
-        "temperature": data.temperature,
+        "temperature": data.temperature,  # Always Celsius
         "humidity": data.humidity,
         "vpd": data.vpd,
         "pressure": data.pressure,
@@ -431,7 +448,7 @@ async def environment_heartbeat(
         "ppfd": data.ppfd,
         "timestamp": data.timestamp,
         "cached_at": now.isoformat(),
-        "use_fahrenheit": settings.get("use_fahrenheit", False)
+        "use_fahrenheit": data.use_fahrenheit if data.use_fahrenheit is not None else settings.get("use_fahrenheit", False)
     }
 
     # Check for firmware updates

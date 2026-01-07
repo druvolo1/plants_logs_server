@@ -67,6 +67,10 @@ class EnvironmentDataCreate(BaseModel):
     lux: Optional[float] = None
     ppfd: Optional[float] = None
 
+    # Device settings (for server sync - device is source of truth)
+    use_fahrenheit: Optional[bool] = None
+    light_threshold: Optional[float] = None
+
     timestamp: str  # ISO format datetime string
 
 
@@ -108,13 +112,12 @@ class PlantDailyLogRead(BaseModel):
     vpd_min: Optional[float]
     vpd_max: Optional[float]
     vpd_avg: Optional[float]
-    lux_min: Optional[float]
-    lux_max: Optional[float]
-    lux_avg: Optional[float]
-    ppfd_min: Optional[float]
-    ppfd_max: Optional[float]
-    ppfd_avg: Optional[float]
-    light_detected: Optional[bool]
+
+    # Light tracking (event-based, not min/max/avg)
+    total_light_seconds: Optional[int]
+    light_cycles_count: Optional[int]
+    longest_light_period_seconds: Optional[int]
+    shortest_light_period_seconds: Optional[int]
 
     # Metadata
     hydro_device_id: Optional[int]
