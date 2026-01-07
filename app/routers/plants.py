@@ -393,9 +393,11 @@ async def get_plant_assignments(
         .order_by(DeviceAssignment.assigned_at.desc())
     )
 
-    assignments_list = []
+    active_assignments = []
+    history_assignments = []
+
     for assignment, device in assignments_result.all():
-        assignments_list.append(PlantAssignmentRead(
+        assignment_data = PlantAssignmentRead(
             id=assignment.id,
             plant_id=plant.plant_id,
             device_id=device.device_id,
@@ -403,9 +405,17 @@ async def get_plant_assignments(
             assigned_at=assignment.assigned_at,
             removed_at=assignment.removed_at,
             is_active=assignment.removed_at is None
-        ))
+        )
 
-    return assignments_list
+        if assignment.removed_at is None:
+            active_assignments.append(assignment_data)
+        else:
+            history_assignments.append(assignment_data)
+
+    return {
+        "active": active_assignments,
+        "history": history_assignments
+    }
 
 
 class DeviceAssignRequest(BaseModel):
