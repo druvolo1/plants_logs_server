@@ -61,14 +61,14 @@ async def get_all_assigned_slots(session: AsyncSession) -> List[int]:
 async def count_devices_needing_slots(session: AsyncSession) -> int:
     """
     Count devices that should have posting slots.
-    Only counts hydro_controller and environmental device types.
+    Only counts hydro_controller, hydroponic_controller, and environmental device types.
 
     Returns:
         Number of devices that need slots
     """
     result = await session.execute(
         select(func.count(Device.id))
-        .where(Device.device_type.in_(['hydro_controller', 'environmental']))
+        .where(Device.device_type.in_(['hydro_controller', 'hydroponic_controller', 'environmental']))
     )
     return result.scalar() or 0
 
@@ -130,7 +130,7 @@ async def assign_posting_slot(device_id: int, session: AsyncSession) -> int:
     """
     Assign a posting time slot to a device.
 
-    Only assigns slots to hydro_controller and environmental device types.
+    Only assigns slots to hydro_controller, hydroponic_controller, and environmental device types.
     Other device types (valve_controller, etc.) don't post daily reports.
 
     Args:
@@ -152,7 +152,7 @@ async def assign_posting_slot(device_id: int, session: AsyncSession) -> int:
     if not device:
         raise ValueError(f"Device {device_id} not found")
 
-    if device.device_type not in ['hydro_controller', 'environmental']:
+    if device.device_type not in ['hydro_controller', 'hydroponic_controller', 'environmental']:
         raise ValueError(f"Device type '{device.device_type}' does not need a posting slot")
 
     # Check if already has a slot
@@ -201,7 +201,7 @@ async def rebalance_all_slots(session: AsyncSession) -> Dict[str, any]:
     # Get all devices that need posting slots
     devices_result = await session.execute(
         select(Device.id, Device.device_type)
-        .where(Device.device_type.in_(['hydro_controller', 'environmental']))
+        .where(Device.device_type.in_(['hydro_controller', 'hydroponic_controller', 'environmental']))
         .order_by(Device.id)
     )
     devices = devices_result.all()

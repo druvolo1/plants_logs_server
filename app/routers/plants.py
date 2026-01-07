@@ -73,8 +73,8 @@ async def create_plant(
     if not device:
         raise HTTPException(404, "Device not found")
 
-    # Only feeding_system and hydro_controller devices can have plants assigned
-    if device.device_type not in ['feeding_system', 'hydro_controller']:
+    # Only feeding_system, hydro_controller, and hydroponic_controller devices can have plants assigned
+    if device.device_type not in ['feeding_system', 'hydro_controller', 'hydroponic_controller']:
         device_type_name = {
             'environmental': 'environmental sensor',
             'valve_controller': 'valve controller',
@@ -442,8 +442,8 @@ async def assign_device_to_plant(
     if not device:
         raise HTTPException(404, "Device not found")
 
-    # Only feeding_system and hydro_controller devices can have plants assigned
-    if device.device_type not in ['feeding_system', 'hydro_controller']:
+    # Only feeding_system, hydro_controller, and hydroponic_controller devices can have plants assigned
+    if device.device_type not in ['feeding_system', 'hydro_controller', 'hydroponic_controller']:
         device_type_name = {
             'environmental': 'environmental sensor',
             'valve_controller': 'valve controller',
