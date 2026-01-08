@@ -345,6 +345,22 @@ async def device_websocket(
             except Exception as e:
                 print(f"Failed to send user_connected to device {device_id}: {e}")
 
+        # Send posting slot assignment to devices that need daily reporting
+        if device.device_type in ['hydro_controller', 'hydroponic_controller', 'environmental']:
+            try:
+                from app.services.posting_slots import get_device_posting_slot, send_posting_slot_to_device
+
+                # Get assigned posting slot from database
+                posting_slot = await get_device_posting_slot(device.id, session)
+
+                if posting_slot is not None:
+                    # Send slot assignment to device
+                    await send_posting_slot_to_device(device_id, posting_slot)
+                else:
+                    print(f"[POSTING_SLOTS] Device {device_id} ({device.device_type}) has no posting slot assigned yet")
+            except Exception as e:
+                print(f"[POSTING_SLOTS] Error sending posting slot to device {device_id}: {e}")
+
     except Exception as setup_error:
         print(f"CRITICAL ERROR during device setup for {device_id}: {setup_error}")
         import traceback

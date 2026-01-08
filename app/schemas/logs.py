@@ -148,6 +148,7 @@ class EnvironmentDailyReport(BaseModel):
     Daily aggregated report from environment sensor.
     Device calculates min/max/avg throughout the day and posts once daily.
     """
+    report_type: str = "environment"  # Discriminator field
     report_date: str  # Date in YYYY-MM-DD format
     readings_count: int  # Number of readings aggregated (e.g., 2880 for 30s intervals over 24h)
 
@@ -180,6 +181,7 @@ class HydroDailyReport(BaseModel):
     Daily aggregated report from hydro controller.
     Device calculates min/max/avg throughout the day and posts once daily.
     """
+    report_type: str = "hydro"  # Discriminator field
     report_date: str  # Date in YYYY-MM-DD format
     readings_count: int  # Number of readings aggregated
 

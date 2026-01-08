@@ -273,3 +273,31 @@ async def remove_posting_slot(device_id: int, session: AsyncSession) -> bool:
         print(f"[POSTING_SLOTS] Removed posting slot for device {device_id}")
         return True
     return False
+
+
+async def send_posting_slot_to_device(device_id: str, slot: int) -> bool:
+    """
+    Send posting slot assignment to device via WebSocket.
+
+    Args:
+        device_id: Device ID string (e.g., "ABC123")
+        slot: Assigned minute offset (0-299 for 5-hour window)
+
+    Returns:
+        True if message was sent successfully, False otherwise
+    """
+    from app.routers.websocket import send_to_device
+
+    message = {
+        "type": "posting_slot",
+        "slot": slot
+    }
+
+    success = await send_to_device(device_id, message)
+
+    if success:
+        print(f"[POSTING_SLOTS] Sent slot {slot} to device {device_id} via WebSocket")
+    else:
+        print(f"[POSTING_SLOTS] Failed to send slot to device {device_id} (not connected)")
+
+    return success

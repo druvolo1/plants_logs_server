@@ -340,6 +340,10 @@ async def log_hydro_readings(
         try:
             posting_slot = await assign_posting_slot(device.id, session)
             print(f"[HYDRO LOG] Assigned posting slot {posting_slot} to device {device_id}")
+
+            # Send slot assignment to device via WebSocket if connected
+            from app.services.posting_slots import send_posting_slot_to_device
+            await send_posting_slot_to_device(device_id, posting_slot)
         except ValueError as e:
             # Device type doesn't need a posting slot
             print(f"[HYDRO LOG] Could not assign posting slot: {e}")
@@ -491,6 +495,10 @@ async def environment_heartbeat(
         try:
             posting_slot = await assign_posting_slot(device.id, session)
             print(f"[ENV HEARTBEAT] Assigned posting slot {posting_slot} to device {device_id}")
+
+            # Send slot assignment to device via WebSocket if connected
+            from app.services.posting_slots import send_posting_slot_to_device
+            await send_posting_slot_to_device(device_id, posting_slot)
         except ValueError as e:
             # Device type doesn't need a posting slot (shouldn't happen for environmental)
             print(f"[ENV HEARTBEAT] Could not assign posting slot: {e}")
