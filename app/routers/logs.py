@@ -883,17 +883,22 @@ async def receive_daily_report(
     plants = []
 
     if device.device_type in ['hydro_controller', 'feeding_system', 'hydroponic_controller']:
-        # Hydro controller: Get plants assigned to this device
+        # Hydro controller: Get plants assigned to this device on the report date
         assignments_result = await session.execute(
             select(Plant)
             .join(DeviceAssignment, DeviceAssignment.plant_id == Plant.id)
             .where(
                 DeviceAssignment.device_id == device.id,
-                DeviceAssignment.removed_at.is_(None)  # Only active assignments
+                DeviceAssignment.removed_at.is_(None),  # Only active assignments
+                DeviceAssignment.start_date <= report_date_obj,  # Assignment started on or before report date
+                or_(
+                    DeviceAssignment.end_date.is_(None),  # Still active
+                    DeviceAssignment.end_date >= report_date_obj  # Or ended on or after report date
+                )
             )
         )
         plants = assignments_result.scalars().all()
-        print(f"[DAILY REPORT] Hydro controller - found {len(plants)} assigned plants")
+        print(f"[DAILY REPORT] Hydro controller - found {len(plants)} plants assigned on {report.report_date}")
 
     elif device.device_type == 'environmental':
         # Environment sensor: Get all plants assigned to devices in the same location
@@ -905,7 +910,7 @@ async def receive_daily_report(
                 "plants_updated": 0
             }
 
-        # Get all plants assigned to devices in the same location as the environment sensor
+        # Get all plants assigned to devices in the same location as the environment sensor on the report date
         plants_result = await session.execute(
             select(Plant)
             .join(DeviceAssignment, DeviceAssignment.plant_id == Plant.id)
@@ -913,11 +918,16 @@ async def receive_daily_report(
             .where(
                 Device.location_id == device.location_id,
                 DeviceAssignment.removed_at.is_(None),  # Only active assignments
+                DeviceAssignment.start_date <= report_date_obj,  # Assignment started on or before report date
+                or_(
+                    DeviceAssignment.end_date.is_(None),  # Still active
+                    DeviceAssignment.end_date >= report_date_obj  # Or ended on or after report date
+                ),
                 Plant.end_date.is_(None)  # Only active plants
             )
         )
         plants = plants_result.scalars().all()
-        print(f"[DAILY REPORT] Environment sensor - found {len(plants)} plants in location {device.location_id}")
+        print(f"[DAILY REPORT] Environment sensor - found {len(plants)} plants in location {device.location_id} on {report.report_date}")
 
     else:
         raise HTTPException(400, f"Device type '{device.device_type}' does not support daily reports")
