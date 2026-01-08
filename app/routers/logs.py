@@ -2,12 +2,13 @@
 """
 Plant-centric logging endpoints for hydro controllers and environment sensors.
 """
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Annotated, Union
 from datetime import datetime, date
 from fastapi import APIRouter, Depends, HTTPException, Query, Header, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, or_, and_
 from dateutil import parser as date_parser
+from pydantic import Field
 import json
 
 from app.models import (
@@ -779,7 +780,7 @@ async def update_device_settings(
 @router.post("/api/devices/{device_id}/daily-report")
 async def receive_daily_report(
     device_id: str,
-    report: EnvironmentDailyReport | HydroDailyReport,
+    report: Annotated[Union[EnvironmentDailyReport, HydroDailyReport], Field(discriminator='report_type')],
     api_key: str = Query(...),
     session: AsyncSession = Depends(get_db_dependency())
 ):
