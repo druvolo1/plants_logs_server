@@ -1766,6 +1766,7 @@
         }
 
         async function renderDailyAggregateCharts(logs, phaseHistory, dosingEvents = []) {
+            console.log('[DEBUG] renderDailyAggregateCharts START - dosingEvents:', dosingEvents ? dosingEvents.length : 'undefined', dosingEvents);
             // Destroy old charts
             sensorCharts.forEach(chart => {
                 if (chart) chart.destroy();
@@ -1991,10 +1992,12 @@
         }
 
         async function renderCharts(logs, phaseHistory, dosingEvents = []) {
+            console.log('[DEBUG] renderCharts called with dosingEvents:', dosingEvents ? dosingEvents.length : 'undefined');
             // Check if logs are daily aggregates (new system) or event-based (old system)
             const isDailyAggregates = logs.length > 0 && logs[0].co2_min !== undefined;
 
             if (isDailyAggregates) {
+                console.log('[DEBUG] Calling renderDailyAggregateCharts with', dosingEvents ? dosingEvents.length : 0, 'dosing events');
                 await renderDailyAggregateCharts(logs, phaseHistory, dosingEvents);
                 return;
             }
@@ -2116,8 +2119,16 @@
             });
 
             // Dosing Chart - Daily aggregated bar chart
-            console.log('[DEBUG] Rendering dosing chart with events:', dosingEvents.length);
-            const dosingChartContainer = document.getElementById('dosingChart').parentElement;
+            console.log('[DEBUG] Rendering dosing chart with events:', dosingEvents ? dosingEvents.length : 'undefined');
+            const dosingChartElement = document.getElementById('dosingChart');
+            console.log('[DEBUG] dosingChart element found:', !!dosingChartElement);
+            const dosingChartContainer = dosingChartElement ? dosingChartElement.parentElement : null;
+            console.log('[DEBUG] dosingChart container found:', !!dosingChartContainer);
+
+            if (!dosingChartContainer) {
+                console.error('[DEBUG] ERROR: dosingChart container not found!');
+                return;
+            }
 
             // Only show dosing chart if there's dosing data
             if (!dosingEvents || dosingEvents.length === 0) {
