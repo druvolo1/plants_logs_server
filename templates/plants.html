@@ -1994,9 +1994,12 @@
                             }
                         }
                     }
-                });
+                    });
 
-                sensorCharts.push(chart);
+                    sensorCharts.push(chart);
+                }
+            } catch (error) {
+                console.error('[DEBUG] Error creating light events chart:', error);
             }
 
             // Show message if no charts were created
@@ -2127,10 +2130,6 @@
                         }
                     }
                 });
-                }
-            } catch (error) {
-                console.error('[DEBUG] Error creating light events chart:', error);
-            }
 
             console.log('[DEBUG] Finished metrics loop, about to render dosing chart');
 
