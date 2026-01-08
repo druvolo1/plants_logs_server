@@ -1825,19 +1825,22 @@
             console.log('[DEBUG] About to iterate over', metrics.length, 'metrics');
 
             metrics.forEach((metric, index) => {
-                // Check if this metric has any data
-                const hasData = logs.some(log => log[metric.avgKey] !== null && log[metric.avgKey] !== undefined);
-                if (!hasData) return;
+                try {
+                    console.log('[DEBUG] Processing metric:', metric.name);
+                    // Check if this metric has any data
+                    const hasData = logs.some(log => log[metric.avgKey] !== null && log[metric.avgKey] !== undefined);
+                    console.log('[DEBUG] Metric', metric.name, 'hasData:', hasData);
+                    if (!hasData) return;
 
-                // Create canvas element for this metric
-                const canvas = document.createElement('canvas');
-                canvas.id = `metricChart_${index}`;
-                canvas.style.marginBottom = '2rem';
-                chartsContainer.appendChild(canvas);
+                    // Create canvas element for this metric
+                    const canvas = document.createElement('canvas');
+                    canvas.id = `metricChart_${index}`;
+                    canvas.style.marginBottom = '2rem';
+                    chartsContainer.appendChild(canvas);
 
-                const ctx = canvas.getContext('2d');
+                    const ctx = canvas.getContext('2d');
 
-                const chart = new Chart(ctx, {
+                    const chart = new Chart(ctx, {
                     type: 'line',
                     data: {
                         labels: logs.map(l => new Date(l.log_date).toLocaleDateString()),
@@ -2118,6 +2121,9 @@
 
                 // Store chart reference
                 sensorCharts.push(chart);
+                } catch (error) {
+                    console.error('[DEBUG] Error creating chart for metric:', metric.name, error);
+                }
             });
 
             console.log('[DEBUG] Finished metrics loop, about to render dosing chart');
