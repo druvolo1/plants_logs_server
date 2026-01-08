@@ -1988,6 +1988,131 @@
                 console.error('Error creating light events chart:', error);
             }
 
+            // Dosing Chart - Daily aggregated bar chart
+            const dosingChartElement = document.getElementById('dosingChart');
+            const dosingChartContainer = dosingChartElement ? dosingChartElement.parentElement : null;
+
+            if (dosingChartContainer) {
+                // Only show dosing chart if there's dosing data
+                if (!dosingEvents || dosingEvents.length === 0) {
+                    dosingChartContainer.style.display = 'none';
+                    if (dosingChart) {
+                        dosingChart.destroy();
+                        dosingChart = null;
+                    }
+                } else {
+                    dosingChartContainer.style.display = 'block';
+                    const dosingCtx = document.getElementById('dosingChart').getContext('2d');
+
+                    if (dosingChart) dosingChart.destroy();
+
+                    // Aggregate dosing events by day with timestamps and amounts
+                    const dosingByDay = {};
+                    dosingEvents.forEach(event => {
+                        const dateKey = formatDate(event.timestamp);
+                        if (!dosingByDay[dateKey]) {
+                            dosingByDay[dateKey] = { up: 0, down: 0, upDoses: [], downDoses: [] };
+                        }
+                        if (event.dosing_type === 'ph_up') {
+                            dosingByDay[dateKey].up++;
+                            dosingByDay[dateKey].upDoses.push({ time: event.timestamp, amount: event.amount_ml });
+                        } else if (event.dosing_type === 'ph_down') {
+                            dosingByDay[dateKey].down++;
+                            dosingByDay[dateKey].downDoses.push({ time: event.timestamp, amount: event.amount_ml });
+                        }
+                    });
+
+                    // Sort dates chronologically
+                    const sortedDates = Object.keys(dosingByDay).sort((a, b) => new Date(a) - new Date(b));
+                    const upCounts = sortedDates.map(date => dosingByDay[date].up);
+                    const downCounts = sortedDates.map(date => dosingByDay[date].down);
+
+                    dosingChart = new Chart(dosingCtx, {
+                        type: 'bar',
+                        data: {
+                            labels: sortedDates,
+                            datasets: [
+                                {
+                                    label: 'pH Up Doses',
+                                    data: upCounts,
+                                    backgroundColor: 'rgba(59, 130, 246, 0.7)',
+                                    borderColor: '#3b82f6',
+                                    borderWidth: 1,
+                                    barPercentage: 0.9,
+                                    categoryPercentage: 0.3
+                                },
+                                {
+                                    label: 'pH Down Doses',
+                                    data: downCounts,
+                                    backgroundColor: 'rgba(239, 68, 68, 0.7)',
+                                    borderColor: '#ef4444',
+                                    borderWidth: 1,
+                                    barPercentage: 0.9,
+                                    categoryPercentage: 0.3
+                                }
+                            ]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: true,
+                            plugins: {
+                                legend: {
+                                    labels: { color: '#e2e8f0' }
+                                },
+                                title: {
+                                    display: true,
+                                    text: 'Daily Dosing Events',
+                                    color: '#e2e8f0',
+                                    font: { size: 16 }
+                                },
+                                tooltip: {
+                                    callbacks: {
+                                        afterLabel: function(context) {
+                                            const date = sortedDates[context.dataIndex];
+                                            const isUpDose = context.datasetIndex === 0;
+                                            const doses = isUpDose ? dosingByDay[date].upDoses : dosingByDay[date].downDoses;
+
+                                            if (doses.length === 0) return '';
+
+                                            const doseStrings = doses.map(function(dose) {
+                                                const d = new Date(dose.time);
+                                                const timeStr = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+                                                return timeStr + ' - ' + dose.amount.toFixed(2) + ' ml';
+                                            });
+
+                                            return '\nDoses:\n' + doseStrings.join('\n');
+                                        }
+                                    }
+                                }
+                            },
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    ticks: {
+                                        color: '#e2e8f0',
+                                        stepSize: 1
+                                    },
+                                    grid: { color: '#334155' },
+                                    title: {
+                                        display: true,
+                                        text: 'Number of Doses',
+                                        color: '#e2e8f0'
+                                    }
+                                },
+                                x: {
+                                    ticks: {
+                                        color: '#e2e8f0',
+                                        maxRotation: 45,
+                                        minRotation: 45
+                                    },
+                                    grid: { color: '#334155' }
+                                }
+                            }
+                        }
+                    });
+                }
+            }
+
             // Show message if no charts were created
             if (sensorCharts.length === 0) {
                 chartsContainer.innerHTML = '<div style="text-align: center; color: #94a3b8; padding: 2rem;">No environmental data available for this plant yet.</div>';
