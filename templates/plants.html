@@ -1781,8 +1781,11 @@
 
             // Define metrics to chart (only if data exists)
             const metrics = [
+                { name: 'pH', minKey: 'ph_min', maxKey: 'ph_max', avgKey: 'ph_avg', color: '#ef4444' },
+                { name: 'EC (mS/cm)', minKey: 'ec_min', maxKey: 'ec_max', avgKey: 'ec_avg', color: '#06b6d4' },
+                { name: 'Water Temperature (°F)', minKey: 'water_temp_min', maxKey: 'water_temp_max', avgKey: 'water_temp_avg', color: '#0ea5e9' },
                 { name: 'CO2 (ppm)', minKey: 'co2_min', maxKey: 'co2_max', avgKey: 'co2_avg', color: '#10b981' },
-                { name: 'Temperature (°F)', minKey: 'air_temp_min', maxKey: 'air_temp_max', avgKey: 'air_temp_avg', color: '#f59e0b' },
+                { name: 'Air Temperature (°F)', minKey: 'air_temp_min', maxKey: 'air_temp_max', avgKey: 'air_temp_avg', color: '#f59e0b' },
                 { name: 'Humidity (%)', minKey: 'humidity_min', maxKey: 'humidity_max', avgKey: 'humidity_avg', color: '#3b82f6' },
                 { name: 'VPD (kPa)', minKey: 'vpd_min', maxKey: 'vpd_max', avgKey: 'vpd_avg', color: '#8b5cf6' }
             ];
