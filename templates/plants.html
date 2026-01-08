@@ -1931,16 +1931,16 @@
                 const hasLightData = logs.some(log => log.total_light_seconds !== null && log.total_light_seconds !== undefined && log.total_light_seconds > 0);
                 console.log('[DEBUG] hasLightData:', hasLightData);
                 if (hasLightData) {
-                const canvas = document.createElement('canvas');
-                canvas.id = 'lightEventsChart';
-                canvas.style.marginBottom = '2rem';
-                chartsContainer.appendChild(canvas);
+                    const canvas = document.createElement('canvas');
+                    canvas.id = 'lightEventsChart';
+                    canvas.style.marginBottom = '2rem';
+                    chartsContainer.appendChild(canvas);
 
-                const ctx = canvas.getContext('2d');
+                    const ctx = canvas.getContext('2d');
 
-                const chart = new Chart(ctx, {
-                    type: 'bar',
-                    data: {
+                    const chart = new Chart(ctx, {
+                        type: 'bar',
+                        data: {
                         labels: logs.map(l => new Date(l.log_date).toLocaleDateString()),
                         datasets: [
                             {
