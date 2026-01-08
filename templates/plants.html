@@ -1652,9 +1652,21 @@
                     dosingEventsUrl += `&end_date=${endDate.toISOString()}`;
                 }
 
-                const dosingResponse = await fetch(dosingEventsUrl);
-                const dosingData = await dosingResponse.json();
-                const dosingEvents = dosingData.dosing_events || [];
+                let dosingEvents = [];
+                try {
+                    console.log('[DEBUG] Fetching dosing events from:', dosingEventsUrl);
+                    const dosingResponse = await fetch(dosingEventsUrl);
+                    console.log('[DEBUG] Dosing response status:', dosingResponse.status, dosingResponse.ok);
+                    if (dosingResponse.ok) {
+                        const dosingData = await dosingResponse.json();
+                        dosingEvents = dosingData.dosing_events || [];
+                        console.log('[DEBUG] Fetched dosing events:', dosingEvents.length, dosingEvents);
+                    } else {
+                        console.error('[DEBUG] Failed to fetch dosing events:', dosingResponse.status);
+                    }
+                } catch (error) {
+                    console.error('[DEBUG] Error fetching dosing events:', error);
+                }
 
                 // Store logs, dosing events, and phase history globally
                 currentLogs = logs;
@@ -2104,16 +2116,19 @@
             });
 
             // Dosing Chart - Daily aggregated bar chart
+            console.log('[DEBUG] Rendering dosing chart with events:', dosingEvents.length);
             const dosingChartContainer = document.getElementById('dosingChart').parentElement;
 
             // Only show dosing chart if there's dosing data
-            if (dosingEvents.length === 0) {
+            if (!dosingEvents || dosingEvents.length === 0) {
+                console.log('[DEBUG] No dosing events, hiding chart');
                 dosingChartContainer.style.display = 'none';
                 if (dosingChart) {
                     dosingChart.destroy();
                     dosingChart = null;
                 }
             } else {
+                console.log('[DEBUG] Showing dosing chart with', dosingEvents.length, 'events');
                 dosingChartContainer.style.display = 'block';
                 const dosingCtx = document.getElementById('dosingChart').getContext('2d');
 
