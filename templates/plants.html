@@ -2210,58 +2210,58 @@
                         responsive: true,
                         maintainAspectRatio: true,
                         plugins: {
-                        legend: {
-                            labels: { color: '#e2e8f0' }
-                        },
-                        title: {
-                            display: true,
-                            text: 'Daily Dosing Events',
-                            color: '#e2e8f0',
-                            font: { size: 16 }
-                        },
-                        tooltip: {
-                            callbacks: {
-                                afterLabel: function(context) {
-                                    const date = sortedDates[context.dataIndex];
-                                    const isUpDose = context.datasetIndex === 0;
-                                    const doses = isUpDose ? dosingByDay[date].upDoses : dosingByDay[date].downDoses;
-
-                                    if (doses.length === 0) return '';
-
-                                    const doseStrings = doses.map(dose => {
-                                        const d = new Date(dose.time);
-                                        const timeStr = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-                                        return `${timeStr} - ${dose.amount.toFixed(2)} ml`;
-                                    });
-
-                                    return '\nDoses:\n' + doseStrings.join('\n');
-                                }
-                            }
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: {
-                                color: '#e2e8f0',
-                                stepSize: 1
+                            legend: {
+                                labels: { color: '#e2e8f0' }
                             },
-                            grid: { color: '#334155' },
                             title: {
                                 display: true,
-                                text: 'Number of Doses',
-                                color: '#e2e8f0'
+                                text: 'Daily Dosing Events',
+                                color: '#e2e8f0',
+                                font: { size: 16 }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    afterLabel: function(context) {
+                                        const date = sortedDates[context.dataIndex];
+                                        const isUpDose = context.datasetIndex === 0;
+                                        const doses = isUpDose ? dosingByDay[date].upDoses : dosingByDay[date].downDoses;
+
+                                        if (doses.length === 0) return '';
+
+                                        const doseStrings = doses.map(dose => {
+                                            const d = new Date(dose.time);
+                                            const timeStr = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+                                            return `${timeStr} - ${dose.amount.toFixed(2)} ml`;
+                                        });
+
+                                        return '\nDoses:\n' + doseStrings.join('\n');
+                                    }
+                                }
                             }
                         },
-                        x: {
-                            ticks: {
-                                color: '#e2e8f0',
-                                maxRotation: 45,
-                                minRotation: 45
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    color: '#e2e8f0',
+                                    stepSize: 1
+                                },
+                                grid: { color: '#334155' },
+                                title: {
+                                    display: true,
+                                    text: 'Number of Doses',
+                                    color: '#e2e8f0'
+                                }
                             },
-                            grid: { color: '#334155' }
+                            x: {
+                                ticks: {
+                                    color: '#e2e8f0',
+                                    maxRotation: 45,
+                                    minRotation: 45
+                                },
+                                grid: { color: '#334155' }
+                            }
                         }
-                    }
                     }
                 });
             }
