@@ -1923,9 +1923,14 @@
                 }
             });
 
+            console.log('[DEBUG] Finished metrics forEach loop');
+
             // Add light events chart (event-based tracking)
-            const hasLightData = logs.some(log => log.total_light_seconds !== null && log.total_light_seconds !== undefined && log.total_light_seconds > 0);
-            if (hasLightData) {
+            try {
+                console.log('[DEBUG] Checking for light data');
+                const hasLightData = logs.some(log => log.total_light_seconds !== null && log.total_light_seconds !== undefined && log.total_light_seconds > 0);
+                console.log('[DEBUG] hasLightData:', hasLightData);
+                if (hasLightData) {
                 const canvas = document.createElement('canvas');
                 canvas.id = 'lightEventsChart';
                 canvas.style.marginBottom = '2rem';
@@ -2122,7 +2127,10 @@
                         }
                     }
                 });
-            });
+                }
+            } catch (error) {
+                console.error('[DEBUG] Error creating light events chart:', error);
+            }
 
             console.log('[DEBUG] Finished metrics loop, about to render dosing chart');
 
