@@ -1841,8 +1841,8 @@
                     const ctx = canvas.getContext('2d');
 
                     const chart = new Chart(ctx, {
-                    type: 'line',
-                    data: {
+                        type: 'line',
+                        data: {
                         labels: logs.map(l => new Date(l.log_date).toLocaleDateString()),
                         datasets: [
                             {
@@ -1914,9 +1914,13 @@
                             }
                         }
                     }
-                });
+                    });
 
-                sensorCharts.push(chart);
+                    // Store chart reference
+                    sensorCharts.push(chart);
+                } catch (error) {
+                    console.error('[DEBUG] Error creating chart for metric:', metric.name, error);
+                }
             });
 
             // Add light events chart (event-based tracking)
@@ -2118,12 +2122,6 @@
                         }
                     }
                 });
-
-                // Store chart reference
-                sensorCharts.push(chart);
-                } catch (error) {
-                    console.error('[DEBUG] Error creating chart for metric:', metric.name, error);
-                }
             });
 
             console.log('[DEBUG] Finished metrics loop, about to render dosing chart');
