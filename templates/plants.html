@@ -2182,10 +2182,10 @@
                 const downCounts = sortedDates.map(date => dosingByDay[date].down);
 
                 dosingChart = new Chart(dosingCtx, {
-                type: 'bar',
-                data: {
-                    labels: sortedDates,
-                    datasets: [
+                    type: 'bar',
+                    data: {
+                        labels: sortedDates,
+                        datasets: [
                         {
                             label: 'pH Up Doses',
                             data: upCounts,
@@ -2204,12 +2204,12 @@
                             barPercentage: 0.9,
                             categoryPercentage: 0.3
                         }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: true,
-                    plugins: {
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        plugins: {
                         legend: {
                             labels: { color: '#e2e8f0' }
                         },
@@ -2262,7 +2262,7 @@
                             grid: { color: '#334155' }
                         }
                     }
-                }
+                    }
                 });
             }
         }
