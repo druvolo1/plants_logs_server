@@ -1654,18 +1654,13 @@
 
                 let dosingEvents = [];
                 try {
-                    console.log('[DEBUG] Fetching dosing events from:', dosingEventsUrl);
                     const dosingResponse = await fetch(dosingEventsUrl);
-                    console.log('[DEBUG] Dosing response status:', dosingResponse.status, dosingResponse.ok);
                     if (dosingResponse.ok) {
                         const dosingData = await dosingResponse.json();
                         dosingEvents = dosingData.dosing_events || [];
-                        console.log('[DEBUG] Fetched dosing events:', dosingEvents.length, dosingEvents);
-                    } else {
-                        console.error('[DEBUG] Failed to fetch dosing events:', dosingResponse.status);
                     }
                 } catch (error) {
-                    console.error('[DEBUG] Error fetching dosing events:', error);
+                    console.error('Error fetching dosing events:', error);
                 }
 
                 // Store logs, dosing events, and phase history globally
@@ -1766,7 +1761,6 @@
         }
 
         async function renderDailyAggregateCharts(logs, phaseHistory, dosingEvents = []) {
-            console.log('[DEBUG] renderDailyAggregateCharts START - dosingEvents:', dosingEvents ? dosingEvents.length : 'undefined', dosingEvents);
             // Destroy old charts
             sensorCharts.forEach(chart => {
                 if (chart) chart.destroy();
@@ -1822,14 +1816,10 @@
                 { name: 'VPD (kPa)', minKey: 'vpd_min', maxKey: 'vpd_max', avgKey: 'vpd_avg', color: '#8b5cf6' }
             ];
 
-            console.log('[DEBUG] About to iterate over', metrics.length, 'metrics');
-
             metrics.forEach((metric, index) => {
                 try {
-                    console.log('[DEBUG] Processing metric:', metric.name);
                     // Check if this metric has any data
                     const hasData = logs.some(log => log[metric.avgKey] !== null && log[metric.avgKey] !== undefined);
-                    console.log('[DEBUG] Metric', metric.name, 'hasData:', hasData);
                     if (!hasData) return;
 
                     // Create canvas element for this metric
@@ -1923,13 +1913,9 @@
                 }
             });
 
-            console.log('[DEBUG] Finished metrics forEach loop');
-
             // Add light events chart (event-based tracking)
             try {
-                console.log('[DEBUG] Checking for light data');
                 const hasLightData = logs.some(log => log.total_light_seconds !== null && log.total_light_seconds !== undefined && log.total_light_seconds > 0);
-                console.log('[DEBUG] hasLightData:', hasLightData);
                 if (hasLightData) {
                     const canvas = document.createElement('canvas');
                     canvas.id = 'lightEventsChart';
