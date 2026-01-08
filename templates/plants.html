@@ -1641,12 +1641,27 @@
                 // Reverse to show oldest first for charts
                 logs.reverse();
 
-                // Store logs and phase history globally
+                // Fetch dosing events
+                let dosingEventsUrl = `/user/plants/${plantId}/dosing-events?limit=1000`;
+                if (filterStartDate) {
+                    dosingEventsUrl += `&start_date=${filterStartDate.toISOString()}`;
+                }
+                if (currentPlant.end_date) {
+                    const endDate = new Date(currentPlant.end_date);
+                    endDate.setDate(endDate.getDate() + 1);
+                    dosingEventsUrl += `&end_date=${endDate.toISOString()}`;
+                }
+
+                const dosingResponse = await fetch(dosingEventsUrl);
+                const dosingData = await dosingResponse.json();
+                const dosingEvents = dosingData.dosing_events || [];
+
+                // Store logs, dosing events, and phase history globally
                 currentLogs = logs;
                 currentPhaseHistory = phaseHistory;
 
                 renderStats(logs);
-                await renderCharts(logs, phaseHistory);
+                await renderCharts(logs, phaseHistory, dosingEvents);
             } catch (error) {
                 console.error('Error loading logs:', error);
             }
@@ -1738,12 +1753,16 @@
             }
         }
 
-        async function renderDailyAggregateCharts(logs, phaseHistory) {
+        async function renderDailyAggregateCharts(logs, phaseHistory, dosingEvents = []) {
             // Destroy old charts
             sensorCharts.forEach(chart => {
                 if (chart) chart.destroy();
             });
             sensorCharts = [];
+            if (dosingChart) {
+                dosingChart.destroy();
+                dosingChart = null;
+            }
 
             // Get the chart container
             const chartsContainer = document.getElementById('chartsContainer');
@@ -1959,12 +1978,12 @@
             }
         }
 
-        async function renderCharts(logs, phaseHistory) {
+        async function renderCharts(logs, phaseHistory, dosingEvents = []) {
             // Check if logs are daily aggregates (new system) or event-based (old system)
             const isDailyAggregates = logs.length > 0 && logs[0].co2_min !== undefined;
 
             if (isDailyAggregates) {
-                await renderDailyAggregateCharts(logs, phaseHistory);
+                await renderDailyAggregateCharts(logs, phaseHistory, dosingEvents);
                 return;
             }
 
@@ -2088,7 +2107,7 @@
             const dosingChartContainer = document.getElementById('dosingChart').parentElement;
 
             // Only show dosing chart if there's dosing data
-            if (dosingLogs.length === 0) {
+            if (dosingEvents.length === 0) {
                 dosingChartContainer.style.display = 'none';
                 if (dosingChart) {
                     dosingChart.destroy();
@@ -2102,17 +2121,17 @@
 
                 // Aggregate dosing events by day with timestamps and amounts
                 const dosingByDay = {};
-                dosingLogs.forEach(log => {
-                    const dateKey = formatDate(log.timestamp);
+                dosingEvents.forEach(event => {
+                    const dateKey = formatDate(event.timestamp);
                     if (!dosingByDay[dateKey]) {
                         dosingByDay[dateKey] = { up: 0, down: 0, upDoses: [], downDoses: [] };
                     }
-                    if (log.dose_type === 'up') {
+                    if (event.dosing_type === 'ph_up') {
                         dosingByDay[dateKey].up++;
-                        dosingByDay[dateKey].upDoses.push({ time: log.timestamp, amount: log.dose_amount_ml });
-                    } else if (log.dose_type === 'down') {
+                        dosingByDay[dateKey].upDoses.push({ time: event.timestamp, amount: event.amount_ml });
+                    } else if (event.dosing_type === 'ph_down') {
                         dosingByDay[dateKey].down++;
-                        dosingByDay[dateKey].downDoses.push({ time: log.timestamp, amount: log.dose_amount_ml });
+                        dosingByDay[dateKey].downDoses.push({ time: event.timestamp, amount: event.amount_ml });
                     }
                 });
 

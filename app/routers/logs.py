@@ -648,6 +648,74 @@ async def get_plant_logs(
     }
 
 
+@router.get("/user/plants/{plant_id}/dosing-events")
+async def get_plant_dosing_events(
+    request: Request,
+    plant_id: str,
+    user: User = Depends(get_current_user_dependency()),
+    session: AsyncSession = Depends(get_db_dependency()),
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    limit: int = 1000
+):
+    """
+    Get dosing events for a specific plant.
+    """
+    # Get effective user (handles impersonation)
+    effective_user = await get_effective_user(request, user, session)
+
+    # Verify plant exists and user has access
+    result = await session.execute(
+        select(Plant).where(
+            Plant.plant_id == plant_id,
+            Plant.user_id == effective_user.id
+        )
+    )
+    plant = result.scalars().first()
+
+    if not plant:
+        raise HTTPException(404, "Plant not found")
+
+    # Build query for dosing events
+    query = select(DosingEvent).where(DosingEvent.plant_id == plant.id)
+
+    if start_date:
+        try:
+            start_dt = date_parser.isoparse(start_date).date()
+            query = query.where(DosingEvent.event_date >= start_dt)
+        except Exception as e:
+            raise HTTPException(400, f"Invalid start_date format: {str(e)}")
+
+    if end_date:
+        try:
+            end_dt = date_parser.isoparse(end_date).date()
+            query = query.where(DosingEvent.event_date <= end_dt)
+        except Exception as e:
+            raise HTTPException(400, f"Invalid end_date format: {str(e)}")
+
+    # Order by timestamp descending and limit
+    query = query.order_by(DosingEvent.timestamp.desc()).limit(limit)
+
+    result = await session.execute(query)
+    dosing_events = result.scalars().all()
+
+    # Convert to serializable format
+    events_serialized = [
+        {
+            "id": event.id,
+            "plant_id": event.plant_id,
+            "device_id": event.device_id,
+            "event_date": event.event_date.isoformat(),
+            "timestamp": event.timestamp.isoformat(),
+            "dosing_type": event.dosing_type,
+            "amount_ml": event.amount_ml
+        }
+        for event in dosing_events
+    ]
+
+    return {"dosing_events": events_serialized}
+
+
 # Environment Sensor Latest Data (for dashboard)
 
 @router.get("/api/devices/{device_id}/environment/latest")
