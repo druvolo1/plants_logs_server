@@ -2204,10 +2204,10 @@
 
                                         if (doses.length === 0) return '';
 
-                                        const doseStrings = doses.map(dose => {
+                                        const doseStrings = doses.map(function(dose) {
                                             const d = new Date(dose.time);
                                             const timeStr = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-                                            return `${timeStr} - ${dose.amount.toFixed(2)} ml`;
+                                            return timeStr + ' - ' + dose.amount.toFixed(2) + ' ml';
                                         });
 
                                         return '\nDoses:\n' + doseStrings.join('\n');
