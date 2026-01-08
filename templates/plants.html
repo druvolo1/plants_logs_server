@@ -1909,7 +1909,7 @@
                     // Store chart reference
                     sensorCharts.push(chart);
                 } catch (error) {
-                    console.error('[DEBUG] Error creating chart for metric:', metric.name, error);
+                    console.error('Error creating chart for metric:', metric.name, error);
                 }
             });
 
@@ -1985,7 +1985,7 @@
                     sensorCharts.push(chart);
                 }
             } catch (error) {
-                console.error('[DEBUG] Error creating light events chart:', error);
+                console.error('Error creating light events chart:', error);
             }
 
             // Show message if no charts were created
@@ -1995,12 +1995,10 @@
         }
 
         async function renderCharts(logs, phaseHistory, dosingEvents = []) {
-            console.log('[DEBUG] renderCharts called with dosingEvents:', dosingEvents ? dosingEvents.length : 'undefined');
             // Check if logs are daily aggregates (new system) or event-based (old system)
             const isDailyAggregates = logs.length > 0 && logs[0].co2_min !== undefined;
 
             if (isDailyAggregates) {
-                console.log('[DEBUG] Calling renderDailyAggregateCharts with', dosingEvents ? dosingEvents.length : 0, 'dosing events');
                 await renderDailyAggregateCharts(logs, phaseHistory, dosingEvents);
                 return;
             }
@@ -2117,30 +2115,22 @@
                     }
                 });
 
-            console.log('[DEBUG] Finished metrics loop, about to render dosing chart');
-
             // Dosing Chart - Daily aggregated bar chart
-            console.log('[DEBUG] Rendering dosing chart with events:', dosingEvents ? dosingEvents.length : 'undefined');
             const dosingChartElement = document.getElementById('dosingChart');
-            console.log('[DEBUG] dosingChart element found:', !!dosingChartElement);
             const dosingChartContainer = dosingChartElement ? dosingChartElement.parentElement : null;
-            console.log('[DEBUG] dosingChart container found:', !!dosingChartContainer);
 
             if (!dosingChartContainer) {
-                console.error('[DEBUG] ERROR: dosingChart container not found!');
                 return;
             }
 
             // Only show dosing chart if there's dosing data
             if (!dosingEvents || dosingEvents.length === 0) {
-                console.log('[DEBUG] No dosing events, hiding chart');
                 dosingChartContainer.style.display = 'none';
                 if (dosingChart) {
                     dosingChart.destroy();
                     dosingChart = null;
                 }
             } else {
-                console.log('[DEBUG] Showing dosing chart with', dosingEvents.length, 'events');
                 dosingChartContainer.style.display = 'block';
                 const dosingCtx = document.getElementById('dosingChart').getContext('2d');
 
