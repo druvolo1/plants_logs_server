@@ -1822,6 +1822,8 @@
                 { name: 'VPD (kPa)', minKey: 'vpd_min', maxKey: 'vpd_max', avgKey: 'vpd_avg', color: '#8b5cf6' }
             ];
 
+            console.log('[DEBUG] About to iterate over', metrics.length, 'metrics');
+
             metrics.forEach((metric, index) => {
                 // Check if this metric has any data
                 const hasData = logs.some(log => log[metric.avgKey] !== null && log[metric.avgKey] !== undefined);
@@ -2117,6 +2119,8 @@
                 // Store chart reference
                 sensorCharts.push(chart);
             });
+
+            console.log('[DEBUG] Finished metrics loop, about to render dosing chart');
 
             // Dosing Chart - Daily aggregated bar chart
             console.log('[DEBUG] Rendering dosing chart with events:', dosingEvents ? dosingEvents.length : 'undefined');
