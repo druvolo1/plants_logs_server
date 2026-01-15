@@ -889,11 +889,10 @@ async def receive_daily_report(
             .join(DeviceAssignment, DeviceAssignment.plant_id == Plant.id)
             .where(
                 DeviceAssignment.device_id == device.id,
-                DeviceAssignment.removed_at.is_(None),  # Only active assignments
-                DeviceAssignment.start_date <= report_date_obj,  # Assignment started on or before report date
+                DeviceAssignment.assigned_at <= report_date_obj,  # Assignment started on or before report date
                 or_(
-                    DeviceAssignment.end_date.is_(None),  # Still active
-                    DeviceAssignment.end_date >= report_date_obj  # Or ended on or after report date
+                    DeviceAssignment.removed_at.is_(None),  # Still active
+                    DeviceAssignment.removed_at >= report_date_obj  # Or removed on or after report date
                 )
             )
         )
@@ -917,11 +916,10 @@ async def receive_daily_report(
             .join(Device, DeviceAssignment.device_id == Device.id)
             .where(
                 Device.location_id == device.location_id,
-                DeviceAssignment.removed_at.is_(None),  # Only active assignments
-                DeviceAssignment.start_date <= report_date_obj,  # Assignment started on or before report date
+                DeviceAssignment.assigned_at <= report_date_obj,  # Assignment started on or before report date
                 or_(
-                    DeviceAssignment.end_date.is_(None),  # Still active
-                    DeviceAssignment.end_date >= report_date_obj  # Or ended on or after report date
+                    DeviceAssignment.removed_at.is_(None),  # Still active
+                    DeviceAssignment.removed_at >= report_date_obj  # Or removed on or after report date
                 ),
                 Plant.end_date.is_(None)  # Only active plants
             )
