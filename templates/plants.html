@@ -942,6 +942,7 @@
         let currentPlant = null;
         let currentLogs = [];
         let currentPhaseHistory = [];
+        let currentDosingEvents = [];
         let sensorCharts = []; // Array to hold dynamically created sensor charts
         let dosingChart = null;
         let isAdmin = false;
@@ -1676,6 +1677,7 @@
                 // Store logs, dosing events, and phase history globally
                 currentLogs = logs;
                 currentPhaseHistory = phaseHistory;
+                currentDosingEvents = dosingEvents;
 
                 renderStats(logs);
                 await renderCharts(logs, phaseHistory, dosingEvents);
@@ -2527,7 +2529,7 @@
         }
 
         function exportToHTML() {
-            if (!currentPlant || !currentLogs) {
+            if (!currentPlant || !currentLogs || currentLogs.length === 0) {
                 alert('No plant data to export');
                 return;
             }
@@ -2536,8 +2538,9 @@
             const menu = document.getElementById('plantMenu');
             menu.classList.remove('show');
 
-            const sensorLogs = currentLogs.filter(l => l.event_type === 'sensor');
-            const dosingLogs = currentLogs.filter(l => l.event_type === 'dosing');
+            // Use new daily aggregate logs and dosing events
+            const logs = currentLogs; // Daily aggregate logs
+            const dosingEvents = currentDosingEvents || []; // Separate dosing events
 
             const plantName = escapeHtml(currentPlant.name);
             const plantId = escapeHtml(currentPlant.plant_id);
@@ -2625,17 +2628,17 @@
 '        </div>' + '\n' +
 '    </div>' + '\n' +
 '    <script>' + '\n' +
-'        var sensorLogs = ' + JSON.stringify(sensorLogs) + ';' + '\n' +
-'        var dosingLogs = ' + JSON.stringify(dosingLogs) + ';' + '\n' +
+'        var logs = ' + JSON.stringify(logs) + ';' + '\n' +
+'        var dosingEvents = ' + JSON.stringify(dosingEvents) + ';' + '\n' +
 '' + '\n' +
-'        // Render stats' + '\n' +
-'        var phValues = sensorLogs.map(function(l) { return l.value; });' + '\n' +
+'        // Calculate stats from daily aggregate logs' + '\n' +
+'        var phValues = logs.filter(function(l) { return l.ph_avg !== null; }).map(function(l) { return l.ph_avg; });' + '\n' +
 '        var avgPh = phValues.length > 0 ? (phValues.reduce(function(a, b) { return a + b; }, 0) / phValues.length).toFixed(2) : "N/A";' + '\n' +
-'        var minPh = phValues.length > 0 ? Math.min.apply(Math, phValues).toFixed(2) : "N/A";' + '\n' +
-'        var maxPh = phValues.length > 0 ? Math.max.apply(Math, phValues).toFixed(2) : "N/A";' + '\n' +
-'        var totalDoses = dosingLogs.length;' + '\n' +
-'        var upDoses = dosingLogs.filter(function(l) { return l.dose_type === "up"; }).length;' + '\n' +
-'        var downDoses = dosingLogs.filter(function(l) { return l.dose_type === "down"; }).length;' + '\n' +
+'        var minPh = logs.some(function(l) { return l.ph_min !== null; }) ? Math.min.apply(Math, logs.filter(function(l) { return l.ph_min !== null; }).map(function(l) { return l.ph_min; })).toFixed(2) : "N/A";' + '\n' +
+'        var maxPh = logs.some(function(l) { return l.ph_max !== null; }) ? Math.max.apply(Math, logs.filter(function(l) { return l.ph_max !== null; }).map(function(l) { return l.ph_max; })).toFixed(2) : "N/A";' + '\n' +
+'        var totalDoses = dosingEvents.length;' + '\n' +
+'        var upDoses = dosingEvents.filter(function(e) { return e.dose_type === "ph_up"; }).length;' + '\n' +
+'        var downDoses = dosingEvents.filter(function(e) { return e.dose_type === "ph_down"; }).length;' + '\n' +
 '' + '\n' +
 '        document.getElementById("stats").innerHTML = ' + '\n' +
 '            "<div class=\\"stat-card\\"><div class=\\"stat-value\\">" + avgPh + "</div><div class=\\"stat-label\\">Average pH</div></div>" +' + '\n' +
@@ -2643,19 +2646,20 @@
 '            "<div class=\\"stat-card\\"><div class=\\"stat-value\\">" + totalDoses + "</div><div class=\\"stat-label\\">Total Doses</div></div>" +' + '\n' +
 '            "<div class=\\"stat-card\\"><div class=\\"stat-value\\">" + upDoses + " / " + downDoses + "</div><div class=\\"stat-label\\">Up / Down Doses</div></div>";' + '\n' +
 '' + '\n' +
-'        // pH Chart' + '\n' +
+'        // pH Chart - use daily aggregates' + '\n' +
 '        var phCtx = document.getElementById("phChart").getContext("2d");' + '\n' +
+'        var logsWithPh = logs.filter(function(l) { return l.ph_avg !== null; });' + '\n' +
 '        new Chart(phCtx, {' + '\n' +
 '            type: "line",' + '\n' +
 '            data: {' + '\n' +
-'                labels: sensorLogs.map(function(l) { return new Date(l.timestamp).toLocaleDateString("en-US", { month: "short", day: "numeric" }); }),' + '\n' +
+'                labels: logsWithPh.map(function(l) { var parts = l.log_date.split("-"); return new Date(parts[0], parts[1]-1, parts[2]).toLocaleDateString("en-US", { month: "short", day: "numeric" }); }),' + '\n' +
 '                datasets: [{' + '\n' +
-'                    label: "pH Level",' + '\n' +
-'                    data: sensorLogs.map(function(l) { return l.value; }),' + '\n' +
+'                    label: "Average pH",' + '\n' +
+'                    data: logsWithPh.map(function(l) { return l.ph_avg; }),' + '\n' +
 '                    borderColor: "#10b981",' + '\n' +
 '                    backgroundColor: "rgba(16, 185, 129, 0.1)",' + '\n' +
 '                    tension: 0.4,' + '\n' +
-'                    pointRadius: 2,' + '\n' +
+'                    pointRadius: 3,' + '\n' +
 '                    pointHoverRadius: 6' + '\n' +
 '                }]' + '\n' +
 '            },' + '\n' +
@@ -2664,7 +2668,7 @@
 '                maintainAspectRatio: true,' + '\n' +
 '                plugins: {' + '\n' +
 '                    legend: { labels: { color: "#e2e8f0" } },' + '\n' +
-'                    title: { display: true, text: "pH History", color: "#e2e8f0", font: { size: 16 } }' + '\n' +
+'                    title: { display: true, text: "pH History (Daily Average)", color: "#e2e8f0", font: { size: 16 } }' + '\n' +
 '                },' + '\n' +
 '                scales: {' + '\n' +
 '                    y: {' + '\n' +
@@ -2680,19 +2684,20 @@
 '            }' + '\n' +
 '        });' + '\n' +
 '' + '\n' +
-'        // Dosing Chart' + '\n' +
+'        // Dosing Chart - use dosing events' + '\n' +
 '        var dosingByDay = {};' + '\n' +
-'        dosingLogs.forEach(function(log) {' + '\n' +
-'            var dateKey = new Date(log.timestamp).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });' + '\n' +
+'        dosingEvents.forEach(function(event) {' + '\n' +
+'            var d = new Date(event.timestamp);' + '\n' +
+'            var dateKey = d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });' + '\n' +
 '            if (!dosingByDay[dateKey]) {' + '\n' +
 '                dosingByDay[dateKey] = { up: 0, down: 0, upDoses: [], downDoses: [] };' + '\n' +
 '            }' + '\n' +
-'            if (log.dose_type === "up") {' + '\n' +
+'            if (event.dose_type === "ph_up") {' + '\n' +
 '                dosingByDay[dateKey].up++;' + '\n' +
-'                dosingByDay[dateKey].upDoses.push({ time: log.timestamp, amount: log.dose_amount_ml });' + '\n' +
-'            } else if (log.dose_type === "down") {' + '\n' +
+'                dosingByDay[dateKey].upDoses.push({ time: event.timestamp, amount: event.dose_amount_ml });' + '\n' +
+'            } else if (event.dose_type === "ph_down") {' + '\n' +
 '                dosingByDay[dateKey].down++;' + '\n' +
-'                dosingByDay[dateKey].downDoses.push({ time: log.timestamp, amount: log.dose_amount_ml });' + '\n' +
+'                dosingByDay[dateKey].downDoses.push({ time: event.timestamp, amount: event.dose_amount_ml });' + '\n' +
 '            }' + '\n' +
 '        });' + '\n' +
 '' + '\n' +
@@ -2780,7 +2785,7 @@
         }
 
         async function exportToPDF() {
-            if (!currentPlant || !currentLogs) {
+            if (!currentPlant || !currentLogs || currentLogs.length === 0) {
                 alert('No plant data to export');
                 return;
             }
@@ -2792,8 +2797,9 @@
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF('p', 'mm', 'a4');
 
-            const sensorLogs = currentLogs.filter(l => l.event_type === 'sensor');
-            const dosingLogs = currentLogs.filter(l => l.event_type === 'dosing');
+            // Use new daily aggregate logs and dosing events
+            const logs = currentLogs; // Daily aggregate logs
+            const dosingEvents = currentDosingEvents || []; // Separate dosing events
 
             // Title
             doc.setFontSize(20);
@@ -2806,14 +2812,14 @@
             doc.text(`Plant ID: ${currentPlant.plant_id}`, 14, 28);
             doc.text(`Exported: ${new Date().toLocaleString()}`, 14, 33);
 
-            // Stats summary
-            const phValues = sensorLogs.map(l => l.value);
+            // Stats summary from daily aggregate logs
+            const phValues = logs.filter(l => l.ph_avg !== null).map(l => l.ph_avg);
             const avgPh = phValues.length > 0 ? (phValues.reduce((a, b) => a + b, 0) / phValues.length).toFixed(2) : 'N/A';
-            const minPh = phValues.length > 0 ? Math.min(...phValues).toFixed(2) : 'N/A';
-            const maxPh = phValues.length > 0 ? Math.max(...phValues).toFixed(2) : 'N/A';
-            const totalDoses = dosingLogs.length;
-            const upDoses = dosingLogs.filter(l => l.dose_type === 'up').length;
-            const downDoses = dosingLogs.filter(l => l.dose_type === 'down').length;
+            const minPh = logs.some(l => l.ph_min !== null) ? Math.min(...logs.filter(l => l.ph_min !== null).map(l => l.ph_min)).toFixed(2) : 'N/A';
+            const maxPh = logs.some(l => l.ph_max !== null) ? Math.max(...logs.filter(l => l.ph_max !== null).map(l => l.ph_max)).toFixed(2) : 'N/A';
+            const totalDoses = dosingEvents.length;
+            const upDoses = dosingEvents.filter(e => e.dose_type === 'ph_up').length;
+            const downDoses = dosingEvents.filter(e => e.dose_type === 'ph_down').length;
 
             doc.setFontSize(12);
             doc.setTextColor(0, 0, 0);
@@ -2829,20 +2835,24 @@
             tempCanvas.height = 400;
             const tempCtx = tempCanvas.getContext('2d');
 
-            // pH Chart with PDF-friendly colors
+            // pH Chart with PDF-friendly colors - use daily aggregates
             let yPos = 68;
-            if (sensorLogs.length > 0) {
+            const logsWithPh = logs.filter(l => l.ph_avg !== null);
+            if (logsWithPh.length > 0) {
                 const tempPhChart = new Chart(tempCtx, {
                     type: 'line',
                     data: {
-                        labels: sensorLogs.map(l => formatDateTime(l.timestamp)),
+                        labels: logsWithPh.map(l => {
+                            const [year, month, day] = l.log_date.split('-');
+                            return new Date(year, month - 1, day).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                        }),
                         datasets: [{
-                            label: 'pH Level',
-                            data: sensorLogs.map(l => l.value),
+                            label: 'Average pH',
+                            data: logsWithPh.map(l => l.ph_avg),
                             borderColor: '#10b981',
                             backgroundColor: 'rgba(16, 185, 129, 0.1)',
                             tension: 0.4,
-                            pointRadius: 2
+                            pointRadius: 3
                         }]
                     },
                     options: {
@@ -2878,17 +2888,17 @@
                 yPos = 20;
             }
 
-            // Dosing Chart with PDF-friendly colors
-            if (dosingLogs.length > 0) {
+            // Dosing Chart with PDF-friendly colors - use dosing events
+            if (dosingEvents.length > 0) {
                 const dosingByDay = {};
-                dosingLogs.forEach(log => {
-                    const dateKey = formatDate(log.timestamp);
+                dosingEvents.forEach(event => {
+                    const dateKey = formatDate(event.timestamp);
                     if (!dosingByDay[dateKey]) {
                         dosingByDay[dateKey] = { up: 0, down: 0 };
                     }
-                    if (log.dose_type === 'up') {
+                    if (event.dose_type === 'ph_up') {
                         dosingByDay[dateKey].up++;
-                    } else if (log.dose_type === 'down') {
+                    } else if (event.dose_type === 'ph_down') {
                         dosingByDay[dateKey].down++;
                     }
                 });
