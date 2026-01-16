@@ -1771,14 +1771,51 @@
                 dosingChart = null;
             }
 
+            // Sort logs chronologically to ensure dates are in order
+            logs.sort((a, b) => new Date(a.log_date) - new Date(b.log_date));
+
             // Get the chart container
             const chartsContainer = document.getElementById('chartsContainer');
             chartsContainer.innerHTML = ''; // Clear existing charts
 
+            // Create custom legend showing line styles
+            const customLegend = document.createElement('div');
+            customLegend.style.cssText = 'display: flex; gap: 25px; margin-bottom: 20px; padding: 15px; background: rgba(30, 41, 59, 0.5); border-radius: 8px; flex-wrap: wrap; align-items: center;';
+
+            // Add line style legend items
+            const lineStyles = [
+                { label: 'Minimum', style: 'dotted 3px', color: 'rgba(255, 255, 255, 0.4)' },
+                { label: 'Average', style: 'solid 3px', color: 'rgba(255, 255, 255, 0.9)' },
+                { label: 'Maximum', style: 'dashed 3px', color: 'rgba(255, 255, 255, 0.4)' }
+            ];
+
+            lineStyles.forEach(({ label, style, color }) => {
+                const item = document.createElement('div');
+                item.style.cssText = 'display: flex; align-items: center; gap: 10px;';
+
+                const line = document.createElement('div');
+                line.style.cssText = `width: 40px; height: 0; border-top: ${style} ${color};`;
+
+                const text = document.createElement('span');
+                text.textContent = label;
+                text.style.cssText = 'color: #e2e8f0; font-size: 14px;';
+
+                item.appendChild(line);
+                item.appendChild(text);
+                customLegend.appendChild(item);
+            });
+
+            chartsContainer.appendChild(customLegend);
+
             // Create phase legend if we have phase history
             if (phaseHistory && phaseHistory.length > 0) {
-                const legend = document.createElement('div');
-                legend.style.cssText = 'display: flex; gap: 15px; margin-bottom: 20px; padding: 10px; background: rgba(30, 41, 59, 0.5); border-radius: 8px; flex-wrap: wrap;';
+                const phaseLegend = document.createElement('div');
+                phaseLegend.style.cssText = 'display: flex; gap: 15px; margin-bottom: 20px; padding: 10px; background: rgba(30, 41, 59, 0.5); border-radius: 8px; flex-wrap: wrap;';
+
+                const phaseTitle = document.createElement('span');
+                phaseTitle.textContent = 'Growth Phases:';
+                phaseTitle.style.cssText = 'color: #94a3b8; font-size: 13px; font-weight: bold; margin-right: 10px;';
+                phaseLegend.appendChild(phaseTitle);
 
                 // Get unique phases from history
                 const uniquePhases = [...new Set(phaseHistory.map(p => p.phase))];
@@ -1796,10 +1833,10 @@
 
                     item.appendChild(colorBox);
                     item.appendChild(label);
-                    legend.appendChild(item);
+                    phaseLegend.appendChild(item);
                 });
 
-                chartsContainer.appendChild(legend);
+                chartsContainer.appendChild(phaseLegend);
             }
 
             // Get phase history for background color-coding
@@ -1833,37 +1870,43 @@
                     const chart = new Chart(ctx, {
                         type: 'line',
                         data: {
-                        labels: logs.map(l => new Date(l.log_date).toLocaleDateString()),
+                        labels: logs.map(l => new Date(l.log_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })),
                         datasets: [
                             {
                                 label: 'Min',
                                 data: logs.map(l => l[metric.minKey]),
-                                borderColor: metric.color + '44',
+                                borderColor: metric.color + '66',  // More visible than before
                                 backgroundColor: 'transparent',
-                                borderDash: [5, 5],
+                                borderDash: [2, 2],  // Dotted line
+                                borderWidth: 2,
                                 tension: 0.4,
-                                pointRadius: 1,
-                                pointHoverRadius: 4
+                                pointRadius: 0,
+                                pointHoverRadius: 5,
+                                pointHoverBorderWidth: 2
                             },
                             {
                                 label: 'Average',
                                 data: logs.map(l => l[metric.avgKey]),
                                 borderColor: metric.color,
-                                backgroundColor: `${metric.color}33`,
+                                backgroundColor: `${metric.color}22`,  // Lighter fill
                                 fill: true,
+                                borderWidth: 3,  // Thicker solid line
                                 tension: 0.4,
-                                pointRadius: 2,
-                                pointHoverRadius: 6
+                                pointRadius: 0,
+                                pointHoverRadius: 6,
+                                pointHoverBorderWidth: 2
                             },
                             {
                                 label: 'Max',
                                 data: logs.map(l => l[metric.maxKey]),
-                                borderColor: metric.color + '44',
+                                borderColor: metric.color + '66',  // More visible than before
                                 backgroundColor: 'transparent',
-                                borderDash: [5, 5],
+                                borderDash: [10, 5],  // Dashed line
+                                borderWidth: 2,
                                 tension: 0.4,
-                                pointRadius: 1,
-                                pointHoverRadius: 4
+                                pointRadius: 0,
+                                pointHoverRadius: 5,
+                                pointHoverBorderWidth: 2
                             }
                         ]
                     },
@@ -1872,16 +1915,28 @@
                         maintainAspectRatio: true,
                         plugins: {
                             legend: {
-                                labels: { color: '#e2e8f0' }
+                                display: false  // Hide default legend, we have custom one
                             },
                             title: {
                                 display: true,
                                 text: metric.name,
                                 color: '#e2e8f0',
-                                font: { size: 16 }
+                                font: { size: 18, weight: 'bold' },
+                                padding: { top: 10, bottom: 15 }
                             },
                             annotation: {
                                 annotations: phaseAnnotations
+                            },
+                            tooltip: {
+                                mode: 'index',
+                                intersect: false,
+                                backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                                titleColor: '#e2e8f0',
+                                bodyColor: '#e2e8f0',
+                                borderColor: '#475569',
+                                borderWidth: 1,
+                                padding: 12,
+                                displayColors: true
                             }
                         },
                         scales: {
@@ -1927,7 +1982,7 @@
                     const chart = new Chart(ctx, {
                         type: 'bar',
                         data: {
-                        labels: logs.map(l => new Date(l.log_date).toLocaleDateString()),
+                        labels: logs.map(l => new Date(l.log_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })),
                         datasets: [
                             {
                                 label: 'Daily Light Hours',
