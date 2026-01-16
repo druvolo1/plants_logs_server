@@ -1717,36 +1717,58 @@
         }
 
         function getPhaseAnnotations(phaseHistory, logs) {
-            if (!phaseHistory || phaseHistory.length === 0) return [];
+            if (!phaseHistory || phaseHistory.length === 0 || !logs || logs.length === 0) return [];
 
             try {
+                // Get all chart labels (dates) from logs
+                const chartLabels = logs.map(l => new Date(l.log_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+
                 // Create annotations for each phase
                 const annotations = {};
                 phaseHistory.forEach((entry, index) => {
                     const startDate = new Date(entry.started_at);
                     const endDate = entry.ended_at ? new Date(entry.ended_at) : new Date();
 
+                    // Format dates to match chart labels
+                    const startLabel = startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                    const endLabel = endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+                    // Find the indices of start and end dates in the chart labels
+                    let xMinLabel = startLabel;
+                    let xMaxLabel = endLabel;
+
+                    // If start date is before first chart date, use first chart date
+                    if (!chartLabels.includes(startLabel) && startDate < new Date(logs[0].log_date)) {
+                        xMinLabel = chartLabels[0];
+                    }
+
+                    // If end date is after last chart date, use last chart date
+                    if (!chartLabels.includes(endLabel) && endDate > new Date(logs[logs.length - 1].log_date)) {
+                        xMaxLabel = chartLabels[chartLabels.length - 1];
+                    }
+
                     // Calculate phase duration in days
                     const durationDays = (endDate - startDate) / (1000 * 60 * 60 * 24);
 
-                    // Show label only if phase lasts more than 5 days
-                    const showLabel = durationDays > 5;
+                    // Show label only if phase lasts more than 3 days
+                    const showLabel = durationDays > 3;
 
                     annotations[`phase_${index}`] = {
                         type: 'box',
-                        xMin: startDate.toLocaleDateString(),
-                        xMax: endDate.toLocaleDateString(),
+                        xMin: xMinLabel,
+                        xMax: xMaxLabel,
                         backgroundColor: phaseColors[entry.phase] || 'rgba(100, 116, 139, 0.15)',
                         borderWidth: 0,
                         label: showLabel ? {
                             display: true,
                             content: phaseLabels[entry.phase] || entry.phase.toUpperCase(),
-                            position: 'start',
+                            position: 'center',
                             color: '#e2e8f0',
                             font: {
-                                size: 10,
+                                size: 11,
                                 weight: 'bold'
-                            }
+                            },
+                            yAdjust: -10
                         } : {
                             display: false
                         }

@@ -553,7 +553,11 @@ async def get_plant_logs(
         raise HTTPException(404, "Plant not found")
 
     # Parse date filters
-    query = select(PlantDailyLog).where(PlantDailyLog.plant_id == plant.id)
+    # Always filter to exclude dates before plant start date
+    query = select(PlantDailyLog).where(
+        PlantDailyLog.plant_id == plant.id,
+        PlantDailyLog.log_date >= plant.start_date
+    )
 
     if start_date:
         try:
