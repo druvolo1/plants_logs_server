@@ -33,15 +33,12 @@ async def get_plant_data(
         Dictionary containing raw_data and aggregated_stats
     """
     # Simple query - get all daily logs for this plant
-    # Filter to only include dates on or after plant start date (convert datetime to date for comparison)
-    from datetime import date as date_type
-    start_date_only = plant.start_date.date() if plant.start_date else date_type.min
-
+    # Filter to only include dates on or after plant start date
     logs_result = await session.execute(
         select(PlantDailyLog)
         .where(
             PlantDailyLog.plant_id == plant.id,
-            PlantDailyLog.log_date >= start_date_only
+            PlantDailyLog.log_date >= plant.start_date
         )
         .order_by(PlantDailyLog.log_date)
     )

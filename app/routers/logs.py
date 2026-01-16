@@ -553,16 +553,11 @@ async def get_plant_logs(
         raise HTTPException(404, "Plant not found")
 
     # Parse date filters
-    # Always filter to exclude dates before plant start date (convert datetime to date for comparison)
-    start_date_only = plant.start_date.date() if plant.start_date else None
-
-    if start_date_only:
-        query = select(PlantDailyLog).where(
-            PlantDailyLog.plant_id == plant.id,
-            PlantDailyLog.log_date >= start_date_only
-        )
-    else:
-        query = select(PlantDailyLog).where(PlantDailyLog.plant_id == plant.id)
+    # Always filter to exclude dates before plant start date
+    query = select(PlantDailyLog).where(
+        PlantDailyLog.plant_id == plant.id,
+        PlantDailyLog.log_date >= plant.start_date
+    )
 
     if start_date:
         try:
@@ -578,8 +573,8 @@ async def get_plant_logs(
         except Exception as e:
             raise HTTPException(400, f"Invalid end_date format: {str(e)}")
 
-    # Order by date descending and limit
-    query = query.order_by(PlantDailyLog.log_date.desc()).limit(limit)
+    # Order by date ascending (oldest first) for chronological display
+    query = query.order_by(PlantDailyLog.log_date.asc()).limit(limit)
 
     result = await session.execute(query)
     logs = result.scalars().all()
@@ -687,15 +682,10 @@ async def get_plant_dosing_events(
 
     # Build query for dosing events
     # Always filter to exclude dates before plant start date
-    start_date_only = plant.start_date.date() if plant.start_date else None
-
-    if start_date_only:
-        query = select(DosingEvent).where(
-            DosingEvent.plant_id == plant.id,
-            DosingEvent.event_date >= start_date_only
-        )
-    else:
-        query = select(DosingEvent).where(DosingEvent.plant_id == plant.id)
+    query = select(DosingEvent).where(
+        DosingEvent.plant_id == plant.id,
+        DosingEvent.event_date >= plant.start_date
+    )
 
     if start_date:
         try:

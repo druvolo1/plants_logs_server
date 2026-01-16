@@ -113,7 +113,7 @@ async def create_plant(
         device_id=device.id,
         user_id=device.user_id,  # Plant belongs to device owner
         location_id=plant_data.location_id,
-        start_date=datetime.utcnow()
+        start_date=datetime.utcnow().date()
     )
 
     session.add(new_plant)
@@ -168,7 +168,7 @@ async def create_plant_new(
         batch_number=plant_data.batch_number,
         user_id=effective_user.id,
         location_id=plant_data.location_id,
-        start_date=datetime.utcnow(),
+        start_date=datetime.utcnow().date(),
         status='created',
         current_phase=plant_data.starting_phase or 'seed',
         template_id=plant_data.template_id,
@@ -712,7 +712,7 @@ async def finish_plant(
         raise HTTPException(404, "Plant not found")
 
     # Mark plant as finished
-    plant.end_date = datetime.utcnow()
+    plant.end_date = datetime.utcnow().date()
     plant.status = 'finished'
 
     if plant.current_phase == 'curing' and not plant.cure_end_date:
@@ -940,7 +940,7 @@ async def create_plant_device(
         device_id=device.id,
         user_id=device.user_id,  # Plant belongs to device owner
         location_id=plant_data.location_id,
-        start_date=datetime.utcnow()
+        start_date=datetime.utcnow().date()
     )
 
     session.add(new_plant)
@@ -975,7 +975,7 @@ async def finish_plant_device(
         raise HTTPException(404, "Plant not found for this device")
 
     # Mark plant as finished
-    plant.end_date = datetime.utcnow()
+    plant.end_date = datetime.utcnow().date()
     plant.status = 'finished'
 
     if plant.current_phase == 'curing' and not plant.cure_end_date:

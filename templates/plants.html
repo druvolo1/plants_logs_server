@@ -1638,8 +1638,7 @@
                 const logs = data.logs || data;  // Support both old and new format
                 const phaseHistory = data.phase_history || [];
 
-                // Reverse to show oldest first for charts
-                logs.reverse();
+                // Logs are already sorted chronologically (oldest first) from API
 
                 // Fetch dosing events
                 let dosingEventsUrl = `/user/plants/${plantId}/dosing-events?limit=1000`;
