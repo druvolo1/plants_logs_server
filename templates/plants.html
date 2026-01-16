@@ -2620,6 +2620,18 @@
 '            <canvas id="phChart"></canvas>' + '\n' +
 '        </div>' + '\n' +
 '        <div class="chart-container">' + '\n' +
+'            <canvas id="ecChart"></canvas>' + '\n' +
+'        </div>' + '\n' +
+'        <div class="chart-container">' + '\n' +
+'            <canvas id="tempChart"></canvas>' + '\n' +
+'        </div>' + '\n' +
+'        <div class="chart-container">' + '\n' +
+'            <canvas id="humidityChart"></canvas>' + '\n' +
+'        </div>' + '\n' +
+'        <div class="chart-container">' + '\n' +
+'            <canvas id="co2Chart"></canvas>' + '\n' +
+'        </div>' + '\n' +
+'        <div class="chart-container">' + '\n' +
 '            <canvas id="dosingChart"></canvas>' + '\n' +
 '        </div>' + '\n' +
 '        <div class="info">' + '\n' +
@@ -2683,6 +2695,120 @@
 '                }' + '\n' +
 '            }' + '\n' +
 '        });' + '\n' +
+'' + '\n' +
+'        // EC Chart' + '\n' +
+'        var logsWithEc = logs.filter(function(l) { return l.ec_avg !== null; });' + '\n' +
+'        if (logsWithEc.length > 0) {' + '\n' +
+'            var ecCtx = document.getElementById("ecChart").getContext("2d");' + '\n' +
+'            new Chart(ecCtx, {' + '\n' +
+'                type: "line",' + '\n' +
+'                data: {' + '\n' +
+'                    labels: logsWithEc.map(function(l) { var parts = l.log_date.split("-"); return new Date(parts[0], parts[1]-1, parts[2]).toLocaleDateString("en-US", { month: "short", day: "numeric" }); }),' + '\n' +
+'                    datasets: [{' + '\n' +
+'                        label: "Average EC",' + '\n' +
+'                        data: logsWithEc.map(function(l) { return l.ec_avg; }),' + '\n' +
+'                        borderColor: "#f59e0b",' + '\n' +
+'                        backgroundColor: "rgba(245, 158, 11, 0.1)",' + '\n' +
+'                        tension: 0.4,' + '\n' +
+'                        pointRadius: 3' + '\n' +
+'                    }]' + '\n' +
+'                },' + '\n' +
+'                options: {' + '\n' +
+'                    responsive: true,' + '\n' +
+'                    plugins: { legend: { labels: { color: "#e2e8f0" } }, title: { display: true, text: "EC History", color: "#e2e8f0", font: { size: 16 } } },' + '\n' +
+'                    scales: { y: { ticks: { color: "#e2e8f0" }, grid: { color: "#334155" }, title: { display: true, text: "EC", color: "#e2e8f0" } }, x: { ticks: { color: "#e2e8f0", maxRotation: 45, minRotation: 45 }, grid: { color: "#334155" } } }' + '\n' +
+'                }' + '\n' +
+'            });' + '\n' +
+'        }' + '\n' +
+'' + '\n' +
+'        // Temperature Chart' + '\n' +
+'        var logsWithTemp = logs.filter(function(l) { return l.air_temp_avg !== null || l.water_temp_avg !== null; });' + '\n' +
+'        if (logsWithTemp.length > 0) {' + '\n' +
+'            var tempCtx = document.getElementById("tempChart").getContext("2d");' + '\n' +
+'            var datasets = [];' + '\n' +
+'            if (logs.some(function(l) { return l.air_temp_avg !== null; })) {' + '\n' +
+'                datasets.push({' + '\n' +
+'                    label: "Air Temperature",' + '\n' +
+'                    data: logs.map(function(l) { return l.air_temp_avg; }),' + '\n' +
+'                    borderColor: "#ef4444",' + '\n' +
+'                    backgroundColor: "rgba(239, 68, 68, 0.1)",' + '\n' +
+'                    tension: 0.4,' + '\n' +
+'                    pointRadius: 3' + '\n' +
+'                });' + '\n' +
+'            }' + '\n' +
+'            if (logs.some(function(l) { return l.water_temp_avg !== null; })) {' + '\n' +
+'                datasets.push({' + '\n' +
+'                    label: "Water Temperature",' + '\n' +
+'                    data: logs.map(function(l) { return l.water_temp_avg; }),' + '\n' +
+'                    borderColor: "#3b82f6",' + '\n' +
+'                    backgroundColor: "rgba(59, 130, 246, 0.1)",' + '\n' +
+'                    tension: 0.4,' + '\n' +
+'                    pointRadius: 3' + '\n' +
+'                });' + '\n' +
+'            }' + '\n' +
+'            new Chart(tempCtx, {' + '\n' +
+'                type: "line",' + '\n' +
+'                data: {' + '\n' +
+'                    labels: logsWithTemp.map(function(l) { var parts = l.log_date.split("-"); return new Date(parts[0], parts[1]-1, parts[2]).toLocaleDateString("en-US", { month: "short", day: "numeric" }); }),' + '\n' +
+'                    datasets: datasets' + '\n' +
+'                },' + '\n' +
+'                options: {' + '\n' +
+'                    responsive: true,' + '\n' +
+'                    plugins: { legend: { labels: { color: "#e2e8f0" } }, title: { display: true, text: "Temperature History", color: "#e2e8f0", font: { size: 16 } } },' + '\n' +
+'                    scales: { y: { ticks: { color: "#e2e8f0" }, grid: { color: "#334155" }, title: { display: true, text: "Temperature (°F)", color: "#e2e8f0" } }, x: { ticks: { color: "#e2e8f0", maxRotation: 45, minRotation: 45 }, grid: { color: "#334155" } } }' + '\n' +
+'                }' + '\n' +
+'            });' + '\n' +
+'        }' + '\n' +
+'' + '\n' +
+'        // Humidity Chart' + '\n' +
+'        var logsWithHumidity = logs.filter(function(l) { return l.humidity_avg !== null; });' + '\n' +
+'        if (logsWithHumidity.length > 0) {' + '\n' +
+'            var humidityCtx = document.getElementById("humidityChart").getContext("2d");' + '\n' +
+'            new Chart(humidityCtx, {' + '\n' +
+'                type: "line",' + '\n' +
+'                data: {' + '\n' +
+'                    labels: logsWithHumidity.map(function(l) { var parts = l.log_date.split("-"); return new Date(parts[0], parts[1]-1, parts[2]).toLocaleDateString("en-US", { month: "short", day: "numeric" }); }),' + '\n' +
+'                    datasets: [{' + '\n' +
+'                        label: "Average Humidity",' + '\n' +
+'                        data: logsWithHumidity.map(function(l) { return l.humidity_avg; }),' + '\n' +
+'                        borderColor: "#06b6d4",' + '\n' +
+'                        backgroundColor: "rgba(6, 182, 212, 0.1)",' + '\n' +
+'                        tension: 0.4,' + '\n' +
+'                        pointRadius: 3' + '\n' +
+'                    }]' + '\n' +
+'                },' + '\n' +
+'                options: {' + '\n' +
+'                    responsive: true,' + '\n' +
+'                    plugins: { legend: { labels: { color: "#e2e8f0" } }, title: { display: true, text: "Humidity History", color: "#e2e8f0", font: { size: 16 } } },' + '\n' +
+'                    scales: { y: { ticks: { color: "#e2e8f0" }, grid: { color: "#334155" }, title: { display: true, text: "Humidity (%)", color: "#e2e8f0" } }, x: { ticks: { color: "#e2e8f0", maxRotation: 45, minRotation: 45 }, grid: { color: "#334155" } } }' + '\n' +
+'                }' + '\n' +
+'            });' + '\n' +
+'        }' + '\n' +
+'' + '\n' +
+'        // CO2 Chart' + '\n' +
+'        var logsWithCo2 = logs.filter(function(l) { return l.co2_avg !== null; });' + '\n' +
+'        if (logsWithCo2.length > 0) {' + '\n' +
+'            var co2Ctx = document.getElementById("co2Chart").getContext("2d");' + '\n' +
+'            new Chart(co2Ctx, {' + '\n' +
+'                type: "line",' + '\n' +
+'                data: {' + '\n' +
+'                    labels: logsWithCo2.map(function(l) { var parts = l.log_date.split("-"); return new Date(parts[0], parts[1]-1, parts[2]).toLocaleDateString("en-US", { month: "short", day: "numeric" }); }),' + '\n' +
+'                    datasets: [{' + '\n' +
+'                        label: "Average CO2",' + '\n' +
+'                        data: logsWithCo2.map(function(l) { return l.co2_avg; }),' + '\n' +
+'                        borderColor: "#8b5cf6",' + '\n' +
+'                        backgroundColor: "rgba(139, 92, 246, 0.1)",' + '\n' +
+'                        tension: 0.4,' + '\n' +
+'                        pointRadius: 3' + '\n' +
+'                    }]' + '\n' +
+'                },' + '\n' +
+'                options: {' + '\n' +
+'                    responsive: true,' + '\n' +
+'                    plugins: { legend: { labels: { color: "#e2e8f0" } }, title: { display: true, text: "CO2 History", color: "#e2e8f0", font: { size: 16 } } },' + '\n' +
+'                    scales: { y: { ticks: { color: "#e2e8f0" }, grid: { color: "#334155" }, title: { display: true, text: "CO2 (ppm)", color: "#e2e8f0" } }, x: { ticks: { color: "#e2e8f0", maxRotation: 45, minRotation: 45 }, grid: { color: "#334155" } } }' + '\n' +
+'                }' + '\n' +
+'            });' + '\n' +
+'        }' + '\n' +
 '' + '\n' +
 '        // Dosing Chart - use dosing events' + '\n' +
 '        var dosingByDay = {};' + '\n' +
@@ -2964,21 +3090,28 @@
             doc.addPage();
             yPos = 20;
 
-            // pH Readings Table
+            // Daily Summary Table
             doc.setFontSize(12);
             doc.setTextColor(0, 0, 0);
-            doc.text('pH Readings', 14, yPos);
+            doc.text('Daily Summary', 14, yPos);
             yPos += 5;
 
-            const phTableData = sensorLogs.map(log => [
-                new Date(log.timestamp).toLocaleString(),
-                log.value.toFixed(2)
-            ]);
+            const dailyTableData = logsWithPh.map(log => {
+                const [year, month, day] = log.log_date.split('-');
+                const dateStr = new Date(year, month - 1, day).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                return [
+                    dateStr,
+                    log.ph_avg ? log.ph_avg.toFixed(2) : 'N/A',
+                    (log.ph_min && log.ph_max) ? `${log.ph_min.toFixed(2)} - ${log.ph_max.toFixed(2)}` : 'N/A',
+                    log.ec_avg ? log.ec_avg.toFixed(0) : 'N/A',
+                    log.air_temp_avg ? log.air_temp_avg.toFixed(1) : 'N/A'
+                ];
+            });
 
             doc.autoTable({
                 startY: yPos,
-                head: [['Timestamp', 'pH Value']],
-                body: phTableData,
+                head: [['Date', 'Avg pH', 'pH Range', 'Avg EC', 'Avg Temp']],
+                body: dailyTableData,
                 theme: 'grid',
                 headStyles: { fillColor: [16, 185, 129] },
                 styles: { fontSize: 8 },
@@ -2988,31 +3121,32 @@
             yPos = doc.lastAutoTable.finalY + 10;
 
             // Dosing Events Table
-            if (yPos > 250) {
-                doc.addPage();
-                yPos = 20;
+            if (dosingEvents.length > 0) {
+                if (yPos > 250) {
+                    doc.addPage();
+                    yPos = 20;
+                }
+
+                doc.setFontSize(12);
+                doc.text('Dosing Events', 14, yPos);
+                yPos += 5;
+
+                const dosingTableData = dosingEvents.slice(0, 50).map(event => [
+                    new Date(event.timestamp).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
+                    event.dose_type === 'ph_up' ? 'pH Up' : 'pH Down',
+                    event.dose_amount_ml.toFixed(2) + ' ml'
+                ]);
+
+                doc.autoTable({
+                    startY: yPos,
+                    head: [['Timestamp', 'Type', 'Amount']],
+                    body: dosingTableData,
+                    theme: 'grid',
+                    headStyles: { fillColor: [16, 185, 129] },
+                    styles: { fontSize: 8 },
+                    margin: { left: 14 }
+                });
             }
-
-            doc.setFontSize(12);
-            doc.text('Dosing Events', 14, yPos);
-            yPos += 5;
-
-            const dosingTableData = dosingLogs.map(log => [
-                new Date(log.timestamp).toLocaleString(),
-                log.dose_type === 'up' ? 'pH Up' : 'pH Down',
-                log.dose_amount_ml.toFixed(2) + ' ml',
-                log.value ? log.value.toFixed(2) : 'N/A'
-            ]);
-
-            doc.autoTable({
-                startY: yPos,
-                head: [['Timestamp', 'Type', 'Amount', 'pH at Dose']],
-                body: dosingTableData,
-                theme: 'grid',
-                headStyles: { fillColor: [16, 185, 129] },
-                styles: { fontSize: 8 },
-                margin: { left: 14 }
-            });
 
             // Save the PDF
             doc.save(`${currentPlant.name.replace(/[^a-z0-9]/gi, '_')}_report.pdf`);
