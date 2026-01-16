@@ -230,6 +230,17 @@ def calculate_aggregated_stats(
             "readings_count": len(ppfd_values)
         }
 
+    # Light hours statistics (sum across all days)
+    total_light_seconds = sum(log.total_light_seconds or 0 for log in daily_logs)
+    total_light_cycles = sum(log.light_cycles_count or 0 for log in daily_logs)
+    days_with_light = len([log for log in daily_logs if log.total_light_seconds and log.total_light_seconds > 0])
+
+    if total_light_seconds > 0:
+        stats["total_light_hours"] = round(total_light_seconds / 3600, 2)
+        stats["total_light_cycles"] = total_light_cycles
+        stats["avg_light_hours_per_day"] = round((total_light_seconds / 3600) / days_with_light, 2) if days_with_light > 0 else 0
+        stats["days_with_light_data"] = days_with_light
+
     # Days in each phase
     days_in_phase = {}
     for phase in phase_history:
