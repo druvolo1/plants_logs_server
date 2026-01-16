@@ -2,9 +2,9 @@
 """
 Plant, phase template, phase history, and device assignment models.
 """
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Date, Float, Text
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Float, Text
 from sqlalchemy.orm import relationship
-from datetime import datetime, date
+from datetime import datetime
 from .base import Base
 
 
@@ -37,8 +37,8 @@ class Plant(Base):
     device_id = Column(Integer, ForeignKey("devices.id"), nullable=True)  # Made nullable - legacy field for backward compatibility
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     location_id = Column(Integer, ForeignKey("locations.id"), nullable=True)  # Location assignment
-    start_date = Column(Date, nullable=False)
-    end_date = Column(Date, nullable=True)
+    start_date = Column(DateTime, nullable=False)
+    end_date = Column(DateTime, nullable=True)
     yield_grams = Column(Float, nullable=True)  # Added after harvest
     display_order = Column(Integer, nullable=True, default=0)  # For user-defined ordering
 
