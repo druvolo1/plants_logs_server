@@ -1603,11 +1603,17 @@
 
         async function loadPlantLogs(plantId) {
             try {
+                console.log('[LOAD LOGS] === Starting loadPlantLogs ===');
+                console.log('[LOAD LOGS] Plant ID:', plantId);
+                console.log('[LOAD LOGS] Current plant:', currentPlant);
+
                 const timeRange = document.getElementById('timeRangeFilter').value;
                 let url = `/user/plants/${plantId}/logs?limit=10000`;
 
                 // Always filter from plant start date at minimum
                 let filterStartDate = currentPlant.start_date ? new Date(currentPlant.start_date) : null;
+                console.log('[LOAD LOGS] Plant start date:', currentPlant.start_date);
+                console.log('[LOAD LOGS] Filter start date:', filterStartDate);
 
                 if (timeRange !== 'all' && filterStartDate) {
                     // Use the later of: plant start date OR the time range filter
@@ -1631,12 +1637,20 @@
                     url += `&end_date=${endDate.toISOString()}`;
                 }
 
+                console.log('[LOAD LOGS] Fetching from URL:', url);
+
                 const response = await fetch(url);
                 if (!response.ok) throw new Error('Failed to load logs');
 
                 const data = await response.json();
+                console.log('[LOAD LOGS] Raw API response:', data);
+
                 const logs = data.logs || data;  // Support both old and new format
                 const phaseHistory = data.phase_history || [];
+
+                console.log('[LOAD LOGS] Extracted logs count:', logs.length);
+                console.log('[LOAD LOGS] Log dates from API:', logs.map(l => l.log_date));
+                console.log('[LOAD LOGS] Phase history:', phaseHistory);
 
                 // Logs are already sorted chronologically (oldest first) from API
 
@@ -1782,6 +1796,12 @@
         }
 
         async function renderDailyAggregateCharts(logs, phaseHistory, dosingEvents = []) {
+            console.log('[RENDER CHARTS] === Starting renderDailyAggregateCharts ===');
+            console.log('[RENDER CHARTS] Received logs count:', logs.length);
+            console.log('[RENDER CHARTS] Log dates received:', logs.map(l => l.log_date));
+            console.log('[RENDER CHARTS] Phase history:', phaseHistory);
+            console.log('[RENDER CHARTS] Dosing events count:', dosingEvents.length);
+
             // Destroy old charts
             sensorCharts.forEach(chart => {
                 if (chart) chart.destroy();
@@ -1793,6 +1813,7 @@
             }
 
             // Logs are already sorted chronologically from API (ascending order by date)
+            console.log('[RENDER CHARTS] Using logs as-is (no sorting)');
 
             // Get the chart container
             const chartsContainer = document.getElementById('chartsContainer');
@@ -1879,6 +1900,9 @@
                     const hasData = logs.some(log => log[metric.avgKey] !== null && log[metric.avgKey] !== undefined);
                     if (!hasData) return;
 
+                    console.log(`[RENDER CHARTS] Creating chart for ${metric.name}`);
+                    console.log(`[RENDER CHARTS] ${metric.name} - Log dates:`, logs.map(l => l.log_date));
+
                     // Create canvas element for this metric
                     const canvas = document.createElement('canvas');
                     canvas.id = `metricChart_${index}`;
@@ -1887,10 +1911,13 @@
 
                     const ctx = canvas.getContext('2d');
 
+                    const chartLabels = logs.map(l => new Date(l.log_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+                    console.log(`[RENDER CHARTS] ${metric.name} - Chart labels:`, chartLabels);
+
                     const chart = new Chart(ctx, {
                         type: 'line',
                         data: {
-                        labels: logs.map(l => new Date(l.log_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })),
+                        labels: chartLabels,
                         datasets: [
                             {
                                 label: 'Min',
@@ -2082,6 +2109,7 @@
                     if (dosingChart) dosingChart.destroy();
 
                     // Aggregate dosing events by day with timestamps and amounts
+                    console.log('[RENDER CHARTS] Processing dosing events:', dosingEvents.length);
                     const dosingByDay = {};
                     dosingEvents.forEach(event => {
                         const dateKey = formatDate(event.timestamp);
@@ -2097,8 +2125,11 @@
                         }
                     });
 
+                    console.log('[RENDER CHARTS] Dosing by day (before sort):', Object.keys(dosingByDay));
+
                     // Sort dates chronologically
                     const sortedDates = Object.keys(dosingByDay).sort((a, b) => new Date(a) - new Date(b));
+                    console.log('[RENDER CHARTS] Sorted dosing dates:', sortedDates);
                     const upCounts = sortedDates.map(date => dosingByDay[date].up);
                     const downCounts = sortedDates.map(date => dosingByDay[date].down);
 
