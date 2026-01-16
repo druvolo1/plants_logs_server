@@ -3786,10 +3786,8 @@
             // Water temp - only show if enabled AND has valid reading (> 10 to filter out disabled sensors returning 0)
             if (waterTempHeaderEl && waterTempEnabled &&
                 data.water_temp !== null && data.water_temp !== undefined && data.water_temp > 10) {
+                // Device already sends temperature in the correct unit (C or F based on settings)
                 let waterTemp = data.water_temp;
-                if (useFahrenheit) {
-                    waterTemp = (waterTemp * 9/5) + 32;  // Convert C to F
-                }
                 waterTempHeaderEl.textContent = `${Math.round(waterTemp)}${tempUnit}`;
                 // Check if water temp is out of range (only if we have device settings)
                 if (settings.water_temp_min !== undefined && settings.water_temp_max !== undefined) {
@@ -3808,10 +3806,8 @@
             // Air temp - only show if enabled AND has valid reading (> 10 to filter out disabled sensors returning 0)
             if (airTempHeaderEl && airTempEnabled &&
                 data.air_temp !== null && data.air_temp !== undefined && data.air_temp > 10) {
+                // Device already sends temperature in the correct unit (C or F based on settings)
                 let airTemp = data.air_temp;
-                if (useFahrenheit) {
-                    airTemp = (airTemp * 9/5) + 32;  // Convert C to F
-                }
                 airTempHeaderEl.textContent = `${Math.round(airTemp)}${tempUnit}`;
                 // Check if air temp is out of range (only if we have device settings)
                 if (settings.air_temp_min !== undefined && settings.air_temp_max !== undefined) {
