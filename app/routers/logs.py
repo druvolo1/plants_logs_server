@@ -553,20 +553,25 @@ async def get_plant_logs(
         raise HTTPException(404, "Plant not found")
 
     # Parse date filters
-    # Always filter to exclude dates before plant start date
-    # Convert start_date to date if it's a datetime (handles both old and new schema)
-    from sqlalchemy import func, cast, Date as SQLDate
+    # CRITICAL: Always filter to exclude dates before plant start date
+    # Convert datetime to date for proper comparison (plant.start_date is datetime, log_date is date)
+    plant_start_date_only = plant.start_date.date() if hasattr(plant.start_date, 'date') else plant.start_date
 
-    # Use SQL DATE() function to extract date portion for comparison
+    print(f"[DEBUG LOGS] Plant '{plant.name}' start_date: {plant.start_date}, extracted date: {plant_start_date_only}")
+
+    # Build query with proper date filtering
     query = select(PlantDailyLog).where(
         PlantDailyLog.plant_id == plant.id,
-        PlantDailyLog.log_date >= func.date(plant.start_date)
+        PlantDailyLog.log_date >= plant_start_date_only
     )
 
     if start_date:
         try:
             start_dt = date_parser.isoparse(start_date).date()
-            query = query.where(PlantDailyLog.log_date >= start_dt)
+            # Only apply if user's start_date is AFTER plant start date
+            if start_dt > plant_start_date_only:
+                query = query.where(PlantDailyLog.log_date >= start_dt)
+                print(f"[DEBUG LOGS] Applied user start_date filter: {start_dt}")
         except Exception as e:
             raise HTTPException(400, f"Invalid start_date format: {str(e)}")
 
@@ -574,14 +579,20 @@ async def get_plant_logs(
         try:
             end_dt = date_parser.isoparse(end_date).date()
             query = query.where(PlantDailyLog.log_date <= end_dt)
+            print(f"[DEBUG LOGS] Applied end_date filter: {end_dt}")
         except Exception as e:
             raise HTTPException(400, f"Invalid end_date format: {str(e)}")
 
-    # Order by date ascending (oldest first) for chronological display
+    # CRITICAL: Order by date ASCENDING (chronological: oldest first)
     query = query.order_by(PlantDailyLog.log_date.asc()).limit(limit)
 
     result = await session.execute(query)
     logs = result.scalars().all()
+
+    # Debug: Print actual dates returned
+    if logs:
+        log_dates = [str(log.log_date) for log in logs]
+        print(f"[DEBUG LOGS] Returned {len(logs)} logs with dates: {log_dates}")
 
     # Get phase history for this plant
     phase_query = select(PhaseHistory).where(
@@ -685,13 +696,14 @@ async def get_plant_dosing_events(
         raise HTTPException(404, "Plant not found")
 
     # Build query for dosing events
-    # Always filter to exclude dates before plant start date
-    # Use SQL DATE() function to extract date portion for comparison
-    from sqlalchemy import func
+    # CRITICAL: Always filter to exclude dates before plant start date
+    plant_start_date_only = plant.start_date.date() if hasattr(plant.start_date, 'date') else plant.start_date
+
+    print(f"[DEBUG DOSING] Plant '{plant.name}' start_date: {plant_start_date_only}")
 
     query = select(DosingEvent).where(
         DosingEvent.plant_id == plant.id,
-        DosingEvent.event_date >= func.date(plant.start_date)
+        DosingEvent.event_date >= plant_start_date_only
     )
 
     if start_date:

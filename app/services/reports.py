@@ -34,16 +34,15 @@ async def get_plant_data(
     """
     # Simple query - get all daily logs for this plant
     # Filter to only include dates on or after plant start date
-    # Use SQL DATE() function to extract date portion for comparison (handles datetime in DB)
-    from sqlalchemy import func
+    plant_start_date_only = plant.start_date.date() if hasattr(plant.start_date, 'date') else plant.start_date
 
     logs_result = await session.execute(
         select(PlantDailyLog)
         .where(
             PlantDailyLog.plant_id == plant.id,
-            PlantDailyLog.log_date >= func.date(plant.start_date)
+            PlantDailyLog.log_date >= plant_start_date_only
         )
-        .order_by(PlantDailyLog.log_date)
+        .order_by(PlantDailyLog.log_date.asc())
     )
     logs = logs_result.scalars().all()
 

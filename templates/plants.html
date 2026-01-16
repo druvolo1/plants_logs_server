@@ -1792,8 +1792,7 @@
                 dosingChart = null;
             }
 
-            // Sort logs chronologically to ensure dates are in order
-            logs.sort((a, b) => new Date(a.log_date) - new Date(b.log_date));
+            // Logs are already sorted chronologically from API (ascending order by date)
 
             // Get the chart container
             const chartsContainer = document.getElementById('chartsContainer');
