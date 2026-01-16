@@ -1733,8 +1733,12 @@
             if (!phaseHistory || phaseHistory.length === 0 || !logs || logs.length === 0) return [];
 
             try {
-                // Get all chart labels (dates) from logs
-                const chartLabels = logs.map(l => new Date(l.log_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+                // Get all chart labels (dates) from logs - parse as local date to avoid timezone shift
+                const chartLabels = logs.map(l => {
+                    const [year, month, day] = l.log_date.split('-');
+                    const localDate = new Date(year, month - 1, day);
+                    return localDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                });
 
                 // Create annotations for each phase
                 const annotations = {};
@@ -1750,13 +1754,19 @@
                     let xMinLabel = startLabel;
                     let xMaxLabel = endLabel;
 
+                    // Parse first and last log dates as local dates for comparison
+                    const [firstYear, firstMonth, firstDay] = logs[0].log_date.split('-');
+                    const firstLogDate = new Date(firstYear, firstMonth - 1, firstDay);
+                    const [lastYear, lastMonth, lastDay] = logs[logs.length - 1].log_date.split('-');
+                    const lastLogDate = new Date(lastYear, lastMonth - 1, lastDay);
+
                     // If start date is before first chart date, use first chart date
-                    if (!chartLabels.includes(startLabel) && startDate < new Date(logs[0].log_date)) {
+                    if (!chartLabels.includes(startLabel) && startDate < firstLogDate) {
                         xMinLabel = chartLabels[0];
                     }
 
                     // If end date is after last chart date, use last chart date
-                    if (!chartLabels.includes(endLabel) && endDate > new Date(logs[logs.length - 1].log_date)) {
+                    if (!chartLabels.includes(endLabel) && endDate > lastLogDate) {
                         xMaxLabel = chartLabels[chartLabels.length - 1];
                     }
 
@@ -1911,7 +1921,12 @@
 
                     const ctx = canvas.getContext('2d');
 
-                    const chartLabels = logs.map(l => new Date(l.log_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+                    // Parse date as local date to avoid timezone shifting
+                    const chartLabels = logs.map(l => {
+                        const [year, month, day] = l.log_date.split('-');
+                        const localDate = new Date(year, month - 1, day);
+                        return localDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                    });
                     console.log(`[RENDER CHARTS] ${metric.name} - Chart labels:`, chartLabels);
 
                     const chart = new Chart(ctx, {
@@ -2026,10 +2041,17 @@
 
                     const ctx = canvas.getContext('2d');
 
+                    // Parse date as local date to avoid timezone shifting
+                    const lightChartLabels = logs.map(l => {
+                        const [year, month, day] = l.log_date.split('-');
+                        const localDate = new Date(year, month - 1, day);
+                        return localDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                    });
+
                     const chart = new Chart(ctx, {
                         type: 'bar',
                         data: {
-                        labels: logs.map(l => new Date(l.log_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })),
+                        labels: lightChartLabels,
                         datasets: [
                             {
                                 label: 'Daily Light Hours',
