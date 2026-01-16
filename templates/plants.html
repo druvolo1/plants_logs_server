@@ -3101,10 +3101,10 @@
                 const dateStr = new Date(year, month - 1, day).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
                 return [
                     dateStr,
-                    log.ph_avg ? log.ph_avg.toFixed(2) : 'N/A',
-                    (log.ph_min && log.ph_max) ? `${log.ph_min.toFixed(2)} - ${log.ph_max.toFixed(2)}` : 'N/A',
-                    log.ec_avg ? log.ec_avg.toFixed(0) : 'N/A',
-                    log.air_temp_avg ? log.air_temp_avg.toFixed(1) : 'N/A'
+                    (log.ph_avg !== null && log.ph_avg !== undefined) ? log.ph_avg.toFixed(2) : 'N/A',
+                    (log.ph_min !== null && log.ph_min !== undefined && log.ph_max !== null && log.ph_max !== undefined) ? `${log.ph_min.toFixed(2)} - ${log.ph_max.toFixed(2)}` : 'N/A',
+                    (log.ec_avg !== null && log.ec_avg !== undefined) ? log.ec_avg.toFixed(0) : 'N/A',
+                    (log.air_temp_avg !== null && log.air_temp_avg !== undefined) ? log.air_temp_avg.toFixed(1) : 'N/A'
                 ];
             });
 
@@ -3134,7 +3134,7 @@
                 const dosingTableData = dosingEvents.slice(0, 50).map(event => [
                     new Date(event.timestamp).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
                     event.dose_type === 'ph_up' ? 'pH Up' : 'pH Down',
-                    event.dose_amount_ml.toFixed(2) + ' ml'
+                    (event.dose_amount_ml !== null && event.dose_amount_ml !== undefined) ? event.dose_amount_ml.toFixed(2) + ' ml' : 'N/A'
                 ]);
 
                 doc.autoTable({
