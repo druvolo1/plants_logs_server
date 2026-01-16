@@ -106,6 +106,8 @@ class PlantAssignmentRead(BaseModel):
     plant_id: str  # Plant UUID
     device_id: str  # Device UUID
     device_name: Optional[str]
+    system_name: Optional[str]  # Device's self-reported name
+    phase: Optional[str]  # Phase when assignment started
     assigned_at: datetime
     removed_at: Optional[datetime]
     is_active: bool

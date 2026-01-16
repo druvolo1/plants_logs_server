@@ -393,15 +393,40 @@ async def get_plant_assignments(
         .order_by(DeviceAssignment.assigned_at.desc())
     )
 
+    # Get all phase history for the plant
+    phase_history_result = await session.execute(
+        select(PhaseHistory)
+        .where(PhaseHistory.plant_id == plant.id)
+        .order_by(PhaseHistory.started_at.asc())
+    )
+    phase_history = phase_history_result.scalars().all()
+
     active_assignments = []
     history_assignments = []
 
     for assignment, device in assignments_result.all():
+        # Find phase that was active when assignment started
+        assignment_phase = None
+        for phase in phase_history:
+            if phase.started_at <= assignment.assigned_at:
+                if phase.ended_at is None or phase.ended_at >= assignment.assigned_at:
+                    assignment_phase = phase.phase
+                    break
+            elif phase.started_at > assignment.assigned_at:
+                # Phases are ordered chronologically, so if we've passed the assignment date, stop
+                break
+
+        # If no phase found, use current plant phase
+        if not assignment_phase:
+            assignment_phase = plant.current_phase
+
         assignment_data = PlantAssignmentRead(
             id=assignment.id,
             plant_id=plant.plant_id,
             device_id=device.device_id,
             device_name=device.name,
+            system_name=device.system_name,
+            phase=assignment_phase,
             assigned_at=assignment.assigned_at,
             removed_at=assignment.removed_at,
             is_active=assignment.removed_at is None
