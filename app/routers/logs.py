@@ -554,9 +554,13 @@ async def get_plant_logs(
 
     # Parse date filters
     # Always filter to exclude dates before plant start date
+    # Convert start_date to date if it's a datetime (handles both old and new schema)
+    from sqlalchemy import func, cast, Date as SQLDate
+
+    # Use SQL DATE() function to extract date portion for comparison
     query = select(PlantDailyLog).where(
         PlantDailyLog.plant_id == plant.id,
-        PlantDailyLog.log_date >= plant.start_date
+        PlantDailyLog.log_date >= func.date(plant.start_date)
     )
 
     if start_date:
@@ -682,9 +686,12 @@ async def get_plant_dosing_events(
 
     # Build query for dosing events
     # Always filter to exclude dates before plant start date
+    # Use SQL DATE() function to extract date portion for comparison
+    from sqlalchemy import func
+
     query = select(DosingEvent).where(
         DosingEvent.plant_id == plant.id,
-        DosingEvent.event_date >= plant.start_date
+        DosingEvent.event_date >= func.date(plant.start_date)
     )
 
     if start_date:
