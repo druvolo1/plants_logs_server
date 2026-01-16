@@ -2032,8 +2032,19 @@
 
             // Add light events chart (event-based tracking)
             try {
+                console.log('[RENDER CHARTS] Checking for light data...');
+                const lightDataByDate = logs.map(log => ({
+                    date: log.log_date,
+                    total_light_seconds: log.total_light_seconds,
+                    light_cycles_count: log.light_cycles_count
+                }));
+                console.log('[RENDER CHARTS] Light data by date:', lightDataByDate);
+
                 const hasLightData = logs.some(log => log.total_light_seconds !== null && log.total_light_seconds !== undefined && log.total_light_seconds > 0);
+                console.log('[RENDER CHARTS] Has light data?', hasLightData);
+
                 if (hasLightData) {
+                    console.log('[RENDER CHARTS] Creating Daily Light Hours chart');
                     const canvas = document.createElement('canvas');
                     canvas.id = 'lightEventsChart';
                     canvas.style.marginBottom = '2rem';
@@ -2047,6 +2058,7 @@
                         const localDate = new Date(year, month - 1, day);
                         return localDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
                     });
+                    console.log('[RENDER CHARTS] Light chart labels:', lightChartLabels);
 
                     const chart = new Chart(ctx, {
                         type: 'bar',
@@ -2107,6 +2119,8 @@
                     });
 
                     sensorCharts.push(chart);
+                } else {
+                    console.log('[RENDER CHARTS] Skipping Daily Light Hours chart - no light data found (total_light_seconds is null/0 for all dates)');
                 }
             } catch (error) {
                 console.error('Error creating light events chart:', error);
