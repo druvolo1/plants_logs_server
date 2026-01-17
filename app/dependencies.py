@@ -3,7 +3,7 @@
 Common dependency functions for FastAPI routes.
 """
 from typing import Optional
-from fastapi import Depends, Header, HTTPException
+from fastapi import Depends, Header, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import User
 
@@ -21,7 +21,7 @@ def get_db_dependency():
 
 
 async def get_optional_user(
-    request,
+    request: Request,
     session: AsyncSession = Depends(get_db_dependency())
 ) -> Optional[User]:
     """
@@ -29,7 +29,6 @@ async def get_optional_user(
     Used for endpoints that work with or without authentication (e.g., public discovery).
     Checks both cookies and Authorization header.
     """
-    from fastapi import Request
     import jwt
     from sqlalchemy import select
 
