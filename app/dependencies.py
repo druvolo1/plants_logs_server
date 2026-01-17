@@ -21,23 +21,46 @@ def get_db_dependency():
 
 
 async def get_optional_user(
-    authorization: Optional[str] = Header(None),
+    request,
     session: AsyncSession = Depends(get_db_dependency())
 ) -> Optional[User]:
     """
     Get current user if authenticated, None otherwise.
     Used for endpoints that work with or without authentication (e.g., public discovery).
+    Checks both cookies and Authorization header.
     """
-    if not authorization:
-        return None
+    from fastapi import Request
+    import jwt
+    from sqlalchemy import select
 
-    try:
-        # Get the current_user dependency and call it
-        current_user_dep = get_current_user_dependency()
-        user = await current_user_dep(authorization, session)
-        return user
-    except:
-        return None
+    # Import here to avoid circular dependency
+    from app.main import SECRET
+
+    # Try to get auth from cookie first
+    cookie = request.cookies.get("auth_cookie")
+    if cookie:
+        try:
+            payload = jwt.decode(cookie, SECRET, algorithms=["HS256"], options={"verify_aud": False})
+            user_id = payload.get("sub")
+            if user_id:
+                result = await session.execute(select(User).where(User.id == int(user_id)))
+                user = result.scalars().first()
+                if user:
+                    return user
+        except:
+            pass
+
+    # Try Authorization header as fallback
+    auth_header = request.headers.get("authorization")
+    if auth_header:
+        try:
+            current_user_dep = get_current_user_dependency()
+            user = await current_user_dep(request)
+            return user
+        except:
+            pass
+
+    return None
 
 
 async def require_superuser(
