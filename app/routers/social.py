@@ -189,14 +189,28 @@ async def get_grower_profile(
     session: AsyncSession = Depends(get_db_dependency()),
     current_user: Optional[User] = Depends(get_optional_user)
 ):
-    """Get a grower's public profile"""
+    """Get a grower's public profile (or own profile if authenticated)"""
     result = await session.execute(
         select(GrowerProfile).where(GrowerProfile.user_id == user_id)
     )
     profile = result.scalars().first()
 
-    if not profile or not profile.is_public:
+    # Check if viewing own profile
+    is_own_profile = current_user and current_user.id == user_id
+
+    # If not own profile, check if profile is public
+    if not is_own_profile and (not profile or not profile.is_public):
         raise HTTPException(404, "Grower profile not found or not public")
+
+    # If own profile but no profile exists, create one
+    if is_own_profile and not profile:
+        profile = GrowerProfile(user_id=user_id)
+        session.add(profile)
+        await session.commit()
+        await session.refresh(profile)
+
+    if not profile:
+        raise HTTPException(404, "Grower profile not found")
 
     user_result = await session.execute(select(User).where(User.id == user_id))
     user = user_result.scalars().first()
@@ -313,17 +327,22 @@ async def get_my_product_locations(
 @router.get("/product-locations/{user_id}", response_model=List[ProductLocationRead])
 async def get_grower_product_locations(
     user_id: int,
-    session: AsyncSession = Depends(get_db_dependency())
+    session: AsyncSession = Depends(get_db_dependency()),
+    current_user: Optional[User] = Depends(get_optional_user)
 ):
-    """Get a grower's product locations (public)"""
-    # Verify profile is public
-    profile_result = await session.execute(
-        select(GrowerProfile).where(GrowerProfile.user_id == user_id)
-    )
-    profile = profile_result.scalars().first()
+    """Get a grower's product locations (public or own profile)"""
+    # Check if viewing own profile
+    is_own_profile = current_user and current_user.id == user_id
 
-    if not profile or not profile.is_public:
-        raise HTTPException(404, "Grower profile not found or not public")
+    # If not own profile, verify profile is public
+    if not is_own_profile:
+        profile_result = await session.execute(
+            select(GrowerProfile).where(GrowerProfile.user_id == user_id)
+        )
+        profile = profile_result.scalars().first()
+
+        if not profile or not profile.is_public:
+            raise HTTPException(404, "Grower profile not found or not public")
 
     result = await session.execute(
         select(ProductLocation).where(ProductLocation.user_id == user_id)
@@ -569,17 +588,22 @@ async def remove_upcoming_strain(
 @router.get("/strains/upcoming/{user_id}", response_model=List[UpcomingStrainRead])
 async def get_upcoming_strains(
     user_id: int,
-    session: AsyncSession = Depends(get_db_dependency())
+    session: AsyncSession = Depends(get_db_dependency()),
+    current_user: Optional[User] = Depends(get_optional_user)
 ):
-    """Get upcoming strains for a grower"""
-    # Verify profile is public
-    profile_result = await session.execute(
-        select(GrowerProfile).where(GrowerProfile.user_id == user_id)
-    )
-    profile = profile_result.scalars().first()
+    """Get upcoming strains for a grower (public or own profile)"""
+    # Check if viewing own profile
+    is_own_profile = current_user and current_user.id == user_id
 
-    if not profile or not profile.is_public:
-        raise HTTPException(404, "Grower profile not found or not public")
+    # If not own profile, verify profile is public
+    if not is_own_profile:
+        profile_result = await session.execute(
+            select(GrowerProfile).where(GrowerProfile.user_id == user_id)
+        )
+        profile = profile_result.scalars().first()
+
+        if not profile or not profile.is_public:
+            raise HTTPException(404, "Grower profile not found or not public")
 
     result = await session.execute(
         select(UpcomingStrain)
