@@ -407,11 +407,11 @@ async def report_view_page(request: Request, report_id: int):
     return templates.TemplateResponse("social/report_view.html", context)
 
 
-# Admin settings page (superuser only)
+# Admin settings page (redirects to admin portal settings tab)
 @router.get("/admin/settings", response_class=HTMLResponse)
 async def admin_settings_page(request: Request, user: User = Depends(get_current_user_dependency())):
     if not user.is_superuser:
         return RedirectResponse("/dashboard")
 
-    context = await get_impersonation_context(request, user)
-    return templates.TemplateResponse("admin/settings.html", {"request": request, **context})
+    # Redirect to admin portal (settings are now integrated there)
+    return RedirectResponse("/admin/portal#settings")

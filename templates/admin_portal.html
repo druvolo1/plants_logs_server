@@ -151,6 +151,7 @@
     <button class="admin-tab" onclick="showAdminTab('plants')">🌱 Plants</button>
     <button class="admin-tab" onclick="showAdminTab('data-viewer')">📈 Data Viewer</button>
     <button class="admin-tab" onclick="showAdminTab('database')">🗄️ Database</button>
+    <button class="admin-tab" onclick="showAdminTab('settings')">⚙️ Settings</button>
 </div>
 
 <!-- Overview Tab Content -->
@@ -534,6 +535,30 @@
         </div>
     </div>
 </div><!-- End Database Tab -->
+
+<!-- Settings Tab -->
+<div id="tab-settings" class="admin-tab-content">
+    <h2 style="margin-bottom: 1.5rem; color: #10b981;">System Settings</h2>
+    <p style="color: #64748b; margin-bottom: 1.5rem;">Configure system-wide settings and features</p>
+
+    <!-- Social Media Settings Section -->
+    <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 12px; padding: 2rem; margin-bottom: 2rem;">
+        <h3 style="color: #10b981; margin-bottom: 1.5rem; font-size: 1.25rem; border-bottom: 1px solid rgba(16, 185, 129, 0.2); padding-bottom: 0.75rem;">Social Media Features</h3>
+
+        <div id="settings-container" style="min-height: 100px;">
+            <div style="text-align: center; padding: 2rem; color: #94a3b8;">Loading settings...</div>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid rgba(148, 163, 184, 0.2);">
+            <button id="save-settings-btn" onclick="saveSettings()" disabled style="padding: 0.75rem 1.5rem; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.3s; opacity: 0.5;">
+                Save Changes
+            </button>
+        </div>
+
+        <div id="settings-success-message" style="display: none; padding: 1rem; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 8px; color: #10b981; margin-top: 1rem;"></div>
+    </div>
+</div><!-- End Settings Tab -->
+
 {% endblock %}
 
 {% block modals %}
@@ -1732,4 +1757,168 @@ async function showDatabaseDetails(type) {
 // Load user counts and active sessions on page load
 loadUserCounts();
 loadActiveSessions();
+
+// Check URL hash on page load to auto-switch to specific tab
+window.addEventListener('DOMContentLoaded', () => {
+    const hash = window.location.hash.substring(1); // Remove the '#'
+    if (hash) {
+        showAdminTab(hash);
+    }
+});
+
+// ===== SETTINGS TAB FUNCTIONS =====
+let settings = {};
+let hasSettingsChanges = false;
+
+async function loadSettings() {
+    const container = document.getElementById('settings-container');
+
+    try {
+        // Note: The endpoint is in the social router
+        const response = await fetch('/api/social/admin/settings');
+
+        if (!response.ok) {
+            throw new Error('Failed to load settings');
+        }
+
+        const data = await response.json();
+        settings = {};
+
+        // Convert array to object for easier access
+        data.forEach(setting => {
+            settings[setting.setting_key] = setting;
+        });
+
+        renderSettings();
+
+    } catch (error) {
+        console.error('Error loading settings:', error);
+        container.innerHTML = `
+            <div style="text-align: center; padding: 2rem; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 8px; color: #ef4444;">
+                <p style="margin-bottom: 1rem;">Failed to load settings</p>
+                <button onclick="loadSettings()" style="padding: 0.5rem 1rem; background: #10b981; color: white; border: none; border-radius: 6px; cursor: pointer;">Try Again</button>
+            </div>
+        `;
+    }
+}
+
+function renderSettings() {
+    const container = document.getElementById('settings-container');
+    container.innerHTML = '';
+
+    // Anonymous Browsing Setting
+    const anonymousBrowsing = settings['allow_anonymous_browsing'];
+    if (anonymousBrowsing) {
+        const isEnabled = anonymousBrowsing.setting_value === 'true';
+
+        const settingHtml = `
+            <div style="padding: 1.5rem; background: #0f172a; border: 1px solid #334155; border-radius: 8px; margin-bottom: 1rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                    <div>
+                        <div style="font-size: 1.1rem; font-weight: 600; color: #e2e8f0; margin-bottom: 0.25rem;">Anonymous Browsing</div>
+                        <div style="font-size: 0.95rem; color: #cbd5e1;">
+                            Status: <span style="display: inline-block; padding: 0.25rem 0.75rem; background: ${isEnabled ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)'}; color: ${isEnabled ? '#10b981' : '#ef4444'}; border-radius: 4px; font-size: 0.85rem; font-weight: 600;">
+                                ${isEnabled ? 'Enabled' : 'Disabled'}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="toggle-switch ${isEnabled ? 'active' : ''}"
+                         id="toggle-allow_anonymous_browsing"
+                         onclick="toggleSetting('allow_anonymous_browsing')"
+                         style="position: relative; width: 60px; height: 30px; background: ${isEnabled ? '#10b981' : '#475569'}; border-radius: 15px; cursor: pointer; transition: background 0.3s;">
+                        <div style="position: absolute; top: 3px; left: ${isEnabled ? '33px' : '3px'}; width: 24px; height: 24px; background: white; border-radius: 50%; transition: left 0.3s;"></div>
+                    </div>
+                </div>
+                <div style="color: #94a3b8; font-size: 0.9rem; line-height: 1.6;">
+                    ${anonymousBrowsing.description || 'Allow non-logged-in users to browse published reports and grower profiles'}
+                </div>
+            </div>
+        `;
+
+        container.innerHTML += settingHtml;
+    }
+
+    // Add more settings here as needed
+    if (Object.keys(settings).length === 0) {
+        container.innerHTML = '<div style="text-align: center; padding: 2rem; color: #94a3b8;">No settings found</div>';
+    }
+}
+
+function toggleSetting(settingKey) {
+    const currentValue = settings[settingKey].setting_value === 'true';
+    const newValue = !currentValue;
+
+    // Update local state
+    settings[settingKey].setting_value = newValue ? 'true' : 'false';
+
+    // Mark as changed
+    hasSettingsChanges = true;
+    const saveBtn = document.getElementById('save-settings-btn');
+    saveBtn.disabled = false;
+    saveBtn.style.opacity = '1';
+
+    // Re-render to update UI
+    renderSettings();
+}
+
+async function saveSettings() {
+    if (!hasSettingsChanges) return;
+
+    const saveBtn = document.getElementById('save-settings-btn');
+    const successMessage = document.getElementById('settings-success-message');
+
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Saving...';
+
+    try {
+        // Save each changed setting
+        for (const key in settings) {
+            const response = await fetch(`/api/social/admin/settings/${key}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    setting_value: settings[key].setting_value
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`Failed to save setting: ${key}`);
+            }
+        }
+
+        // Show success message
+        successMessage.textContent = 'Settings saved successfully!';
+        successMessage.style.display = 'block';
+        setTimeout(() => {
+            successMessage.style.display = 'none';
+        }, 3000);
+
+        // Reset change flag
+        hasSettingsChanges = false;
+        saveBtn.textContent = 'Save Changes';
+        saveBtn.style.opacity = '0.5';
+
+        // Reload settings to confirm
+        await loadSettings();
+
+    } catch (error) {
+        console.error('Error saving settings:', error);
+        alert('Failed to save settings. Please try again.');
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'Save Changes';
+        saveBtn.style.opacity = '1';
+    }
+}
+
+// Load settings when the settings tab is shown
+const originalShowAdminTab = showAdminTab;
+showAdminTab = function(tabName) {
+    originalShowAdminTab(tabName);
+    if (tabName === 'settings' && Object.keys(settings).length === 0) {
+        loadSettings();
+    }
+};
+
 {% endblock %}
