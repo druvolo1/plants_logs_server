@@ -349,6 +349,15 @@ async def discover_page(request: Request):
     return templates.TemplateResponse("social/discover.html", context)
 
 
+# My profile page (authenticated) - MUST come before {user_id} route
+@router.get("/social/profile/me", response_class=HTMLResponse)
+async def my_profile_page(request: Request, user: User = Depends(get_current_user_dependency())):
+    context = await get_impersonation_context(request, user)
+    context["user_id"] = user.id
+    context["is_own_profile"] = True
+    return templates.TemplateResponse("social/profile.html", {"request": request, **context})
+
+
 # Grower profile page (public - requires public profile)
 @router.get("/social/profile/{user_id}", response_class=HTMLResponse)
 async def profile_page(request: Request, user_id: int):
@@ -372,15 +381,6 @@ async def profile_page(request: Request, user_id: int):
             pass
 
     return templates.TemplateResponse("social/profile.html", context)
-
-
-# My profile page (authenticated)
-@router.get("/social/profile/me", response_class=HTMLResponse)
-async def my_profile_page(request: Request, user: User = Depends(get_current_user_dependency())):
-    context = await get_impersonation_context(request, user)
-    context["user_id"] = user.id
-    context["is_own_profile"] = True
-    return templates.TemplateResponse("social/profile.html", {"request": request, **context})
 
 
 # Published report view page (public - requires anonymous browsing check)
