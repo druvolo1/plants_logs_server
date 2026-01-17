@@ -164,11 +164,39 @@
         .back-link:hover {
             text-decoration: underline;
         }
+        .nav-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid #334155;
+        }
+        .nav-links {
+            display: flex;
+            gap: 0.75rem;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <a href="/dashboard" class="back-link">← Back to Dashboard</a>
+        <div class="nav-bar">
+            <div>
+                {% if is_authenticated %}
+                <a href="/dashboard" class="back-link">← My Dashboard</a>
+                {% else %}
+                <span style="color: #10b981; font-weight: 600; font-size: 1.1rem;">🌿 Garden Community</span>
+                {% endif %}
+            </div>
+            <div class="nav-links">
+                {% if is_authenticated %}
+                <a href="/social/profile/me" class="btn btn-secondary">My Profile</a>
+                {% else %}
+                <a href="/login" class="btn btn-secondary">Sign In</a>
+                <a href="/register" class="btn">Create Account</a>
+                {% endif %}
+            </div>
+        </div>
 
         <div class="header">
             <h1>🌿 Discover Plant Reports</h1>

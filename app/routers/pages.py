@@ -39,15 +39,15 @@ def get_async_session_maker():
     return async_session_maker
 
 
-# Landing page - redirects based on authentication status and user type
+# Landing page - redirects to discover page (public social features) or dashboard if authenticated
 @router.get("/", response_class=HTMLResponse)
 async def root(request: Request):
     # Try to get current user
     cookie = request.cookies.get("auth_cookie")
 
     if not cookie:
-        # Not logged in, go to login page
-        return RedirectResponse("/login")
+        # Not logged in, show public discover page
+        return RedirectResponse("/social/discover")
 
     # Try to decode token and get user
     try:
@@ -95,15 +95,12 @@ async def root(request: Request):
                         return response
 
                     # User is active and not suspended - redirect to dashboard
-                    if user.is_superuser:
-                        return RedirectResponse("/dashboard")
-                    else:
-                        return RedirectResponse("/dashboard")
+                    return RedirectResponse("/dashboard")
     except:
         pass
 
-    # If anything fails, go to login
-    return RedirectResponse("/login")
+    # If anything fails, show public discover page
+    return RedirectResponse("/social/discover")
 
 
 # Login page
