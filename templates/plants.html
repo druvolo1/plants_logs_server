@@ -628,6 +628,10 @@
                             <button class="menu-item" id="manageAssignmentsMenuItem" onclick="openAssignmentsModal()">🔧 Manage Plant</button>
                             <button class="menu-item" id="markCompleteMenuItem" onclick="openMarkCompleteModal()" style="display: none;">✓ Mark Complete</button>
                             <button class="menu-item" id="editCompletionMenuItem" onclick="openEditCompletionModal()" style="display: none;">📅 Edit Completion Date</button>
+                            <div class="menu-divider" id="socialMenuDivider" style="display: none;"></div>
+                            <button class="menu-item" id="publishReportMenuItem" onclick="publishReport()" style="display: none;">🌍 Publish Report</button>
+                            <button class="menu-item" id="viewPublishedMenuItem" onclick="viewPublishedReport()" style="display: none;">📊 View Published Report</button>
+                            <button class="menu-item" id="unpublishMenuItem" onclick="unpublishReport()" style="display: none;">🔒 Unpublish Report</button>
                             <div class="menu-divider" id="menuDivider"></div>
                             <button class="menu-item danger" id="deleteMenuItem" onclick="deletePlant()">🗑️ Delete Plant</button>
                         </div>
@@ -947,6 +951,7 @@
         let dosingChart = null;
         let isAdmin = false;
         let currentUserId = null;
+        let currentPublishedReport = null; // Track if current plant has a published report
 
         // Phase colors for chart backgrounds (semi-transparent)
         const phaseColors = {
@@ -1240,6 +1245,9 @@
                 markCompleteMenuItem.style.display = 'none';
                 editCompletionMenuItem.style.display = 'none';
             }
+
+            // Check if plant has a published report and show appropriate menu items
+            await checkPublishedStatus(plantId);
 
             // Load phase history and assignment history
             await loadPlantPhaseHistory(plantId);
@@ -3182,6 +3190,142 @@
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
+        }
+
+        // Social Media / Report Publishing Functions
+        async function checkPublishedStatus(plantId) {
+            // Reset published status
+            currentPublishedReport = null;
+
+            // Hide all social menu items by default
+            const publishMenuItem = document.getElementById('publishReportMenuItem');
+            const viewPublishedMenuItem = document.getElementById('viewPublishedMenuItem');
+            const unpublishMenuItem = document.getElementById('unpublishMenuItem');
+            const socialDivider = document.getElementById('socialMenuDivider');
+
+            publishMenuItem.style.display = 'none';
+            viewPublishedMenuItem.style.display = 'none';
+            unpublishMenuItem.style.display = 'none';
+            socialDivider.style.display = 'none';
+
+            // Only show publish options if plant is finished
+            if (!currentPlant || currentPlant.is_active) {
+                return;
+            }
+
+            // Check if this plant has a published report
+            try {
+                const response = await fetch(`/api/social/reports?plant_id=${plantId}`);
+                if (response.ok) {
+                    const reports = await response.json();
+                    if (reports.length > 0) {
+                        // Plant has a published report
+                        currentPublishedReport = reports[0];
+                        viewPublishedMenuItem.style.display = 'flex';
+                        unpublishMenuItem.style.display = 'flex';
+                        socialDivider.style.display = 'block';
+                    } else {
+                        // Plant finished but not published
+                        publishMenuItem.style.display = 'flex';
+                        socialDivider.style.display = 'block';
+                    }
+                }
+            } catch (error) {
+                console.error('Error checking published status:', error);
+            }
+        }
+
+        async function publishReport() {
+            if (!currentPlant) return;
+
+            // Close the menu
+            const menu = document.getElementById('plantMenu');
+            menu.classList.remove('show');
+
+            // Prompt for optional grower notes
+            const notes = prompt('Add any notes about this grow (optional):');
+
+            // Allow empty notes (user can click Cancel or OK with empty field)
+            if (notes === null) {
+                // User clicked Cancel
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/social/reports/publish', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        plant_id: currentPlant.plant_id,
+                        grower_notes: notes || null
+                    })
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    alert(`Failed to publish report: ${error.detail || 'Unknown error'}`);
+                    return;
+                }
+
+                const publishedReport = await response.json();
+                alert('Report published successfully!');
+
+                // Update published status
+                await checkPublishedStatus(currentPlant.plant_id);
+
+                // Open the published report in a new tab
+                window.open(`/social/report/${publishedReport.id}`, '_blank');
+
+            } catch (error) {
+                console.error('Error publishing report:', error);
+                alert('Failed to publish report. Please try again.');
+            }
+        }
+
+        function viewPublishedReport() {
+            if (!currentPublishedReport) return;
+
+            // Close the menu
+            const menu = document.getElementById('plantMenu');
+            menu.classList.remove('show');
+
+            // Open the published report in a new tab
+            window.open(`/social/report/${currentPublishedReport.id}`, '_blank');
+        }
+
+        async function unpublishReport() {
+            if (!currentPublishedReport) return;
+
+            // Close the menu
+            const menu = document.getElementById('plantMenu');
+            menu.classList.remove('show');
+
+            if (!confirm('Unpublish this report? It will no longer be publicly viewable.')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/social/reports/${currentPublishedReport.id}/unpublish`, {
+                    method: 'POST'
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    alert(`Failed to unpublish report: ${error.detail || 'Unknown error'}`);
+                    return;
+                }
+
+                alert('Report unpublished successfully');
+
+                // Update published status
+                await checkPublishedStatus(currentPlant.plant_id);
+
+            } catch (error) {
+                console.error('Error unpublishing report:', error);
+                alert('Failed to unpublish report. Please try again.');
+            }
         }
 
         // Event listeners

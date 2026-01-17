@@ -320,3 +320,98 @@ async def locations_page(request: Request, user: User = Depends(get_current_user
 async def templates_page_route(request: Request, user: User = Depends(get_current_user_dependency())):
     context = await get_impersonation_context(request, user)
     return templates.TemplateResponse("templates.html", {"request": request, **context})
+
+
+# Social Media Pages
+
+# Discover page (public - requires login if anonymous browsing disabled)
+@router.get("/social/discover", response_class=HTMLResponse)
+async def discover_page(request: Request):
+    cookie = request.cookies.get("auth_cookie")
+    context = {"request": request, "is_authenticated": bool(cookie)}
+
+    # Try to get user if authenticated
+    if cookie:
+        try:
+            async_session_maker = get_async_session_maker()
+            SECRET = get_secret()
+            async with async_session_maker() as session:
+                payload = jwt.decode(cookie, SECRET, algorithms=["HS256"])
+                user_id = payload.get("user_id")
+                result = await session.execute(select(User).where(User.id == user_id))
+                user = result.scalars().first()
+                if user:
+                    context["current_user"] = user
+                    context["is_superuser"] = user.is_superuser
+        except:
+            pass
+
+    return templates.TemplateResponse("social/discover.html", context)
+
+
+# Grower profile page (public - requires public profile)
+@router.get("/social/profile/{user_id}", response_class=HTMLResponse)
+async def profile_page(request: Request, user_id: int):
+    cookie = request.cookies.get("auth_cookie")
+    context = {"request": request, "user_id": user_id, "is_authenticated": bool(cookie)}
+
+    # Try to get current user if authenticated
+    if cookie:
+        try:
+            async_session_maker = get_async_session_maker()
+            SECRET = get_secret()
+            async with async_session_maker() as session:
+                payload = jwt.decode(cookie, SECRET, algorithms=["HS256"])
+                current_user_id = payload.get("user_id")
+                result = await session.execute(select(User).where(User.id == current_user_id))
+                user = result.scalars().first()
+                if user:
+                    context["current_user"] = user
+                    context["is_own_profile"] = (current_user_id == user_id)
+        except:
+            pass
+
+    return templates.TemplateResponse("social/profile.html", context)
+
+
+# My profile page (authenticated)
+@router.get("/social/profile/me", response_class=HTMLResponse)
+async def my_profile_page(request: Request, user: User = Depends(get_current_user_dependency())):
+    context = await get_impersonation_context(request, user)
+    context["user_id"] = user.id
+    context["is_own_profile"] = True
+    return templates.TemplateResponse("social/profile.html", {"request": request, **context})
+
+
+# Published report view page (public - requires anonymous browsing check)
+@router.get("/social/report/{report_id}", response_class=HTMLResponse)
+async def report_view_page(request: Request, report_id: int):
+    cookie = request.cookies.get("auth_cookie")
+    context = {"request": request, "report_id": report_id, "is_authenticated": bool(cookie)}
+
+    # Try to get user if authenticated
+    if cookie:
+        try:
+            async_session_maker = get_async_session_maker()
+            SECRET = get_secret()
+            async with async_session_maker() as session:
+                payload = jwt.decode(cookie, SECRET, algorithms=["HS256"])
+                user_id = payload.get("user_id")
+                result = await session.execute(select(User).where(User.id == user_id))
+                user = result.scalars().first()
+                if user:
+                    context["current_user"] = user
+        except:
+            pass
+
+    return templates.TemplateResponse("social/report_view.html", context)
+
+
+# Admin settings page (superuser only)
+@router.get("/admin/settings", response_class=HTMLResponse)
+async def admin_settings_page(request: Request, user: User = Depends(get_current_user_dependency())):
+    if not user.is_superuser:
+        return RedirectResponse("/dashboard")
+
+    context = await get_impersonation_context(request, user)
+    return templates.TemplateResponse("admin/settings.html", {"request": request, **context})

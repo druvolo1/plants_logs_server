@@ -10,6 +10,7 @@ from .plant import Plant, PhaseTemplate, PhaseHistory, DeviceAssignment
 from .logs import PlantDailyLog, PlantReport, DosingEvent, LightEvent
 from .firmware import Firmware, DeviceFirmwareAssignment
 from .notification import Notification, NotificationSeverity, NotificationStatus
+from .social import GrowerProfile, ProductLocation, PublishedReport, UpcomingStrain, StrainReview, ReviewResponse, AdminSetting
 
 __all__ = [
     "Base",
@@ -37,4 +38,11 @@ __all__ = [
     "Notification",
     "NotificationSeverity",
     "NotificationStatus",
+    "GrowerProfile",
+    "ProductLocation",
+    "PublishedReport",
+    "UpcomingStrain",
+    "StrainReview",
+    "ReviewResponse",
+    "AdminSetting",
 ]

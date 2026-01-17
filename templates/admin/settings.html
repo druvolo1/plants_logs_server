@@ -1,0 +1,497 @@
+<!-- templates/admin/settings.html - Admin settings for social media features -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Settings - Plant Monitoring</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: #e2e8f0;
+            min-height: 100vh;
+        }
+
+        .navbar {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            padding: 0;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            border-bottom: 2px solid #10b981;
+        }
+
+        .navbar-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 1.5rem;
+        }
+
+        .navbar-brand {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 1rem 0;
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #10b981;
+            text-decoration: none;
+        }
+
+        .navbar-brand:hover {
+            color: #34d399;
+        }
+
+        .navbar-menu {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        .navbar-link {
+            padding: 1rem 1.25rem;
+            color: rgba(255, 255, 255, 0.9);
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.2s;
+            border-bottom: 3px solid transparent;
+        }
+
+        .navbar-link:hover {
+            background: rgba(16, 185, 129, 0.1);
+            border-bottom-color: #10b981;
+        }
+
+        .navbar-link.active {
+            background: rgba(16, 185, 129, 0.15);
+            border-bottom-color: #10b981;
+            color: #10b981;
+        }
+
+        .navbar-logout {
+            padding: 0.5rem 1rem;
+            margin-left: 0.5rem;
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+        }
+
+        .navbar-logout:hover {
+            background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(239, 68, 68, 0.3);
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .page-header {
+            margin-bottom: 2rem;
+        }
+
+        .page-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #10b981;
+            margin-bottom: 0.5rem;
+        }
+
+        .page-description {
+            color: #94a3b8;
+            font-size: 1rem;
+        }
+
+        .settings-section {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .section-title {
+            color: #10b981;
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid #334155;
+        }
+
+        .setting-item {
+            padding: 1.5rem;
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+        }
+
+        .setting-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+        }
+
+        .setting-name {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #e2e8f0;
+        }
+
+        .setting-description {
+            color: #94a3b8;
+            font-size: 0.9rem;
+            line-height: 1.6;
+            margin-bottom: 1rem;
+        }
+
+        .setting-value {
+            color: #cbd5e1;
+            font-size: 0.95rem;
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 60px;
+            height: 30px;
+            background: #475569;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .toggle-switch.active {
+            background: #10b981;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            width: 24px;
+            height: 24px;
+            background: white;
+            border-radius: 50%;
+            transition: transform 0.3s;
+        }
+
+        .toggle-switch.active .toggle-slider {
+            transform: translateX(30px);
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            border: none;
+            font-weight: 600;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn:hover {
+            background: linear-gradient(135deg, #059669 0%, #047857 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #475569 0%, #334155 100%);
+        }
+
+        .btn-secondary:hover {
+            background: linear-gradient(135deg, #334155 0%, #1e293b 100%);
+        }
+
+        .actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: flex-end;
+            margin-top: 2rem;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 3rem;
+            color: #94a3b8;
+        }
+
+        .error-state {
+            text-align: center;
+            padding: 2rem;
+            color: #ef4444;
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            border-radius: 8px;
+        }
+
+        .success-message {
+            padding: 1rem;
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            border-radius: 8px;
+            color: #10b981;
+            margin-bottom: 1.5rem;
+            display: none;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            background: rgba(16, 185, 129, 0.2);
+            color: #10b981;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .status-badge.disabled {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+        <div class="navbar-container">
+            <a href="/dashboard" class="navbar-brand">
+                🌿 Plant Monitor
+            </a>
+            <div class="navbar-menu" id="navbar-menu">
+                <a href="/dashboard" class="navbar-link">Dashboard</a>
+                <a href="/devices" class="navbar-link">Devices</a>
+                <a href="/plants" class="navbar-link">Plants</a>
+                <a href="/locations" class="navbar-link">Locations</a>
+                <a href="/templates" class="navbar-link">Templates</a>
+                <a href="/social/discover" class="navbar-link">Discover</a>
+                <a href="/social/profile/me" class="navbar-link">My Profile</a>
+                {% if user.is_superuser %}
+                <a href="/admin/overview" class="navbar-link">Admin Overview</a>
+                <a href="/admin/portal" class="navbar-link">Admin Portal</a>
+                <a href="/admin/settings" class="navbar-link active">Settings</a>
+                {% endif %}
+                <a href="/logout" class="navbar-logout">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="page-header">
+            <h1 class="page-title">Admin Settings</h1>
+            <p class="page-description">Configure system-wide settings and features</p>
+        </div>
+
+        <div id="success-message" class="success-message"></div>
+
+        <div class="settings-section">
+            <h2 class="section-title">Social Media Features</h2>
+            <div id="settings-container">
+                <div class="loading">Loading settings...</div>
+            </div>
+        </div>
+
+        <div class="actions">
+            <button class="btn" id="save-btn" onclick="saveSettings()" disabled>Save Changes</button>
+        </div>
+    </div>
+
+    <script>
+        let settings = {};
+        let hasChanges = false;
+
+        async function loadSettings() {
+            const container = document.getElementById('settings-container');
+
+            try {
+                const response = await fetch('/api/admin/settings');
+
+                if (!response.ok) {
+                    throw new Error('Failed to load settings');
+                }
+
+                const data = await response.json();
+                settings = {};
+
+                // Convert array to object for easier access
+                data.forEach(setting => {
+                    settings[setting.setting_key] = setting;
+                });
+
+                renderSettings();
+
+            } catch (error) {
+                console.error('Error loading settings:', error);
+                container.innerHTML = `
+                    <div class="error-state">
+                        <p>Failed to load settings</p>
+                        <button class="btn" style="margin-top: 1rem;" onclick="loadSettings()">Try Again</button>
+                    </div>
+                `;
+            }
+        }
+
+        function renderSettings() {
+            const container = document.getElementById('settings-container');
+            container.innerHTML = '';
+
+            // Anonymous Browsing Setting
+            const anonymousBrowsing = settings['allow_anonymous_browsing'];
+            if (anonymousBrowsing) {
+                const isEnabled = anonymousBrowsing.setting_value === 'true';
+
+                const settingHtml = `
+                    <div class="setting-item">
+                        <div class="setting-header">
+                            <div>
+                                <div class="setting-name">Anonymous Browsing</div>
+                                <div class="setting-value">
+                                    Status: <span class="status-badge ${isEnabled ? '' : 'disabled'}">
+                                        ${isEnabled ? 'Enabled' : 'Disabled'}
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="toggle-switch ${isEnabled ? 'active' : ''}"
+                                 id="toggle-allow_anonymous_browsing"
+                                 onclick="toggleSetting('allow_anonymous_browsing')">
+                                <div class="toggle-slider"></div>
+                            </div>
+                        </div>
+                        <div class="setting-description">
+                            ${anonymousBrowsing.description || 'Allow non-logged-in users to browse published reports and grower profiles'}
+                        </div>
+                    </div>
+                `;
+
+                container.innerHTML += settingHtml;
+            }
+
+            // Add more settings here as needed
+            if (Object.keys(settings).length === 0) {
+                container.innerHTML = '<div class="error-state">No settings found</div>';
+            }
+        }
+
+        function toggleSetting(settingKey) {
+            const toggle = document.getElementById(`toggle-${settingKey}`);
+            const currentValue = settings[settingKey].setting_value === 'true';
+            const newValue = !currentValue;
+
+            // Update UI
+            if (newValue) {
+                toggle.classList.add('active');
+            } else {
+                toggle.classList.remove('active');
+            }
+
+            // Update local state
+            settings[settingKey].setting_value = newValue ? 'true' : 'false';
+
+            // Mark as changed
+            hasChanges = true;
+            document.getElementById('save-btn').disabled = false;
+
+            // Update status badge
+            const badge = toggle.closest('.setting-item').querySelector('.status-badge');
+            if (newValue) {
+                badge.classList.remove('disabled');
+                badge.textContent = 'Enabled';
+            } else {
+                badge.classList.add('disabled');
+                badge.textContent = 'Disabled';
+            }
+        }
+
+        async function saveSettings() {
+            if (!hasChanges) return;
+
+            const saveBtn = document.getElementById('save-btn');
+            const successMessage = document.getElementById('success-message');
+
+            saveBtn.disabled = true;
+            saveBtn.textContent = 'Saving...';
+
+            try {
+                // Save each changed setting
+                for (const key in settings) {
+                    const response = await fetch(`/api/admin/settings/${key}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            setting_value: settings[key].setting_value
+                        })
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`Failed to save setting: ${key}`);
+                    }
+                }
+
+                // Show success message
+                successMessage.textContent = 'Settings saved successfully!';
+                successMessage.style.display = 'block';
+                setTimeout(() => {
+                    successMessage.style.display = 'none';
+                }, 3000);
+
+                // Reset change flag
+                hasChanges = false;
+                saveBtn.textContent = 'Save Changes';
+
+                // Reload settings to confirm
+                await loadSettings();
+
+            } catch (error) {
+                console.error('Error saving settings:', error);
+                alert('Failed to save settings. Please try again.');
+                saveBtn.disabled = false;
+                saveBtn.textContent = 'Save Changes';
+            }
+        }
+
+        // Load settings on page load
+        loadSettings();
+
+        // Warn before leaving with unsaved changes
+        window.addEventListener('beforeunload', (e) => {
+            if (hasChanges) {
+                e.preventDefault();
+                e.returnValue = '';
+            }
+        });
+    </script>
+</body>
+</html>

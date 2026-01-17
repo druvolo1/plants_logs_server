@@ -49,3 +49,4 @@ class User(Base):
     oauth_accounts = relationship("OAuthAccount", back_populates="user", cascade="all, delete-orphan")
     devices = relationship("Device", back_populates="user", cascade="all, delete-orphan")
     login_history = relationship("LoginHistory", back_populates="user", cascade="all, delete-orphan", order_by="LoginHistory.login_at.desc()")
+    grower_profile = relationship("GrowerProfile", back_populates="user", uselist=False, cascade="all, delete-orphan")

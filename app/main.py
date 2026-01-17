@@ -408,7 +408,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
 # Include routers
-from app.routers import templates_router, locations_router, admin_router, logs_router, plants_router, plants_api_router, devices_router, devices_api_router, auth_router, auth_api_router, websocket_router, pages_router, firmware_router, notifications_router
+from app.routers import templates_router, locations_router, admin_router, logs_router, plants_router, plants_api_router, devices_router, devices_api_router, auth_router, auth_api_router, websocket_router, pages_router, firmware_router, notifications_router, social_router
 app.include_router(templates_router)
 app.include_router(locations_router)
 app.include_router(admin_router)
@@ -423,6 +423,7 @@ app.include_router(websocket_router)
 app.include_router(pages_router)
 app.include_router(firmware_router)
 app.include_router(notifications_router)
+app.include_router(social_router)
 
 # Global exception handler for suspended/pending users
 @app.exception_handler(HTTPException)

@@ -1,0 +1,875 @@
+<!-- templates/social/report_view.html - View a published plant report -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>View Report</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: #e2e8f0;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 1rem;
+            color: #60a5fa;
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .layout {
+            display: grid;
+            grid-template-columns: 1fr 350px;
+            gap: 2rem;
+        }
+        @media (max-width: 1024px) {
+            .layout {
+                grid-template-columns: 1fr;
+            }
+        }
+        .main-content {
+            min-width: 0;
+        }
+        .sidebar {
+            position: sticky;
+            top: 2rem;
+            height: fit-content;
+        }
+        .report-header {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 1.5rem;
+        }
+        .report-title {
+            color: #10b981;
+            font-size: 2rem;
+            margin: 0 0 0.5rem 0;
+        }
+        .report-strain {
+            color: #94a3b8;
+            font-size: 1.1rem;
+            margin-bottom: 1rem;
+        }
+        .report-dates {
+            color: #cbd5e1;
+            font-size: 0.95rem;
+        }
+        .report-notes {
+            background: #0f172a;
+            border-left: 3px solid #10b981;
+            padding: 1rem;
+            margin-top: 1rem;
+            border-radius: 4px;
+        }
+        .section {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .section-title {
+            color: #10b981;
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin: 0 0 1rem 0;
+        }
+        .grower-card {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+        }
+        .grower-name {
+            color: #10b981;
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+        .grower-location {
+            color: #94a3b8;
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+        }
+        .grower-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid #334155;
+        }
+        .stat {
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #10b981;
+        }
+        .stat-label {
+            color: #94a3b8;
+            font-size: 0.85rem;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        .stat-card {
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            padding: 1rem;
+            text-align: center;
+        }
+        .stat-card-value {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #10b981;
+            margin-bottom: 0.25rem;
+        }
+        .stat-card-label {
+            color: #94a3b8;
+            font-size: 0.9rem;
+        }
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin-bottom: 1.5rem;
+        }
+        .review-item {
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+        .review-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+        }
+        .review-author {
+            color: #cbd5e1;
+            font-weight: 600;
+        }
+        .review-rating {
+            color: #fbbf24;
+        }
+        .review-comment {
+            color: #94a3b8;
+            line-height: 1.6;
+            margin-bottom: 0.5rem;
+        }
+        .review-date {
+            color: #64748b;
+            font-size: 0.85rem;
+        }
+        .review-response {
+            background: #1e293b;
+            border-left: 3px solid #10b981;
+            padding: 0.75rem;
+            margin-top: 0.75rem;
+            border-radius: 4px;
+        }
+        .response-header {
+            color: #10b981;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+        .response-text {
+            color: #cbd5e1;
+            font-size: 0.9rem;
+        }
+        .btn {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            background: #10b981;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+        .btn:hover {
+            background: #059669;
+        }
+        .btn-secondary {
+            background: #475569;
+        }
+        .btn-secondary:hover {
+            background: #334155;
+        }
+        .btn-full {
+            width: 100%;
+            text-align: center;
+        }
+        .loading {
+            text-align: center;
+            padding: 3rem;
+            color: #94a3b8;
+        }
+        .error-state {
+            text-align: center;
+            padding: 2rem;
+            color: #ef4444;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 2rem;
+            color: #94a3b8;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+        }
+        .modal.active {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 2rem;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+        .modal-title {
+            color: #10b981;
+            font-size: 1.5rem;
+            margin: 0;
+        }
+        .modal-close {
+            background: none;
+            border: none;
+            color: #94a3b8;
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+        }
+        .modal-close:hover {
+            color: #e2e8f0;
+        }
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        .form-label {
+            display: block;
+            color: #cbd5e1;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+        .form-textarea {
+            width: 100%;
+            padding: 0.75rem;
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 6px;
+            color: white;
+            font-family: inherit;
+            min-height: 100px;
+            resize: vertical;
+        }
+        .rating-input {
+            display: flex;
+            gap: 0.5rem;
+            font-size: 2rem;
+        }
+        .star-btn {
+            background: none;
+            border: none;
+            color: #475569;
+            cursor: pointer;
+            padding: 0;
+            transition: color 0.2s;
+        }
+        .star-btn.active {
+            color: #fbbf24;
+        }
+        .star-btn:hover {
+            color: #fbbf24;
+        }
+        .form-actions {
+            display: flex;
+            gap: 0.5rem;
+            justify-content: flex-end;
+            margin-top: 1.5rem;
+        }
+        .phase-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            background: #334155;
+            color: #cbd5e1;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            margin-right: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/social/discover" class="back-link">← Back to Discover</a>
+
+        <div class="layout">
+            <div class="main-content">
+                <!-- Report Header -->
+                <div class="report-header" id="report-header">
+                    <div class="loading">Loading report...</div>
+                </div>
+
+                <!-- Key Stats -->
+                <div class="section">
+                    <h2 class="section-title">Key Statistics</h2>
+                    <div class="stats-grid" id="stats-grid">
+                        <div class="loading">Loading stats...</div>
+                    </div>
+                </div>
+
+                <!-- Environmental Charts -->
+                <div class="section">
+                    <h2 class="section-title">Environmental Data</h2>
+                    <div class="chart-container">
+                        <canvas id="temp-chart"></canvas>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="humidity-chart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Reviews Section -->
+                <div class="section">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <h2 class="section-title" style="margin: 0;">Reviews</h2>
+                        <button id="add-review-btn" class="btn" style="display: none;">Add Review</button>
+                    </div>
+                    <div id="reviews-container">
+                        <div class="loading">Loading reviews...</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar">
+                <!-- Grower Info -->
+                <div class="grower-card" id="grower-card">
+                    <div class="loading">Loading grower info...</div>
+                </div>
+
+                <!-- View Count -->
+                <div class="section">
+                    <div style="text-align: center;">
+                        <div class="stat-value" id="view-count">0</div>
+                        <div class="stat-label">Views</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Review Modal -->
+    <div id="review-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Add Review</h3>
+                <button class="modal-close" onclick="closeReviewModal()">&times;</button>
+            </div>
+            <form id="review-form">
+                <div class="form-group">
+                    <label class="form-label">Rating *</label>
+                    <div class="rating-input" id="rating-input">
+                        <button type="button" class="star-btn" data-rating="1">★</button>
+                        <button type="button" class="star-btn" data-rating="2">★</button>
+                        <button type="button" class="star-btn" data-rating="3">★</button>
+                        <button type="button" class="star-btn" data-rating="4">★</button>
+                        <button type="button" class="star-btn" data-rating="5">★</button>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Comment *</label>
+                    <textarea id="review-comment" class="form-textarea" placeholder="Share your thoughts about this strain..." required></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeReviewModal()">Cancel</button>
+                    <button type="submit" class="btn">Submit Review</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add Response Modal -->
+    <div id="response-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Respond to Review</h3>
+                <button class="modal-close" onclick="closeResponseModal()">&times;</button>
+            </div>
+            <form id="response-form">
+                <div class="form-group">
+                    <label class="form-label">Response *</label>
+                    <textarea id="response-text" class="form-textarea" placeholder="Your response..." required></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeResponseModal()">Cancel</button>
+                    <button type="submit" class="btn">Submit Response</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const reportId = {{ report_id }};
+        const isAuthenticated = {{ 'true' if is_authenticated else 'false' }};
+        let currentReport = null;
+        let currentUser = null;
+        let selectedRating = 0;
+        let respondingToReviewId = null;
+
+        async function loadReport() {
+            try {
+                const response = await fetch(`/api/social/reports/${reportId}`);
+
+                if (response.status === 401) {
+                    document.getElementById('report-header').innerHTML = `
+                        <div class="error-state">
+                            <h2>Login Required</h2>
+                            <p>Please log in to view this report</p>
+                            <a href="/login" class="btn">Go to Login</a>
+                        </div>
+                    `;
+                    return;
+                }
+
+                if (!response.ok) {
+                    throw new Error('Failed to load report');
+                }
+
+                currentReport = await response.json();
+
+                // Update header
+                const headerHtml = `
+                    <h1 class="report-title">${escapeHtml(currentReport.plant_name)}</h1>
+                    ${currentReport.strain ? `<div class="report-strain">Strain: ${escapeHtml(currentReport.strain)}</div>` : ''}
+                    <div class="report-dates">
+                        ${currentReport.start_date ? `Started: ${currentReport.start_date}` : ''}
+                        ${currentReport.end_date ? ` • Harvested: ${currentReport.end_date}` : ''}
+                        ${currentReport.final_phase ? ` • <span class="phase-badge">${escapeHtml(currentReport.final_phase)}</span>` : ''}
+                    </div>
+                    ${currentReport.grower_notes ? `
+                        <div class="report-notes">
+                            <strong>Grower Notes:</strong><br>
+                            ${escapeHtml(currentReport.grower_notes)}
+                        </div>
+                    ` : ''}
+                `;
+                document.getElementById('report-header').innerHTML = headerHtml;
+
+                // Update view count
+                document.getElementById('view-count').textContent = currentReport.views_count || 0;
+
+                // Load stats and charts
+                if (currentReport.report_data) {
+                    loadStats(currentReport.report_data);
+                    loadCharts(currentReport.report_data);
+                }
+
+                // Load grower info
+                await loadGrowerInfo(currentReport.user_id);
+
+                // Check if user can add review
+                if (isAuthenticated) {
+                    // Fetch current user to check if it's their own report
+                    try {
+                        const userResponse = await fetch('/api/social/profile/me');
+                        if (userResponse.ok) {
+                            currentUser = await userResponse.json();
+                            if (currentUser.user_id !== currentReport.user_id) {
+                                document.getElementById('add-review-btn').style.display = 'block';
+                            }
+                        }
+                    } catch (e) {
+                        console.error('Error fetching current user:', e);
+                    }
+                }
+
+            } catch (error) {
+                console.error('Error loading report:', error);
+                document.getElementById('report-header').innerHTML = `
+                    <div class="error-state">Failed to load report</div>
+                `;
+            }
+        }
+
+        function loadStats(reportData) {
+            const container = document.getElementById('stats-grid');
+
+            // Example stats - adjust based on actual report_data structure
+            const stats = [];
+
+            if (reportData.total_days) {
+                stats.push({ label: 'Total Days', value: reportData.total_days });
+            }
+            if (reportData.avg_temp) {
+                stats.push({ label: 'Avg Temperature', value: reportData.avg_temp.toFixed(1) + '°F' });
+            }
+            if (reportData.avg_humidity) {
+                stats.push({ label: 'Avg Humidity', value: reportData.avg_humidity.toFixed(1) + '%' });
+            }
+            if (reportData.avg_vpd) {
+                stats.push({ label: 'Avg VPD', value: reportData.avg_vpd.toFixed(2) + ' kPa' });
+            }
+
+            if (stats.length === 0) {
+                container.innerHTML = '<div class="empty-state">No statistics available</div>';
+                return;
+            }
+
+            container.innerHTML = stats.map(stat => `
+                <div class="stat-card">
+                    <div class="stat-card-value">${stat.value}</div>
+                    <div class="stat-card-label">${stat.label}</div>
+                </div>
+            `).join('');
+        }
+
+        function loadCharts(reportData) {
+            // Example chart - adjust based on actual report_data structure
+            if (reportData.temperature_data && reportData.temperature_data.length > 0) {
+                const tempCtx = document.getElementById('temp-chart').getContext('2d');
+                new Chart(tempCtx, {
+                    type: 'line',
+                    data: {
+                        labels: reportData.temperature_data.map(d => d.date || d.timestamp),
+                        datasets: [{
+                            label: 'Temperature (°F)',
+                            data: reportData.temperature_data.map(d => d.value),
+                            borderColor: '#10b981',
+                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                            tension: 0.4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { labels: { color: '#e2e8f0' } }
+                        },
+                        scales: {
+                            x: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } },
+                            y: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } }
+                        }
+                    }
+                });
+            }
+
+            if (reportData.humidity_data && reportData.humidity_data.length > 0) {
+                const humidityCtx = document.getElementById('humidity-chart').getContext('2d');
+                new Chart(humidityCtx, {
+                    type: 'line',
+                    data: {
+                        labels: reportData.humidity_data.map(d => d.date || d.timestamp),
+                        datasets: [{
+                            label: 'Humidity (%)',
+                            data: reportData.humidity_data.map(d => d.value),
+                            borderColor: '#60a5fa',
+                            backgroundColor: 'rgba(96, 165, 250, 0.1)',
+                            tension: 0.4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { labels: { color: '#e2e8f0' } }
+                        },
+                        scales: {
+                            x: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } },
+                            y: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } }
+                        }
+                    }
+                });
+            }
+        }
+
+        async function loadGrowerInfo(userId) {
+            try {
+                const response = await fetch(`/api/social/profile/${userId}`);
+
+                if (!response.ok) {
+                    throw new Error('Failed to load grower info');
+                }
+
+                const grower = await response.json();
+
+                const growerHtml = `
+                    <div class="grower-name">
+                        <a href="/social/profile/${userId}" style="color: inherit; text-decoration: none;">
+                            ${escapeHtml(grower.business_name || grower.grower_name || 'Anonymous Grower')}
+                        </a>
+                    </div>
+                    ${grower.location ? `<div class="grower-location">📍 ${escapeHtml(grower.location)}</div>` : ''}
+                    <a href="/social/profile/${userId}" class="btn btn-full">View Profile</a>
+                    <div class="grower-stats">
+                        <div class="stat">
+                            <div class="stat-value">${grower.total_reports || 0}</div>
+                            <div class="stat-label">Reports</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-value">${grower.average_rating ? grower.average_rating.toFixed(1) + ' ★' : '-'}</div>
+                            <div class="stat-label">Rating</div>
+                        </div>
+                    </div>
+                `;
+
+                document.getElementById('grower-card').innerHTML = growerHtml;
+
+            } catch (error) {
+                console.error('Error loading grower info:', error);
+                document.getElementById('grower-card').innerHTML = `
+                    <div class="error-state">Failed to load grower info</div>
+                `;
+            }
+        }
+
+        async function loadReviews() {
+            const container = document.getElementById('reviews-container');
+
+            try {
+                const response = await fetch(`/api/social/reviews/${reportId}`);
+
+                if (!response.ok) {
+                    throw new Error('Failed to load reviews');
+                }
+
+                const reviews = await response.json();
+
+                if (reviews.length === 0) {
+                    container.innerHTML = '<div class="empty-state">No reviews yet. Be the first to review!</div>';
+                    return;
+                }
+
+                container.innerHTML = reviews.map(review => {
+                    const stars = '★'.repeat(review.rating) + '☆'.repeat(5 - review.rating);
+                    const isOwnReport = currentUser && currentReport && currentUser.user_id === currentReport.user_id;
+
+                    let responseHtml = '';
+                    if (review.response) {
+                        responseHtml = `
+                            <div class="review-response">
+                                <div class="response-header">Response from grower:</div>
+                                <div class="response-text">${escapeHtml(review.response.response_text)}</div>
+                                ${isOwnReport ? `
+                                    <div style="margin-top: 0.5rem;">
+                                        <button class="btn btn-secondary" style="font-size: 0.8rem; padding: 0.25rem 0.5rem;" onclick="editResponse(${review.id}, '${escapeHtml(review.response.response_text).replace(/'/g, "\\'")}')">Edit</button>
+                                        <button class="btn btn-secondary" style="font-size: 0.8rem; padding: 0.25rem 0.5rem;" onclick="deleteResponse(${review.id})">Delete</button>
+                                    </div>
+                                ` : ''}
+                            </div>
+                        `;
+                    } else if (isOwnReport) {
+                        responseHtml = `
+                            <button class="btn btn-secondary" style="margin-top: 0.75rem; font-size: 0.85rem; padding: 0.35rem 0.75rem;" onclick="openResponseModal(${review.id})">Respond</button>
+                        `;
+                    }
+
+                    return `
+                        <div class="review-item">
+                            <div class="review-header">
+                                <div class="review-author">${escapeHtml(review.reviewer_business_name || review.reviewer_name)}</div>
+                                <div class="review-rating">${stars}</div>
+                            </div>
+                            <div class="review-comment">${escapeHtml(review.comment)}</div>
+                            <div class="review-date">${new Date(review.created_at).toLocaleDateString()}</div>
+                            ${responseHtml}
+                        </div>
+                    `;
+                }).join('');
+
+            } catch (error) {
+                console.error('Error loading reviews:', error);
+                container.innerHTML = '<div class="error-state">Failed to load reviews</div>';
+            }
+        }
+
+        function openReviewModal() {
+            selectedRating = 0;
+            document.querySelectorAll('.star-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById('review-comment').value = '';
+            document.getElementById('review-modal').classList.add('active');
+        }
+
+        function closeReviewModal() {
+            document.getElementById('review-modal').classList.remove('active');
+        }
+
+        function openResponseModal(reviewId) {
+            respondingToReviewId = reviewId;
+            document.getElementById('response-text').value = '';
+            document.getElementById('response-modal').classList.add('active');
+        }
+
+        function closeResponseModal() {
+            document.getElementById('response-modal').classList.remove('active');
+            respondingToReviewId = null;
+        }
+
+        function editResponse(reviewId, currentText) {
+            respondingToReviewId = reviewId;
+            document.getElementById('response-text').value = currentText.replace(/\\'/g, "'");
+            document.getElementById('response-modal').classList.add('active');
+        }
+
+        async function deleteResponse(reviewId) {
+            if (!confirm('Delete your response?')) return;
+
+            try {
+                const response = await fetch(`/api/social/reviews/${reviewId}/response`, {
+                    method: 'DELETE'
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to delete response');
+                }
+
+                await loadReviews();
+            } catch (error) {
+                console.error('Error deleting response:', error);
+                alert('Failed to delete response');
+            }
+        }
+
+        // Rating input handling
+        document.querySelectorAll('.star-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                selectedRating = parseInt(e.target.dataset.rating);
+                document.querySelectorAll('.star-btn').forEach((star, index) => {
+                    if (index < selectedRating) {
+                        star.classList.add('active');
+                    } else {
+                        star.classList.remove('active');
+                    }
+                });
+            });
+        });
+
+        document.getElementById('review-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            if (selectedRating === 0) {
+                alert('Please select a rating');
+                return;
+            }
+
+            const data = {
+                rating: selectedRating,
+                comment: document.getElementById('review-comment').value
+            };
+
+            try {
+                const response = await fetch(`/api/social/reviews/${reportId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    alert(`Failed to submit review: ${error.detail}`);
+                    return;
+                }
+
+                closeReviewModal();
+                await loadReviews();
+                await loadReport(); // Reload to update average rating
+
+            } catch (error) {
+                console.error('Error submitting review:', error);
+                alert('Failed to submit review');
+            }
+        });
+
+        document.getElementById('response-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const data = {
+                response_text: document.getElementById('response-text').value
+            };
+
+            try {
+                const response = await fetch(`/api/social/reviews/${respondingToReviewId}/response`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    alert(`Failed to submit response: ${error.detail}`);
+                    return;
+                }
+
+                closeResponseModal();
+                await loadReviews();
+
+            } catch (error) {
+                console.error('Error submitting response:', error);
+                alert('Failed to submit response');
+            }
+        });
+
+        document.getElementById('add-review-btn').onclick = openReviewModal;
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Load all data on page load
+        loadReport();
+        loadReviews();
+    </script>
+</body>
+</html>

@@ -1,0 +1,312 @@
+<!-- templates/social/discover.html - Browse published plant reports -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Discover Reports</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: #e2e8f0;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        .header h1 {
+            color: #10b981;
+            margin-bottom: 0.5rem;
+        }
+        .header p {
+            color: #94a3b8;
+        }
+        .filters {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+        .filter-input {
+            flex: 1;
+            min-width: 200px;
+            padding: 0.75rem;
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            color: white;
+        }
+        .filter-select {
+            padding: 0.75rem;
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            color: white;
+        }
+        .reports-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        .report-card {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 1.5rem;
+            transition: transform 0.2s, box-shadow 0.2s;
+            cursor: pointer;
+        }
+        .report-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 16px rgba(16, 185, 129, 0.2);
+            border-color: #10b981;
+        }
+        .report-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 1rem;
+        }
+        .report-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #10b981;
+            margin: 0;
+        }
+        .report-strain {
+            color: #94a3b8;
+            font-size: 0.9rem;
+            margin: 0.25rem 0;
+        }
+        .report-grower {
+            color: #cbd5e1;
+            font-size: 0.95rem;
+            margin: 0.5rem 0;
+        }
+        .report-grower a {
+            color: #60a5fa;
+            text-decoration: none;
+        }
+        .report-grower a:hover {
+            text-decoration: underline;
+        }
+        .report-meta {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid #334155;
+            font-size: 0.85rem;
+            color: #94a3b8;
+        }
+        .report-rating {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+        .star {
+            color: #fbbf24;
+        }
+        .views {
+            color: #64748b;
+        }
+        .btn {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            background: #10b981;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+        .btn:hover {
+            background: #059669;
+        }
+        .btn-secondary {
+            background: #475569;
+        }
+        .btn-secondary:hover {
+            background: #334155;
+        }
+        .loading {
+            text-align: center;
+            padding: 3rem;
+            color: #94a3b8;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: #94a3b8;
+        }
+        .empty-state-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 1rem;
+            color: #60a5fa;
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/dashboard" class="back-link">← Back to Dashboard</a>
+
+        <div class="header">
+            <h1>🌿 Discover Plant Reports</h1>
+            <p>Browse publicly shared grow reports from the community</p>
+        </div>
+
+        <div class="filters">
+            <input type="text" id="strain-filter" class="filter-input" placeholder="Search by strain name...">
+            <select id="sort-filter" class="filter-select">
+                <option value="recent">Most Recent</option>
+                <option value="views">Most Viewed</option>
+            </select>
+            <button onclick="loadReports()" class="btn">Search</button>
+        </div>
+
+        <div id="reports-container">
+            <div class="loading">Loading reports...</div>
+        </div>
+    </div>
+
+    <script>
+        let currentReports = [];
+
+        async function loadReports() {
+            const container = document.getElementById('reports-container');
+            const strainFilter = document.getElementById('strain-filter').value;
+            const sortFilter = document.getElementById('sort-filter').value;
+
+            container.innerHTML = '<div class="loading">Loading reports...</div>';
+
+            try {
+                let url = '/api/social/reports?limit=50&sort_by=' + sortFilter;
+                if (strainFilter) {
+                    url += '&strain=' + encodeURIComponent(strainFilter);
+                }
+
+                const response = await fetch(url);
+
+                if (response.status === 401) {
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-state-icon">🔒</div>
+                            <h2>Login Required</h2>
+                            <p>Please log in to browse plant reports</p>
+                            <a href="/login" class="btn">Go to Login</a>
+                        </div>
+                    `;
+                    return;
+                }
+
+                if (!response.ok) {
+                    throw new Error('Failed to load reports');
+                }
+
+                const reports = await response.json();
+                currentReports = reports;
+
+                if (reports.length === 0) {
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-state-icon">🌱</div>
+                            <h2>No Reports Found</h2>
+                            <p>No published reports match your search</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                container.innerHTML = '<div class="reports-grid" id="reports-grid"></div>';
+                const grid = document.getElementById('reports-grid');
+
+                reports.forEach(report => {
+                    const card = document.createElement('div');
+                    card.className = 'report-card';
+                    card.onclick = () => viewReport(report.id);
+
+                    const ratingStars = report.average_rating
+                        ? '★'.repeat(Math.round(report.average_rating)) + '☆'.repeat(5 - Math.round(report.average_rating))
+                        : 'No reviews yet';
+
+                    card.innerHTML = `
+                        <div class="report-header">
+                            <div>
+                                <h3 class="report-title">${escapeHtml(report.plant_name)}</h3>
+                                ${report.strain ? `<div class="report-strain">${escapeHtml(report.strain)}</div>` : ''}
+                            </div>
+                        </div>
+                        <div class="report-grower">
+                            By: <a href="/social/profile/${report.user_id || ''}" onclick="event.stopPropagation()">
+                                ${escapeHtml(report.grower_business_name || report.grower_name)}
+                            </a>
+                        </div>
+                        <div class="report-meta">
+                            ${report.average_rating ? `
+                                <div class="report-rating">
+                                    <span class="star">${ratingStars}</span>
+                                    <span>(${report.total_reviews || 0})</span>
+                                </div>
+                            ` : '<div class="report-rating">No reviews yet</div>'}
+                            <div class="views">${report.views_count || 0} views</div>
+                        </div>
+                    `;
+
+                    grid.appendChild(card);
+                });
+
+            } catch (error) {
+                console.error('Error loading reports:', error);
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">⚠️</div>
+                        <h2>Error Loading Reports</h2>
+                        <p>${error.message}</p>
+                        <button onclick="loadReports()" class="btn">Try Again</button>
+                    </div>
+                `;
+            }
+        }
+
+        function viewReport(reportId) {
+            window.location.href = '/social/report/' + reportId;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Load reports on page load
+        loadReports();
+
+        // Filter on Enter key
+        document.getElementById('strain-filter').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                loadReports();
+            }
+        });
+    </script>
+</body>
+</html>

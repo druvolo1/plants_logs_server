@@ -872,6 +872,189 @@ async def init_database():
                 """
             )
 
+            print("\nChecking 'grower_profiles' table...")
+
+            # Create grower_profiles table if it doesn't exist
+            await check_and_create_table(
+                conn,
+                'grower_profiles',
+                """
+                CREATE TABLE grower_profiles (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    user_id INT NOT NULL UNIQUE,
+                    business_name VARCHAR(255),
+                    bio TEXT,
+                    location VARCHAR(255),
+                    website VARCHAR(500),
+                    instagram VARCHAR(100),
+                    is_public BOOLEAN DEFAULT FALSE,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                    INDEX idx_public (is_public),
+                    INDEX idx_business_name (business_name)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+                """
+            )
+
+            print("\nChecking 'product_locations' table...")
+
+            # Create product_locations table if it doesn't exist
+            await check_and_create_table(
+                conn,
+                'product_locations',
+                """
+                CREATE TABLE product_locations (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    user_id INT NOT NULL,
+                    store_name VARCHAR(255) NOT NULL,
+                    store_link VARCHAR(500),
+                    store_phone VARCHAR(20),
+                    store_email VARCHAR(255),
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                    INDEX idx_user (user_id)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+                """
+            )
+
+            print("\nChecking 'published_reports' table...")
+
+            # Create published_reports table if it doesn't exist
+            await check_and_create_table(
+                conn,
+                'published_reports',
+                """
+                CREATE TABLE published_reports (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    user_id INT NOT NULL,
+                    plant_id VARCHAR(36) NOT NULL,
+                    plant_name VARCHAR(255) NOT NULL,
+                    strain VARCHAR(255),
+                    start_date DATE,
+                    end_date DATE,
+                    final_phase VARCHAR(50),
+                    report_data JSON NOT NULL,
+                    published_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    unpublished_at TIMESTAMP NULL,
+                    views_count INT DEFAULT 0,
+                    grower_notes TEXT,
+                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                    INDEX idx_user (user_id),
+                    INDEX idx_published_at (published_at),
+                    INDEX idx_strain (strain),
+                    INDEX idx_views (views_count),
+                    INDEX idx_unpublished (unpublished_at)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+                """
+            )
+
+            print("\nChecking 'upcoming_strains' table...")
+
+            # Create upcoming_strains table if it doesn't exist
+            await check_and_create_table(
+                conn,
+                'upcoming_strains',
+                """
+                CREATE TABLE upcoming_strains (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    user_id INT NOT NULL,
+                    strain_name VARCHAR(255) NOT NULL,
+                    description TEXT,
+                    expected_start_date DATE,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                    INDEX idx_user (user_id)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+                """
+            )
+
+            print("\nChecking 'strain_reviews' table...")
+
+            # Create strain_reviews table if it doesn't exist
+            await check_and_create_table(
+                conn,
+                'strain_reviews',
+                """
+                CREATE TABLE strain_reviews (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    published_report_id INT NOT NULL,
+                    reviewer_id INT NOT NULL,
+                    rating INT NOT NULL CHECK (rating >= 1 AND rating <= 5),
+                    comment TEXT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    FOREIGN KEY (published_report_id) REFERENCES published_reports(id) ON DELETE CASCADE,
+                    FOREIGN KEY (reviewer_id) REFERENCES users(id) ON DELETE CASCADE,
+                    UNIQUE KEY unique_review (published_report_id, reviewer_id),
+                    INDEX idx_report (published_report_id),
+                    INDEX idx_reviewer (reviewer_id),
+                    INDEX idx_rating (rating)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+                """
+            )
+
+            print("\nChecking 'review_responses' table...")
+
+            # Create review_responses table if it doesn't exist
+            await check_and_create_table(
+                conn,
+                'review_responses',
+                """
+                CREATE TABLE review_responses (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    review_id INT NOT NULL,
+                    grower_id INT NOT NULL,
+                    response_text TEXT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    FOREIGN KEY (review_id) REFERENCES strain_reviews(id) ON DELETE CASCADE,
+                    FOREIGN KEY (grower_id) REFERENCES users(id) ON DELETE CASCADE,
+                    UNIQUE KEY unique_response (review_id),
+                    INDEX idx_review (review_id),
+                    INDEX idx_grower (grower_id)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+                """
+            )
+
+            print("\nChecking 'admin_settings' table...")
+
+            # Create admin_settings table if it doesn't exist
+            await check_and_create_table(
+                conn,
+                'admin_settings',
+                """
+                CREATE TABLE admin_settings (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    setting_key VARCHAR(100) NOT NULL UNIQUE,
+                    setting_value TEXT,
+                    description TEXT,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    INDEX idx_key (setting_key)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+                """
+            )
+
+            # Insert default admin settings
+            try:
+                result = await conn.execute(text("""
+                    SELECT COUNT(*) as count FROM admin_settings
+                    WHERE setting_key = 'allow_anonymous_browsing'
+                """))
+                row = result.fetchone()
+
+                if row[0] == 0:
+                    print("  Inserting default admin settings...")
+                    await conn.execute(text("""
+                        INSERT INTO admin_settings (setting_key, setting_value, description)
+                        VALUES ('allow_anonymous_browsing', 'true', 'Allow non-logged-in users to browse published reports and grower profiles')
+                    """))
+                    print("  ✓ Default admin settings inserted")
+                else:
+                    print("  ✓ Admin settings already exist")
+            except Exception as e:
+                print(f"  Note: Could not insert default admin settings: {e}")
+
             print("\n" + "="*80)
             print("✓ Database initialization complete!")
             print("="*80 + "\n")

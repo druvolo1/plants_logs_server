@@ -1,0 +1,965 @@
+<!-- templates/social/profile.html - Grower profile page -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grower Profile</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: #e2e8f0;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 1rem;
+            color: #60a5fa;
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .profile-header {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+        .profile-header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 1.5rem;
+        }
+        .profile-info h1 {
+            color: #10b981;
+            margin: 0 0 0.5rem 0;
+        }
+        .profile-location {
+            color: #94a3b8;
+            font-size: 0.95rem;
+        }
+        .profile-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+        .profile-bio {
+            color: #cbd5e1;
+            line-height: 1.6;
+            margin-bottom: 1rem;
+        }
+        .profile-links {
+            display: flex;
+            gap: 1.5rem;
+            flex-wrap: wrap;
+        }
+        .profile-link {
+            color: #60a5fa;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .profile-link:hover {
+            text-decoration: underline;
+        }
+        .profile-stats {
+            display: flex;
+            gap: 2rem;
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid #334155;
+        }
+        .stat {
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #10b981;
+        }
+        .stat-label {
+            color: #94a3b8;
+            font-size: 0.9rem;
+        }
+        .section {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        .section-title {
+            color: #10b981;
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin: 0;
+        }
+        .reports-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1rem;
+        }
+        .report-card {
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            padding: 1rem;
+            transition: transform 0.2s, box-shadow 0.2s;
+            cursor: pointer;
+        }
+        .report-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(16, 185, 129, 0.2);
+            border-color: #10b981;
+        }
+        .report-title {
+            color: #e2e8f0;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+        .report-strain {
+            color: #94a3b8;
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+        }
+        .report-meta {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85rem;
+            color: #64748b;
+        }
+        .location-card {
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+        .location-name {
+            color: #e2e8f0;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+        .location-details {
+            color: #94a3b8;
+            font-size: 0.9rem;
+        }
+        .location-link {
+            color: #60a5fa;
+            text-decoration: none;
+        }
+        .location-link:hover {
+            text-decoration: underline;
+        }
+        .strain-item {
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 0.75rem;
+        }
+        .strain-name {
+            color: #e2e8f0;
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+        .strain-description {
+            color: #94a3b8;
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+        }
+        .strain-date {
+            color: #64748b;
+            font-size: 0.85rem;
+        }
+        .btn {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            background: #10b981;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+        .btn:hover {
+            background: #059669;
+        }
+        .btn-secondary {
+            background: #475569;
+        }
+        .btn-secondary:hover {
+            background: #334155;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 2rem;
+            color: #94a3b8;
+        }
+        .loading {
+            text-align: center;
+            padding: 3rem;
+            color: #94a3b8;
+        }
+        .error-state {
+            text-align: center;
+            padding: 2rem;
+            color: #ef4444;
+        }
+        .star {
+            color: #fbbf24;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+        }
+        .modal.active {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 2rem;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+        .modal-title {
+            color: #10b981;
+            font-size: 1.5rem;
+            margin: 0;
+        }
+        .modal-close {
+            background: none;
+            border: none;
+            color: #94a3b8;
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+        }
+        .modal-close:hover {
+            color: #e2e8f0;
+        }
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        .form-label {
+            display: block;
+            color: #cbd5e1;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+        .form-input, .form-textarea {
+            width: 100%;
+            padding: 0.75rem;
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 6px;
+            color: white;
+            font-family: inherit;
+        }
+        .form-textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+        .form-toggle {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .toggle-switch {
+            position: relative;
+            width: 50px;
+            height: 26px;
+            background: #475569;
+            border-radius: 13px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .toggle-switch.active {
+            background: #10b981;
+        }
+        .toggle-slider {
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            width: 20px;
+            height: 20px;
+            background: white;
+            border-radius: 50%;
+            transition: transform 0.3s;
+        }
+        .toggle-switch.active .toggle-slider {
+            transform: translateX(24px);
+        }
+        .form-actions {
+            display: flex;
+            gap: 0.5rem;
+            justify-content: flex-end;
+            margin-top: 1.5rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/social/discover" class="back-link">← Back to Discover</a>
+
+        <!-- Profile Header -->
+        <div class="profile-header">
+            <div class="profile-header-top">
+                <div class="profile-info">
+                    <h1 id="profile-business-name">Loading...</h1>
+                    <div class="profile-location" id="profile-location"></div>
+                </div>
+                <div class="profile-actions" id="profile-actions">
+                    <!-- Edit button will appear here if own profile -->
+                </div>
+            </div>
+            <div class="profile-bio" id="profile-bio"></div>
+            <div class="profile-links" id="profile-links">
+                <!-- Website and social links will appear here -->
+            </div>
+            <div class="profile-stats">
+                <div class="stat">
+                    <div class="stat-value" id="stat-reports">0</div>
+                    <div class="stat-label">Published Reports</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value" id="stat-rating">-</div>
+                    <div class="stat-label">Average Rating</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value" id="stat-reviews">0</div>
+                    <div class="stat-label">Total Reviews</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Published Reports Section -->
+        <div class="section">
+            <div class="section-header">
+                <h2 class="section-title">Published Reports</h2>
+            </div>
+            <div id="reports-container">
+                <div class="loading">Loading reports...</div>
+            </div>
+        </div>
+
+        <!-- Product Locations Section -->
+        <div class="section">
+            <div class="section-header">
+                <h2 class="section-title">Where to Find</h2>
+                <button id="add-location-btn" class="btn" style="display: none;">Add Location</button>
+            </div>
+            <div id="locations-container">
+                <div class="loading">Loading locations...</div>
+            </div>
+        </div>
+
+        <!-- Upcoming Strains Section -->
+        <div class="section">
+            <div class="section-header">
+                <h2 class="section-title">Coming Soon</h2>
+                <button id="add-strain-btn" class="btn" style="display: none;">Add Strain</button>
+            </div>
+            <div id="strains-container">
+                <div class="loading">Loading strains...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Profile Modal -->
+    <div id="edit-profile-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Edit Profile</h3>
+                <button class="modal-close" onclick="closeEditProfileModal()">&times;</button>
+            </div>
+            <form id="edit-profile-form">
+                <div class="form-group">
+                    <label class="form-label">Business Name</label>
+                    <input type="text" id="edit-business-name" class="form-input" placeholder="Your business name">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Location (City, State)</label>
+                    <input type="text" id="edit-location" class="form-input" placeholder="Portland, OR">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Bio</label>
+                    <textarea id="edit-bio" class="form-textarea" placeholder="Tell us about your grow operation..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Website</label>
+                    <input type="url" id="edit-website" class="form-input" placeholder="https://yoursite.com">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Instagram Handle</label>
+                    <input type="text" id="edit-instagram" class="form-input" placeholder="@yourusername">
+                </div>
+                <div class="form-group">
+                    <label class="form-label form-toggle">
+                        <span>Public Profile</span>
+                        <div id="public-toggle" class="toggle-switch" onclick="togglePublic()">
+                            <div class="toggle-slider"></div>
+                        </div>
+                    </label>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeEditProfileModal()">Cancel</button>
+                    <button type="submit" class="btn">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add/Edit Product Location Modal -->
+    <div id="location-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="location-modal-title">Add Product Location</h3>
+                <button class="modal-close" onclick="closeLocationModal()">&times;</button>
+            </div>
+            <form id="location-form">
+                <div class="form-group">
+                    <label class="form-label">Store Name *</label>
+                    <input type="text" id="location-store-name" class="form-input" placeholder="Store name" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Store Link</label>
+                    <input type="url" id="location-store-link" class="form-input" placeholder="https://store.com">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Phone</label>
+                    <input type="tel" id="location-store-phone" class="form-input" placeholder="(555) 123-4567">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Email</label>
+                    <input type="email" id="location-store-email" class="form-input" placeholder="store@example.com">
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeLocationModal()">Cancel</button>
+                    <button type="submit" class="btn">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add Upcoming Strain Modal -->
+    <div id="strain-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Add Upcoming Strain</h3>
+                <button class="modal-close" onclick="closeStrainModal()">&times;</button>
+            </div>
+            <form id="strain-form">
+                <div class="form-group">
+                    <label class="form-label">Strain Name *</label>
+                    <input type="text" id="strain-name" class="form-input" placeholder="Strain name" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <textarea id="strain-description" class="form-textarea" placeholder="Tell us about this strain..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Expected Start Date</label>
+                    <input type="date" id="strain-date" class="form-input">
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeStrainModal()">Cancel</button>
+                    <button type="submit" class="btn">Add Strain</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const userId = {{ user_id if user_id else 'null' }};
+        const isOwnProfile = {{ 'true' if is_own_profile else 'false' }};
+        let currentProfile = null;
+        let isPublic = false;
+        let editingLocationId = null;
+
+        async function loadProfile() {
+            try {
+                const response = await fetch(`/api/social/profile/${userId}`);
+
+                if (!response.ok) {
+                    throw new Error('Failed to load profile');
+                }
+
+                currentProfile = await response.json();
+
+                // Update header
+                document.getElementById('profile-business-name').textContent =
+                    currentProfile.business_name || currentProfile.grower_name || 'Anonymous Grower';
+
+                document.getElementById('profile-location').textContent =
+                    currentProfile.location || '';
+
+                document.getElementById('profile-bio').textContent =
+                    currentProfile.bio || 'No bio provided yet.';
+
+                // Update links
+                const linksContainer = document.getElementById('profile-links');
+                linksContainer.innerHTML = '';
+
+                if (currentProfile.website) {
+                    linksContainer.innerHTML += `
+                        <a href="${escapeHtml(currentProfile.website)}" class="profile-link" target="_blank">
+                            🌐 Website
+                        </a>
+                    `;
+                }
+
+                if (currentProfile.instagram) {
+                    const ig = currentProfile.instagram.startsWith('@') ? currentProfile.instagram.substring(1) : currentProfile.instagram;
+                    linksContainer.innerHTML += `
+                        <a href="https://instagram.com/${escapeHtml(ig)}" class="profile-link" target="_blank">
+                            📷 Instagram
+                        </a>
+                    `;
+                }
+
+                // Update stats
+                document.getElementById('stat-reports').textContent = currentProfile.total_reports || 0;
+                document.getElementById('stat-rating').textContent =
+                    currentProfile.average_rating ? currentProfile.average_rating.toFixed(1) + ' ★' : '-';
+                document.getElementById('stat-reviews').textContent = currentProfile.total_reviews || 0;
+
+                // Show edit button if own profile
+                if (isOwnProfile) {
+                    document.getElementById('profile-actions').innerHTML = `
+                        <button class="btn" onclick="openEditProfileModal()">Edit Profile</button>
+                    `;
+                    document.getElementById('add-location-btn').style.display = 'block';
+                    document.getElementById('add-strain-btn').style.display = 'block';
+                }
+
+            } catch (error) {
+                console.error('Error loading profile:', error);
+                document.querySelector('.profile-header').innerHTML = `
+                    <div class="error-state">Failed to load profile</div>
+                `;
+            }
+        }
+
+        async function loadReports() {
+            const container = document.getElementById('reports-container');
+
+            try {
+                const response = await fetch(`/api/social/reports?user_id=${userId}&limit=50`);
+
+                if (!response.ok) {
+                    throw new Error('Failed to load reports');
+                }
+
+                const reports = await response.json();
+
+                if (reports.length === 0) {
+                    container.innerHTML = '<div class="empty-state">No published reports yet</div>';
+                    return;
+                }
+
+                container.innerHTML = '<div class="reports-grid"></div>';
+                const grid = container.querySelector('.reports-grid');
+
+                reports.forEach(report => {
+                    const card = document.createElement('div');
+                    card.className = 'report-card';
+                    card.onclick = () => window.location.href = `/social/report/${report.id}`;
+
+                    const ratingStars = report.average_rating
+                        ? '★'.repeat(Math.round(report.average_rating))
+                        : 'No rating';
+
+                    card.innerHTML = `
+                        <div class="report-title">${escapeHtml(report.plant_name)}</div>
+                        ${report.strain ? `<div class="report-strain">${escapeHtml(report.strain)}</div>` : ''}
+                        <div class="report-meta">
+                            <span class="star">${ratingStars}</span>
+                            <span>${report.views_count || 0} views</span>
+                        </div>
+                    `;
+
+                    grid.appendChild(card);
+                });
+
+            } catch (error) {
+                console.error('Error loading reports:', error);
+                container.innerHTML = '<div class="error-state">Failed to load reports</div>';
+            }
+        }
+
+        async function loadLocations() {
+            const container = document.getElementById('locations-container');
+
+            try {
+                const response = await fetch(`/api/social/product-locations/${userId}`);
+
+                if (!response.ok) {
+                    throw new Error('Failed to load locations');
+                }
+
+                const locations = await response.json();
+
+                if (locations.length === 0) {
+                    container.innerHTML = '<div class="empty-state">No product locations listed</div>';
+                    return;
+                }
+
+                container.innerHTML = '';
+
+                locations.forEach(location => {
+                    const card = document.createElement('div');
+                    card.className = 'location-card';
+
+                    let details = [];
+                    if (location.store_link) details.push(`<a href="${escapeHtml(location.store_link)}" class="location-link" target="_blank">Visit Store</a>`);
+                    if (location.store_phone) details.push(`📞 ${escapeHtml(location.store_phone)}`);
+                    if (location.store_email) details.push(`✉️ ${escapeHtml(location.store_email)}`);
+
+                    card.innerHTML = `
+                        <div class="location-name">${escapeHtml(location.store_name)}</div>
+                        <div class="location-details">${details.join(' • ')}</div>
+                        ${isOwnProfile ? `
+                            <div style="margin-top: 0.5rem;">
+                                <button class="btn btn-secondary" style="font-size: 0.8rem; padding: 0.25rem 0.5rem;" onclick="editLocation(${location.id})">Edit</button>
+                                <button class="btn btn-secondary" style="font-size: 0.8rem; padding: 0.25rem 0.5rem;" onclick="deleteLocation(${location.id})">Delete</button>
+                            </div>
+                        ` : ''}
+                    `;
+
+                    container.appendChild(card);
+                });
+
+            } catch (error) {
+                console.error('Error loading locations:', error);
+                container.innerHTML = '<div class="error-state">Failed to load locations</div>';
+            }
+        }
+
+        async function loadStrains() {
+            const container = document.getElementById('strains-container');
+
+            try {
+                const response = await fetch(`/api/social/strains/upcoming/${userId}`);
+
+                if (!response.ok) {
+                    throw new Error('Failed to load strains');
+                }
+
+                const strains = await response.json();
+
+                if (strains.length === 0) {
+                    container.innerHTML = '<div class="empty-state">No upcoming strains</div>';
+                    return;
+                }
+
+                container.innerHTML = '';
+
+                strains.forEach(strain => {
+                    const card = document.createElement('div');
+                    card.className = 'strain-item';
+
+                    card.innerHTML = `
+                        <div class="strain-name">${escapeHtml(strain.strain_name)}</div>
+                        ${strain.description ? `<div class="strain-description">${escapeHtml(strain.description)}</div>` : ''}
+                        ${strain.expected_start_date ? `<div class="strain-date">Expected start: ${strain.expected_start_date}</div>` : ''}
+                        ${isOwnProfile ? `
+                            <div style="margin-top: 0.5rem;">
+                                <button class="btn btn-secondary" style="font-size: 0.8rem; padding: 0.25rem 0.5rem;" onclick="deleteStrain(${strain.id})">Remove</button>
+                            </div>
+                        ` : ''}
+                    `;
+
+                    container.appendChild(card);
+                });
+
+            } catch (error) {
+                console.error('Error loading strains:', error);
+                container.innerHTML = '<div class="error-state">Failed to load strains</div>';
+            }
+        }
+
+        function openEditProfileModal() {
+            if (!currentProfile) return;
+
+            document.getElementById('edit-business-name').value = currentProfile.business_name || '';
+            document.getElementById('edit-location').value = currentProfile.location || '';
+            document.getElementById('edit-bio').value = currentProfile.bio || '';
+            document.getElementById('edit-website').value = currentProfile.website || '';
+            document.getElementById('edit-instagram').value = currentProfile.instagram || '';
+
+            isPublic = currentProfile.is_public || false;
+            const toggle = document.getElementById('public-toggle');
+            if (isPublic) {
+                toggle.classList.add('active');
+            } else {
+                toggle.classList.remove('active');
+            }
+
+            document.getElementById('edit-profile-modal').classList.add('active');
+        }
+
+        function closeEditProfileModal() {
+            document.getElementById('edit-profile-modal').classList.remove('active');
+        }
+
+        function togglePublic() {
+            isPublic = !isPublic;
+            const toggle = document.getElementById('public-toggle');
+            if (isPublic) {
+                toggle.classList.add('active');
+            } else {
+                toggle.classList.remove('active');
+            }
+        }
+
+        document.getElementById('edit-profile-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const data = {
+                business_name: document.getElementById('edit-business-name').value || null,
+                location: document.getElementById('edit-location').value || null,
+                bio: document.getElementById('edit-bio').value || null,
+                website: document.getElementById('edit-website').value || null,
+                instagram: document.getElementById('edit-instagram').value || null,
+                is_public: isPublic
+            };
+
+            try {
+                const response = await fetch('/api/social/profile', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    alert(`Failed to update profile: ${error.detail}`);
+                    return;
+                }
+
+                closeEditProfileModal();
+                await loadProfile();
+
+            } catch (error) {
+                console.error('Error updating profile:', error);
+                alert('Failed to update profile');
+            }
+        });
+
+        function openLocationModal() {
+            editingLocationId = null;
+            document.getElementById('location-modal-title').textContent = 'Add Product Location';
+            document.getElementById('location-form').reset();
+            document.getElementById('location-modal').classList.add('active');
+        }
+
+        function closeLocationModal() {
+            document.getElementById('location-modal').classList.remove('active');
+        }
+
+        async function editLocation(locationId) {
+            editingLocationId = locationId;
+            document.getElementById('location-modal-title').textContent = 'Edit Product Location';
+
+            // Fetch location data
+            try {
+                const response = await fetch(`/api/social/product-locations/me`);
+                const locations = await response.json();
+                const location = locations.find(l => l.id === locationId);
+
+                if (location) {
+                    document.getElementById('location-store-name').value = location.store_name || '';
+                    document.getElementById('location-store-link').value = location.store_link || '';
+                    document.getElementById('location-store-phone').value = location.store_phone || '';
+                    document.getElementById('location-store-email').value = location.store_email || '';
+                }
+
+                document.getElementById('location-modal').classList.add('active');
+            } catch (error) {
+                console.error('Error loading location:', error);
+                alert('Failed to load location data');
+            }
+        }
+
+        async function deleteLocation(locationId) {
+            if (!confirm('Delete this product location?')) return;
+
+            try {
+                const response = await fetch(`/api/social/product-locations/${locationId}`, {
+                    method: 'DELETE'
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to delete location');
+                }
+
+                await loadLocations();
+            } catch (error) {
+                console.error('Error deleting location:', error);
+                alert('Failed to delete location');
+            }
+        }
+
+        document.getElementById('location-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const data = {
+                store_name: document.getElementById('location-store-name').value,
+                store_link: document.getElementById('location-store-link').value || null,
+                store_phone: document.getElementById('location-store-phone').value || null,
+                store_email: document.getElementById('location-store-email').value || null
+            };
+
+            try {
+                let url = '/api/social/product-locations';
+                let method = 'POST';
+
+                if (editingLocationId) {
+                    url = `/api/social/product-locations/${editingLocationId}`;
+                    method = 'PUT';
+                }
+
+                const response = await fetch(url, {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    alert(`Failed to save location: ${error.detail}`);
+                    return;
+                }
+
+                closeLocationModal();
+                await loadLocations();
+
+            } catch (error) {
+                console.error('Error saving location:', error);
+                alert('Failed to save location');
+            }
+        });
+
+        function openStrainModal() {
+            document.getElementById('strain-form').reset();
+            document.getElementById('strain-modal').classList.add('active');
+        }
+
+        function closeStrainModal() {
+            document.getElementById('strain-modal').classList.remove('active');
+        }
+
+        async function deleteStrain(strainId) {
+            if (!confirm('Remove this upcoming strain?')) return;
+
+            try {
+                const response = await fetch(`/api/social/strains/upcoming/${strainId}`, {
+                    method: 'DELETE'
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to delete strain');
+                }
+
+                await loadStrains();
+            } catch (error) {
+                console.error('Error deleting strain:', error);
+                alert('Failed to delete strain');
+            }
+        }
+
+        document.getElementById('strain-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const data = {
+                strain_name: document.getElementById('strain-name').value,
+                description: document.getElementById('strain-description').value || null,
+                expected_start_date: document.getElementById('strain-date').value || null
+            };
+
+            try {
+                const response = await fetch('/api/social/strains/upcoming', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    alert(`Failed to add strain: ${error.detail}`);
+                    return;
+                }
+
+                closeStrainModal();
+                await loadStrains();
+
+            } catch (error) {
+                console.error('Error adding strain:', error);
+                alert('Failed to add strain');
+            }
+        });
+
+        document.getElementById('add-location-btn').onclick = openLocationModal;
+        document.getElementById('add-strain-btn').onclick = openStrainModal;
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Load all data on page load
+        loadProfile();
+        loadReports();
+        loadLocations();
+        loadStrains();
+    </script>
+</body>
+</html>

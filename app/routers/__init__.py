@@ -13,6 +13,7 @@ from .websocket import router as websocket_router, device_connections, user_conn
 from .pages import router as pages_router, pending_pairings
 from .firmware import router as firmware_router
 from .notifications import router as notifications_router
+from .social import router as social_router
 
 __all__ = [
     "templates_router",
@@ -32,4 +33,5 @@ __all__ = [
     "pending_pairings",
     "firmware_router",
     "notifications_router",
+    "social_router",
 ]
