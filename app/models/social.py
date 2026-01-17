@@ -28,9 +28,27 @@ class GrowerProfile(Base):
 
     # Relationships
     user = relationship("User", back_populates="grower_profile")
-    product_locations = relationship("ProductLocation", back_populates="grower", cascade="all, delete-orphan")
-    published_reports = relationship("PublishedReport", back_populates="grower", cascade="all, delete-orphan")
-    upcoming_strains = relationship("UpcomingStrain", back_populates="grower", cascade="all, delete-orphan")
+    product_locations = relationship(
+        "ProductLocation",
+        primaryjoin="GrowerProfile.user_id==ProductLocation.user_id",
+        foreign_keys="ProductLocation.user_id",
+        back_populates="grower",
+        cascade="all, delete-orphan"
+    )
+    published_reports = relationship(
+        "PublishedReport",
+        primaryjoin="GrowerProfile.user_id==PublishedReport.user_id",
+        foreign_keys="PublishedReport.user_id",
+        back_populates="grower",
+        cascade="all, delete-orphan"
+    )
+    upcoming_strains = relationship(
+        "UpcomingStrain",
+        primaryjoin="GrowerProfile.user_id==UpcomingStrain.user_id",
+        foreign_keys="UpcomingStrain.user_id",
+        back_populates="grower",
+        cascade="all, delete-orphan"
+    )
 
 
 class ProductLocation(Base):
@@ -47,7 +65,12 @@ class ProductLocation(Base):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     # Relationships
-    grower = relationship("GrowerProfile", foreign_keys=[user_id], back_populates="product_locations")
+    grower = relationship(
+        "GrowerProfile",
+        primaryjoin="ProductLocation.user_id==GrowerProfile.user_id",
+        foreign_keys=[user_id],
+        back_populates="product_locations"
+    )
 
 
 class PublishedReport(Base):
@@ -78,7 +101,12 @@ class PublishedReport(Base):
     grower_notes = Column(Text, nullable=True)
 
     # Relationships
-    grower = relationship("GrowerProfile", foreign_keys=[user_id], back_populates="published_reports")
+    grower = relationship(
+        "GrowerProfile",
+        primaryjoin="PublishedReport.user_id==GrowerProfile.user_id",
+        foreign_keys=[user_id],
+        back_populates="published_reports"
+    )
     reviews = relationship("StrainReview", back_populates="report", cascade="all, delete-orphan")
 
 
@@ -95,7 +123,12 @@ class UpcomingStrain(Base):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     # Relationships
-    grower = relationship("GrowerProfile", foreign_keys=[user_id], back_populates="upcoming_strains")
+    grower = relationship(
+        "GrowerProfile",
+        primaryjoin="UpcomingStrain.user_id==GrowerProfile.user_id",
+        foreign_keys=[user_id],
+        back_populates="upcoming_strains"
+    )
 
 
 class StrainReview(Base):
