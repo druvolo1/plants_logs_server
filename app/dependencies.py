@@ -3,7 +3,7 @@
 Common dependency functions for FastAPI routes.
 """
 from typing import Optional
-from fastapi import Depends, Header
+from fastapi import Depends, Header, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import User
 
@@ -40,7 +40,13 @@ async def get_optional_user(
         return None
 
 
-def require_superuser_dependency():
-    """Import and return require_superuser dependency from main"""
-    from app.main import require_superuser
-    return require_superuser
+async def require_superuser(
+    current_user: User = Depends(get_current_user_dependency())
+) -> User:
+    """
+    Dependency that ensures the current user is a superuser.
+    Raises 403 if not a superuser.
+    """
+    if not current_user.is_superuser:
+        raise HTTPException(status_code=403, detail="Superuser access required")
+    return current_user

@@ -23,7 +23,7 @@ from app.schemas.social import (
     ReviewResponseCreate, ReviewResponseUpdate, ReviewResponseRead,
     AdminSettingUpdate, AdminSettingRead
 )
-from app.dependencies import get_current_user_dependency, get_db_dependency, get_optional_user, require_superuser_dependency
+from app.dependencies import get_current_user_dependency, get_db_dependency, get_optional_user, require_superuser
 
 router = APIRouter(prefix="/api/social", tags=["social"])
 
@@ -832,7 +832,7 @@ async def delete_response(
 
 @router.get("/admin/settings", response_model=List[AdminSettingRead])
 async def get_admin_settings(
-    current_user: User = Depends(require_superuser_dependency()),
+    current_user: User = Depends(require_superuser),
     session: AsyncSession = Depends(get_db_dependency())
 ):
     """Get all admin settings (superuser only)"""
@@ -844,7 +844,7 @@ async def get_admin_settings(
 async def update_admin_setting(
     setting_key: str,
     setting_data: AdminSettingUpdate,
-    current_user: User = Depends(require_superuser_dependency()),
+    current_user: User = Depends(require_superuser),
     session: AsyncSession = Depends(get_db_dependency())
 ):
     """Update an admin setting value (superuser only)"""
