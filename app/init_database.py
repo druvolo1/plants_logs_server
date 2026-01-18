@@ -364,6 +364,21 @@ async def init_database():
                 "template_id INT NULL AFTER expected_curing_days"
             )
 
+            # Add public visibility toggles
+            await check_and_add_column(
+                conn,
+                'plants',
+                'show_on_profile',
+                "show_on_profile BOOLEAN NOT NULL DEFAULT FALSE AFTER template_id"
+            )
+
+            await check_and_add_column(
+                conn,
+                'plants',
+                'show_as_upcoming',
+                "show_as_upcoming BOOLEAN NOT NULL DEFAULT FALSE AFTER show_on_profile"
+            )
+
             print("\nChecking 'device_shares' table...")
 
             # Create device_shares table if it doesn't exist
@@ -947,6 +962,14 @@ async def init_database():
                     INDEX idx_unpublished (unpublished_at)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
                 """
+            )
+
+            # Add show_on_profile column to published_reports if it doesn't exist
+            await check_and_add_column(
+                conn,
+                'published_reports',
+                'show_on_profile',
+                "show_on_profile BOOLEAN NOT NULL DEFAULT TRUE AFTER grower_notes"
             )
 
             print("\nChecking 'upcoming_strains' table...")

@@ -58,6 +58,10 @@ class Plant(Base):
     expected_curing_days = Column(Integer, nullable=True)
     template_id = Column(Integer, ForeignKey("phase_templates.id"), nullable=True)
 
+    # Public visibility toggles
+    show_on_profile = Column(Boolean, nullable=False, default=False)  # Show finished plant on public profile
+    show_as_upcoming = Column(Boolean, nullable=False, default=False)  # Show active plant in "Upcoming Plants" section
+
     # Relationships
     device = relationship("Device", foreign_keys=[device_id], back_populates="plants")
     user = relationship("User", foreign_keys=[user_id])

@@ -95,6 +95,8 @@ class PlantRead(BaseModel):
     expected_drying_days: Optional[int]
     expected_curing_days: Optional[int]
     template_id: Optional[int]
+    show_on_profile: bool = False  # Show finished plant on public profile
+    show_as_upcoming: bool = False  # Show active plant in "Upcoming Plants" section
     is_active: bool = True  # Computed field: True if status != 'finished'
     assigned_devices: Optional[list] = []  # List of assigned devices with status
 

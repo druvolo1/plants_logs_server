@@ -278,6 +278,8 @@ async def list_plants(
             expected_drying_days=plant.expected_drying_days,
             expected_curing_days=plant.expected_curing_days,
             template_id=plant.template_id,
+            show_on_profile=plant.show_on_profile,
+            show_as_upcoming=plant.show_as_upcoming,
             is_active=plant.status != 'finished',
             assigned_devices=assigned_devices
         ))
@@ -365,6 +367,8 @@ async def get_plant(
         expected_drying_days=plant.expected_drying_days,
         expected_curing_days=plant.expected_curing_days,
         template_id=plant.template_id,
+        show_on_profile=plant.show_on_profile,
+        show_as_upcoming=plant.show_as_upcoming,
         is_active=plant.status != 'finished',
         assigned_devices=assigned_devices
     )
