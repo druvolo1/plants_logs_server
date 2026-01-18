@@ -339,7 +339,7 @@
 </head>
 <body>
     <div class="container">
-        <a href="/social/discover" class="back-link">← Back to Discover</a>
+        <a href="#" class="back-link" onclick="goBack(event)">← Back</a>
 
         <!-- Profile Header -->
         <div class="profile-header">
@@ -515,6 +515,17 @@
         let currentProfile = null;
         let isPublic = false;
         let editingLocationId = null;
+
+        function goBack(event) {
+            event.preventDefault();
+            // Check if there's a referrer and it's from this site
+            if (document.referrer && document.referrer.includes(window.location.host)) {
+                window.history.back();
+            } else {
+                // Default to discover page if no referrer or external referrer
+                window.location.href = '/social/discover';
+            }
+        }
 
         async function loadProfile() {
             try {
