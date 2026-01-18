@@ -200,19 +200,25 @@ async def create_plant_new(
 async def list_plants(
     request: Request,
     user: User = Depends(get_current_user_dependency()),
-    session: AsyncSession = Depends(get_db_dependency())
+    session: AsyncSession = Depends(get_db_dependency()),
+    active_only: bool = False
 ):
     """List all plants owned by or shared with the user"""
     # Get effective user (handles impersonation)
     effective_user = await get_effective_user(request, user, session)
 
+    # Build query conditions
+    conditions = [or_(Plant.user_id == effective_user.id, Device.user_id == effective_user.id)]
+
+    # Filter by active status if requested
+    if active_only:
+        conditions.append(Plant.status != 'finished')
+
     # Get plants owned by user or where user has access through device sharing
     result = await session.execute(
         select(Plant, Device)
         .outerjoin(Device, Plant.device_id == Device.id)
-        .where(
-            or_(Plant.user_id == effective_user.id, Device.user_id == effective_user.id)
-        )
+        .where(*conditions)
         .order_by(Plant.display_order.asc(), Plant.id.desc())
     )
 
