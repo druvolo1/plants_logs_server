@@ -877,8 +877,8 @@ class PlantVisibilityUpdate(BaseModel):
     show_as_upcoming: Optional[bool] = None
 
 
-@router.patch("/{plant_id}", response_model=Dict[str, str])
-async def update_plant(
+@router.patch("/{plant_id}/visibility", response_model=Dict[str, str])
+async def update_plant_visibility(
     plant_id: str,
     updates: PlantVisibilityUpdate,
     request: Request,
