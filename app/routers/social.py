@@ -223,16 +223,45 @@ async def browse_growers(
     skip: int = 0,
     limit: int = 20,
     sort_by: str = Query("recent", regex="^(recent|reports)$"),
-    session: AsyncSession = Depends(get_db_dependency())
+    session: AsyncSession = Depends(get_db_dependency()),
+    current_user: Optional[User] = Depends(get_optional_user)
 ):
-    """Browse all public grower profiles"""
-    query = select(GrowerProfile).where(GrowerProfile.is_public == True)
+    """Browse all public grower profiles (with optional anonymous browsing check)"""
+    # Check if anonymous browsing is allowed (if not authenticated)
+    if not current_user:
+        if not await _check_anonymous_browsing(session):
+            raise HTTPException(401, "Login required to browse growers")
 
-    if sort_by == "recent":
-        query = query.order_by(desc(GrowerProfile.created_at))
-    # Note: sorting by rating/reports requires subquery - implement if needed
+    if sort_by == "reports":
+        # Sort by total published reports (requires subquery)
+        report_count_subquery = (
+            select(
+                PublishedReport.user_id,
+                func.count(PublishedReport.id).label('report_count')
+            )
+            .where(PublishedReport.unpublished_at.is_(None))
+            .group_by(PublishedReport.user_id)
+            .subquery()
+        )
 
-    query = query.offset(skip).limit(limit)
+        query = (
+            select(GrowerProfile)
+            .outerjoin(report_count_subquery, GrowerProfile.user_id == report_count_subquery.c.user_id)
+            .where(GrowerProfile.is_public == True)
+            .order_by(desc(func.coalesce(report_count_subquery.c.report_count, 0)))
+            .offset(skip)
+            .limit(limit)
+        )
+    else:
+        # Sort by recent (default)
+        query = (
+            select(GrowerProfile)
+            .where(GrowerProfile.is_public == True)
+            .order_by(desc(GrowerProfile.created_at))
+            .offset(skip)
+            .limit(limit)
+        )
+
     result = await session.execute(query)
     profiles = result.scalars().all()
 

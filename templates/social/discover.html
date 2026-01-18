@@ -176,6 +176,93 @@
             display: flex;
             gap: 0.75rem;
         }
+        .tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 2rem;
+            border-bottom: 2px solid #334155;
+        }
+        .tab {
+            padding: 0.75rem 1.5rem;
+            background: none;
+            border: none;
+            color: #94a3b8;
+            font-size: 1rem;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -2px;
+            transition: all 0.2s;
+        }
+        .tab:hover {
+            color: #cbd5e1;
+        }
+        .tab.active {
+            color: #10b981;
+            border-bottom-color: #10b981;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .growers-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        .grower-card {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 1.5rem;
+            transition: transform 0.2s, box-shadow 0.2s;
+            cursor: pointer;
+        }
+        .grower-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 16px rgba(16, 185, 129, 0.2);
+            border-color: #10b981;
+        }
+        .grower-name {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #10b981;
+            margin: 0 0 0.5rem 0;
+        }
+        .grower-location {
+            color: #94a3b8;
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+        }
+        .grower-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid #334155;
+        }
+        .grower-stat {
+            text-align: center;
+        }
+        .grower-stat-value {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #10b981;
+        }
+        .grower-stat-label {
+            color: #94a3b8;
+            font-size: 0.8rem;
+        }
+        .load-more {
+            text-align: center;
+            padding: 2rem;
+        }
+        .load-more button {
+            padding: 0.75rem 2rem;
+        }
     </style>
 </head>
 <body>
@@ -199,36 +286,95 @@
         </div>
 
         <div class="header">
-            <h1>🌿 Discover Plant Reports</h1>
-            <p>Browse publicly shared grow reports from the community</p>
+            <h1>🌿 Discover the Community</h1>
+            <p>Browse publicly shared grow reports and grower profiles</p>
         </div>
 
-        <div class="filters">
-            <input type="text" id="strain-filter" class="filter-input" placeholder="Search by strain name...">
-            <select id="sort-filter" class="filter-select">
-                <option value="recent">Most Recent</option>
-                <option value="views">Most Viewed</option>
-            </select>
-            <button onclick="loadReports()" class="btn">Search</button>
+        <!-- Tabs -->
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('reports')">Reports</button>
+            <button class="tab" onclick="switchTab('growers')">Growers</button>
         </div>
 
-        <div id="reports-container">
-            <div class="loading">Loading reports...</div>
+        <!-- Reports Tab -->
+        <div id="reports-tab" class="tab-content active">
+            <div class="filters">
+                <input type="text" id="strain-filter" class="filter-input" placeholder="Search by strain name...">
+                <select id="sort-filter" class="filter-select">
+                    <option value="recent">Most Recent</option>
+                    <option value="views">Most Viewed</option>
+                </select>
+                <button onclick="loadReports()" class="btn">Search</button>
+            </div>
+
+            <div id="reports-container">
+                <div class="loading">Loading reports...</div>
+            </div>
+
+            <div id="reports-load-more" class="load-more" style="display: none;">
+                <button class="btn" onclick="loadMoreReports()">Load More Reports</button>
+            </div>
+        </div>
+
+        <!-- Growers Tab -->
+        <div id="growers-tab" class="tab-content">
+            <div class="filters">
+                <input type="text" id="location-filter" class="filter-input" placeholder="Search by location...">
+                <select id="growers-sort-filter" class="filter-select">
+                    <option value="recent">Recently Joined</option>
+                    <option value="reports">Most Reports</option>
+                </select>
+                <button onclick="loadGrowers()" class="btn">Search</button>
+            </div>
+
+            <div id="growers-container">
+                <div class="loading">Loading growers...</div>
+            </div>
+
+            <div id="growers-load-more" class="load-more" style="display: none;">
+                <button class="btn" onclick="loadMoreGrowers()">Load More Growers</button>
+            </div>
         </div>
     </div>
 
     <script>
         let currentReports = [];
+        let currentGrowers = [];
+        let reportsOffset = 0;
+        let growersOffset = 0;
+        const LOAD_LIMIT = 20;
+        let hasMoreReports = true;
+        let hasMoreGrowers = true;
 
-        async function loadReports() {
+        function switchTab(tab) {
+            // Update tab buttons
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+
+            // Update tab content
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.getElementById(tab + '-tab').classList.add('active');
+
+            // Load data if not already loaded
+            if (tab === 'growers' && currentGrowers.length === 0) {
+                loadGrowers();
+            }
+        }
+
+        async function loadReports(append = false) {
             const container = document.getElementById('reports-container');
+            const loadMoreBtn = document.getElementById('reports-load-more');
             const strainFilter = document.getElementById('strain-filter').value;
             const sortFilter = document.getElementById('sort-filter').value;
 
-            container.innerHTML = '<div class="loading">Loading reports...</div>';
+            if (!append) {
+                reportsOffset = 0;
+                container.innerHTML = '<div class="loading">Loading reports...</div>';
+                loadMoreBtn.style.display = 'none';
+            }
 
             try {
-                let url = '/api/social/reports?limit=50&sort_by=' + sortFilter;
+                let url = `/api/social/reports?limit=${LOAD_LIMIT}&skip=${reportsOffset}&sort_by=${sortFilter}`;
                 if (strainFilter) {
                     url += '&strain=' + encodeURIComponent(strainFilter);
                 }
@@ -252,9 +398,18 @@
                 }
 
                 const reports = await response.json();
-                currentReports = reports;
 
-                if (reports.length === 0) {
+                if (!append) {
+                    currentReports = reports;
+                } else {
+                    currentReports = currentReports.concat(reports);
+                }
+
+                // Check if there are more reports to load
+                hasMoreReports = reports.length === LOAD_LIMIT;
+                reportsOffset += reports.length;
+
+                if (currentReports.length === 0) {
                     container.innerHTML = `
                         <div class="empty-state">
                             <div class="empty-state-icon">🌱</div>
@@ -265,7 +420,9 @@
                     return;
                 }
 
-                container.innerHTML = '<div class="reports-grid" id="reports-grid"></div>';
+                if (!append) {
+                    container.innerHTML = '<div class="reports-grid" id="reports-grid"></div>';
+                }
                 const grid = document.getElementById('reports-grid');
 
                 reports.forEach(report => {
@@ -303,6 +460,13 @@
                     grid.appendChild(card);
                 });
 
+                // Show or hide "Load More" button
+                if (hasMoreReports) {
+                    loadMoreBtn.style.display = 'block';
+                } else {
+                    loadMoreBtn.style.display = 'none';
+                }
+
             } catch (error) {
                 console.error('Error loading reports:', error);
                 container.innerHTML = `
@@ -314,6 +478,119 @@
                     </div>
                 `;
             }
+        }
+
+        function loadMoreReports() {
+            loadReports(true);
+        }
+
+        async function loadGrowers(append = false) {
+            const container = document.getElementById('growers-container');
+            const loadMoreBtn = document.getElementById('growers-load-more');
+            const locationFilter = document.getElementById('location-filter').value;
+            const sortFilter = document.getElementById('growers-sort-filter').value;
+
+            if (!append) {
+                growersOffset = 0;
+                container.innerHTML = '<div class="loading">Loading growers...</div>';
+                loadMoreBtn.style.display = 'none';
+            }
+
+            try {
+                let url = `/api/social/growers?limit=${LOAD_LIMIT}&skip=${growersOffset}&sort_by=${sortFilter}`;
+
+                const response = await fetch(url);
+
+                if (response.status === 401) {
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-state-icon">🔒</div>
+                            <h2>Login Required</h2>
+                            <p>Please log in to browse growers</p>
+                            <a href="/login" class="btn">Go to Login</a>
+                        </div>
+                    `;
+                    return;
+                }
+
+                if (!response.ok) {
+                    throw new Error('Failed to load growers');
+                }
+
+                const growers = await response.json();
+
+                if (!append) {
+                    currentGrowers = growers;
+                } else {
+                    currentGrowers = currentGrowers.concat(growers);
+                }
+
+                // Check if there are more growers to load
+                hasMoreGrowers = growers.length === LOAD_LIMIT;
+                growersOffset += growers.length;
+
+                if (currentGrowers.length === 0) {
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-state-icon">👥</div>
+                            <h2>No Growers Found</h2>
+                            <p>No public grower profiles found</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                if (!append) {
+                    container.innerHTML = '<div class="growers-grid" id="growers-grid"></div>';
+                }
+                const grid = document.getElementById('growers-grid');
+
+                growers.forEach(grower => {
+                    const card = document.createElement('div');
+                    card.className = 'grower-card';
+                    card.onclick = () => window.location.href = `/social/profile/${grower.user_id}`;
+
+                    card.innerHTML = `
+                        <div class="grower-name">${escapeHtml(grower.business_name || grower.grower_name)}</div>
+                        ${grower.location ? `<div class="grower-location">📍 ${escapeHtml(grower.location)}</div>` : ''}
+                        ${grower.bio ? `<div style="color: #cbd5e1; font-size: 0.9rem; margin-bottom: 0.5rem;">${escapeHtml(grower.bio.substring(0, 100))}${grower.bio.length > 100 ? '...' : ''}</div>` : ''}
+                        <div class="grower-stats">
+                            <div class="grower-stat">
+                                <div class="grower-stat-value">${grower.total_published_reports || 0}</div>
+                                <div class="grower-stat-label">Reports</div>
+                            </div>
+                            <div class="grower-stat">
+                                <div class="grower-stat-value">${grower.average_rating ? grower.average_rating.toFixed(1) + ' ★' : '-'}</div>
+                                <div class="grower-stat-label">Rating</div>
+                            </div>
+                        </div>
+                    `;
+
+                    grid.appendChild(card);
+                });
+
+                // Show or hide "Load More" button
+                if (hasMoreGrowers) {
+                    loadMoreBtn.style.display = 'block';
+                } else {
+                    loadMoreBtn.style.display = 'none';
+                }
+
+            } catch (error) {
+                console.error('Error loading growers:', error);
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">⚠️</div>
+                        <h2>Error Loading Growers</h2>
+                        <p>${error.message}</p>
+                        <button onclick="loadGrowers()" class="btn">Try Again</button>
+                    </div>
+                `;
+            }
+        }
+
+        function loadMoreGrowers() {
+            loadGrowers(true);
         }
 
         function viewReport(reportId) {
@@ -329,10 +606,17 @@
         // Load reports on page load
         loadReports();
 
-        // Filter on Enter key
+        // Filter on Enter key for reports
         document.getElementById('strain-filter').addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
                 loadReports();
+            }
+        });
+
+        // Filter on Enter key for growers
+        document.getElementById('location-filter').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                loadGrowers();
             }
         });
     </script>
