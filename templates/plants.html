@@ -3354,9 +3354,9 @@
                 const response = await fetch(`/api/plants/${currentPlant.plant_id}`, {
                     method: 'PATCH',
                     headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                        'Content-Type': 'application/json'
                     },
+                    credentials: 'include',  // Include cookies for auth
                     body: JSON.stringify({
                         show_on_profile: newValue
                     })
@@ -3366,6 +3366,8 @@
                     currentPlant.show_on_profile = newValue;
                     console.log(`Show on profile updated to: ${newValue}`);
                 } else {
+                    const error = await response.json();
+                    console.error('Update failed:', error);
                     // Revert toggle on error
                     toggle.checked = !newValue;
                     alert('Failed to update visibility setting');
@@ -3387,9 +3389,9 @@
                 const response = await fetch(`/api/plants/${currentPlant.plant_id}`, {
                     method: 'PATCH',
                     headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                        'Content-Type': 'application/json'
                     },
+                    credentials: 'include',  // Include cookies for auth
                     body: JSON.stringify({
                         show_as_upcoming: newValue
                     })
@@ -3399,6 +3401,8 @@
                     currentPlant.show_as_upcoming = newValue;
                     console.log(`Show as upcoming updated to: ${newValue}`);
                 } else {
+                    const error = await response.json();
+                    console.error('Update failed:', error);
                     // Revert toggle on error
                     toggle.checked = !newValue;
                     alert('Failed to update visibility setting');
