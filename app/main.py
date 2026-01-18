@@ -421,9 +421,12 @@ app.include_router(auth_router)
 app.include_router(auth_api_router)
 app.include_router(websocket_router)
 app.include_router(pages_router)
+print(f"[DEBUG] pages_router included. Routes: {[r.path for r in pages_router.routes if hasattr(r, 'path')]}")
 app.include_router(firmware_router)
 app.include_router(notifications_router)
 app.include_router(social_router)
+
+print(f"[DEBUG] All app routes with 'social': {[r.path for r in app.routes if hasattr(r, 'path') and 'social' in str(r.path)]}")
 
 # Global exception handler for suspended/pending users
 @app.exception_handler(HTTPException)
