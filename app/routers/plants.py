@@ -872,6 +872,38 @@ async def update_plant_batch(
     return {"status": "success", "message": "Batch number updated"}
 
 
+@router.patch("/{plant_id}", response_model=Dict[str, str])
+async def update_plant(
+    request: Request,
+    plant_id: str,
+    updates: dict,
+    user: User = Depends(get_current_user_dependency()),
+    session: AsyncSession = Depends(get_db_dependency())
+):
+    """Update plant fields (for visibility toggles and other settings)"""
+    # Get effective user (handles impersonation)
+    effective_user = await get_effective_user(request, user, session)
+
+    result = await session.execute(
+        select(Plant).where(Plant.plant_id == plant_id, Plant.user_id == effective_user.id)
+    )
+    plant = result.scalars().first()
+
+    if not plant:
+        raise HTTPException(404, "Plant not found")
+
+    # Only allow updating specific fields
+    allowed_fields = {'show_on_profile', 'show_as_upcoming'}
+
+    for field, value in updates.items():
+        if field in allowed_fields:
+            setattr(plant, field, value)
+
+    await session.commit()
+
+    return {"status": "success", "message": "Plant updated"}
+
+
 @router.patch("/{plant_id}/apply-template", response_model=Dict[str, str])
 async def apply_template_to_plant(
     request: Request,

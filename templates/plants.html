@@ -876,7 +876,53 @@
                     </div>
                 </div>
 
-                <!-- SECTION 3: History -->
+                <!-- SECTION 3: Public Visibility -->
+                <div style="background: rgba(139, 92, 246, 0.05); border: 1px solid rgba(139, 92, 246, 0.2); border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem;">
+                    <h4 style="color: #8b5cf6; margin-bottom: 1rem; border-bottom: 1px solid rgba(139, 92, 246, 0.2); padding-bottom: 0.5rem;">👁️ Public Visibility</h4>
+
+                    <!-- Show on Profile Toggle (for finished plants with published reports) -->
+                    <div id="showOnProfileSection" style="display: none; margin-bottom: 1.5rem;">
+                        <div style="display: flex; align-items: center; justify-content: space-between; padding: 1rem; background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 6px;">
+                            <div style="flex: 1;">
+                                <div style="font-weight: 600; color: #e2e8f0; margin-bottom: 0.25rem;">Show Published Report on Profile</div>
+                                <div style="font-size: 0.85rem; color: #94a3b8;">Display this plant's published report on your public grower profile</div>
+                            </div>
+                            <label class="switch" style="margin-left: 1rem;">
+                                <input type="checkbox" id="showOnProfileToggle" onchange="toggleShowOnProfile()">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        <p style="color: #94a3b8; font-size: 0.8rem; margin-top: 0.5rem; padding-left: 0.5rem;">
+                            <strong>Note:</strong> Plant must be finished and published first. Even if disabled, the report is still accessible via direct link unless unpublished.
+                        </p>
+                    </div>
+
+                    <!-- Show as Upcoming Toggle (for active plants) -->
+                    <div id="showAsUpcomingSection" style="display: none;">
+                        <div style="display: flex; align-items: center; justify-content: space-between; padding: 1rem; background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 6px;">
+                            <div style="flex: 1;">
+                                <div style="font-weight: 600; color: #e2e8f0; margin-bottom: 0.25rem;">Show as Upcoming Plant</div>
+                                <div style="font-size: 0.85rem; color: #94a3b8;">Display this plant in your "Upcoming Plants" section on your public profile</div>
+                            </div>
+                            <label class="switch" style="margin-left: 1rem;">
+                                <input type="checkbox" id="showAsUpcomingToggle" onchange="toggleShowAsUpcoming()">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        <p style="color: #94a3b8; font-size: 0.8rem; margin-top: 0.5rem; padding-left: 0.5rem;">
+                            <strong>Note:</strong> Only active plants can be shown as upcoming. Finished plants appear in published reports instead.
+                        </p>
+                    </div>
+
+                    <!-- Message when no options available -->
+                    <div id="noVisibilityOptions" style="display: none;">
+                        <p style="color: #94a3b8; font-size: 0.85rem; text-align: center; padding: 1rem;">
+                            Visibility options will be available once the plant is finished or published.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- SECTION 4: History -->
                 <div style="background: rgba(148, 163, 184, 0.05); border: 1px solid rgba(148, 163, 184, 0.2); border-radius: 8px; padding: 1.5rem;">
                     <h4 style="color: #94a3b8; margin-bottom: 1rem; border-bottom: 1px solid rgba(148, 163, 184, 0.2); padding-bottom: 0.5rem;">📜 History</h4>
 
@@ -1270,6 +1316,9 @@
                 markCompleteMenuItem.style.display = 'none';
                 editCompletionMenuItem.style.display = 'none';
             }
+
+            // Update Public Visibility section
+            updateVisibilitySections();
 
             // Check if plant has a published report and show appropriate menu items
             await checkPublishedStatus(plantId);
@@ -3257,6 +3306,107 @@
                 }
             } catch (error) {
                 console.error('Error checking published status:', error);
+            }
+        }
+
+        // Public Visibility Functions
+        function updateVisibilitySections() {
+            if (!currentPlant) return;
+
+            const showOnProfileSection = document.getElementById('showOnProfileSection');
+            const showAsUpcomingSection = document.getElementById('showAsUpcomingSection');
+            const noVisibilityOptions = document.getElementById('noVisibilityOptions');
+            const showOnProfileToggle = document.getElementById('showOnProfileToggle');
+            const showAsUpcomingToggle = document.getElementById('showAsUpcomingToggle');
+
+            const isActive = currentPlant.is_active;
+            const isFinished = !isActive;
+
+            // For active plants: show "Show as Upcoming" toggle
+            if (isActive) {
+                showAsUpcomingSection.style.display = 'block';
+                showOnProfileSection.style.display = 'none';
+                noVisibilityOptions.style.display = 'none';
+                showAsUpcomingToggle.checked = currentPlant.show_as_upcoming || false;
+            }
+            // For finished plants: show "Show on Profile" toggle
+            else if (isFinished) {
+                showAsUpcomingSection.style.display = 'none';
+                showOnProfileSection.style.display = 'block';
+                noVisibilityOptions.style.display = 'none';
+                showOnProfileToggle.checked = currentPlant.show_on_profile || false;
+            }
+            // Shouldn't happen, but fallback
+            else {
+                showAsUpcomingSection.style.display = 'none';
+                showOnProfileSection.style.display = 'none';
+                noVisibilityOptions.style.display = 'block';
+            }
+        }
+
+        async function toggleShowOnProfile() {
+            if (!currentPlant) return;
+
+            const toggle = document.getElementById('showOnProfileToggle');
+            const newValue = toggle.checked;
+
+            try {
+                const response = await fetch(`/api/plants/${currentPlant.plant_id}`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    },
+                    body: JSON.stringify({
+                        show_on_profile: newValue
+                    })
+                });
+
+                if (response.ok) {
+                    currentPlant.show_on_profile = newValue;
+                    console.log(`Show on profile updated to: ${newValue}`);
+                } else {
+                    // Revert toggle on error
+                    toggle.checked = !newValue;
+                    alert('Failed to update visibility setting');
+                }
+            } catch (error) {
+                console.error('Error updating show_on_profile:', error);
+                toggle.checked = !newValue;
+                alert('Error updating visibility setting');
+            }
+        }
+
+        async function toggleShowAsUpcoming() {
+            if (!currentPlant) return;
+
+            const toggle = document.getElementById('showAsUpcomingToggle');
+            const newValue = toggle.checked;
+
+            try {
+                const response = await fetch(`/api/plants/${currentPlant.plant_id}`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    },
+                    body: JSON.stringify({
+                        show_as_upcoming: newValue
+                    })
+                });
+
+                if (response.ok) {
+                    currentPlant.show_as_upcoming = newValue;
+                    console.log(`Show as upcoming updated to: ${newValue}`);
+                } else {
+                    // Revert toggle on error
+                    toggle.checked = !newValue;
+                    alert('Failed to update visibility setting');
+                }
+            } catch (error) {
+                console.error('Error updating show_as_upcoming:', error);
+                toggle.checked = !newValue;
+                alert('Error updating visibility setting');
             }
         }
 
