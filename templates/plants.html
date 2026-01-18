@@ -1067,14 +1067,19 @@
             }
 
             container.innerHTML = plants.map(plant => {
-                const phase = plant.current_phase || plant.status || 'unknown';
+                // For finished plants, show "Complete" instead of last phase
+                const isFinished = !plant.is_active || plant.status === 'finished';
+                const phase = isFinished ? 'complete' : (plant.current_phase || plant.status || 'unknown');
                 const phaseColors = {
                     'seed': '#a855f7',
                     'clone': '#8b5cf6',
                     'veg': '#10b981',
+                    'vegetative': '#10b981',
                     'flower': '#f59e0b',
+                    'flowering': '#f59e0b',
                     'drying': '#6366f1',
-                    'curing': '#ec4899'
+                    'curing': '#ec4899',
+                    'complete': '#64748b'
                 };
                 const phaseColor = phaseColors[phase] || '#64748b';
 
@@ -1169,6 +1174,25 @@
 
                     const phaseHistory = await response.json();
 
+                    // Check if plant is finished
+                    const isFinished = !plant.is_active || plant.status === 'finished';
+
+                    if (isFinished) {
+                        // For finished plants, show total lifecycle duration
+                        if (phaseHistory.length > 0 && plant.end_date) {
+                            const firstPhase = phaseHistory[0];
+                            const startDate = new Date(firstPhase.started_at);
+                            const endDate = new Date(plant.end_date);
+                            endDate.setHours(0, 0, 0, 0);
+                            startDate.setHours(0, 0, 0, 0);
+                            const diffDays = Math.floor((endDate - startDate) / (1000 * 60 * 60 * 24));
+                            element.querySelector('.plant-info-value').textContent = `Complete (${diffDays} day${diffDays !== 1 ? 's' : ''} total)`;
+                        } else {
+                            element.querySelector('.plant-info-value').textContent = 'Complete';
+                        }
+                        continue;
+                    }
+
                     // Find the current phase entry (the one without ended_at)
                     const currentPhaseEntry = phaseHistory.find(entry => !entry.ended_at);
 
@@ -1180,8 +1204,9 @@
                     // Calculate days since phase started
                     const startDate = new Date(currentPhaseEntry.started_at);
                     const now = new Date();
-                    const diffTime = Math.abs(now - startDate);
-                    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+                    now.setHours(0, 0, 0, 0);
+                    startDate.setHours(0, 0, 0, 0);
+                    const diffDays = Math.floor((now - startDate) / (1000 * 60 * 60 * 24));
 
                     const phaseName = plant.current_phase || 'unknown';
                     element.querySelector('.plant-info-value').textContent = `In ${phaseName} for ${diffDays} day${diffDays !== 1 ? 's' : ''}`;
@@ -3183,7 +3208,7 @@
             end.setHours(0, 0, 0, 0);
 
             const days = Math.floor((end - start) / (1000 * 60 * 60 * 24));
-            return `${days} days`;
+            return `${days} day${days !== 1 ? 's' : ''}`;
         }
 
         function escapeHtml(text) {

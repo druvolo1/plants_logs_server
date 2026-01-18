@@ -218,23 +218,35 @@ async def list_plants(
 
     plants_list = []
     for plant, device in result.all():
-        # Get active device assignment if any
+        # Get ALL device assignments (active and removed) for this plant
         assignment_result = await session.execute(
             select(DeviceAssignment, Device)
             .join(Device, DeviceAssignment.device_id == Device.id)
-            .where(
-                DeviceAssignment.plant_id == plant.id,
-                DeviceAssignment.removed_at == None
-            )
+            .where(DeviceAssignment.plant_id == plant.id)
+            .order_by(DeviceAssignment.assigned_at.desc())
         )
-        assignment_row = assignment_result.first()
 
+        # Build assigned devices list
+        assigned_devices = []
         device_name = None
         device_id = None
-        if assignment_row:
-            assignment, assigned_device = assignment_row
-            device_name = assigned_device.name
-            device_id = assigned_device.device_id
+
+        for assignment, assigned_device in assignment_result.all():
+            is_assignment_active = assignment.removed_at is None
+            assigned_devices.append({
+                "device_id": assigned_device.device_id,
+                "device_name": assigned_device.name,
+                "system_name": assigned_device.system_name,
+                "is_online": assigned_device.is_online,
+                "is_active": is_assignment_active,
+                "assigned_at": assignment.assigned_at,
+                "removed_at": assignment.removed_at
+            })
+
+            # Set legacy device_id/name to the first active assignment
+            if is_assignment_active and device_id is None:
+                device_name = assigned_device.name
+                device_id = assigned_device.device_id
 
         plants_list.append(PlantRead(
             id=plant.id,
@@ -259,7 +271,9 @@ async def list_plants(
             expected_flower_days=plant.expected_flower_days,
             expected_drying_days=plant.expected_drying_days,
             expected_curing_days=plant.expected_curing_days,
-            template_id=plant.template_id
+            template_id=plant.template_id,
+            is_active=plant.status != 'finished',
+            assigned_devices=assigned_devices
         ))
 
     return plants_list
@@ -291,23 +305,35 @@ async def get_plant(
 
     plant, device = row
 
-    # Get active device assignment if any
+    # Get ALL device assignments for this plant
     assignment_result = await session.execute(
         select(DeviceAssignment, Device)
         .join(Device, DeviceAssignment.device_id == Device.id)
-        .where(
-            DeviceAssignment.plant_id == plant.id,
-            DeviceAssignment.removed_at == None
-        )
+        .where(DeviceAssignment.plant_id == plant.id)
+        .order_by(DeviceAssignment.assigned_at.desc())
     )
-    assignment_row = assignment_result.first()
 
+    # Build assigned devices list
+    assigned_devices = []
     device_name = None
     device_id = None
-    if assignment_row:
-        assignment, assigned_device = assignment_row
-        device_name = assigned_device.name
-        device_id = assigned_device.device_id
+
+    for assignment, assigned_device in assignment_result.all():
+        is_assignment_active = assignment.removed_at is None
+        assigned_devices.append({
+            "device_id": assigned_device.device_id,
+            "device_name": assigned_device.name,
+            "system_name": assigned_device.system_name,
+            "is_online": assigned_device.is_online,
+            "is_active": is_assignment_active,
+            "assigned_at": assignment.assigned_at,
+            "removed_at": assignment.removed_at
+        })
+
+        # Set legacy device_id/name to the first active assignment
+        if is_assignment_active and device_id is None:
+            device_name = assigned_device.name
+            device_id = assigned_device.device_id
 
     return PlantRead(
         id=plant.id,
@@ -332,7 +358,9 @@ async def get_plant(
         expected_flower_days=plant.expected_flower_days,
         expected_drying_days=plant.expected_drying_days,
         expected_curing_days=plant.expected_curing_days,
-        template_id=plant.template_id
+        template_id=plant.template_id,
+        is_active=plant.status != 'finished',
+        assigned_devices=assigned_devices
     )
 
 
