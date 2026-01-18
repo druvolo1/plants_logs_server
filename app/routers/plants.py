@@ -2,7 +2,7 @@
 """
 Plant management endpoints including CRUD, device assignments, and phase management.
 """
-from typing import List, Dict
+from typing import List, Dict, Optional
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
@@ -872,15 +872,20 @@ async def update_plant_batch(
     return {"status": "success", "message": "Batch number updated"}
 
 
+class PlantVisibilityUpdate(BaseModel):
+    show_on_profile: Optional[bool] = None
+    show_as_upcoming: Optional[bool] = None
+
+
 @router.patch("/{plant_id}", response_model=Dict[str, str])
 async def update_plant(
-    request: Request,
     plant_id: str,
-    updates: dict,
+    updates: PlantVisibilityUpdate,
+    request: Request = None,
     user: User = Depends(get_current_user_dependency()),
     session: AsyncSession = Depends(get_db_dependency())
 ):
-    """Update plant fields (for visibility toggles and other settings)"""
+    """Update plant visibility fields"""
     # Get effective user (handles impersonation)
     effective_user = await get_effective_user(request, user, session)
 
@@ -892,12 +897,12 @@ async def update_plant(
     if not plant:
         raise HTTPException(404, "Plant not found")
 
-    # Only allow updating specific fields
-    allowed_fields = {'show_on_profile', 'show_as_upcoming'}
+    # Update fields if provided
+    if updates.show_on_profile is not None:
+        plant.show_on_profile = updates.show_on_profile
 
-    for field, value in updates.items():
-        if field in allowed_fields:
-            setattr(plant, field, value)
+    if updates.show_as_upcoming is not None:
+        plant.show_as_upcoming = updates.show_as_upcoming
 
     await session.commit()
 
