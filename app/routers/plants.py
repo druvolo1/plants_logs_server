@@ -881,7 +881,7 @@ class PlantVisibilityUpdate(BaseModel):
 async def update_plant(
     plant_id: str,
     updates: PlantVisibilityUpdate,
-    request: Request = None,
+    request: Request,
     user: User = Depends(get_current_user_dependency()),
     session: AsyncSession = Depends(get_db_dependency())
 ):
@@ -889,12 +889,21 @@ async def update_plant(
     # Get effective user (handles impersonation)
     effective_user = await get_effective_user(request, user, session)
 
+    print(f"DEBUG: Updating plant {plant_id}, user_id={effective_user.id}, updates={updates}")
+
     result = await session.execute(
         select(Plant).where(Plant.plant_id == plant_id, Plant.user_id == effective_user.id)
     )
     plant = result.scalars().first()
 
     if not plant:
+        # Debug: check if plant exists at all
+        check_result = await session.execute(select(Plant).where(Plant.plant_id == plant_id))
+        exists = check_result.scalars().first()
+        if exists:
+            print(f"DEBUG: Plant exists but belongs to user_id={exists.user_id}, not {effective_user.id}")
+        else:
+            print(f"DEBUG: Plant {plant_id} does not exist in database")
         raise HTTPException(404, "Plant not found")
 
     # Update fields if provided
@@ -905,6 +914,7 @@ async def update_plant(
         plant.show_as_upcoming = updates.show_as_upcoming
 
     await session.commit()
+    print(f"DEBUG: Successfully updated plant {plant_id}")
 
     return {"status": "success", "message": "Plant updated"}
 
