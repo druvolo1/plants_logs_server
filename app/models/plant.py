@@ -2,7 +2,7 @@
 """
 Plant, phase template, phase history, and device assignment models.
 """
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Float, Text
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Float, Text, Boolean
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from .base import Base
