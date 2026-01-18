@@ -13,6 +13,7 @@ import jwt
 from app.models import User
 
 router = APIRouter(tags=["pages"])
+print("[DEBUG] pages.py router initialized")
 
 templates = Jinja2Templates(directory="templates")
 
@@ -324,6 +325,7 @@ async def templates_page_route(request: Request, user: User = Depends(get_curren
 # Discover page (public - requires login if anonymous browsing disabled)
 @router.get("/social/discover", response_class=HTMLResponse)
 async def discover_page(request: Request):
+    print(f"[DEBUG] discover_page called - path: {request.url.path}")
     cookie = request.cookies.get("auth_cookie")
     context = {"request": request, "is_authenticated": bool(cookie)}
 
@@ -345,6 +347,7 @@ async def discover_page(request: Request):
 
     return templates.TemplateResponse("social/discover.html", context)
 
+print("[DEBUG] /social/discover route registered")
 
 # My profile page (authenticated) - MUST come before {user_id} route
 @router.get("/social/profile/me", response_class=HTMLResponse)
