@@ -70,16 +70,31 @@ def ensure_firmware_dir():
         os.makedirs(FIRMWARE_STORAGE_DIR)
 
 
-async def _send_firmware_update_via_websocket(device_id: str):
-    """Send firmware_update command to a device via WebSocket"""
+async def _send_firmware_update_via_websocket(device_id: str, firmware: Firmware) -> bool:
+    """
+    Send firmware_update command to a device via WebSocket.
+    Returns True if command was sent successfully, False if device not connected.
+    """
     if device_id in device_connections:
         try:
-            await device_connections[device_id].send_json({"type": "firmware_update"})
-            print(f"[FIRMWARE] Sent firmware_update command via WebSocket to {device_id}")
+            # Build firmware URL
+            firmware_url = f"https://devportal.pool-guardian.net/api/firmware/download/{firmware.device_type}/{firmware.version}"
+
+            await device_connections[device_id].send_json({
+                "type": "firmware_update",
+                "firmware_url": firmware_url
+            })
+            print(f"[FIRMWARE] ✓ Sent firmware_update command via WebSocket to {device_id}")
+            print(f"[FIRMWARE]   URL: {firmware_url}")
+            print(f"[FIRMWARE]   Version: {firmware.version}")
+            return True
         except Exception as e:
-            print(f"[FIRMWARE] Failed to send firmware_update via WebSocket to {device_id}: {e}")
+            print(f"[FIRMWARE] ✗ Failed to send firmware_update via WebSocket to {device_id}: {e}")
+            return False
     else:
-        print(f"[FIRMWARE] Device {device_id} not connected via WebSocket, cannot send firmware_update command")
+        print(f"[FIRMWARE] ✗ Device {device_id} not in device_connections (offline or zombie connection)")
+        print(f"[FIRMWARE]   Current connections: {list(device_connections.keys())}")
+        return False
 
 
 def calculate_checksum(file_path: str) -> str:
@@ -114,6 +129,33 @@ async def firmware_management_page(
         "active_page": "firmware",
         "pending_users_count": pending_count
     })
+
+
+@router.get("/admin/all-devices")
+async def get_all_devices(
+    admin: User = Depends(get_current_admin_dependency()),
+    session: AsyncSession = Depends(get_db_dependency())
+):
+    """Get all devices for firmware assignment dropdown (admin only)"""
+    # Get all devices with owner email
+    result = await session.execute(
+        select(Device, User.email)
+        .join(User, Device.user_id == User.id)
+        .order_by(Device.device_type, Device.name)
+    )
+
+    devices = []
+    for device, email in result.all():
+        devices.append({
+            "device_id": device.device_id,
+            "name": device.name,
+            "owner_email": email,
+            "device_type": device.device_type,
+            "is_online": device.is_online,
+            "firmware_version": device.firmware_version
+        })
+
+    return devices
 
 
 # API Endpoints - Admin Only
@@ -231,9 +273,11 @@ async def create_firmware_assignment(
         print(f"[FIRMWARE] Admin {admin.email} updated assignment for device {device_identifier}: "
               f"v{firmware.version} (force: {force_update})")
 
-        # Send WebSocket command for valve_controller devices when force_update is enabled
-        if force_update and device.device_type == 'valve_controller':
-            await _send_firmware_update_via_websocket(device_identifier)
+        # Send WebSocket command for pool_monitor devices when force_update is enabled
+        if force_update and device.device_type == 'pool_monitor':
+            ws_sent = await _send_firmware_update_via_websocket(device_identifier, firmware)
+            if not ws_sent:
+                print(f"[FIRMWARE] Device offline - force_update flag set, will trigger on next connection")
 
         return {
             "status": "success",
@@ -256,9 +300,11 @@ async def create_firmware_assignment(
         print(f"[FIRMWARE] Admin {admin.email} created assignment for device {device_identifier}: "
               f"v{firmware.version} (force: {force_update})")
 
-        # Send WebSocket command for valve_controller devices when force_update is enabled
-        if force_update and device.device_type == 'valve_controller':
-            await _send_firmware_update_via_websocket(device_identifier)
+        # Send WebSocket command for pool_monitor devices when force_update is enabled
+        if force_update and device.device_type == 'pool_monitor':
+            ws_sent = await _send_firmware_update_via_websocket(device_identifier, firmware)
+            if not ws_sent:
+                print(f"[FIRMWARE] Device offline - force_update flag set, will trigger on next connection")
 
         return {
             "status": "success",
@@ -276,8 +322,9 @@ async def set_force_update(
 ):
     """Set or clear the force_update flag on a device assignment"""
     result = await session.execute(
-        select(DeviceFirmwareAssignment, Device)
+        select(DeviceFirmwareAssignment, Device, Firmware)
         .join(Device, DeviceFirmwareAssignment.device_id == Device.id)
+        .join(Firmware, DeviceFirmwareAssignment.firmware_id == Firmware.id)
         .where(DeviceFirmwareAssignment.id == assignment_id)
     )
     row = result.first()
@@ -285,14 +332,22 @@ async def set_force_update(
     if not row:
         raise HTTPException(404, "Assignment not found")
 
-    assignment, device = row
+    assignment, device, firmware = row
     assignment.force_update = force
     assignment.updated_at = datetime.utcnow()
     await session.commit()
 
-    # Send WebSocket command for valve_controller devices when force_update is enabled
-    if force and device.device_type == 'valve_controller':
-        await _send_firmware_update_via_websocket(device.device_id)
+    # Send WebSocket command when force_update is enabled
+    if force and device.device_type == 'pool_monitor':
+        success = await _send_firmware_update_via_websocket(device.device_id, firmware)
+        if success:
+            # Clear force_update flag immediately after successful send
+            assignment.force_update = False
+            await session.commit()
+            print(f"[FIRMWARE] ✓ Force update command sent to {device.device_id} (WebSocket)")
+            print(f"[FIRMWARE] ✓ Cleared force_update flag (device received command)")
+        else:
+            print(f"[FIRMWARE] ✗ Device {device.device_id} not connected, force_update flag set for next connection")
 
     return {
         "status": "success",
@@ -359,7 +414,7 @@ async def upload_firmware(
     Upload a new firmware binary.
 
     Args:
-        device_type: Type of device (e.g., 'environmental', 'valve_controller')
+        device_type: Type of device (e.g., 'pool_monitor')
         version: Semantic version string (e.g., '2.1.0', '2.2.0-beta.1')
         release_notes: Markdown release notes
         is_prerelease: Whether this is a beta/pre-release version
@@ -645,16 +700,32 @@ async def download_firmware(
     if not os.path.exists(file_path):
         raise HTTPException(404, "Firmware file not found on server")
 
-    return FileResponse(
-        file_path,
+    # Log firmware download request with metadata
+    print(f"[FIRMWARE DOWNLOAD] Serving {device_type} v{version}")
+    print(f"[FIRMWARE DOWNLOAD]   Path: {file_path}")
+    print(f"[FIRMWARE DOWNLOAD]   Size: {firmware.file_size} bytes")
+    print(f"[FIRMWARE DOWNLOAD]   Checksum: {firmware.checksum}")
+
+    # Use StreamingResponse with explicit headers to ensure they're sent
+    def iterfile():
+        with open(file_path, mode="rb") as file_like:
+            yield from file_like
+
+    from fastapi.responses import StreamingResponse
+
+    response = StreamingResponse(
+        iterfile(),
         media_type="application/octet-stream",
-        filename=f"{device_type}_{version}.bin",
         headers={
+            "Content-Disposition": f'attachment; filename="{device_type}_{version}.bin"',
             "X-Firmware-Version": version,
             "X-Firmware-Checksum": firmware.checksum or "",
-            "X-Firmware-Size": str(firmware.file_size or 0)
+            "X-Firmware-Size": str(firmware.file_size or 0),
+            "Content-Length": str(firmware.file_size or 0)
         }
     )
+
+    return response
 
 
 # Endpoint for devices to check for updates (can also be integrated into heartbeat)
